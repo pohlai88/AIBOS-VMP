@@ -2,6 +2,7 @@ import { createClient } from '@supabase/supabase-js';
 import bcrypt from 'bcrypt';
 import { randomBytes } from 'crypto';
 import dotenv from 'dotenv';
+import { parse } from 'csv-parse/sync';
 import {
     DatabaseError,
     TimeoutError,
@@ -1235,17 +1236,44 @@ export const vmpAdapter = {
         return caseDetail;
     },
 
-    // Sprint 1.2: Break Glass Protocol - Get Group Director Info
-    // NOTE: For Sprint 1, this uses mock data. Real DB fetch will be in Sprint 2.
+    // Sprint 2: Break Glass Protocol - Get Group Director Info
     async getGroupDirectorInfo(groupId) {
-        // Sprint 1: Return mock Director data
-        // Sprint 2: Will query vmp_groups table for real director_user_id, director_name, director_phone, director_email
+        if (!groupId) {
+            return null;
+        }
+
+        const queryPromise = supabase
+            .from('vmp_groups')
+            .select('id, name, director_name, director_title, director_phone, director_email')
+            .eq('id', groupId)
+            .single();
+
+        const { data, error } = await withTimeout(
+            queryPromise,
+            5000,
+            `getGroupDirectorInfo(${groupId})`
+        );
+
+        if (error) {
+            const handledError = handleSupabaseError(error, 'getGroupDirectorInfo');
+            if (handledError === null) {
+                // Group not found
+                return null;
+            }
+            throw handledError;
+        }
+
+        if (!data) {
+            return null;
+        }
+
         return {
-            director_name: 'John Director',
-            director_phone: '+1 (555) 123-4567',
-            director_email: 'director@example.com',
-            group_name: 'Retail Division',
-            group_id: groupId
+            group_id: data.id,
+            group_name: data.name,
+            director_name: data.director_name,
+            director_title: data.director_title,
+            director_phone: data.director_phone,
+            director_email: data.director_email
         };
     },
 
@@ -1303,69 +1331,105 @@ export const vmpAdapter = {
             });
         }
 
-        // Parse CSV (simple but robust parser)
-        const csvText = csvBuffer.toString('utf-8');
-        const lines = csvText.split('\n').filter(line => line.trim());
+        // Parse CSV using csv-parse (handles quoted fields, commas in values, etc.)
+        let records;
+        try {
+            records = parse(csvBuffer, {
+                columns: true, // Use first row as column names
+                skip_empty_lines: true,
+                trim: true,
+                relax_column_count: true, // Allow inconsistent column counts
+                cast: false // Keep values as strings for manual parsing
+            });
+        } catch (parseError) {
+            throw new ValidationError(`Failed to parse CSV: ${parseError.message}`, parseError, {
+                operation: 'ingestInvoicesFromCSV'
+            });
+        }
 
-        if (lines.length < 2) {
+        if (!records || records.length === 0) {
             throw new ValidationError('CSV must have at least a header row and one data row', null, {
-                lineCount: lines.length
+                recordCount: records?.length || 0
             });
         }
 
-        // Parse header row
-        const headers = this._parseCSVLine(lines[0]);
-        const requiredColumns = ['Invoice #', 'Date', 'Amount'];
-        const missingColumns = requiredColumns.filter(col => !headers.includes(col));
+        // Normalize headers (case-insensitive, handle whitespace and variations)
+        const normalizeHeader = (header) => {
+            if (!header) return '';
+            return header.trim().toLowerCase()
+                .replace(/\s+/g, ' ') // Normalize whitespace
+                .replace(/[#]/g, ''); // Remove # symbols
+        };
 
+        // Find column indices with flexible matching
+        const findColumn = (headers, patterns) => {
+            const normalizedHeaders = headers.map(normalizeHeader);
+            for (const pattern of patterns) {
+                const normalizedPattern = normalizeHeader(pattern);
+                const idx = normalizedHeaders.findIndex(h => h.includes(normalizedPattern) || normalizedPattern.includes(h));
+                if (idx >= 0) return idx;
+            }
+            return -1;
+        };
+
+        const headers = Object.keys(records[0] || {});
+
+        // Map columns with flexible matching (handle common variations)
+        const invoiceNumIdx = findColumn(headers, ['Invoice #', 'Invoice', 'Invoice Number', 'Inv #', 'Inv Num', 'Invoice Num']);
+        const dateIdx = findColumn(headers, ['Date', 'Invoice Date', 'Doc Date', 'Document Date', 'Invoice Date']);
+        const amountIdx = findColumn(headers, ['Amount', 'Invoice Amount', 'Total', 'Total Amount', 'Invoice Total']);
+        const poRefIdx = findColumn(headers, ['PO #', 'PO', 'PO Number', 'Purchase Order', 'PO Ref']);
+        const companyCodeIdx = findColumn(headers, ['Company Code', 'Company', 'Company ID', 'Company Name']);
+        const descriptionIdx = findColumn(headers, ['Description', 'Desc', 'Notes', 'Remarks']);
+
+        // Validate required columns
+        const requiredColumns = [
+            { name: 'Invoice #', idx: invoiceNumIdx },
+            { name: 'Date', idx: dateIdx },
+            { name: 'Amount', idx: amountIdx }
+        ];
+
+        const missingColumns = requiredColumns.filter(col => col.idx < 0);
         if (missingColumns.length > 0) {
-            throw new ValidationError(`CSV missing required columns: ${missingColumns.join(', ')}`, null, {
-                foundColumns: headers,
-                missingColumns
-            });
+            throw new ValidationError(
+                `CSV missing required columns: ${missingColumns.map(c => c.name).join(', ')}. Found columns: ${headers.join(', ')}`,
+                null,
+                {
+                    foundColumns: headers,
+                    missingColumns: missingColumns.map(c => c.name)
+                }
+            );
         }
-
-        // Map column indices
-        const invoiceNumIdx = headers.indexOf('Invoice #');
-        const dateIdx = headers.indexOf('Date');
-        const amountIdx = headers.indexOf('Amount');
-        const poRefIdx = headers.indexOf('PO #') >= 0 ? headers.indexOf('PO #') : -1;
-        const companyCodeIdx = headers.indexOf('Company Code') >= 0 ? headers.indexOf('Company Code') : -1;
-        const descriptionIdx = headers.indexOf('Description') >= 0 ? headers.indexOf('Description') : -1;
 
         // Parse data rows
         const invoices = [];
         const errors = [];
 
-        for (let i = 1; i < lines.length; i++) {
+        for (let i = 0; i < records.length; i++) {
             try {
-                const values = this._parseCSVLine(lines[i]);
-
-                if (values.length < headers.length) {
-                    errors.push(`Row ${i + 1}: Insufficient columns (expected ${headers.length}, got ${values.length})`);
-                    continue;
-                }
+                const row = records[i];
+                const values = headers.map(h => row[h] || '');
 
                 const invoiceNum = values[invoiceNumIdx]?.trim();
                 const dateStr = values[dateIdx]?.trim();
                 const amountStr = values[amountIdx]?.trim();
 
                 if (!invoiceNum || !dateStr || !amountStr) {
-                    errors.push(`Row ${i + 1}: Missing required fields (Invoice #, Date, or Amount)`);
+                    errors.push(`Row ${i + 2}: Missing required fields (Invoice #, Date, or Amount)`);
                     continue;
                 }
 
                 // Parse date (support multiple formats)
                 const invoiceDate = this._parseDate(dateStr);
                 if (!invoiceDate) {
-                    errors.push(`Row ${i + 1}: Invalid date format: ${dateStr}`);
+                    errors.push(`Row ${i + 2}: Invalid date format: ${dateStr}`);
                     continue;
                 }
 
                 // Parse amount (remove currency symbols, commas)
                 const amount = parseFloat(amountStr.replace(/[^0-9.-]/g, ''));
                 if (isNaN(amount) || amount <= 0) {
-                    errors.push(`Row ${i + 1}: Invalid amount: ${amountStr}`);
+                    errors.push(`Row ${i + 2}: Invalid amount: ${amountStr}`);
                     continue;
                 }
 
@@ -1393,12 +1457,12 @@ export const vmpAdapter = {
                     invoice_num: invoiceNum,
                     invoice_date: invoiceDate.toISOString().split('T')[0],
                     amount: amount,
-                    po_ref: poRefIdx >= 0 ? values[poRefIdx]?.trim() || null : null,
-                    description: descriptionIdx >= 0 ? values[descriptionIdx]?.trim() || null : null,
+                    po_ref: poRefIdx >= 0 ? (values[poRefIdx]?.trim() || null) : null,
+                    description: descriptionIdx >= 0 ? (values[descriptionIdx]?.trim() || null) : null,
                     source_system: 'manual'
                 });
             } catch (rowError) {
-                errors.push(`Row ${i + 1}: ${rowError.message}`);
+                errors.push(`Row ${i + 2}: ${rowError.message}`);
             }
         }
 
@@ -1483,68 +1547,104 @@ export const vmpAdapter = {
             });
         }
 
-        // Parse CSV (simple but robust parser)
-        const csvText = csvBuffer.toString('utf-8');
-        const lines = csvText.split('\n').filter(line => line.trim());
+        // Parse CSV using csv-parse (handles quoted fields, commas in values, etc.)
+        let records;
+        try {
+            records = parse(csvBuffer, {
+                columns: true, // Use first row as column names
+                skip_empty_lines: true,
+                trim: true,
+                relax_column_count: true, // Allow inconsistent column counts
+                cast: false // Keep values as strings for manual parsing
+            });
+        } catch (parseError) {
+            throw new ValidationError(`Failed to parse CSV: ${parseError.message}`, parseError, {
+                operation: 'ingestPaymentsFromCSV'
+            });
+        }
 
-        if (lines.length < 2) {
+        if (!records || records.length === 0) {
             throw new ValidationError('CSV must have at least a header row and one data row', null, {
-                lineCount: lines.length
+                recordCount: records?.length || 0
             });
         }
 
-        // Parse header row
-        const headers = this._parseCSVLine(lines[0]);
-        const requiredColumns = ['Payment Ref', 'Date', 'Amount'];
-        const missingColumns = requiredColumns.filter(col => !headers.includes(col));
+        // Normalize headers (case-insensitive, handle whitespace and variations)
+        const normalizeHeader = (header) => {
+            if (!header) return '';
+            return header.trim().toLowerCase()
+                .replace(/\s+/g, ' ') // Normalize whitespace
+                .replace(/[#]/g, ''); // Remove # symbols
+        };
 
+        // Find column indices with flexible matching
+        const findColumn = (headers, patterns) => {
+            const normalizedHeaders = headers.map(normalizeHeader);
+            for (const pattern of patterns) {
+                const normalizedPattern = normalizeHeader(pattern);
+                const idx = normalizedHeaders.findIndex(h => h.includes(normalizedPattern) || normalizedPattern.includes(h));
+                if (idx >= 0) return idx;
+            }
+            return -1;
+        };
+
+        const headers = Object.keys(records[0] || {});
+
+        // Map columns with flexible matching (handle common variations)
+        const paymentRefIdx = findColumn(headers, ['Payment Ref', 'Payment Reference', 'Payment Ref #', 'Pay Ref', 'Payment Number']);
+        const dateIdx = findColumn(headers, ['Date', 'Payment Date', 'Pay Date', 'Transaction Date']);
+        const amountIdx = findColumn(headers, ['Amount', 'Payment Amount', 'Total', 'Total Amount', 'Pay Amount']);
+        const invoiceNumIdx = findColumn(headers, ['Invoice #', 'Invoice', 'Invoice Number', 'Inv #', 'Inv Num', 'Invoice Num']);
+        const descriptionIdx = findColumn(headers, ['Description', 'Desc', 'Notes', 'Remarks', 'Memo']);
+
+        // Validate required columns
+        const requiredColumns = [
+            { name: 'Payment Ref', idx: paymentRefIdx },
+            { name: 'Date', idx: dateIdx },
+            { name: 'Amount', idx: amountIdx }
+        ];
+
+        const missingColumns = requiredColumns.filter(col => col.idx < 0);
         if (missingColumns.length > 0) {
-            throw new ValidationError(`CSV missing required columns: ${missingColumns.join(', ')}`, null, {
-                foundColumns: headers,
-                missingColumns
-            });
+            throw new ValidationError(
+                `CSV missing required columns: ${missingColumns.map(c => c.name).join(', ')}. Found columns: ${headers.join(', ')}`,
+                null,
+                {
+                    foundColumns: headers,
+                    missingColumns: missingColumns.map(c => c.name)
+                }
+            );
         }
-
-        // Map column indices
-        const paymentRefIdx = headers.indexOf('Payment Ref');
-        const dateIdx = headers.indexOf('Date');
-        const amountIdx = headers.indexOf('Amount');
-        const invoiceNumIdx = headers.indexOf('Invoice #') >= 0 ? headers.indexOf('Invoice #') : -1;
-        const descriptionIdx = headers.indexOf('Description') >= 0 ? headers.indexOf('Description') : -1;
 
         // Parse data rows
         const payments = [];
         const errors = [];
 
-        for (let i = 1; i < lines.length; i++) {
+        for (let i = 0; i < records.length; i++) {
             try {
-                const values = this._parseCSVLine(lines[i]);
-
-                if (values.length < headers.length) {
-                    errors.push(`Row ${i + 1}: Insufficient columns (expected ${headers.length}, got ${values.length})`);
-                    continue;
-                }
+                const row = records[i];
+                const values = headers.map(h => row[h] || '');
 
                 const paymentRef = values[paymentRefIdx]?.trim();
                 const dateStr = values[dateIdx]?.trim();
                 const amountStr = values[amountIdx]?.trim();
 
                 if (!paymentRef || !dateStr || !amountStr) {
-                    errors.push(`Row ${i + 1}: Missing required fields (Payment Ref, Date, or Amount)`);
+                    errors.push(`Row ${i + 2}: Missing required fields (Payment Ref, Date, or Amount)`);
                     continue;
                 }
 
                 // Parse date (support multiple formats)
                 const paymentDate = this._parseDate(dateStr);
                 if (!paymentDate) {
-                    errors.push(`Row ${i + 1}: Invalid date format: ${dateStr}`);
+                    errors.push(`Row ${i + 2}: Invalid date format: ${dateStr}`);
                     continue;
                 }
 
                 // Parse amount (remove currency symbols, commas)
                 const amount = parseFloat(amountStr.replace(/[^0-9.-]/g, ''));
                 if (isNaN(amount) || amount <= 0) {
-                    errors.push(`Row ${i + 1}: Invalid amount: ${amountStr}`);
+                    errors.push(`Row ${i + 2}: Invalid amount: ${amountStr}`);
                     continue;
                 }
 
@@ -1561,7 +1661,7 @@ export const vmpAdapter = {
                     source_system: 'manual'
                 });
             } catch (rowError) {
-                errors.push(`Row ${i + 1}: ${rowError.message}`);
+                errors.push(`Row ${i + 2}: ${rowError.message}`);
             }
         }
 
@@ -1693,22 +1793,79 @@ export const vmpAdapter = {
             });
         }
 
+        // Helper: Extract potential invoice/payment references from filename using fuzzy matching
+        const extractReferences = (filename) => {
+            const filenameWithoutExt = filename.replace(/\.(pdf|PDF)$/i, '').trim();
+            const references = {
+                invoiceNums: [],
+                paymentRefs: [],
+                exactMatch: filenameWithoutExt
+            };
+
+            // Pattern 1: Invoice numbers (INV-XXX, INV-XXXX-XXX, INV_XXX, etc.)
+            // Matches: INV-123, INV-2024-001, INV_456, Invoice-789, etc.
+            const invoicePatterns = [
+                /(?:INV|Invoice|INVOICE)[\s_-]?([A-Z0-9-]+)/gi,
+                /([A-Z]{2,4}[\s_-]?\d{3,}(?:[\s_-]?\d{3,})?)/gi // Generic alphanumeric patterns
+            ];
+
+            invoicePatterns.forEach(pattern => {
+                const matches = filenameWithoutExt.matchAll(pattern);
+                for (const match of matches) {
+                    const ref = match[1] || match[0];
+                    if (ref && ref.length >= 3) {
+                        references.invoiceNums.push(ref.trim().toUpperCase());
+                    }
+                }
+            });
+
+            // Pattern 2: Payment references (PAY-XXX, CHQ-XXX, PAYMENT-XXX, etc.)
+            const paymentPatterns = [
+                /(?:PAY|Payment|PAYMENT|CHQ|Cheque|CHECK)[\s_-]?([A-Z0-9-]+)/gi,
+                /(?:REF|Reference|REFERENCE)[\s_-]?([A-Z0-9-]+)/gi
+            ];
+
+            paymentPatterns.forEach(pattern => {
+                const matches = filenameWithoutExt.matchAll(pattern);
+                for (const match of matches) {
+                    const ref = match[1] || match[0];
+                    if (ref && ref.length >= 3) {
+                        references.paymentRefs.push(ref.trim().toUpperCase());
+                    }
+                }
+            });
+
+            // Remove duplicates
+            references.invoiceNums = [...new Set(references.invoiceNums)];
+            references.paymentRefs = [...new Set(references.paymentRefs)];
+
+            return references;
+        };
+
         const results = [];
         const errors = [];
 
         for (const file of files) {
             try {
-                // Extract invoice/payment reference from filename
-                // Expected formats: "INV-123.pdf", "PAY-456.pdf", "INV-2024-001.pdf", etc.
                 const filename = file.originalname || file.name || '';
-                const filenameWithoutExt = filename.replace(/\.(pdf|PDF)$/, '');
+                if (!filename) {
+                    errors.push({
+                        filename: 'unknown',
+                        error: 'Filename is missing'
+                    });
+                    continue;
+                }
 
-                // Try to match to invoice first (by invoice_num)
+                // Extract potential references from filename
+                const refs = extractReferences(filename);
                 let matchedPayment = null;
                 let matchedInvoice = null;
 
-                // Search for invoice by invoice number
-                const invoiceQuery = supabase
+                // Strategy 1: Try exact match first (for simple filenames like "INV-123.pdf")
+                const filenameWithoutExt = filename.replace(/\.(pdf|PDF)$/i, '').trim();
+
+                // Try invoice exact match
+                const exactInvoiceQuery = supabase
                     .from('vmp_invoices')
                     .select('id, invoice_num')
                     .eq('vendor_id', vendorId)
@@ -1717,18 +1874,38 @@ export const vmpAdapter = {
                     .limit(1)
                     .single();
 
-                const { data: invoiceData } = await withTimeout(invoiceQuery, 5000, 'findInvoiceByFilename');
+                const { data: exactInvoiceData } = await withTimeout(exactInvoiceQuery, 5000, 'findInvoiceExact');
 
-                if (invoiceData) {
-                    matchedInvoice = invoiceData;
+                if (exactInvoiceData) {
+                    matchedInvoice = exactInvoiceData;
+                } else {
+                    // Strategy 2: Try fuzzy match with extracted invoice numbers
+                    for (const invoiceNum of refs.invoiceNums) {
+                        const fuzzyInvoiceQuery = supabase
+                            .from('vmp_invoices')
+                            .select('id, invoice_num')
+                            .eq('vendor_id', vendorId)
+                            .eq('company_id', companyId)
+                            .ilike('invoice_num', `%${invoiceNum}%`)
+                            .limit(1)
+                            .single();
 
-                    // Find payment linked to this invoice
+                        const { data: fuzzyInvoiceData } = await withTimeout(fuzzyInvoiceQuery, 5000, 'findInvoiceFuzzy');
+                        if (fuzzyInvoiceData) {
+                            matchedInvoice = fuzzyInvoiceData;
+                            break;
+                        }
+                    }
+                }
+
+                // If invoice found, find linked payment
+                if (matchedInvoice) {
                     const paymentQuery = supabase
                         .from('vmp_payments')
-                        .select('id')
+                        .select('id, payment_ref, invoice_id')
                         .eq('vendor_id', vendorId)
                         .eq('company_id', companyId)
-                        .eq('invoice_id', invoiceData.id)
+                        .eq('invoice_id', matchedInvoice.id)
                         .limit(1)
                         .single();
 
@@ -1736,9 +1913,12 @@ export const vmpAdapter = {
                     if (paymentData) {
                         matchedPayment = paymentData;
                     }
-                } else {
-                    // Try to match by payment_ref
-                    const paymentRefQuery = supabase
+                }
+
+                // Strategy 3: If no payment found yet, try payment reference matching
+                if (!matchedPayment) {
+                    // Try exact payment ref match
+                    const exactPaymentQuery = supabase
                         .from('vmp_payments')
                         .select('id, payment_ref')
                         .eq('vendor_id', vendorId)
@@ -1747,40 +1927,73 @@ export const vmpAdapter = {
                         .limit(1)
                         .single();
 
-                    const { data: paymentData } = await withTimeout(paymentRefQuery, 5000, 'findPaymentByRef');
-                    if (paymentData) {
-                        matchedPayment = paymentData;
+                    const { data: exactPaymentData } = await withTimeout(exactPaymentQuery, 5000, 'findPaymentExact');
+                    if (exactPaymentData) {
+                        matchedPayment = exactPaymentData;
+                    } else {
+                        // Try fuzzy match with extracted payment refs
+                        for (const paymentRef of refs.paymentRefs) {
+                            const fuzzyPaymentQuery = supabase
+                                .from('vmp_payments')
+                                .select('id, payment_ref')
+                                .eq('vendor_id', vendorId)
+                                .eq('company_id', companyId)
+                                .ilike('payment_ref', `%${paymentRef}%`)
+                                .limit(1)
+                                .single();
+
+                            const { data: fuzzyPaymentData } = await withTimeout(fuzzyPaymentQuery, 5000, 'findPaymentFuzzy');
+                            if (fuzzyPaymentData) {
+                                matchedPayment = fuzzyPaymentData;
+                                break;
+                            }
+                        }
                     }
                 }
 
                 if (!matchedPayment) {
                     errors.push({
                         filename: filename,
-                        error: `No matching payment or invoice found for filename: ${filenameWithoutExt}`
+                        error: `No matching payment or invoice found. Tried: ${refs.exactMatch}, invoice patterns: ${refs.invoiceNums.join(', ') || 'none'}, payment patterns: ${refs.paymentRefs.join(', ') || 'none'}`
                     });
                     continue;
                 }
 
-                // Generate storage path for remittance
-                const storagePath = `remittances/${vendorId}/${companyId}/${matchedPayment.id}/${filename}`;
+                // Generate storage path for remittance (sanitize filename for storage)
+                const sanitizedFilename = filename.replace(/[^a-zA-Z0-9._-]/g, '_');
+                const storagePath = `remittances/${vendorId}/${companyId}/${matchedPayment.id}/${sanitizedFilename}`;
 
-                // Upload to Supabase Storage (use vmp-evidence bucket or create vmp-remittances)
-                const { data: uploadData, error: uploadError } = await supabase.storage
-                    .from('vmp-evidence') // Using existing bucket (can create separate bucket later)
+                // Upload to Supabase Storage (using vmp-evidence bucket - can create vmp-remittances bucket later)
+                const uploadPromise = supabase.storage
+                    .from('vmp-evidence')
                     .upload(storagePath, file.buffer, {
                         contentType: file.mimetype || 'application/pdf',
-                        upsert: true
+                        upsert: true,
+                        cacheControl: '3600' // Cache for 1 hour
                     });
 
+                const { data: uploadData, error: uploadError } = await withTimeout(
+                    uploadPromise,
+                    30000, // 30 second timeout for file uploads
+                    `uploadRemittance(${filename})`
+                );
+
                 if (uploadError) {
+                    const handledError = handleSupabaseError(uploadError, 'uploadRemittance');
                     errors.push({
                         filename: filename,
-                        error: `Storage upload failed: ${uploadError.message}`
+                        error: `Storage upload failed: ${handledError?.message || uploadError.message}`
+                    });
+                    logError(handledError || uploadError, {
+                        operation: 'uploadRemittance',
+                        filename,
+                        storagePath,
+                        fileSize: file.buffer?.length || 0
                     });
                     continue;
                 }
 
-                // Generate public URL (or signed URL)
+                // Generate public URL (getPublicUrl is synchronous)
                 const { data: urlData } = supabase.storage
                     .from('vmp-evidence')
                     .getPublicUrl(storagePath);
@@ -2261,7 +2474,11 @@ export const vmpAdapter = {
             );
 
             if (linksError) {
-                console.error('Error creating vendor-company links:', linksError);
+                logError(new DatabaseError('Failed to create vendor-company links', linksError, { vendorId, companyIds }), {
+                    operation: 'createVendorCompanyLinks',
+                    vendorId,
+                    companyIds
+                });
                 // Don't fail invite creation if links fail (can be created later)
             }
         }
@@ -2272,18 +2489,18 @@ export const vmpAdapter = {
         };
     },
 
-    // Sprint 3.2: Get Invite by Token
+    // Sprint 3.2: Get Invite by Token (with tenant info)
     async getInviteByToken(token) {
         if (!token) {
             throw new ValidationError('getInviteByToken requires token', null, { token });
         }
 
-        // First get invite
+        // First get invite with vendor info
         const inviteQuery = supabase
             .from('vmp_invites')
             .select(`
                 *,
-                vmp_vendors (id, name)
+                vmp_vendors (id, name, tenant_id)
             `)
             .eq('token', token)
             .single();
@@ -2302,6 +2519,26 @@ export const vmpAdapter = {
             throw handledError;
         }
 
+        // Get tenant info separately (more reliable than nested query)
+        let tenantData = null;
+        if (inviteData.vmp_vendors?.tenant_id) {
+            const tenantQuery = supabase
+                .from('vmp_tenants')
+                .select('id, name')
+                .eq('id', inviteData.vmp_vendors.tenant_id)
+                .single();
+
+            const { data: tenant, error: tenantError } = await withTimeout(
+                tenantQuery,
+                5000,
+                'getTenantForInvite'
+            );
+
+            if (!tenantError && tenant) {
+                tenantData = tenant;
+            }
+        }
+
         // Get vendor-company links separately
         const linksQuery = supabase
             .from('vmp_vendor_company_links')
@@ -2317,11 +2554,16 @@ export const vmpAdapter = {
             'getVendorCompanyLinks'
         );
 
-        // Combine data
+        // Combine data with tenant info
         const data = {
             ...inviteData,
             vmp_vendor_company_links: linksData || []
         };
+
+        // Attach tenant to vendor object
+        if (data.vmp_vendors && tenantData) {
+            data.vmp_vendors.vmp_tenants = tenantData;
+        }
 
         // Check if invite is expired
         if (new Date(data.expires_at) < new Date()) {
@@ -2383,6 +2625,49 @@ export const vmpAdapter = {
         }
 
         return data;
+    },
+
+    // Sprint 3.3: Accept Invite and Create User (Atomic Operation)
+    async acceptInviteAndCreateUser(token, password, displayName = null) {
+        if (!token || !password) {
+            throw new ValidationError('acceptInviteAndCreateUser requires token and password', null, {
+                hasToken: !!token,
+                hasPassword: !!password
+            });
+        }
+
+        // 1. Verify token (re-validate for safety)
+        const invite = await this.getInviteByToken(token);
+        if (!invite) {
+            throw new NotFoundError('Invite not found', { token });
+        }
+
+        if (invite.expired) {
+            throw new ValidationError('Invite has expired', 'token', { token, expiresAt: invite.expires_at });
+        }
+
+        if (invite.used) {
+            throw new ValidationError('Invite has already been used', 'token', { token, usedAt: invite.used_at });
+        }
+
+        // 2. Hash password
+        const passwordHash = await bcrypt.hash(password, 10);
+
+        // 3. Create vendor user
+        const user = await this.createVendorUser(
+            invite.vendor_id,
+            invite.email,
+            passwordHash,
+            displayName || null
+        );
+
+        // 4. Mark invite as used
+        await this.markInviteAsUsed(invite.id, user.id);
+
+        return {
+            user,
+            invite
+        };
     },
 
     // Sprint 3.2: Mark Invite as Used
@@ -2509,7 +2794,11 @@ export const vmpAdapter = {
         try {
             await this.ensureChecklistSteps(newCase.id, 'onboarding');
         } catch (checklistError) {
-            console.error('Error creating checklist steps for onboarding case:', checklistError);
+            logError(checklistError, {
+                operation: 'ensureChecklistSteps',
+                caseId: newCase.id,
+                caseType: 'onboarding'
+            });
             // Don't fail case creation if checklist creation fails
         }
 
@@ -2674,7 +2963,7 @@ export const vmpAdapter = {
         );
 
         if (linksError) {
-            console.error('Error fetching company links:', linksError);
+            logError(linksError, { operation: 'getVendorCompanyLinks', vendorId });
             // Don't fail if links query fails, just return vendor without links
         }
 
@@ -2692,7 +2981,7 @@ export const vmpAdapter = {
         );
 
         if (usersError) {
-            console.error('Error fetching vendor users:', usersError);
+            logError(usersError, { operation: 'getVendorUsers', vendorId });
             // Don't fail if users query fails
         }
 
@@ -2701,6 +2990,76 @@ export const vmpAdapter = {
             companyLinks: companyLinks || [],
             users: users || []
         };
+    },
+
+    // Sprint 5.2: Update Vendor Contact Information (Allow-list: address, phone, website only)
+    async updateVendorContact(vendorId, contactData) {
+        if (!vendorId) {
+            throw new ValidationError('updateVendorContact requires vendorId', null, { vendorId });
+        }
+
+        if (!contactData || typeof contactData !== 'object') {
+            throw new ValidationError('updateVendorContact requires contactData object', null, { hasContactData: !!contactData });
+        }
+
+        // Allow-list: Only these fields can be updated directly
+        const allowedFields = ['address', 'phone', 'website'];
+        const updateData = {};
+
+        // Extract only allowed fields
+        for (const field of allowedFields) {
+            if (contactData.hasOwnProperty(field)) {
+                // Allow empty strings (user clearing field) or non-empty values
+                updateData[field] = contactData[field]?.trim() || null;
+            }
+        }
+
+        // Security: Silently ignore any attempts to update restricted fields
+        // (bank_name, tax_id, reg_number, account_number, swift_code, etc.)
+        const restrictedFields = ['bank_name', 'tax_id', 'reg_number', 'account_number', 'swift_code', 'bank_address', 'account_holder_name'];
+        const attemptedRestricted = Object.keys(contactData).filter(key => restrictedFields.includes(key));
+        if (attemptedRestricted.length > 0) {
+            logError(new Error('Attempted to update restricted fields'), {
+                operation: 'updateVendorContact',
+                vendorId,
+                attemptedFields: attemptedRestricted
+            });
+            // Continue with allowed fields only (don't throw error, just log)
+        }
+
+        // If no allowed fields to update, return early
+        if (Object.keys(updateData).length === 0) {
+            throw new ValidationError('No valid contact fields to update. Allowed fields: address, phone, website', null, {
+                providedFields: Object.keys(contactData)
+            });
+        }
+
+        // Add updated_at timestamp
+        updateData.updated_at = new Date().toISOString();
+
+        // Update vendor record
+        const updateQuery = supabase
+            .from('vmp_vendors')
+            .update(updateData)
+            .eq('id', vendorId)
+            .select()
+            .single();
+
+        const { data: updatedVendor, error: updateError } = await withTimeout(
+            updateQuery,
+            10000,
+            `updateVendorContact(${vendorId})`
+        );
+
+        if (updateError) {
+            const handledError = handleSupabaseError(updateError, 'updateVendorContact');
+            if (handledError === null) {
+                throw new NotFoundError('Vendor not found', { vendorId });
+            }
+            throw handledError;
+        }
+
+        return updatedVendor;
     },
 
     // Sprint 5.3: Request Bank Details Change (Creates Payment Case)
@@ -2819,6 +3178,34 @@ export const vmpAdapter = {
             throw handledError || new DatabaseError('Failed to create bank details change case', caseError);
         }
 
+        // Ensure standard payment checklist steps exist
+        try {
+            await this.ensureChecklistSteps(newCase.id, 'payment');
+        } catch (checklistError) {
+            logError(checklistError, {
+                operation: 'ensureChecklistSteps',
+                caseId: newCase.id,
+                caseType: 'payment'
+            });
+            // Don't fail if checklist creation fails
+        }
+
+        // Add specific checklist step for Bank Letter (required for bank details change)
+        try {
+            await this.createChecklistStep(
+                newCase.id,
+                'Upload Bank Letter / Voided Check',
+                'bank_letter'
+            );
+        } catch (checklistStepError) {
+            logError(checklistStepError, {
+                operation: 'createChecklistStep',
+                caseId: newCase.id,
+                stepLabel: 'Upload Bank Letter / Voided Check'
+            });
+            // Don't fail if checklist step creation fails
+        }
+
         // Create initial message requiring bank letter evidence
         try {
             await supabase
@@ -2827,12 +3214,15 @@ export const vmpAdapter = {
                     case_id: newCase.id,
                     sender_type: 'system',
                     channel_source: 'portal',
-                    body: 'Bank details change requested. Please upload a Bank Letter as evidence. The change will require internal approval before activation.',
+                    body: 'Bank details change requested. Please upload a Bank Letter or Voided Check as evidence. The change will require internal approval before activation.',
                     is_internal_note: false,
                     sender_user_id: userId
                 });
         } catch (messageError) {
-            console.error('Error creating bank change message:', messageError);
+            logError(messageError, {
+                operation: 'createBankChangeMessage',
+                caseId: newCase.id
+            });
             // Don't fail if message creation fails
         }
 
@@ -3018,7 +3408,7 @@ export const vmpAdapter = {
         );
 
         if (groupsError) {
-            console.error('Error fetching groups:', groupsError);
+            logError(groupsError, { operation: 'getGroups', tenantId });
             // Continue with empty groups array
         }
 
@@ -3036,7 +3426,7 @@ export const vmpAdapter = {
         );
 
         if (companiesError) {
-            console.error('Error fetching companies:', companiesError);
+            logError(companiesError, { operation: 'getCompanies', tenantId });
             // Continue with empty companies array
         }
 
@@ -3215,6 +3605,286 @@ export const vmpAdapter = {
                 apExposure
             },
             recentCases: cases || []
+        };
+    },
+
+    // Sprint 6.1: Get Ops Dashboard Metrics (Pulse of Organization)
+    async getOpsDashboardMetrics(tenantId, userScope) {
+        if (!tenantId) {
+            throw new ValidationError('getOpsDashboardMetrics requires tenantId', null, { tenantId });
+        }
+
+        // userScope can be: group_id (UUID), company_id (UUID), or null (Super Admin - all)
+        // Determine scope type and build queries accordingly
+        let scopeType = null;
+        let scopeId = null;
+
+        if (userScope) {
+            // Determine if userScope is a group_id or company_id
+            // Try group first
+            const groupQuery = supabase
+                .from('vmp_groups')
+                .select('id')
+                .eq('id', userScope)
+                .eq('tenant_id', tenantId)
+                .single();
+
+            const { data: groupData } = await withTimeout(groupQuery, 5000, 'checkGroupScope');
+            if (groupData) {
+                scopeType = 'group';
+                scopeId = userScope;
+            } else {
+                // Try company
+                const companyQuery = supabase
+                    .from('vmp_companies')
+                    .select('id')
+                    .eq('id', userScope)
+                    .eq('tenant_id', tenantId)
+                    .single();
+
+                const { data: companyData } = await withTimeout(companyQuery, 5000, 'checkCompanyScope');
+                if (companyData) {
+                    scopeType = 'company';
+                    scopeId = userScope;
+                } else {
+                    throw new ValidationError('userScope must be a valid group_id or company_id', null, { userScope, tenantId });
+                }
+            }
+        }
+        // If userScope is null, scopeType remains null (Super Admin - all)
+
+        // ============================================================================
+        // METRIC 1: Action Items (Open Cases - High Priority)
+        // ============================================================================
+        let actionItemsQuery;
+        if (scopeType === 'group') {
+            // Director View: Aggregate all companies in group
+            actionItemsQuery = supabase
+                .from('vmp_cases')
+                .select('id', { count: 'exact', head: true })
+                .eq('tenant_id', tenantId)
+                .eq('group_id', scopeId)
+                .eq('status', 'open')
+                .in('escalation_level', [2, 3]); // High priority (escalation level 2 or 3)
+        } else if (scopeType === 'company') {
+            // Manager View: Filter only that company
+            actionItemsQuery = supabase
+                .from('vmp_cases')
+                .select('id', { count: 'exact', head: true })
+                .eq('tenant_id', tenantId)
+                .eq('company_id', scopeId)
+                .eq('status', 'open')
+                .in('escalation_level', [2, 3]);
+        } else {
+            // Super Admin: All open high-priority cases in tenant
+            actionItemsQuery = supabase
+                .from('vmp_cases')
+                .select('id', { count: 'exact', head: true })
+                .eq('tenant_id', tenantId)
+                .eq('status', 'open')
+                .in('escalation_level', [2, 3]);
+        }
+
+        const { count: actionItems, error: actionItemsError } = await withTimeout(
+            actionItemsQuery,
+            10000,
+            'getActionItems'
+        );
+
+        if (actionItemsError) {
+            logError(actionItemsError, { operation: 'getActionItems', tenantId, userScope });
+        }
+
+        // ============================================================================
+        // METRIC 2: Financials (Total "Pending" Invoice Volume)
+        // ============================================================================
+        let financialsQuery;
+        if (scopeType === 'group') {
+            // Director View: Sum across all companies in group
+            financialsQuery = supabase
+                .from('vmp_invoices')
+                .select('amount, vmp_companies!inner(group_id)')
+                .eq('status', 'pending')
+                .eq('vmp_companies.group_id', scopeId)
+                .eq('vmp_companies.tenant_id', tenantId);
+        } else if (scopeType === 'company') {
+            // Manager View: Sum for single company
+            financialsQuery = supabase
+                .from('vmp_invoices')
+                .select('amount')
+                .eq('company_id', scopeId)
+                .eq('status', 'pending');
+        } else {
+            // Super Admin: All pending invoices in tenant
+            financialsQuery = supabase
+                .from('vmp_invoices')
+                .select('amount, vmp_companies!inner(tenant_id)')
+                .eq('status', 'pending')
+                .eq('vmp_companies.tenant_id', tenantId);
+        }
+
+        const { data: pendingInvoices, error: financialsError } = await withTimeout(
+            financialsQuery,
+            10000,
+            'getPendingInvoiceVolume'
+        );
+
+        if (financialsError) {
+            logError(financialsError, { operation: 'getPendingInvoiceVolume', tenantId, userScope });
+        }
+
+        // Calculate total pending invoice volume
+        const pendingInvoiceVolume = pendingInvoices?.reduce((sum, inv) => {
+            return sum + (parseFloat(inv.amount) || 0);
+        }, 0) || 0;
+
+        // ============================================================================
+        // METRIC 3: Onboarding (Pending Invites vs. Active Vendors)
+        // ============================================================================
+        // Count pending invites (not used, not expired)
+        // Note: We need to filter by tenant/scope via vendor relationship, so we'll use a different approach
+        let pendingInvites = 0;
+        try {
+            if (scopeType === 'group') {
+                // Director View: Get vendor IDs for companies in group, then count invites
+                const vendorsInGroupQuery = supabase
+                    .from('vmp_vendor_company_links')
+                    .select('vendor_id, vmp_companies!inner(group_id)')
+                    .eq('vmp_companies.group_id', scopeId)
+                    .eq('vmp_companies.tenant_id', tenantId);
+
+                const { data: vendorLinks } = await withTimeout(vendorsInGroupQuery, 5000, 'getVendorsInGroup');
+                const vendorIds = vendorLinks ? [...new Set(vendorLinks.map(link => link.vendor_id))] : [];
+
+                if (vendorIds.length > 0) {
+                    const invitesQuery = supabase
+                        .from('vmp_invites')
+                        .select('id', { count: 'exact', head: true })
+                        .in('vendor_id', vendorIds)
+                        .is('used_at', null)
+                        .gt('expires_at', new Date().toISOString());
+
+                    const { count } = await withTimeout(invitesQuery, 5000, 'getPendingInvitesForGroup');
+                    pendingInvites = count || 0;
+                }
+            } else if (scopeType === 'company') {
+                // Manager View: Get vendor IDs for this company, then count invites
+                const vendorsInCompanyQuery = supabase
+                    .from('vmp_vendor_company_links')
+                    .select('vendor_id')
+                    .eq('company_id', scopeId);
+
+                const { data: vendorLinks } = await withTimeout(vendorsInCompanyQuery, 5000, 'getVendorsInCompany');
+                const vendorIds = vendorLinks ? [...new Set(vendorLinks.map(link => link.vendor_id))] : [];
+
+                if (vendorIds.length > 0) {
+                    const invitesQuery = supabase
+                        .from('vmp_invites')
+                        .select('id', { count: 'exact', head: true })
+                        .in('vendor_id', vendorIds)
+                        .is('used_at', null)
+                        .gt('expires_at', new Date().toISOString());
+
+                    const { count } = await withTimeout(invitesQuery, 5000, 'getPendingInvitesForCompany');
+                    pendingInvites = count || 0;
+                }
+            } else {
+                // Super Admin: All pending invites in tenant
+                const vendorsInTenantQuery = supabase
+                    .from('vmp_vendors')
+                    .select('id')
+                    .eq('tenant_id', tenantId);
+
+                const { data: vendors } = await withTimeout(vendorsInTenantQuery, 5000, 'getVendorsInTenant');
+                const vendorIds = vendors ? vendors.map(v => v.id) : [];
+
+                if (vendorIds.length > 0) {
+                    const invitesQuery = supabase
+                        .from('vmp_invites')
+                        .select('id', { count: 'exact', head: true })
+                        .in('vendor_id', vendorIds)
+                        .is('used_at', null)
+                        .gt('expires_at', new Date().toISOString());
+
+                    const { count } = await withTimeout(invitesQuery, 5000, 'getPendingInvitesForTenant');
+                    pendingInvites = count || 0;
+                }
+            }
+        } catch (invitesError) {
+            logError(invitesError, { operation: 'getPendingInvites', tenantId, userScope });
+        }
+
+        // Count active vendors
+        let activeVendors = 0;
+        try {
+            if (scopeType === 'group') {
+                // Director View: Vendors linked to companies in group
+                const vendorsQuery = supabase
+                    .from('vmp_vendor_company_links')
+                    .select('vendor_id, vmp_companies!inner(group_id)')
+                    .eq('vmp_companies.group_id', scopeId)
+                    .eq('vmp_companies.tenant_id', tenantId);
+
+                const { data: vendorLinks } = await withTimeout(vendorsQuery, 5000, 'getVendorsInGroupForCount');
+                const vendorIds = vendorLinks ? [...new Set(vendorLinks.map(link => link.vendor_id))] : [];
+
+                if (vendorIds.length > 0) {
+                    const activeVendorsQuery = supabase
+                        .from('vmp_vendors')
+                        .select('id', { count: 'exact', head: true })
+                        .in('id', vendorIds)
+                        .eq('status', 'active');
+
+                    const { count } = await withTimeout(activeVendorsQuery, 5000, 'getActiveVendorsInGroup');
+                    activeVendors = count || 0;
+                }
+            } else if (scopeType === 'company') {
+                // Manager View: Vendors linked to this company
+                const vendorsQuery = supabase
+                    .from('vmp_vendor_company_links')
+                    .select('vendor_id')
+                    .eq('company_id', scopeId);
+
+                const { data: vendorLinks } = await withTimeout(vendorsQuery, 5000, 'getVendorsInCompanyForCount');
+                const vendorIds = vendorLinks ? [...new Set(vendorLinks.map(link => link.vendor_id))] : [];
+
+                if (vendorIds.length > 0) {
+                    const activeVendorsQuery = supabase
+                        .from('vmp_vendors')
+                        .select('id', { count: 'exact', head: true })
+                        .in('id', vendorIds)
+                        .eq('status', 'active');
+
+                    const { count } = await withTimeout(activeVendorsQuery, 5000, 'getActiveVendorsInCompany');
+                    activeVendors = count || 0;
+                }
+            } else {
+                // Super Admin: All active vendors in tenant
+                const activeVendorsQuery = supabase
+                    .from('vmp_vendors')
+                    .select('id', { count: 'exact', head: true })
+                    .eq('tenant_id', tenantId)
+                    .eq('status', 'active');
+
+                const { count } = await withTimeout(activeVendorsQuery, 5000, 'getActiveVendorsInTenant');
+                activeVendors = count || 0;
+            }
+        } catch (vendorsError) {
+            logError(vendorsError, { operation: 'getActiveVendors', tenantId, userScope });
+        }
+
+        return {
+            tenantId,
+            userScope: {
+                type: scopeType,
+                id: scopeId
+            },
+            metrics: {
+                actionItems: actionItems || 0, // Open Cases (High Priority)
+                pendingInvoiceVolume: pendingInvoiceVolume, // Total "Pending" Invoice Volume
+                pendingInvites: pendingInvites || 0, // Count of "Pending" Invites
+                activeVendors: activeVendors || 0 // Count of Active Vendors
+            }
         };
     },
 

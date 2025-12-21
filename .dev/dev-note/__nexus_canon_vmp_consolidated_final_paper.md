@@ -343,29 +343,63 @@ We avoid duplicate vendor records.
 - **Global Vendor Master:** `vmp_vendors` exists at the **Tenant** level.
 - **Local Authorization:** `vmp_vendor_company_links` authorizes a vendor to trade with a specific Company and assigns the local ERP code (e.g., `V-1001`).
 
-### 14.2 The Hybrid Ingest Engine (The "Shadow Ledger")
+### 14.2 The Headless ERP & Hybrid Ingest Engine (The "Shadow Ledger")
 
-To support "Manual Mode" (Spreadsheets) and "Integrated Mode" (ERP API) simultaneously, the Command Center acts as a **Data Harmonizer**.
+**Status:** ✅ **Production-Ready (Sprint 2, 2025-12-22)**
 
-#### 14.2.1 The "Shadow Ledger" Tables
+VMP functions as a **standalone Headless ERP** for clients without API integrations. The system maintains its own **Shadow Ledger** that serves as the single source of truth for supplier-facing invoice and payment data.
+
+#### 14.2.1 The "Shadow Ledger" Architecture
 
 We do not rely on the ERP being online. VMP maintains its own lightweight ledger:
 
 - **`vmp_invoices`:** Stores the "Truth" of what the supplier should see.
-  - `source_system`: `'manual_csv'` OR `'erp_api'`
-  - `status`: `'posted'`, `'paid'`, `'blocked'`
-- **`vmp_payments`:** Stores payment run data.
+  - `source_system`: `'manual'` (CSV upload) OR `'erp'` (future API sync)
+  - `status`: `'pending'`, `'matched'`, `'paid'`, `'disputed'`, `'cancelled'`
+  - `company_id`: Links to legal entity (multi-company support)
+  - `po_ref`, `grn_ref`: 3-way matching references
+- **`vmp_po_refs`:** Purchase Order references for matching
+- **`vmp_grn_refs`:** Goods Receipt Note references for matching
+- **`vmp_payments`:** Payment run data (Sprint 4)
 
-#### 14.2.2 The "Ingest" Workflow (Ops View)
+**Key Achievement:** VMP can operate **completely independently** of external ERP systems via CSV ingest, enabling rapid deployment for clients without API infrastructure.
 
-Located at `/ops/ingest` in the Command Center:
+#### 14.2.2 The CSV Ingest Engine (Production Implementation)
 
-1. **Select Target:** Admin selects "Retail Division" (Group) or "Fashion Co." (Company).
-2. **Upload CSV:** "Open AP Report" or "Payment Run".
+**Location:** `/ops/ingest/invoices` (Internal Ops only)
+
+**Technology Stack:**
+- **Parser:** `csv-parse` (v6.1.0) - Robust CSV parsing with quoted field support
+- **Upload:** `multer` (v1.4.5-lts.1) - Multipart form-data handling
+- **Flexible Column Mapping:** Case-insensitive, handles variations:
+  - Invoice #, Invoice, Invoice Number, Inv #, Inv Num
+  - Date, Invoice Date, Doc Date, Document Date
+  - Amount, Invoice Amount, Total, Total Amount
+  - PO #, PO, PO Number, Purchase Order (optional)
+  - Company Code, Company, Company ID (optional)
+  - Description, Desc, Notes (optional)
+
+**Workflow:**
+1. **Select Target:** Admin selects Company (legal entity) for invoice assignment
+2. **Upload CSV:** "Open AP Report" format (flexible column mapping)
 3. **Harmonization:**
-   - System matches CSV "Vendor Code" to the Global Vendor ID.
-   - System updates the Shadow Ledger.
-   - **Result:** Suppliers see updated status instantly.
+   - System parses CSV with robust error handling (per-row validation)
+   - Maps CSV columns to `vmp_invoices` schema
+   - Upserts invoices (updates existing, inserts new) by `invoice_num + vendor_id + company_id`
+   - Optional: Company code lookup (overrides provided company_id if CSV contains company code)
+4. **Result:** Suppliers see updated invoice status instantly in their dashboard
+
+**Error Handling:**
+- Per-row validation with detailed error messages
+- Continues processing on row errors (graceful degradation)
+- Returns summary: `{ total, upserted, failed, errors, failures }`
+
+**Production Features:**
+- ✅ Handles quoted fields, commas in values, newlines
+- ✅ Flexible column mapping (handles common ERP export variations)
+- ✅ Upsert logic (idempotent - safe to re-run same CSV)
+- ✅ Company code lookup (optional override)
+- ✅ Comprehensive error reporting
 
 ### 14.3 The "Command Center" UI (Admin Dashboard)
 
@@ -441,9 +475,65 @@ This architecture is executed across planned Sprints:
   - Build the **Scoped Dashboard** (Director vs. Manager view).
   - Build the **Manual Ingest UI** (`/ops/ingest`).
 
+### 14.7 Production Infrastructure: Session Store (PostgreSQL)
+
+**Status:** ✅ **Production-Ready (2025-12-22)**  
+**Critical:** Required for production deployment
+
+#### 14.7.1 The Problem
+
+Initial implementation used `cookie-session` (in-memory) which:
+- ❌ **Memory Leaks:** Sessions accumulate in server memory
+- ❌ **Deployment Logouts:** All users logged out on every deploy/restart
+- ❌ **No Persistence:** Sessions lost on server crash
+- ❌ **Scalability:** Cannot scale horizontally (sessions tied to single server)
+
+#### 14.7.2 The Solution: PostgreSQL Session Store
+
+**Technology:** `express-session` + `connect-pg-simple`
+
+**Architecture:**
+- Sessions stored in PostgreSQL `session` table (Supabase database)
+- Uses Supabase connection pooling for performance
+- Automatic session cleanup (expired sessions removed)
+- Horizontal scaling support (multiple servers share same session store)
+
+**Migration:** `migrations/019_vmp_sessions_table.sql`
+```sql
+CREATE TABLE "session" (
+  "sid" varchar NOT NULL PRIMARY KEY,
+  "sess" json NOT NULL,
+  "expire" timestamp(6) NOT NULL
+);
+CREATE INDEX "IDX_session_expire" ON "session" ("expire");
+```
+
+**Configuration:**
+- **Environment Variable:** `SESSION_DB_URL` (PostgreSQL connection string)
+- **Format:** `postgresql://postgres.[project-ref]:[password]@aws-0-[region].pooler.supabase.com:6543/postgres`
+- **Source:** Supabase Dashboard → Settings → Database → Connection Pooling
+
+**Benefits:**
+- ✅ **Persistent Sessions:** Survive server restarts
+- ✅ **Zero Logouts:** Users stay logged in across deployments
+- ✅ **Scalable:** Multiple app instances share session store
+- ✅ **Auditable:** Session data stored in database (compliance)
+- ✅ **Simple Stack:** No Redis required (uses existing Supabase PostgreSQL)
+
+**Development Fallback:**
+- Development mode uses MemoryStore with warning (for local dev without DB config)
+- Production requires `SESSION_DB_URL` or errors on startup
+
+**Implementation Status:**
+- ✅ Migration created (`019_vmp_sessions_table.sql`)
+- ✅ `express-session` + `connect-pg-simple` installed
+- ✅ Server.js updated to use PostgreSQL session store
+- ✅ Login/logout routes updated to use `express-session` API
+- ✅ Deployment guide updated with configuration instructions
+
 ---
 
 **Document Status:** SSOT Development Document  
-**Last Updated:** 2025-12-21  
-**Version:** v0.2.0 (Command Center Architecture Added)
+**Last Updated:** 2025-12-22  
+**Version:** v0.2.1 (Session Store Infrastructure Added)
 

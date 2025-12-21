@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS vmp_invites (
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-COMMENT ON TABLE vmp_invites IS 'Vendor invitation tokens for onboarding';
+COMMENT ON TABLE vmp_invites IS 'Vendor invitation tokens for onboarding. Multi-company scope is managed through vmp_vendor_company_links (one invite can grant access to multiple companies)';
 
 -- ============================================================================
 -- INDEXES

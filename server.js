@@ -2,7 +2,9 @@
 import express from 'express';
 import nunjucks from 'nunjucks';
 import dotenv from 'dotenv';
-import cookieSession from 'cookie-session';
+import session from 'express-session';
+import connectPgSimple from 'connect-pg-simple';
+import { createClient } from '@supabase/supabase-js';
 import helmet from 'helmet';
 import compression from 'compression';
 import rateLimit from 'express-rate-limit';
@@ -11,7 +13,8 @@ import 'express-async-errors';
 import multer from 'multer';
 import bcrypt from 'bcrypt';
 import { vmpAdapter } from './src/adapters/supabase.js';
-import { createErrorResponse, logError, NotFoundError } from './src/utils/errors.js';
+import { createErrorResponse, logError, NotFoundError, ValidationError } from './src/utils/errors.js';
+import { requireAuth, requireInternal, validateUUIDParam, validateRequired, validateRequiredQuery, handleRouteError, handlePartialError } from './src/utils/route-helpers.js';
 
 // Environment validation
 dotenv.config();
@@ -165,7 +168,7 @@ nunjucksEnv.addFilter('date', (date, format) => {
     // Default format
     return d.toLocaleDateString();
   } catch (error) {
-    console.error('Date filter error:', error, 'Input:', date);
+    logError(error, { operation: 'dateFilter', input: date });
     return '';
   }
 });
@@ -173,14 +176,47 @@ nunjucksEnv.addFilter('date', (date, format) => {
 app.use(express.static('public'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// PostgreSQL Session Store (Production-Ready)
+// Uses Supabase PostgreSQL connection via connect-pg-simple
+const PgSession = connectPgSimple(session);
+
+// Session store configuration
+// For Supabase, use connection pooling URL format:
+// postgresql://postgres.[project-ref]:[password]@aws-0-[region].pooler.supabase.com:6543/postgres
+// Or provide full SESSION_DB_URL in environment
+let sessionStore;
+if (process.env.SESSION_DB_URL) {
+  // Production: Use provided connection string
+  sessionStore = new PgSession({
+    conString: process.env.SESSION_DB_URL,
+    tableName: 'session',
+    createTableIfMissing: true
+  });
+} else if (env.NODE_ENV === 'development') {
+  // Development: Use MemoryStore with warning (for local dev without DB config)
+  console.warn('⚠️  WARNING: Using MemoryStore for sessions in development.');
+  console.warn('   Set SESSION_DB_URL in .env for PostgreSQL session store.');
+  console.warn('   Format: postgresql://postgres.[project-ref]:[password]@aws-0-[region].pooler.supabase.com:6543/postgres');
+  sessionStore = undefined; // Will use MemoryStore (express-session default)
+} else {
+  // Production without SESSION_DB_URL: Error
+  throw new Error('SESSION_DB_URL must be set for production session store. See DEPLOYMENT_GUIDE.md for setup instructions.');
+}
+
 app.use(
-  cookieSession({
+  session({
+    store: sessionStore,
+    secret: env.SESSION_SECRET,
+    resave: false,
+    saveUninitialized: false,
     name: 'vmp_session',
-    keys: [env.SESSION_SECRET],
-    maxAge: 24 * 60 * 60 * 1000, // 24 hours
-    secure: env.NODE_ENV === 'production',
-    httpOnly: true,
-    sameSite: 'lax',
+    cookie: {
+      secure: env.NODE_ENV === 'production',
+      httpOnly: true,
+      sameSite: 'lax',
+      maxAge: 24 * 60 * 60 * 1000, // 24 hours
+    }
   })
 );
 
@@ -209,29 +245,20 @@ app.use(async (req, res, next) => {
     return next();
   }
 
-  const sessionId = req.session.sessionId;
-
-  if (!sessionId) {
+  // Check if user is stored in session (express-session stores data in req.session)
+  if (!req.session.userId) {
     return res.redirect('/login');
   }
 
   try {
-    // Lookup session in database
-    const session = await vmpAdapter.getSession(sessionId);
-
-    if (!session) {
-      // Session not found or expired
-      req.session = null;
-      return res.redirect('/login');
-    }
-
-    // Load user context
-    const userContext = await vmpAdapter.getVendorContext(session.user_id);
+    // Load user context from database (session stores userId, we fetch fresh user data)
+    const userContext = await vmpAdapter.getVendorContext(req.session.userId);
 
     if (!userContext || !userContext.is_active) {
-      // User not found or inactive
-      await vmpAdapter.deleteSession(sessionId);
-      req.session = null;
+      // User not found or inactive - destroy session
+      req.session.destroy((err) => {
+        if (err) logError(err, { operation: 'authMiddleware', path: req.path });
+      });
       return res.redirect('/login');
     }
 
@@ -247,8 +274,10 @@ app.use(async (req, res, next) => {
 
     next();
   } catch (error) {
-    console.error('Auth middleware error:', error);
-    req.session = null;
+    logError(error, { operation: 'authMiddleware', path: req.path });
+    req.session.destroy((err) => {
+      if (err) logError(err, { operation: 'authMiddleware', path: req.path });
+    });
     return res.redirect('/login');
   }
 });
@@ -256,6 +285,7 @@ app.use(async (req, res, next) => {
 // --- ROUTES ---
 
 // Health check endpoint (for Vercel monitoring)
+// GET: Health Check (Public)
 app.get('/health', (req, res) => {
   res.json({
     status: 'ok',
@@ -265,7 +295,7 @@ app.get('/health', (req, res) => {
   });
 });
 
-// 1. Landing Page (Public)
+// GET: Landing Page (Public)
 app.get('/', (req, res) => {
   res.render('pages/landing.html');
 });
@@ -295,7 +325,7 @@ async function renderHomePage(req, res) {
         soaCount = rawCases.filter(c => c.case_type === 'soa').length;
         paidCount = rawCases.filter(c => c.status === 'resolved' || c.status === 'paid').length;
       } catch (error) {
-        console.error('Error loading metrics for home:', error);
+        logError(error, { path: '/home', operation: 'loadMetrics' });
       }
     }
 
@@ -307,7 +337,7 @@ async function renderHomePage(req, res) {
       paidCount: paidCount
     });
   } catch (error) {
-    console.error('Error rendering home:', error);
+    logError(error, { path: '/home', operation: 'renderHomePage' });
     res.status(500).render('pages/home5.html', {
       user: req.user,
       actionCount: 0,
@@ -328,63 +358,48 @@ app.get('/home', renderHomePage);
 // Case Detail Page (Full Page Route)
 app.get('/cases/:id', async (req, res) => {
   try {
+    // 1. Authentication
+    if (!requireAuth(req, res)) return;
+
+    // 2. Input validation
     const caseId = req.params.id;
-    const VENDOR_ID_HARDCODED = env.DEMO_VENDOR_ID;
+    if (!validateUUIDParam(caseId, res)) return;
 
-    // Validate case ID format (UUID)
-    if (!caseId || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(caseId)) {
-      return res.status(400).render('pages/error.html', {
-        error: {
-          status: 400,
-          message: 'Invalid case ID format'
-        }
-      });
-    }
-
-    if (!VENDOR_ID_HARDCODED) {
+    // 3. Business logic
+    const vendorId = req.user.vendorId || env.DEMO_VENDOR_ID;
+    if (!vendorId) {
       return res.status(500).render('pages/error.html', {
         error: {
           status: 500,
-          message: 'DEMO_VENDOR_ID not configured. Please set it in your .env file.'
+          message: 'Vendor ID not available. Please ensure you are logged in or DEMO_VENDOR_ID is configured.'
         }
       });
     }
 
-    // Fetch case detail from adapter
     let caseDetail = null;
     try {
-      caseDetail = await vmpAdapter.getCaseDetail(caseId, VENDOR_ID_HARDCODED);
+      caseDetail = await vmpAdapter.getCaseDetail(caseId, vendorId);
 
       // Verify vendor has access to this case
-      if (caseDetail && caseDetail.vendor_id !== VENDOR_ID_HARDCODED) {
-        // For internal users, allow access; for vendors, deny
-        if (!req.user?.isInternal) {
-          return res.status(403).render('pages/error.html', {
-            error: {
-              status: 403,
-              message: 'Access denied to this case'
-            }
-          });
-        }
-      }
-    } catch (adapterError) {
-      console.error('Adapter error loading case detail:', adapterError);
-
-      // If case not found, render page with empty state (not an error)
-      if (adapterError.code === 'NOT_FOUND' || adapterError.message.includes('not found')) {
-        caseDetail = null;
-      } else {
-        // Other errors: show error page
-        return res.status(500).render('pages/error.html', {
+      if (caseDetail && caseDetail.vendor_id !== vendorId && !req.user?.isInternal) {
+        return res.status(403).render('pages/error.html', {
           error: {
-            status: 500,
-            message: 'Failed to load case details'
+            status: 403,
+            message: 'Access denied to this case'
           }
         });
       }
+    } catch (adapterError) {
+      // If case not found, render page with empty state (not an error)
+      if (adapterError.code === 'NOT_FOUND' || adapterError.message?.includes('not found')) {
+        caseDetail = null;
+      } else {
+        // Other errors: throw to be handled by catch block
+        throw adapterError;
+      }
     }
 
-    // Render full page with case detail
+    // 4. Render response
     res.render('pages/case_detail.html', {
       caseId,
       caseDetail,
@@ -392,14 +407,7 @@ app.get('/cases/:id', async (req, res) => {
       user: req.user
     });
   } catch (error) {
-    console.error('Error in GET /cases/:id:', error);
-    logError(error, { path: req.path, userId: req.user?.id });
-    res.status(500).render('pages/error.html', {
-      error: {
-        status: 500,
-        message: 'An error occurred while loading the case'
-      }
-    });
+    handleRouteError(error, req, res);
   }
 });
 
@@ -420,71 +428,84 @@ legacyHomeRoutes.forEach(route => {
 
 app.get('/partials/case-inbox.html', async (req, res) => {
   try {
-    // Fetch REAL data from Supabase
-    // Note: For Day 1 without auth, hardcode the vendor_id from your seed data
-    // run `select id from vmp_vendors` to get it.
-    const VENDOR_ID_HARDCODED = env.DEMO_VENDOR_ID;
+    // 1. Authentication
+    if (!requireAuth(req, res)) return;
 
-    if (!VENDOR_ID_HARDCODED) {
-      return res.status(500).render('partials/case_inbox.html', {
-        cases: [],
-        error: 'DEMO_VENDOR_ID not configured. Please set it in your .env file.'
-      });
+    // 2. Business logic
+    const vendorId = req.user.vendorId || env.DEMO_VENDOR_ID;
+    if (!vendorId) {
+      return handlePartialError(
+        new Error('Vendor ID not available. Please ensure you are logged in or DEMO_VENDOR_ID is configured.'),
+        req,
+        res,
+        'partials/case_inbox.html',
+        { cases: [] }
+      );
     }
 
-    const cases = await vmpAdapter.getInbox(VENDOR_ID_HARDCODED);
+    const cases = await vmpAdapter.getInbox(vendorId);
+    
+    // 3. Render response
     res.render('partials/case_inbox.html', { cases });
   } catch (error) {
-    console.error('Error loading case inbox:', error);
-    res.status(500).render('partials/case_inbox.html', {
-      cases: [],
-      error: error.message
-    });
+    handlePartialError(error, req, res, 'partials/case_inbox.html', { cases: [] });
   }
 });
 
 app.get('/partials/case-detail.html', async (req, res) => {
   try {
+    // 1. Authentication
+    if (!requireAuth(req, res)) return;
+
+    // 2. Input validation (case_id is optional for partials - can render empty state)
     const caseId = req.query.case_id;
-    const VENDOR_ID_HARDCODED = env.DEMO_VENDOR_ID;
+    const defaultData = {
+      caseId: null,
+      caseDetail: null,
+      isInternal: req.user?.isInternal || false
+    };
 
     if (!caseId) {
-      return res.render('partials/case_detail.html', {
-        caseId: null,
-        caseDetail: null,
-        isInternal: req.user?.isInternal || false
-      });
+      return res.render('partials/case_detail.html', defaultData);
     }
 
-    if (!VENDOR_ID_HARDCODED) {
-      return res.status(500).render('partials/case_detail.html', {
-        caseId: null,
-        caseDetail: null,
-        isInternal: req.user?.isInternal || false,
-        error: 'DEMO_VENDOR_ID not configured'
-      });
+    // Validate UUID if provided
+    if (!validateUUIDParam(caseId, res, 'partials/case_detail.html')) return;
+
+    // 3. Business logic
+    const vendorId = req.user.vendorId || env.DEMO_VENDOR_ID;
+    if (!vendorId) {
+      return handlePartialError(
+        new Error('Vendor ID not available'),
+        req,
+        res,
+        'partials/case_detail.html',
+        defaultData
+      );
     }
 
-    // Fetch case detail from adapter
     let caseDetail = null;
     try {
-      caseDetail = await vmpAdapter.getCaseDetail(caseId, VENDOR_ID_HARDCODED);
+      caseDetail = await vmpAdapter.getCaseDetail(caseId, vendorId);
     } catch (adapterError) {
-      console.error('Adapter error:', adapterError);
       // Continue with null caseDetail - template handles it gracefully
+      // Only log if it's not a "not found" error
+      if (adapterError.code !== 'NOT_FOUND' && !adapterError.message?.includes('not found')) {
+        logError(adapterError, { path: req.path, caseId, vendorId });
+      }
     }
 
+    // 4. Render response
     res.render('partials/case_detail.html', {
       caseId,
       caseDetail,
       isInternal: req.user?.isInternal || false
     });
   } catch (error) {
-    console.error('Error loading case detail:', error);
-    res.status(500).render('partials/case_detail.html', {
-      caseId: null,
+    handlePartialError(error, req, res, 'partials/case_detail.html', {
+      caseId: req.query.case_id || null,
       caseDetail: null,
-      error: error.message
+      isInternal: req.user?.isInternal || false
     });
   }
 });
@@ -492,32 +513,38 @@ app.get('/partials/case-detail.html', async (req, res) => {
 // Case Thread Partial
 app.get('/partials/case-thread.html', async (req, res) => {
   try {
+    // 1. Authentication
+    if (!requireAuth(req, res)) return;
+
+    // 2. Input validation (case_id is optional for partials - can render empty state)
     const caseId = req.query.case_id;
+    const defaultData = { caseId: null, messages: [] };
+
     if (!caseId) {
-      return res.render('partials/case_thread.html', { caseId: null, messages: [] });
+      return res.render('partials/case_thread.html', defaultData);
     }
 
-    // Fetch messages from adapter
+    // Validate UUID if provided
+    if (!validateUUIDParam(caseId, res, 'partials/case_thread.html')) return;
+
+    // 3. Business logic
     let messages = [];
     try {
       messages = await vmpAdapter.getMessages(caseId);
     } catch (adapterError) {
-      console.error('Adapter error loading messages:', adapterError);
-      // Return 200 with error message for graceful degradation
-      return res.status(200).render('partials/case_thread.html', {
+      // Return with error message for graceful degradation (HTMX partial)
+      return handlePartialError(adapterError, req, res, 'partials/case_thread.html', {
         caseId,
-        messages: [],
-        error: `Failed to load messages: ${adapterError.message}`
+        messages: []
       });
     }
 
+    // 4. Render response
     res.render('partials/case_thread.html', { caseId, messages });
   } catch (error) {
-    console.error('Error loading case thread:', error);
-    res.status(500).render('partials/case_thread.html', {
+    handlePartialError(error, req, res, 'partials/case_thread.html', {
       caseId: req.query.case_id || null,
-      messages: [],
-      error: error.message
+      messages: []
     });
   }
 });
@@ -525,26 +552,39 @@ app.get('/partials/case-thread.html', async (req, res) => {
 // Case Checklist Partial
 app.get('/partials/case-checklist.html', async (req, res) => {
   try {
+    // 1. Authentication
+    if (!requireAuth(req, res)) return;
+
+    // 2. Input validation (case_id is optional for partials - can render empty state)
     const caseId = req.query.case_id;
+    const defaultData = {
+      caseId: null,
+      checklistSteps: [],
+      isInternal: req.user?.isInternal || false
+    };
+
     if (!caseId) {
-      return res.render('partials/case_checklist.html', {
-        caseId: null,
-        checklistSteps: [],
-        isInternal: req.user?.isInternal || false
-      });
+      return res.render('partials/case_checklist.html', defaultData);
     }
 
-    const VENDOR_ID_HARDCODED = env.DEMO_VENDOR_ID;
+    // Validate UUID if provided
+    if (!validateUUIDParam(caseId, res, 'partials/case_checklist.html')) return;
+
+    // 3. Business logic
+    const vendorId = req.user.vendorId || env.DEMO_VENDOR_ID;
     let checklistSteps = [];
 
     try {
       // Get case detail to determine case type
       let caseDetail = null;
-      if (VENDOR_ID_HARDCODED) {
+      if (vendorId) {
         try {
-          caseDetail = await vmpAdapter.getCaseDetail(caseId, VENDOR_ID_HARDCODED);
+          caseDetail = await vmpAdapter.getCaseDetail(caseId, vendorId);
         } catch (adapterError) {
-          console.error('Adapter error loading case for checklist:', adapterError);
+          // Log but continue - will try to get steps anyway
+          if (adapterError.code !== 'NOT_FOUND') {
+            logError(adapterError, { path: req.path, caseId, operation: 'getCaseDetail' });
+          }
         }
       }
 
@@ -553,13 +593,12 @@ app.get('/partials/case-checklist.html', async (req, res) => {
         try {
           checklistSteps = await vmpAdapter.ensureChecklistSteps(caseId, caseDetail.case_type);
         } catch (ensureError) {
-          console.error('Error ensuring checklist steps:', ensureError);
           // Try to get existing steps even if ensure failed
           try {
             checklistSteps = await vmpAdapter.getChecklistSteps(caseId);
           } catch (getError) {
-            console.error('Error getting checklist steps:', getError);
             // Continue with empty array
+            logError(getError, { path: req.path, caseId, operation: 'getChecklistSteps' });
           }
         }
       } else {
@@ -567,27 +606,26 @@ app.get('/partials/case-checklist.html', async (req, res) => {
         try {
           checklistSteps = await vmpAdapter.getChecklistSteps(caseId);
         } catch (getError) {
-          console.error('Error getting checklist steps:', getError);
           // Continue with empty array
+          logError(getError, { path: req.path, caseId, operation: 'getChecklistSteps' });
         }
       }
     } catch (adapterError) {
-      console.error('Adapter error loading checklist:', adapterError);
       // Continue with empty checklistSteps array
+      logError(adapterError, { path: req.path, caseId, operation: 'loadChecklist' });
     }
 
+    // 4. Render response
     res.render('partials/case_checklist.html', {
       caseId,
       checklistSteps,
       isInternal: req.user?.isInternal || false
     });
   } catch (error) {
-    console.error('Error loading case checklist:', error);
-    res.status(500).render('partials/case_checklist.html', {
+    handlePartialError(error, req, res, 'partials/case_checklist.html', {
       caseId: req.query.case_id || null,
       checklistSteps: [],
-      isInternal: req.user?.isInternal || false,
-      error: error.message
+      isInternal: req.user?.isInternal || false
     });
   }
 });
@@ -595,12 +633,21 @@ app.get('/partials/case-checklist.html', async (req, res) => {
 // Case Evidence Partial
 app.get('/partials/case-evidence.html', async (req, res) => {
   try {
+    // 1. Authentication
+    if (!requireAuth(req, res)) return;
+
+    // 2. Input validation (case_id is optional for partials - can render empty state)
     const caseId = req.query.case_id;
+    const defaultData = { caseId: null, evidence: [] };
+
     if (!caseId) {
-      return res.render('partials/case_evidence.html', { caseId: null, evidence: [] });
+      return res.render('partials/case_evidence.html', defaultData);
     }
 
-    // Fetch evidence from adapter
+    // Validate UUID if provided
+    if (!validateUUIDParam(caseId, res, 'partials/case_evidence.html')) return;
+
+    // 3. Business logic
     let evidence = [];
     try {
       evidence = await vmpAdapter.getEvidence(caseId);
@@ -617,24 +664,23 @@ app.get('/partials/case-evidence.html', async (req, res) => {
           const signedUrlPromise = vmpAdapter.getEvidenceSignedUrl(ev.storage_path, 3600); // 1 hour expiry
           ev.download_url = await Promise.race([signedUrlPromise, timeoutPromise]);
         } catch (urlError) {
-          console.error(`Error generating signed URL for ${ev.storage_path}:`, urlError);
+          logError(urlError, { path: req.path, caseId, storagePath: ev.storage_path, operation: 'getEvidenceSignedUrl' });
           ev.download_url = '#'; // Fallback
         }
       });
       // Use allSettled to continue even if some URLs fail to generate
       await Promise.allSettled(urlPromises);
     } catch (adapterError) {
-      console.error('Adapter error loading evidence:', adapterError);
       // Continue with empty evidence array
+      logError(adapterError, { path: req.path, caseId, operation: 'getEvidence' });
     }
 
+    // 4. Render response
     res.render('partials/case_evidence.html', { caseId, evidence });
   } catch (error) {
-    console.error('Error loading case evidence:', error);
-    res.status(500).render('partials/case_evidence.html', {
+    handlePartialError(error, req, res, 'partials/case_evidence.html', {
       caseId: req.query.case_id || null,
-      evidence: [],
-      error: error.message
+      evidence: []
     });
   }
 });
@@ -642,39 +688,48 @@ app.get('/partials/case-evidence.html', async (req, res) => {
 // Escalation Partial
 app.get('/partials/escalation.html', async (req, res) => {
   try {
+    // 1. Authentication
+    if (!requireAuth(req, res)) return;
+
+    // 2. Input validation (case_id is optional for partials - can render empty state)
     const caseId = req.query.case_id;
+    const defaultData = {
+      caseId: null,
+      caseDetail: null,
+      isInternal: req.user?.isInternal || false,
+      directorInfo: null
+    };
+
+    if (!caseId) {
+      return res.render('partials/escalation.html', defaultData);
+    }
+
+    // Validate UUID if provided
+    if (!validateUUIDParam(caseId, res, 'partials/escalation.html')) return;
+
+    // 3. Business logic
     let caseDetail = null;
     let directorInfo = null;
 
-    if (caseId) {
-      if (!req.user) {
-        return res.status(401).render('partials/escalation.html', {
-          caseId,
-          caseDetail: null,
-          isInternal: false,
-          error: 'Authentication required'
-        });
-      }
+    try {
+      caseDetail = await vmpAdapter.getCaseDetail(caseId, req.user.vendorId);
 
-      try {
-        caseDetail = await vmpAdapter.getCaseDetail(caseId, req.user.vendorId);
-
-        // If Level 3 escalation, fetch Director info
-        if (caseDetail && caseDetail.escalation_level >= 3) {
-          const groupId = caseDetail.group_id || null;
-          try {
-            directorInfo = await vmpAdapter.getGroupDirectorInfo(groupId);
-          } catch (directorError) {
-            console.error('Error fetching director info:', directorError);
-            // Continue without director info
-          }
+      // If Level 3 escalation, fetch Director info
+      if (caseDetail && caseDetail.escalation_level >= 3) {
+        const groupId = caseDetail.group_id || null;
+        try {
+          directorInfo = await vmpAdapter.getGroupDirectorInfo(groupId);
+        } catch (directorError) {
+          // Continue without director info
+          logError(directorError, { path: req.path, caseId, groupId, operation: 'getGroupDirectorInfo' });
         }
-      } catch (adapterError) {
-        console.error('Adapter error loading case for escalation:', adapterError);
-        // Continue with null caseDetail
       }
+    } catch (adapterError) {
+      // Continue with null caseDetail
+      logError(adapterError, { path: req.path, caseId, operation: 'getCaseDetail' });
     }
 
+    // 4. Render response
     res.render('partials/escalation.html', {
       caseId,
       caseDetail,
@@ -682,12 +737,11 @@ app.get('/partials/escalation.html', async (req, res) => {
       directorInfo: directorInfo || null
     });
   } catch (error) {
-    console.error('Error loading escalation:', error);
-    res.status(500).render('partials/escalation.html', {
+    handlePartialError(error, req, res, 'partials/escalation.html', {
       caseId: req.query.case_id || null,
       caseDetail: null,
       isInternal: req.user?.isInternal || false,
-      error: error.message
+      directorInfo: null
     });
   }
 });
@@ -695,66 +749,59 @@ app.get('/partials/escalation.html', async (req, res) => {
 // GET: Case Row Partial (Single Case Row for HTMX Refresh)
 app.get('/partials/case-row.html', async (req, res) => {
   try {
+    // 1. Authentication
+    if (!requireAuth(req, res)) return;
+
+    // 2. Input validation
     const caseId = req.query.case_id;
+    const defaultData = { case: null };
 
-    if (!caseId) {
-      return res.status(400).render('partials/case_row.html', {
-        case: null,
-        error: 'Case ID is required'
-      });
+    if (!validateRequiredQuery(caseId, 'case_id', res, 'partials/case_row.html', defaultData)) {
+      return;
     }
 
-    if (!req.user) {
-      return res.status(401).render('partials/case_row.html', {
-        case: null,
-        error: 'Authentication required'
-      });
-    }
+    // Validate UUID format
+    if (!validateUUIDParam(caseId, res, 'partials/case_row.html')) return;
 
-    // Fetch single case
+    // 3. Business logic
     let caseData = null;
     try {
       caseData = await vmpAdapter.getCaseDetail(caseId, req.user.vendorId);
       if (!caseData) {
-        return res.status(404).render('partials/case_row.html', {
-          case: null,
-          error: 'Case not found or access denied'
-        });
+        return handlePartialError(
+          new NotFoundError('Case'),
+          req,
+          res,
+          'partials/case_row.html',
+          defaultData
+        );
       }
     } catch (adapterError) {
-      console.error('Adapter error fetching case row:', adapterError);
-      return res.status(500).render('partials/case_row.html', {
-        case: null,
-        error: `Failed to load case: ${adapterError.message}`
-      });
+      return handlePartialError(adapterError, req, res, 'partials/case_row.html', defaultData);
     }
 
+    // 4. Render response
     res.render('partials/case_row.html', {
       case: caseData,
       error: null
     });
   } catch (error) {
-    console.error('Error in GET /partials/case-row.html:', error);
-    res.status(500).render('partials/case_row.html', {
-      case: null,
-      error: error.message
-    });
+    handlePartialError(error, req, res, 'partials/case_row.html', { case: null });
   }
 });
 
 // POST: Create Message
 app.post('/cases/:id/messages', async (req, res) => {
   try {
-    const caseId = req.params.id;
-    const { body } = req.body;
+    // 1. Authentication
+    if (!requireAuth(req, res)) return;
 
-    if (!caseId) {
-      return res.status(400).render('partials/case_thread.html', {
-        caseId: null,
-        messages: [],
-        error: 'Case ID is required'
-      });
-    }
+    // 2. Input validation
+    const caseId = req.params.id;
+    if (!validateUUIDParam(caseId, res, 'partials/case_thread.html')) return;
+
+    const { body } = req.body;
+    const defaultData = { caseId, messages: [] };
 
     if (!body || !body.trim()) {
       // Return refreshed thread without error (just ignore empty message)
@@ -762,25 +809,11 @@ app.post('/cases/:id/messages', async (req, res) => {
         const messages = await vmpAdapter.getMessages(caseId);
         return res.render('partials/case_thread.html', { caseId, messages });
       } catch (error) {
-        return res.status(500).render('partials/case_thread.html', {
-          caseId,
-          messages: [],
-          error: 'Failed to refresh thread'
-        });
+        return handlePartialError(error, req, res, 'partials/case_thread.html', defaultData);
       }
     }
 
-    // Get user context (set by auth middleware)
-    const user = req.user;
-    if (!user) {
-      return res.status(401).render('partials/case_thread.html', {
-        caseId,
-        messages: [],
-        error: 'Authentication required'
-      });
-    }
-
-    // Create message
+    // 3. Business logic
     let messageCreated = false;
     try {
       await vmpAdapter.createMessage(
@@ -788,36 +821,32 @@ app.post('/cases/:id/messages', async (req, res) => {
         body.trim(),
         'vendor', // sender_type
         'portal', // channel_source
-        user.id, // sender_user_id
+        req.user.id, // sender_user_id
         false // is_internal_note
       );
       messageCreated = true;
     } catch (createError) {
-      console.error('Error creating message:', createError);
       // Still try to return refreshed thread (graceful degradation)
+      logError(createError, { path: req.path, caseId, userId: req.user.id, operation: 'createMessage' });
     }
 
-    // Return refreshed thread with new message
+    // 4. Return refreshed thread with new message
     try {
       const messages = await vmpAdapter.getMessages(caseId);
       return res.render('partials/case_thread.html', { caseId, messages });
     } catch (error) {
-      console.error('Error refreshing thread after message creation:', error);
-      // If message was created but refresh fails, return 500 (error path)
+      // If message was created but refresh fails, return 500 error
       // If message creation failed, return 200 (graceful degradation)
-      const statusCode = messageCreated ? 500 : 200;
-      return res.status(statusCode).render('partials/case_thread.html', {
-        caseId,
-        messages: [],
-        error: `Failed to refresh thread: ${error.message}`
-      });
+      if (messageCreated) {
+        return handlePartialError(error, req, res, 'partials/case_thread.html', defaultData, true);
+      } else {
+        return handlePartialError(error, req, res, 'partials/case_thread.html', defaultData, false);
+      }
     }
   } catch (error) {
-    console.error('Error in POST /cases/:id/messages:', error);
-    res.status(500).render('partials/case_thread.html', {
+    handlePartialError(error, req, res, 'partials/case_thread.html', {
       caseId: req.params.id || null,
-      messages: [],
-      error: error.message
+      messages: []
     });
   }
 });
@@ -910,7 +939,7 @@ app.post('/cases/:id/evidence', upload.single('file'), async (req, res) => {
         user.id
       );
     } catch (uploadError) {
-      console.error('Error uploading evidence:', uploadError);
+      logError(uploadError, { path: req.path, userId: req.user?.id, caseId, operation: 'uploadEvidence' });
       return res.status(500).render('partials/case_evidence.html', {
         caseId,
         evidence: [],
@@ -942,7 +971,7 @@ app.post('/cases/:id/evidence', upload.single('file'), async (req, res) => {
       // Return evidence partial (HTMX will refresh checklist separately)
       return res.render('partials/case_evidence.html', { caseId, evidence });
     } catch (error) {
-      console.error('Error refreshing evidence after upload:', error);
+      logError(error, { path: req.path, userId: req.user?.id, caseId, operation: 'refreshEvidenceAfterUpload' });
       return res.status(500).render('partials/case_evidence.html', {
         caseId,
         evidence: [],
@@ -950,7 +979,7 @@ app.post('/cases/:id/evidence', upload.single('file'), async (req, res) => {
       });
     }
   } catch (error) {
-    console.error('Error in POST /cases/:id/evidence:', error);
+    logError(error, { path: req.path, userId: req.user?.id, caseId: req.params.id, operation: 'postEvidence' });
     res.status(500).render('partials/case_evidence.html', {
       caseId: req.params.id || null,
       evidence: [],
@@ -962,49 +991,41 @@ app.post('/cases/:id/evidence', upload.single('file'), async (req, res) => {
 // Day 9: Internal Ops - Verify Evidence
 app.post('/cases/:id/verify-evidence', async (req, res) => {
   try {
+    // 1. Authentication & Authorization
+    if (!requireInternal(req, res, 'partials/case_checklist.html', 'Only internal staff can verify evidence')) return;
+
+    // 2. Input validation
     const caseId = req.params.id;
+    if (!validateUUIDParam(caseId, res, 'partials/case_checklist.html')) return;
+
     const { checklist_step_id } = req.body;
-    const user = req.user;
-
-    if (!user) {
-      return res.status(401).render('partials/case_checklist.html', {
-        caseId,
-        checklistSteps: [],
-        error: 'Authentication required'
-      });
-    }
-
-    // RBAC: Only internal users can verify evidence
-    if (!user.isInternal) {
-      return res.status(403).render('partials/case_checklist.html', {
-        caseId,
-        checklistSteps: [],
-        error: 'Only internal staff can verify evidence'
-      });
-    }
+    const defaultData = {
+      caseId,
+      checklistSteps: [],
+      isInternal: req.user?.isInternal || false
+    };
 
     if (!checklist_step_id) {
-      return res.status(400).render('partials/case_checklist.html', {
-        caseId,
-        checklistSteps: [],
-        error: 'checklist_step_id is required'
-      });
+      return handlePartialError(
+        new ValidationError('checklist_step_id is required'),
+        req,
+        res,
+        'partials/case_checklist.html',
+        defaultData,
+        true // Use proper status codes
+      );
     }
 
-    // Verify evidence
+    // 3. Business logic - Verify evidence
     try {
-      await vmpAdapter.verifyEvidence(checklist_step_id, user.id, null);
+      await vmpAdapter.verifyEvidence(checklist_step_id, req.user.id, null);
     } catch (verifyError) {
-      console.error('Error verifying evidence:', verifyError);
-      return res.status(500).render('partials/case_checklist.html', {
-        caseId,
-        checklistSteps: [],
-        isInternal: req.user?.isInternal || false,
-        error: `Failed to verify evidence: ${verifyError.message}`
-      });
+      const wrappedError = new Error('Failed to verify evidence');
+      wrappedError.statusCode = verifyError.statusCode || 500;
+      return handlePartialError(wrappedError, req, res, 'partials/case_checklist.html', defaultData, true);
     }
 
-    // Day 11: Create notification for vendor (evidence verified)
+    // 4. Create notification for vendor (evidence verified)
     try {
       await vmpAdapter.notifyVendorUsersForCase(
         caseId,
@@ -1013,18 +1034,18 @@ app.post('/cases/:id/verify-evidence', async (req, res) => {
         'Your evidence has been verified by internal staff.'
       );
     } catch (notifError) {
-      console.error('Failed to create notification:', notifError);
       // Don't fail verification if notification fails
+      logError(notifError, { path: req.path, caseId, operation: 'notifyVendorUsersForCase' });
     }
 
-    // Return refreshed checklist
+    // 5. Return refreshed checklist
     try {
-      const VENDOR_ID_HARDCODED = env.DEMO_VENDOR_ID;
+      const vendorId = req.user.vendorId || env.DEMO_VENDOR_ID;
       let checklistSteps = [];
 
-      if (VENDOR_ID_HARDCODED) {
+      if (vendorId) {
         try {
-          const caseDetail = await vmpAdapter.getCaseDetail(caseId, VENDOR_ID_HARDCODED);
+          const caseDetail = await vmpAdapter.getCaseDetail(caseId, vendorId);
           if (caseDetail && caseDetail.case_type) {
             checklistSteps = await vmpAdapter.ensureChecklistSteps(caseId, caseDetail.case_type);
           } else {
@@ -1037,21 +1058,17 @@ app.post('/cases/:id/verify-evidence', async (req, res) => {
         checklistSteps = await vmpAdapter.getChecklistSteps(caseId);
       }
 
-      return res.render('partials/case_checklist.html', { caseId, checklistSteps });
+      return res.render('partials/case_checklist.html', { caseId, checklistSteps, isInternal: req.user.isInternal });
     } catch (error) {
-      console.error('Error refreshing checklist after verify:', error);
-      return res.status(500).render('partials/case_checklist.html', {
-        caseId,
-        checklistSteps: [],
-        error: 'Evidence verified but failed to refresh checklist'
-      });
+      const wrappedError = new Error('Evidence verified but failed to refresh checklist');
+      wrappedError.statusCode = 500;
+      return handlePartialError(wrappedError, req, res, 'partials/case_checklist.html', defaultData, true);
     }
   } catch (error) {
-    console.error('Error in POST /cases/:id/verify-evidence:', error);
-    res.status(500).render('partials/case_checklist.html', {
+    handlePartialError(error, req, res, 'partials/case_checklist.html', {
       caseId: req.params.id || null,
       checklistSteps: [],
-      error: error.message
+      isInternal: req.user?.isInternal || false
     });
   }
 });
@@ -1059,49 +1076,41 @@ app.post('/cases/:id/verify-evidence', async (req, res) => {
 // Day 9: Internal Ops - Reject Evidence
 app.post('/cases/:id/reject-evidence', async (req, res) => {
   try {
+    // 1. Authentication & Authorization
+    if (!requireInternal(req, res, 'partials/case_checklist.html', 'Only internal staff can reject evidence')) return;
+
+    // 2. Input validation
     const caseId = req.params.id;
+    if (!validateUUIDParam(caseId, res, 'partials/case_checklist.html')) return;
+
     const { checklist_step_id, reason } = req.body;
-    const user = req.user;
-
-    if (!user) {
-      return res.status(401).render('partials/case_checklist.html', {
-        caseId,
-        checklistSteps: [],
-        error: 'Authentication required'
-      });
-    }
-
-    // RBAC: Only internal users can reject evidence
-    if (!user.isInternal) {
-      return res.status(403).render('partials/case_checklist.html', {
-        caseId,
-        checklistSteps: [],
-        error: 'Only internal staff can reject evidence'
-      });
-    }
+    const defaultData = {
+      caseId,
+      checklistSteps: [],
+      isInternal: req.user?.isInternal || false
+    };
 
     if (!checklist_step_id || !reason || !reason.trim()) {
-      return res.status(400).render('partials/case_checklist.html', {
-        caseId,
-        checklistSteps: [],
-        error: 'checklist_step_id and reason are required'
-      });
+      return handlePartialError(
+        new ValidationError('checklist_step_id and reason are required'),
+        req,
+        res,
+        'partials/case_checklist.html',
+        defaultData,
+        true // Use proper status codes
+      );
     }
 
-    // Reject evidence
+    // 3. Business logic - Reject evidence
     try {
-      await vmpAdapter.rejectEvidence(checklist_step_id, user.id, reason.trim());
+      await vmpAdapter.rejectEvidence(checklist_step_id, req.user.id, reason.trim());
     } catch (rejectError) {
-      console.error('Error rejecting evidence:', rejectError);
-      return res.status(500).render('partials/case_checklist.html', {
-        caseId,
-        checklistSteps: [],
-        isInternal: req.user?.isInternal || false,
-        error: `Failed to reject evidence: ${rejectError.message}`
-      });
+      const wrappedError = new Error('Failed to reject evidence');
+      wrappedError.statusCode = rejectError.statusCode || 500;
+      return handlePartialError(wrappedError, req, res, 'partials/case_checklist.html', defaultData, true);
     }
 
-    // Day 11: Create notification for vendor (evidence rejected)
+    // 4. Create notification for vendor (evidence rejected)
     try {
       await vmpAdapter.notifyVendorUsersForCase(
         caseId,
@@ -1110,18 +1119,18 @@ app.post('/cases/:id/reject-evidence', async (req, res) => {
         `Your evidence was rejected. Reason: ${reason.trim()}`
       );
     } catch (notifError) {
-      console.error('Failed to create notification:', notifError);
       // Don't fail rejection if notification fails
+      logError(notifError, { path: req.path, caseId, operation: 'notifyVendorUsersForCase' });
     }
 
-    // Return refreshed checklist
+    // 5. Return refreshed checklist
     try {
-      const VENDOR_ID_HARDCODED = env.DEMO_VENDOR_ID;
+      const vendorId = req.user.vendorId || env.DEMO_VENDOR_ID;
       let checklistSteps = [];
 
-      if (VENDOR_ID_HARDCODED) {
+      if (vendorId) {
         try {
-          const caseDetail = await vmpAdapter.getCaseDetail(caseId, VENDOR_ID_HARDCODED);
+          const caseDetail = await vmpAdapter.getCaseDetail(caseId, vendorId);
           if (caseDetail && caseDetail.case_type) {
             checklistSteps = await vmpAdapter.ensureChecklistSteps(caseId, caseDetail.case_type);
           } else {
@@ -1134,228 +1143,181 @@ app.post('/cases/:id/reject-evidence', async (req, res) => {
         checklistSteps = await vmpAdapter.getChecklistSteps(caseId);
       }
 
-      return res.render('partials/case_checklist.html', { caseId, checklistSteps });
+      return res.render('partials/case_checklist.html', { caseId, checklistSteps, isInternal: req.user.isInternal });
     } catch (error) {
-      console.error('Error refreshing checklist after reject:', error);
-      return res.status(500).render('partials/case_checklist.html', {
-        caseId,
-        checklistSteps: [],
-        error: 'Evidence rejected but failed to refresh checklist'
-      });
+      const wrappedError = new Error('Evidence rejected but failed to refresh checklist');
+      wrappedError.statusCode = 500;
+      return handlePartialError(wrappedError, req, res, 'partials/case_checklist.html', defaultData, true);
     }
   } catch (error) {
-    console.error('Error in POST /cases/:id/reject-evidence:', error);
-    res.status(500).render('partials/case_checklist.html', {
+    handlePartialError(error, req, res, 'partials/case_checklist.html', {
       caseId: req.params.id || null,
       checklistSteps: [],
-      error: error.message
-    });
+      isInternal: req.user?.isInternal || false
+    }, true);
   }
 });
 
 // Day 9: Internal Ops - Reassign Case
 app.post('/cases/:id/reassign', async (req, res) => {
   try {
+    // 1. Authentication & Authorization
+    if (!requireInternal(req, res, 'partials/case_detail.html', 'Only internal staff can reassign cases')) return;
+
+    // 2. Input validation
     const caseId = req.params.id;
+    if (!validateUUIDParam(caseId, res, 'partials/case_detail.html')) return;
+
     const { owner_team } = req.body;
-    const user = req.user;
-
-    if (!user) {
-      return res.status(401).render('partials/case_detail.html', {
-        caseId: null,
-        caseDetail: null,
-        error: 'Authentication required'
-      });
-    }
-
-    // RBAC: Only internal users can reassign cases
-    if (!user.isInternal) {
-      return res.status(403).render('partials/case_detail.html', {
-        caseId,
-        caseDetail: null,
-        error: 'Only internal staff can reassign cases'
-      });
-    }
+    const defaultData = { caseId, caseDetail: null };
 
     if (!owner_team || !['procurement', 'ap', 'finance'].includes(owner_team)) {
-      return res.status(400).render('partials/case_detail.html', {
-        caseId,
-        caseDetail: null,
-        error: 'owner_team must be one of: procurement, ap, finance'
-      });
+      return handlePartialError(
+        new ValidationError('owner_team must be one of: procurement, ap, finance'),
+        req,
+        res,
+        'partials/case_detail.html',
+        defaultData,
+        true // Use proper status codes
+      );
     }
 
-    // Reassign case
+    // 3. Business logic - Reassign case
     try {
-      await vmpAdapter.reassignCase(caseId, owner_team, user.id);
+      await vmpAdapter.reassignCase(caseId, owner_team, req.user.id);
     } catch (reassignError) {
-      console.error('Error reassigning case:', reassignError);
-      return res.status(500).render('partials/case_detail.html', {
-        caseId,
-        caseDetail: null,
-        error: `Failed to reassign case: ${reassignError.message}`
-      });
+      const wrappedError = new Error('Failed to reassign case');
+      wrappedError.statusCode = reassignError.statusCode || 500;
+      return handlePartialError(wrappedError, req, res, 'partials/case_detail.html', defaultData, true);
     }
 
-    // Return refreshed case detail
+    // 4. Return refreshed case detail
     try {
-      const VENDOR_ID_HARDCODED = env.DEMO_VENDOR_ID;
+      const vendorId = req.user.vendorId || env.DEMO_VENDOR_ID;
       let caseDetail = null;
 
-      if (VENDOR_ID_HARDCODED) {
-        caseDetail = await vmpAdapter.getCaseDetail(caseId, VENDOR_ID_HARDCODED);
+      if (vendorId) {
+        caseDetail = await vmpAdapter.getCaseDetail(caseId, vendorId);
       }
 
-      return res.render('partials/case_detail.html', { caseId, caseDetail });
+      return res.render('partials/case_detail.html', { caseId, caseDetail, isInternal: req.user.isInternal });
     } catch (error) {
-      console.error('Error refreshing case detail after reassign:', error);
-      return res.status(500).render('partials/case_detail.html', {
-        caseId,
-        caseDetail: null,
-        error: 'Case reassigned but failed to refresh detail'
-      });
+      const wrappedError = new Error('Case reassigned but failed to refresh detail');
+      wrappedError.statusCode = 500;
+      return handlePartialError(wrappedError, req, res, 'partials/case_detail.html', defaultData, true);
     }
   } catch (error) {
-    console.error('Error in POST /cases/:id/reassign:', error);
-    res.status(500).render('partials/case_detail.html', {
+    handlePartialError(error, req, res, 'partials/case_detail.html', {
       caseId: req.params.id || null,
-      caseDetail: null,
-      error: error.message
-    });
+      caseDetail: null
+    }, true);
   }
 });
 
 // Day 9: Internal Ops - Update Case Status
 app.post('/cases/:id/update-status', async (req, res) => {
   try {
+    // 1. Authentication & Authorization
+    if (!requireInternal(req, res, 'partials/case_detail.html', 'Only internal staff can update case status')) return;
+
+    // 2. Input validation
     const caseId = req.params.id;
+    if (!validateUUIDParam(caseId, res, 'partials/case_detail.html')) return;
+
     const { status } = req.body;
-    const user = req.user;
-
-    if (!user) {
-      return res.status(401).render('partials/case_detail.html', {
-        caseId: null,
-        caseDetail: null,
-        error: 'Authentication required'
-      });
-    }
-
-    // RBAC: Only internal users can update case status
-    if (!user.isInternal) {
-      return res.status(403).render('partials/case_detail.html', {
-        caseId,
-        caseDetail: null,
-        error: 'Only internal staff can update case status'
-      });
-    }
+    const defaultData = { caseId, caseDetail: null };
 
     if (!status || !['open', 'waiting_supplier', 'waiting_internal', 'resolved', 'blocked'].includes(status)) {
-      return res.status(400).render('partials/case_detail.html', {
-        caseId,
-        caseDetail: null,
-        error: 'status must be one of: open, waiting_supplier, waiting_internal, resolved, blocked'
-      });
+      return handlePartialError(
+        new ValidationError('status must be one of: open, waiting_supplier, waiting_internal, resolved, blocked'),
+        req,
+        res,
+        'partials/case_detail.html',
+        defaultData,
+        true // Use proper status codes
+      );
     }
 
-    // Update case status
+    // 3. Business logic - Update case status
     try {
-      await vmpAdapter.updateCaseStatus(caseId, status, user.id);
+      await vmpAdapter.updateCaseStatus(caseId, status, req.user.id);
     } catch (updateError) {
-      console.error('Error updating case status:', updateError);
-      return res.status(500).render('partials/case_detail.html', {
-        caseId,
-        caseDetail: null,
-        error: `Failed to update case status: ${updateError.message}`
-      });
+      const wrappedError = new Error('Failed to update case status');
+      wrappedError.statusCode = updateError.statusCode || 500;
+      return handlePartialError(wrappedError, req, res, 'partials/case_detail.html', defaultData, true);
     }
 
-    // Return refreshed case detail
+    // 4. Return refreshed case detail
     try {
-      const VENDOR_ID_HARDCODED = env.DEMO_VENDOR_ID;
+      const vendorId = req.user.vendorId || env.DEMO_VENDOR_ID;
       let caseDetail = null;
 
-      if (VENDOR_ID_HARDCODED) {
-        caseDetail = await vmpAdapter.getCaseDetail(caseId, VENDOR_ID_HARDCODED);
+      if (vendorId) {
+        caseDetail = await vmpAdapter.getCaseDetail(caseId, vendorId);
       }
 
-      return res.render('partials/case_detail.html', { caseId, caseDetail });
+      return res.render('partials/case_detail.html', { caseId, caseDetail, isInternal: req.user.isInternal });
     } catch (error) {
-      console.error('Error refreshing case detail after status update:', error);
-      return res.status(500).render('partials/case_detail.html', {
-        caseId,
-        caseDetail: null,
-        error: 'Case status updated but failed to refresh detail'
-      });
+      const wrappedError = new Error('Case status updated but failed to refresh detail');
+      wrappedError.statusCode = 500;
+      return handlePartialError(wrappedError, req, res, 'partials/case_detail.html', defaultData, true);
     }
   } catch (error) {
-    console.error('Error in POST /cases/:id/update-status:', error);
-    res.status(500).render('partials/case_detail.html', {
+    handlePartialError(error, req, res, 'partials/case_detail.html', {
       caseId: req.params.id || null,
-      caseDetail: null,
-      error: error.message
-    });
+      caseDetail: null
+    }, true);
   }
 });
 
 // POST: Escalate Case
 app.post('/cases/:id/escalate', async (req, res) => {
   try {
+    // 1. Authentication
+    if (!requireAuth(req, res)) return;
+
+    // 2. Input validation
     const caseId = req.params.id;
+    if (!validateUUIDParam(caseId, res, 'partials/escalation.html')) return;
+
     const { escalation_level, reason } = req.body;
-
-    if (!req.user) {
-      return res.status(401).render('partials/escalation.html', {
-        caseId,
-        caseDetail: null,
-        isInternal: false,
-        error: 'Authentication required'
-      });
-    }
-
-    if (!caseId) {
-      return res.status(400).render('partials/escalation.html', {
-        caseId: null,
-        caseDetail: null,
-        isInternal: req.user?.isInternal || false,
-        error: 'Case ID is required'
-      });
-    }
+    const defaultData = {
+      caseId,
+      caseDetail: null,
+      isInternal: req.user?.isInternal || false,
+      directorInfo: null
+    };
 
     const escalationLevel = parseInt(escalation_level, 10);
     if (!escalationLevel || escalationLevel < 1 || escalationLevel > 3) {
-      return res.status(400).render('partials/escalation.html', {
-        caseId,
-        caseDetail: null,
-        isInternal: req.user?.isInternal || false,
-        error: 'Invalid escalation level (must be 1-3)'
-      });
+      return handlePartialError(
+        new Error('Invalid escalation level (must be 1-3)'),
+        req,
+        res,
+        'partials/escalation.html',
+        defaultData
+      );
     }
 
-    // Verify case exists and user has access
+    // 3. Verify case exists and user has access
     let caseDetail = null;
     try {
       caseDetail = await vmpAdapter.getCaseDetail(caseId, req.user.vendorId);
       if (!caseDetail) {
-        return res.status(404).render('partials/escalation.html', {
-          caseId,
-          caseDetail: null,
-          isInternal: req.user?.isInternal || false,
-          error: 'Case not found or access denied'
-        });
+        return handlePartialError(
+          new NotFoundError('Case'),
+          req,
+          res,
+          'partials/escalation.html',
+          defaultData
+        );
       }
     } catch (adapterError) {
-      console.error('Adapter error fetching case for escalation:', adapterError);
-      return res.status(500).render('partials/escalation.html', {
-        caseId,
-        caseDetail: null,
-        isInternal: req.user?.isInternal || false,
-        error: `Failed to load case: ${adapterError.message}`
-      });
+      return handlePartialError(adapterError, req, res, 'partials/escalation.html', defaultData);
     }
 
-    // Level 3 requires Break Glass Protocol
+    // 4. Level 3 requires Break Glass Protocol
     if (escalationLevel === 3) {
-      // Get group_id from case (or use mock for Sprint 1)
       const groupId = caseDetail.group_id || null;
 
       // Get Director info (mock for Sprint 1, real DB in Sprint 2)
@@ -1363,22 +1325,22 @@ app.post('/cases/:id/escalate', async (req, res) => {
       try {
         directorInfo = await vmpAdapter.getGroupDirectorInfo(groupId);
       } catch (directorError) {
-        console.error('Error fetching director info (using mock):', directorError);
         // Continue with mock data for Sprint 1
+        logError(directorError, { path: req.path, caseId, groupId, operation: 'getGroupDirectorInfo' });
       }
 
       // Log Break Glass event
       try {
         await vmpAdapter.logBreakGlass(caseId, req.user.id, groupId, directorInfo);
       } catch (breakGlassError) {
-        console.error('Error logging break glass event:', breakGlassError);
         // Continue with escalation even if logging fails
+        logError(breakGlassError, { path: req.path, caseId, groupId, operation: 'logBreakGlass' });
       }
     }
 
-    // Perform escalation
+    // 5. Perform escalation
     try {
-      const updatedCase = await vmpAdapter.escalateCase(
+      await vmpAdapter.escalateCase(
         caseId,
         escalationLevel,
         req.user.id,
@@ -1395,33 +1357,31 @@ app.post('/cases/:id/escalate', async (req, res) => {
         try {
           directorInfo = await vmpAdapter.getGroupDirectorInfo(groupId);
         } catch (directorError) {
-          console.error('Error fetching director info after escalation:', directorError);
+          logError(directorError, { path: req.path, caseId, groupId, operation: 'getGroupDirectorInfo' });
         }
       }
 
-      // Re-render escalation partial with updated data
-      res.render('partials/escalation.html', {
+      // 6. Re-render escalation partial with updated data
+      return res.render('partials/escalation.html', {
         caseId,
         caseDetail,
         isInternal: req.user?.isInternal || false,
         directorInfo: directorInfo || null
       });
     } catch (escalateError) {
-      console.error('Error escalating case:', escalateError);
-      res.status(500).render('partials/escalation.html', {
+      return handlePartialError(escalateError, req, res, 'partials/escalation.html', {
         caseId,
         caseDetail,
         isInternal: req.user?.isInternal || false,
-        error: `Failed to escalate case: ${escalateError.message}`
+        directorInfo: null
       });
     }
   } catch (error) {
-    console.error('Error in POST /cases/:id/escalate:', error);
-    res.status(500).render('partials/escalation.html', {
+    handlePartialError(error, req, res, 'partials/escalation.html', {
       caseId: req.params.id || null,
       caseDetail: null,
       isInternal: req.user?.isInternal || false,
-      error: error.message
+      directorInfo: null
     });
   }
 });
@@ -1433,22 +1393,13 @@ app.post('/cases/:id/escalate', async (req, res) => {
 // GET: Ops Ingest Page (Internal Only)
 app.get('/ops/ingest', async (req, res) => {
   try {
-    if (!req.user) {
-      return res.redirect('/login');
-    }
+    // 1. Authentication & Authorization
+    if (!requireInternal(req, res)) return;
 
-    if (!req.user.isInternal) {
-      return res.status(403).render('pages/error.html', {
-        error: {
-          status: 403,
-          message: 'Access denied. Internal users only.'
-        }
-      });
-    }
-
-    // Get org tree for scope selection
+    // 2. Business logic - Get org tree for scope selection
     const orgTree = await vmpAdapter.getOrgTree(req.user.id);
 
+    // 3. Render response
     res.render('pages/ops_ingest.html', {
       title: 'Data Ingest',
       orgTree,
@@ -1456,32 +1407,17 @@ app.get('/ops/ingest', async (req, res) => {
       isInternal: true
     });
   } catch (error) {
-    console.error('Error in GET /ops/ingest:', error);
-    logError(error, { path: req.path, userId: req.user?.id });
-    res.status(500).render('pages/error.html', {
-      error: {
-        status: 500,
-        message: 'Failed to load ingest page'
-      }
-    });
+    handleRouteError(error, req, res);
   }
 });
 
 // POST: Ingest Invoices from CSV (Internal Only)
 app.post('/ops/ingest/invoices', upload.single('csv_file'), async (req, res) => {
   try {
-    if (!req.user) {
-      return res.status(401).json({
-        error: 'Authentication required'
-      });
-    }
+    // 1. Authentication & Authorization
+    if (!requireInternal(req, res)) return;
 
-    if (!req.user.isInternal) {
-      return res.status(403).json({
-        error: 'Access denied. Internal users only.'
-      });
-    }
-
+    // 2. Input validation
     if (!req.file) {
       return res.status(400).json({
         error: 'CSV file is required'
@@ -1505,19 +1441,16 @@ app.post('/ops/ingest/invoices', upload.single('csv_file'), async (req, res) => 
     }
 
     // Validate company_id format (UUID)
-    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(company_id)) {
-      return res.status(400).json({
-        error: 'Invalid company_id format'
-      });
-    }
+    if (!validateUUIDParam(company_id, res)) return;
 
-    // Ingest invoices
+    // 3. Business logic - Ingest invoices
     const result = await vmpAdapter.ingestInvoicesFromCSV(
       req.file.buffer,
       req.user.vendorId, // For now, use user's vendorId (Sprint 6 will add scope selection)
       company_id
     );
 
+    // 4. Return response
     res.json({
       success: true,
       message: `Ingested ${result.upserted} invoices successfully`,
@@ -1528,7 +1461,6 @@ app.post('/ops/ingest/invoices', upload.single('csv_file'), async (req, res) => 
       failures: result.failures
     });
   } catch (error) {
-    console.error('Error in POST /ops/ingest/invoices:', error);
     logError(error, { path: req.path, userId: req.user?.id });
     res.status(500).json({
       error: error.message || 'Failed to ingest invoices'
@@ -1539,18 +1471,10 @@ app.post('/ops/ingest/invoices', upload.single('csv_file'), async (req, res) => 
 // POST: Ingest Payments from CSV (Internal Only)
 app.post('/ops/ingest/payments', upload.single('csv_file'), async (req, res) => {
   try {
-    if (!req.user) {
-      return res.status(401).json({
-        error: 'Authentication required'
-      });
-    }
+    // 1. Authentication & Authorization
+    if (!requireInternal(req, res)) return;
 
-    if (!req.user.isInternal) {
-      return res.status(403).json({
-        error: 'Access denied. Internal users only.'
-      });
-    }
-
+    // 2. Input validation
     if (!req.file) {
       return res.status(400).json({
         error: 'CSV file is required'
@@ -1574,19 +1498,16 @@ app.post('/ops/ingest/payments', upload.single('csv_file'), async (req, res) => 
     }
 
     // Validate company_id format (UUID)
-    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(company_id)) {
-      return res.status(400).json({
-        error: 'Invalid company_id format'
-      });
-    }
+    if (!validateUUIDParam(company_id, res)) return;
 
-    // Ingest payments
+    // 3. Business logic - Ingest payments
     const result = await vmpAdapter.ingestPaymentsFromCSV(
       req.file.buffer,
       req.user.vendorId, // For now, use user's vendorId (Sprint 6 will add scope selection)
       company_id
     );
 
+    // 4. Return response
     res.json({
       success: true,
       message: `Ingested ${result.upserted} payments successfully, updated ${result.invoicesUpdated} invoices`,
@@ -1598,7 +1519,6 @@ app.post('/ops/ingest/payments', upload.single('csv_file'), async (req, res) => 
       failures: result.failures
     });
   } catch (error) {
-    console.error('Error in POST /ops/ingest/payments:', error);
     logError(error, { path: req.path, userId: req.user?.id });
     res.status(500).json({
       error: error.message || 'Failed to ingest payments'
@@ -1609,18 +1529,10 @@ app.post('/ops/ingest/payments', upload.single('csv_file'), async (req, res) => 
 // POST: Ingest Remittances (Bulk PDF Upload - Internal Only)
 app.post('/ops/ingest/remittances', upload.array('remittance_files', 50), async (req, res) => {
   try {
-    if (!req.user) {
-      return res.status(401).json({
-        error: 'Authentication required'
-      });
-    }
+    // 1. Authentication & Authorization
+    if (!requireInternal(req, res)) return;
 
-    if (!req.user.isInternal) {
-      return res.status(403).json({
-        error: 'Access denied. Internal users only.'
-      });
-    }
-
+    // 2. Input validation
     if (!req.files || req.files.length === 0) {
       return res.status(400).json({
         error: 'At least one PDF file is required'
@@ -1647,19 +1559,16 @@ app.post('/ops/ingest/remittances', upload.array('remittance_files', 50), async 
     }
 
     // Validate company_id format (UUID)
-    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(company_id)) {
-      return res.status(400).json({
-        error: 'Invalid company_id format'
-      });
-    }
+    if (!validateUUIDParam(company_id, res)) return;
 
-    // Ingest remittances
+    // 3. Business logic - Ingest remittances
     const result = await vmpAdapter.ingestRemittances(
       req.files,
       req.user.vendorId, // For now, use user's vendorId (Sprint 6 will add scope selection)
       company_id
     );
 
+    // 4. Return response
     res.json({
       success: true,
       message: `Processed ${result.processed} remittance files successfully`,
@@ -1670,7 +1579,6 @@ app.post('/ops/ingest/remittances', upload.array('remittance_files', 50), async 
       errors: result.errors
     });
   } catch (error) {
-    console.error('Error in POST /ops/ingest/remittances:', error);
     logError(error, { path: req.path, userId: req.user?.id });
     res.status(500).json({
       error: error.message || 'Failed to ingest remittances'
@@ -1685,37 +1593,27 @@ app.post('/ops/ingest/remittances', upload.array('remittance_files', 50), async 
 // GET: Payment List Page
 app.get('/payments', async (req, res) => {
   try {
-    if (!req.user) {
-      return res.redirect('/login');
-    }
+    // 1. Authentication
+    if (!requireAuth(req, res)) return;
 
+    // 2. Render response
     res.render('pages/payments.html', {
       title: 'Payments',
       user: req.user,
       isInternal: req.user?.isInternal || false
     });
   } catch (error) {
-    console.error('Error in GET /payments:', error);
-    logError(error, { path: req.path, userId: req.user?.id });
-    res.status(500).render('pages/error.html', {
-      error: {
-        status: 500,
-        message: 'Failed to load payments page'
-      }
-    });
+    handleRouteError(error, req, res);
   }
 });
 
 // GET: Payment List Partial
 app.get('/partials/payment-list.html', async (req, res) => {
   try {
-    if (!req.user) {
-      return res.status(401).render('partials/payment_list.html', {
-        payments: [],
-        error: 'Authentication required'
-      });
-    }
+    // 1. Authentication
+    if (!requireAuth(req, res)) return;
 
+    // 2. Business logic
     const { payment_ref, invoice_num, date_from, date_to, company_id } = req.query;
     const filters = {};
     if (payment_ref) filters.payment_ref = payment_ref;
@@ -1729,6 +1627,7 @@ app.get('/partials/payment-list.html', async (req, res) => {
       filters
     );
 
+    // 3. Render response
     res.render('partials/payment_list.html', {
       payments: payments || [],
       isInternal: req.user?.isInternal || false,
@@ -1736,11 +1635,10 @@ app.get('/partials/payment-list.html', async (req, res) => {
       error: null
     });
   } catch (error) {
-    console.error('Error in GET /partials/payment-list.html:', error);
-    logError(error, { path: req.path, userId: req.user?.id });
-    res.status(500).render('partials/payment_list.html', {
+    handlePartialError(error, req, res, 'partials/payment_list.html', {
       payments: [],
-      error: error.message || 'Failed to load payments'
+      isInternal: req.user?.isInternal || false,
+      query: req.query
     });
   }
 });
@@ -1748,57 +1646,38 @@ app.get('/partials/payment-list.html', async (req, res) => {
 // GET: Payment Detail Page
 app.get('/payments/:id', async (req, res) => {
   try {
-    if (!req.user) {
-      return res.redirect('/login');
-    }
+    // 1. Authentication
+    if (!requireAuth(req, res)) return;
 
+    // 2. Input validation
     const paymentId = req.params.id;
+    if (!validateUUIDParam(paymentId, res)) return;
 
-    // Validate paymentId format (UUID)
-    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(paymentId)) {
-      return res.status(400).render('pages/error.html', {
-        error: {
-          status: 400,
-          message: 'Invalid payment ID format'
-        }
-      });
-    }
-
-    // Fetch payment detail from adapter
+    // 3. Business logic
     let paymentDetail = null;
     try {
       paymentDetail = await vmpAdapter.getPaymentDetail(paymentId, req.user.vendorId);
 
       // Verify vendor has access to this payment
-      if (paymentDetail && paymentDetail.vendor_id !== req.user.vendorId) {
-        // For internal users, allow access; for vendors, deny
-        if (!req.user?.isInternal) {
-          return res.status(403).render('pages/error.html', {
-            error: {
-              status: 403,
-              message: 'Access denied to this payment'
-            }
-          });
-        }
-      }
-    } catch (adapterError) {
-      console.error('Adapter error loading payment detail:', adapterError);
-
-      // If payment not found, render page with empty state (not an error)
-      if (adapterError.code === 'NOT_FOUND' || adapterError.message.includes('not found')) {
-        paymentDetail = null;
-      } else {
-        // Other errors: show error page
-        return res.status(500).render('pages/error.html', {
+      if (paymentDetail && paymentDetail.vendor_id !== req.user.vendorId && !req.user?.isInternal) {
+        return res.status(403).render('pages/error.html', {
           error: {
-            status: 500,
-            message: 'Failed to load payment details'
+            status: 403,
+            message: 'Access denied to this payment'
           }
         });
       }
+    } catch (adapterError) {
+      // If payment not found, render page with empty state (not an error)
+      if (adapterError.code === 'NOT_FOUND' || adapterError.message?.includes('not found')) {
+        paymentDetail = null;
+      } else {
+        // Other errors: throw to be handled by catch block
+        throw adapterError;
+      }
     }
 
-    // Render full page with payment detail
+    // 4. Render response
     res.render('pages/payment_detail.html', {
       paymentId,
       paymentDetail,
@@ -1806,14 +1685,7 @@ app.get('/payments/:id', async (req, res) => {
       user: req.user
     });
   } catch (error) {
-    console.error('Error in GET /payments/:id:', error);
-    logError(error, { path: req.path, userId: req.user?.id });
-    res.status(500).render('pages/error.html', {
-      error: {
-        status: 500,
-        message: 'An error occurred while loading the payment'
-      }
-    });
+    handleRouteError(error, req, res);
   }
 });
 
@@ -1824,11 +1696,10 @@ app.get('/payments/:id', async (req, res) => {
 // GET: Profile Page
 app.get('/profile', async (req, res) => {
   try {
-    if (!req.user) {
-      return res.redirect('/login');
-    }
+    // 1. Authentication
+    if (!requireAuth(req, res)) return;
 
-    // Fetch vendor profile
+    // 2. Business logic - Fetch vendor profile
     let vendorProfile = null;
     try {
       vendorProfile = await vmpAdapter.getVendorProfile(req.user.vendorId);
@@ -1842,15 +1713,11 @@ app.get('/profile', async (req, res) => {
         });
       }
     } catch (adapterError) {
-      console.error('Adapter error loading vendor profile:', adapterError);
-      return res.status(500).render('pages/error.html', {
-        error: {
-          status: 500,
-          message: 'Failed to load vendor profile'
-        }
-      });
+      // Throw to be handled by catch block
+      throw adapterError;
     }
 
+    // 3. Render response
     res.render('pages/profile.html', {
       title: 'Profile',
       vendorProfile,
@@ -1858,93 +1725,133 @@ app.get('/profile', async (req, res) => {
       isInternal: req.user?.isInternal || false
     });
   } catch (error) {
-    console.error('Error in GET /profile:', error);
-    logError(error, { path: req.path, userId: req.user?.id });
-    res.status(500).render('pages/error.html', {
-      error: {
-        status: 500,
-        message: 'An error occurred while loading the profile'
-      }
-    });
+    handleRouteError(error, req, res);
   }
 });
 
 // GET: Profile Form Partial
 app.get('/partials/profile-form.html', async (req, res) => {
   try {
-    if (!req.user) {
-      return res.status(401).render('partials/profile_form.html', {
-        vendorProfile: null,
-        error: 'Authentication required'
-      });
-    }
+    // 1. Authentication
+    if (!requireAuth(req, res)) return;
 
+    // 2. Business logic
     const vendorProfile = await vmpAdapter.getVendorProfile(req.user.vendorId);
 
     if (!vendorProfile) {
-      return res.status(404).render('partials/profile_form.html', {
-        vendorProfile: null,
-        error: 'Vendor profile not found'
-      });
+      return handlePartialError(
+        new NotFoundError('Vendor profile'),
+        req,
+        res,
+        'partials/profile_form.html',
+        { vendorProfile: null }
+      );
     }
 
+    // 3. Render response
     res.render('partials/profile_form.html', {
       vendorProfile,
       error: null
     });
   } catch (error) {
-    console.error('Error in GET /partials/profile-form.html:', error);
-    logError(error, { path: req.path, userId: req.user?.id });
-    res.status(500).render('partials/profile_form.html', {
-      vendorProfile: null,
-      error: error.message || 'Failed to load profile form'
+    handlePartialError(error, req, res, 'partials/profile_form.html', {
+      vendorProfile: null
     });
   }
 });
 
-// POST: Bank Details Change Request
+// POST: Update Vendor Contact Information (Low Risk Fields)
+app.post('/profile/contact', async (req, res) => {
+  try {
+    // 1. Authentication
+    if (!requireAuth(req, res)) return;
+
+    // 2. Input validation
+    const { address, phone, website } = req.body;
+
+    // At least one field must be provided
+    if (!address && !phone && !website) {
+      return handlePartialError(
+        new ValidationError('At least one contact field (address, phone, website) must be provided'),
+        req,
+        res,
+        'partials/profile_form.html',
+        { vendorProfile: null }
+      );
+    }
+
+    // 3. Business logic - Update contact info (allow-list enforced in adapter)
+    const updatedVendor = await vmpAdapter.updateVendorContact(req.user.vendorId, {
+      address: address || null,
+      phone: phone || null,
+      website: website || null
+    });
+
+    // 4. Fetch updated profile to render
+    const vendorProfile = await vmpAdapter.getVendorProfile(req.user.vendorId);
+
+    // 5. Render response (refresh the form with updated data)
+    res.render('partials/profile_form.html', {
+      vendorProfile,
+      error: null,
+      success: 'Contact information updated successfully'
+    });
+  } catch (error) {
+    logError(error, { path: req.path, userId: req.user?.id });
+    handlePartialError(error, req, res, 'partials/profile_form.html', {
+      vendorProfile: null
+    });
+  }
+});
+
+// POST: Bank Details Change Request (Creates Change Request Case)
 app.post('/profile/bank-details', async (req, res) => {
   try {
-    if (!req.user) {
-      return res.status(401).json({
-        error: 'Authentication required'
-      });
-    }
+    // 1. Authentication
+    if (!requireAuth(req, res)) return;
 
-    const {
-      account_name,
-      account_number,
-      bank_name,
-      swift_code,
-      branch_address,
-      currency
-    } = req.body;
+    // 2. Input validation
+    const { account_name, account_number, bank_name, swift_code, branch_address, currency } = req.body;
 
-    // Validate required fields
-    if (!account_name || !account_number || !bank_name || !swift_code) {
+    // Validate required fields using validateRequired helper
+    if (!validateRequired(account_name, 'account_name')) {
       return res.status(400).json({
-        error: 'Missing required fields: account_name, account_number, bank_name, swift_code'
+        error: 'account_name is required'
+      });
+    }
+    if (!validateRequired(account_number, 'account_number')) {
+      return res.status(400).json({
+        error: 'account_number is required'
+      });
+    }
+    if (!validateRequired(bank_name, 'bank_name')) {
+      return res.status(400).json({
+        error: 'bank_name is required'
+      });
+    }
+    if (!validateRequired(swift_code, 'swift_code')) {
+      return res.status(400).json({
+        error: 'swift_code is required'
       });
     }
 
-    // Create bank details change case
+    // 3. Business logic - Create change request case (does NOT update vmp_vendors)
     const newCase = await vmpAdapter.requestBankDetailsChange(
       req.user.vendorId,
       {
-        account_name,
-        account_number,
-        bank_name,
-        swift_code,
-        branch_address: branch_address || null,
-        currency: currency || null
+        account_name: account_name.trim(),
+        account_number: account_number.trim(),
+        bank_name: bank_name.trim(),
+        swift_code: swift_code.trim(),
+        branch_address: branch_address?.trim() || null,
+        currency: currency?.trim() || null
       },
       req.user.id
     );
 
-    // Redirect to the case detail page
+    // 4. Redirect to case detail page (user can upload Bank Letter there)
     res.redirect(`/cases/${newCase.id}`);
   } catch (error) {
-    console.error('Error in POST /profile/bank-details:', error);
     logError(error, { path: req.path, userId: req.user?.id });
     res.status(500).json({
       error: error.message || 'Failed to request bank details change'
@@ -1959,55 +1866,30 @@ app.post('/profile/bank-details', async (req, res) => {
 // GET: Command Center Home (Internal Only)
 app.get('/ops', async (req, res) => {
   try {
-    if (!req.user) {
-      return res.redirect('/login');
-    }
+    // 1. Authentication & Authorization
+    if (!requireInternal(req, res)) return;
 
-    if (!req.user.isInternal) {
-      return res.status(403).render('pages/error.html', {
-        error: {
-          status: 403,
-          message: 'Access denied. Internal users only.'
-        }
-      });
-    }
-
+    // 2. Render response
     res.render('pages/ops_command_center.html', {
       title: 'Command Center',
       user: req.user,
       isInternal: true
     });
   } catch (error) {
-    console.error('Error in GET /ops:', error);
-    logError(error, { path: req.path, userId: req.user?.id });
-    res.status(500).render('pages/error.html', {
-      error: {
-        status: 500,
-        message: 'Failed to load command center'
-      }
-    });
+    handleRouteError(error, req, res);
   }
 });
 
 // GET: Org Tree Sidebar Partial
 app.get('/partials/org-tree-sidebar.html', async (req, res) => {
   try {
-    if (!req.user) {
-      return res.status(401).render('partials/org_tree_sidebar.html', {
-        orgTree: null,
-        error: 'Authentication required'
-      });
-    }
+    // 1. Authentication & Authorization
+    if (!requireInternal(req, res, 'partials/org_tree_sidebar.html')) return;
 
-    if (!req.user.isInternal) {
-      return res.status(403).render('partials/org_tree_sidebar.html', {
-        orgTree: null,
-        error: 'Access denied. Internal users only.'
-      });
-    }
-
+    // 2. Business logic
     const orgTree = await vmpAdapter.getOrgTree(req.user.id);
 
+    // 3. Render response
     res.render('partials/org_tree_sidebar.html', {
       orgTree,
       error: null,
@@ -2017,110 +1899,97 @@ app.get('/partials/org-tree-sidebar.html', async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Error in GET /partials/org-tree-sidebar.html:', error);
-    logError(error, { path: req.path, userId: req.user?.id });
-    res.status(500).render('partials/org_tree_sidebar.html', {
+    handlePartialError(error, req, res, 'partials/org_tree_sidebar.html', {
       orgTree: null,
-      error: error.message || 'Failed to load organization tree'
+      currentScope: {
+        type: req.query.scope_type || null,
+        id: req.query.scope_id || null
+      }
     });
   }
 });
 
-// GET: Scoped Dashboard
+// GET: Scoped Dashboard (Ops Dashboard with Metrics)
 app.get('/ops/dashboard', async (req, res) => {
   try {
-    if (!req.user) {
-      return res.redirect('/login');
-    }
+    // 1. Authentication & Authorization
+    if (!requireInternal(req, res)) return;
 
-    if (!req.user.isInternal) {
-      return res.status(403).render('pages/error.html', {
-        error: {
-          status: 403,
-          message: 'Access denied. Internal users only.'
-        }
+    // 2. Get user context to determine tenant and default scope
+    const userContext = await vmpAdapter.getVendorContext(req.user.id);
+    const tenantId = userContext.vmp_vendors?.tenant_id;
+    if (!tenantId) {
+      return res.status(400).render('pages/error.html', {
+        error: { status: 400, message: 'User must be associated with a tenant' }
       });
     }
 
+    // 3. Business logic - Determine scope from query params or user context
     const { scope_type, scope_id } = req.query;
+    let userScope = null; // null = Super Admin (all), or group_id/company_id
 
-    // If no scope provided, use user's default scope
-    let finalScopeType = scope_type;
-    let finalScopeId = scope_id;
-
-    if (!finalScopeType || !finalScopeId) {
-      // Get user context to determine default scope
-      const userContext = await vmpAdapter.getVendorContext(req.user.id);
+    if (scope_id) {
+      // Use provided scope
+      userScope = scope_id;
+    } else {
+      // Use user's default scope
       if (userContext.scope_group_id) {
-        finalScopeType = 'group';
-        finalScopeId = userContext.scope_group_id;
+        userScope = userContext.scope_group_id;
       } else if (userContext.scope_company_id) {
-        finalScopeType = 'company';
-        finalScopeId = userContext.scope_company_id;
-      } else {
-        // Super admin: show tenant view (all groups/companies)
-        // For now, redirect to /ops (command center home)
-        return res.redirect('/ops');
+        userScope = userContext.scope_company_id;
       }
+      // If neither, userScope remains null (Super Admin)
     }
 
+    // 4. Fetch dashboard metrics
+    const dashboardMetrics = await vmpAdapter.getOpsDashboardMetrics(tenantId, userScope);
+
+    // 5. Determine scope type for UI display
+    let finalScopeType = dashboardMetrics.userScope.type;
+    let finalScopeId = dashboardMetrics.userScope.id;
+
+    // 6. Render response
     res.render('pages/ops_dashboard.html', {
       title: 'Dashboard',
       scopeType: finalScopeType,
       scopeId: finalScopeId,
+      dashboardMetrics,
       user: req.user,
       isInternal: true
     });
   } catch (error) {
-    console.error('Error in GET /ops/dashboard:', error);
-    logError(error, { path: req.path, userId: req.user?.id });
-    res.status(500).render('pages/error.html', {
-      error: {
-        status: 500,
-        message: 'Failed to load dashboard'
-      }
-    });
+    handleRouteError(error, req, res);
   }
 });
 
 // GET: Scoped Dashboard Partial
 app.get('/partials/scoped-dashboard.html', async (req, res) => {
   try {
-    if (!req.user) {
-      return res.status(401).render('partials/scoped_dashboard.html', {
-        dashboard: null,
-        error: 'Authentication required'
-      });
-    }
+    // 1. Authentication & Authorization
+    if (!requireInternal(req, res, 'partials/scoped_dashboard.html')) return;
 
-    if (!req.user.isInternal) {
-      return res.status(403).render('partials/scoped_dashboard.html', {
-        dashboard: null,
-        error: 'Access denied. Internal users only.'
-      });
-    }
-
+    // 2. Input validation
     const { scope_type, scope_id } = req.query;
+    const defaultData = { dashboard: null };
 
     if (!scope_type || !scope_id) {
       return res.status(400).render('partials/scoped_dashboard.html', {
-        dashboard: null,
+        ...defaultData,
         error: 'scope_type and scope_id are required'
       });
     }
 
+    // 3. Business logic
     const dashboard = await vmpAdapter.getScopedDashboard(scope_type, scope_id, req.user.id);
 
+    // 4. Render response
     res.render('partials/scoped_dashboard.html', {
       dashboard,
       error: null
     });
   } catch (error) {
-    console.error('Error in GET /partials/scoped-dashboard.html:', error);
-    logError(error, { path: req.path, userId: req.user?.id });
-    res.status(500).render('partials/scoped_dashboard.html', {
-      dashboard: null,
-      error: error.message || 'Failed to load dashboard'
+    handlePartialError(error, req, res, 'partials/scoped_dashboard.html', {
+      dashboard: null
     });
   }
 });
@@ -2128,19 +1997,10 @@ app.get('/partials/scoped-dashboard.html', async (req, res) => {
 // GET: Ops Case Queue
 app.get('/ops/cases', async (req, res) => {
   try {
-    if (!req.user) {
-      return res.redirect('/login');
-    }
+    // 1. Authentication & Authorization
+    if (!requireInternal(req, res)) return;
 
-    if (!req.user.isInternal) {
-      return res.status(403).render('pages/error.html', {
-        error: {
-          status: 403,
-          message: 'Access denied. Internal users only.'
-        }
-      });
-    }
-
+    // 2. Business logic - Determine scope
     const { scope_type, scope_id } = req.query;
 
     // If no scope provided, use user's default scope
@@ -2160,6 +2020,7 @@ app.get('/ops/cases', async (req, res) => {
       }
     }
 
+    // 3. Render response
     res.render('pages/ops_cases.html', {
       title: 'Case Queue',
       scopeType: finalScopeType,
@@ -2168,43 +2029,29 @@ app.get('/ops/cases', async (req, res) => {
       isInternal: true
     });
   } catch (error) {
-    console.error('Error in GET /ops/cases:', error);
-    logError(error, { path: req.path, userId: req.user?.id });
-    res.status(500).render('pages/error.html', {
-      error: {
-        status: 500,
-        message: 'Failed to load case queue'
-      }
-    });
+    handleRouteError(error, req, res);
   }
 });
 
 // GET: Ops Case Queue Partial
 app.get('/partials/ops-case-queue.html', async (req, res) => {
   try {
-    if (!req.user) {
-      return res.status(401).render('partials/ops_case_queue.html', {
-        cases: [],
-        error: 'Authentication required'
-      });
-    }
+    // 1. Authentication & Authorization
+    if (!requireInternal(req, res, 'partials/ops_case_queue.html')) return;
 
-    if (!req.user.isInternal) {
-      return res.status(403).render('partials/ops_case_queue.html', {
-        cases: [],
-        error: 'Access denied. Internal users only.'
-      });
-    }
-
+    // 2. Input validation
     const { scope_type, scope_id, status, owner_team, case_type } = req.query;
+    const defaultData = { cases: [] };
 
-    if (!scope_type || !scope_id) {
-      return res.status(400).render('partials/ops_case_queue.html', {
-        cases: [],
-        error: 'scope_type and scope_id are required'
-      });
+    if (!validateRequiredQuery(scope_type, 'scope_type', res, 'partials/ops_case_queue.html', defaultData)) {
+      return;
     }
 
+    if (!validateRequiredQuery(scope_id, 'scope_id', res, 'partials/ops_case_queue.html', defaultData)) {
+      return;
+    }
+
+    // 3. Business logic
     const filters = {};
     if (status) filters.status = status;
     if (owner_team) filters.owner_team = owner_team;
@@ -2212,6 +2059,7 @@ app.get('/partials/ops-case-queue.html', async (req, res) => {
 
     const cases = await vmpAdapter.getOpsCaseQueue(scope_type, scope_id, req.user.id, filters);
 
+    // 4. Render response
     res.render('partials/ops_case_queue.html', {
       cases,
       filters: { status, owner_team, case_type },
@@ -2220,11 +2068,10 @@ app.get('/partials/ops-case-queue.html', async (req, res) => {
       error: null
     });
   } catch (error) {
-    console.error('Error in GET /partials/ops-case-queue.html:', error);
-    logError(error, { path: req.path, userId: req.user?.id });
-    res.status(500).render('partials/ops_case_queue.html', {
+    handlePartialError(error, req, res, 'partials/ops_case_queue.html', {
       cases: [],
-      error: error.message || 'Failed to load case queue'
+      scopeType: req.query.scope_type || null,
+      scopeId: req.query.scope_id || null
     });
   }
 });
@@ -2232,19 +2079,10 @@ app.get('/partials/ops-case-queue.html', async (req, res) => {
 // GET: Vendor Directory
 app.get('/ops/vendors', async (req, res) => {
   try {
-    if (!req.user) {
-      return res.redirect('/login');
-    }
+    // 1. Authentication & Authorization
+    if (!requireInternal(req, res)) return;
 
-    if (!req.user.isInternal) {
-      return res.status(403).render('pages/error.html', {
-        error: {
-          status: 403,
-          message: 'Access denied. Internal users only.'
-        }
-      });
-    }
-
+    // 2. Business logic - Determine scope
     const { scope_type, scope_id } = req.query;
 
     // If no scope provided, use user's default scope
@@ -2264,6 +2102,7 @@ app.get('/ops/vendors', async (req, res) => {
       }
     }
 
+    // 3. Render response
     res.render('pages/ops_vendors.html', {
       title: 'Vendor Directory',
       scopeType: finalScopeType,
@@ -2272,64 +2111,48 @@ app.get('/ops/vendors', async (req, res) => {
       isInternal: true
     });
   } catch (error) {
-    console.error('Error in GET /ops/vendors:', error);
-    logError(error, { path: req.path, userId: req.user?.id });
-    res.status(500).render('pages/error.html', {
-      error: {
-        status: 500,
-        message: 'Failed to load vendor directory'
-      }
-    });
+    handleRouteError(error, req, res);
   }
 });
 
 // GET: Decision Log Partial
 app.get('/partials/decision-log.html', async (req, res) => {
   try {
+    // 1. Authentication
+    if (!requireAuth(req, res)) return;
+
+    // 2. Input validation (case_id is optional for partials - can render empty state)
     const { case_id } = req.query;
+    const defaultData = { caseId: null, decisions: [] };
 
     if (!case_id) {
-      return res.render('partials/decision_log.html', {
-        caseId: null,
-        decisions: [],
-        error: 'case_id is required'
-      });
+      return res.render('partials/decision_log.html', defaultData);
     }
 
-    // Validate case_id format (UUID)
-    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(case_id)) {
-      return res.status(400).render('partials/decision_log.html', {
-        caseId: case_id,
-        decisions: [],
-        error: 'Invalid case_id format'
-      });
-    }
+    // Validate UUID if provided
+    if (!validateUUIDParam(case_id, res, 'partials/decision_log.html')) return;
 
-    // Fetch decision log
+    // 3. Business logic
     let decisions = [];
     try {
       decisions = await vmpAdapter.getDecisionLog(case_id);
     } catch (adapterError) {
-      console.error('Adapter error loading decision log:', adapterError);
-      return res.render('partials/decision_log.html', {
+      return handlePartialError(adapterError, req, res, 'partials/decision_log.html', {
         caseId: case_id,
-        decisions: [],
-        error: 'Failed to load decision log'
+        decisions: []
       });
     }
 
+    // 4. Render response
     res.render('partials/decision_log.html', {
       caseId: case_id,
       decisions,
       error: null
     });
   } catch (error) {
-    console.error('Error in GET /partials/decision-log.html:', error);
-    logError(error, { path: req.path, userId: req.user?.id });
-    res.status(500).render('partials/decision_log.html', {
+    handlePartialError(error, req, res, 'partials/decision_log.html', {
       caseId: req.query.case_id || null,
-      decisions: [],
-      error: error.message || 'Failed to load decision log'
+      decisions: []
     });
   }
 });
@@ -2337,34 +2160,32 @@ app.get('/partials/decision-log.html', async (req, res) => {
 // GET: Vendor Directory Partial
 app.get('/partials/vendor-directory.html', async (req, res) => {
   try {
-    if (!req.user) {
-      return res.status(401).render('partials/vendor_directory.html', {
-        vendors: [],
-        error: 'Authentication required'
-      });
-    }
+    // 1. Authentication & Authorization
+    if (!requireInternal(req, res, 'partials/vendor_directory.html')) return;
 
-    if (!req.user.isInternal) {
-      return res.status(403).render('partials/vendor_directory.html', {
-        vendors: [],
-        error: 'Access denied. Internal users only.'
-      });
-    }
-
+    // 2. Input validation
     const { scope_type, scope_id, status } = req.query;
+    const defaultData = {
+      vendors: [],
+      filters: { status: null },
+      scopeType: null,
+      scopeId: null
+    };
 
     if (!scope_type || !scope_id) {
       return res.status(400).render('partials/vendor_directory.html', {
-        vendors: [],
+        ...defaultData,
         error: 'scope_type and scope_id are required'
       });
     }
 
+    // 3. Business logic
     const filters = {};
     if (status) filters.status = status;
 
     const vendors = await vmpAdapter.getVendorDirectory(scope_type, scope_id, req.user.id, filters);
 
+    // 4. Render response
     res.render('partials/vendor_directory.html', {
       vendors,
       filters: { status },
@@ -2373,11 +2194,11 @@ app.get('/partials/vendor-directory.html', async (req, res) => {
       error: null
     });
   } catch (error) {
-    console.error('Error in GET /partials/vendor-directory.html:', error);
-    logError(error, { path: req.path, userId: req.user?.id });
-    res.status(500).render('partials/vendor_directory.html', {
+    handlePartialError(error, req, res, 'partials/vendor_directory.html', {
       vendors: [],
-      error: error.message || 'Failed to load vendor directory'
+      filters: { status: req.query.status || null },
+      scopeType: req.query.scope_type || null,
+      scopeId: req.query.scope_id || null
     });
   }
 });
@@ -2385,31 +2206,14 @@ app.get('/partials/vendor-directory.html', async (req, res) => {
 // GET: Internal Ops Case Detail
 app.get('/ops/cases/:id', async (req, res) => {
   try {
-    if (!req.user) {
-      return res.redirect('/login');
-    }
+    // 1. Authentication & Authorization
+    if (!requireInternal(req, res)) return;
 
-    if (!req.user.isInternal) {
-      return res.status(403).render('pages/error.html', {
-        error: {
-          status: 403,
-          message: 'Access denied. Internal users only.'
-        }
-      });
-    }
-
+    // 2. Input validation
     const caseId = req.params.id;
+    if (!validateUUIDParam(caseId, res)) return;
 
-    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(caseId)) {
-      return res.status(400).render('pages/error.html', {
-        error: {
-          status: 400,
-          message: 'Invalid case ID format'
-        }
-      });
-    }
-
-    // Get case detail for internal users
+    // 3. Business logic - Get case detail for internal users
     let caseDetail = null;
     try {
       caseDetail = await vmpAdapter.getCaseDetailForOps(caseId, req.user.id);
@@ -2423,15 +2227,16 @@ app.get('/ops/cases/:id', async (req, res) => {
         });
       }
     } catch (adapterError) {
-      console.error('Adapter error loading case detail:', adapterError);
-      return res.status(500).render('pages/error.html', {
-        error: {
-          status: 500,
-          message: 'Failed to load case details'
-        }
-      });
+      // If case not found, render page with empty state (not an error)
+      if (adapterError.code === 'NOT_FOUND' || adapterError.message?.includes('not found')) {
+        caseDetail = null;
+      } else {
+        // Other errors: throw to be handled by catch block
+        throw adapterError;
+      }
     }
 
+    // 4. Render response
     res.render('pages/ops_case_detail.html', {
       caseId,
       caseDetail,
@@ -2439,14 +2244,7 @@ app.get('/ops/cases/:id', async (req, res) => {
       user: req.user
     });
   } catch (error) {
-    console.error('Error in GET /ops/cases/:id:', error);
-    logError(error, { path: req.path, userId: req.user?.id });
-    res.status(500).render('pages/error.html', {
-      error: {
-        status: 500,
-        message: 'An error occurred while loading the case'
-      }
-    });
+    handleRouteError(error, req, res);
   }
 });
 
@@ -2465,7 +2263,7 @@ app.get('/partials/compliance-docs.html', async (req, res) => {
     try {
       complianceDocs = await vmpAdapter.getComplianceDocuments(req.user.vendorId);
     } catch (adapterError) {
-      console.error('Adapter error loading compliance documents:', adapterError);
+      logError(adapterError, { path: req.path, userId: req.user?.id, operation: 'loadComplianceDocuments' });
       return res.render('partials/compliance_docs.html', {
         complianceDocs: [],
         error: 'Failed to load compliance documents'
@@ -2477,7 +2275,6 @@ app.get('/partials/compliance-docs.html', async (req, res) => {
       error: null
     });
   } catch (error) {
-    console.error('Error in GET /partials/compliance-docs.html:', error);
     logError(error, { path: req.path, userId: req.user?.id });
     res.status(500).render('partials/compliance_docs.html', {
       complianceDocs: [],
@@ -2489,35 +2286,27 @@ app.get('/partials/compliance-docs.html', async (req, res) => {
 // GET: Contract Library Partial
 app.get('/partials/contract-library.html', async (req, res) => {
   try {
-    if (!req.user) {
-      return res.status(401).render('partials/contract_library.html', {
-        contracts: [],
-        error: 'Authentication required'
-      });
-    }
+    // 1. Authentication
+    if (!requireAuth(req, res)) return;
 
-    // Fetch contracts from adapter
+    // 2. Business logic
     let contracts = [];
     try {
       contracts = await vmpAdapter.getContractLibrary(req.user.vendorId);
     } catch (adapterError) {
-      console.error('Adapter error loading contracts:', adapterError);
-      return res.render('partials/contract_library.html', {
-        contracts: [],
-        error: 'Failed to load contracts'
+      return handlePartialError(adapterError, req, res, 'partials/contract_library.html', {
+        contracts: []
       });
     }
 
+    // 3. Render response
     res.render('partials/contract_library.html', {
       contracts,
       error: null
     });
   } catch (error) {
-    console.error('Error in GET /partials/contract-library.html:', error);
-    logError(error, { path: req.path, userId: req.user?.id });
-    res.status(500).render('partials/contract_library.html', {
-      contracts: [],
-      error: error.message || 'Failed to load contracts'
+    handlePartialError(error, req, res, 'partials/contract_library.html', {
+      contracts: []
     });
   }
 });
@@ -2525,49 +2314,51 @@ app.get('/partials/contract-library.html', async (req, res) => {
 // GET: Remittance Viewer Partial
 app.get('/partials/remittance-viewer.html', async (req, res) => {
   try {
-    if (!req.user) {
-      return res.status(401).render('partials/remittance_viewer.html', {
-        remittanceUrl: null,
-        error: 'Authentication required'
-      });
-    }
+    // 1. Authentication
+    if (!requireAuth(req, res)) return;
 
+    // 2. Input validation
     const { payment_id } = req.query;
-    if (!payment_id) {
-      return res.status(400).render('partials/remittance_viewer.html', {
-        remittanceUrl: null,
-        error: 'payment_id is required'
-      });
+    const defaultData = { remittanceUrl: null, payment: null };
+
+    if (!validateRequiredQuery(payment_id, 'payment_id', res, 'partials/remittance_viewer.html', defaultData)) {
+      return;
     }
 
-    // Get payment detail to retrieve remittance URL
+    // Validate UUID format
+    if (!validateUUIDParam(payment_id, res, 'partials/remittance_viewer.html')) return;
+
+    // 3. Business logic - Get payment detail to retrieve remittance URL
     const payment = await vmpAdapter.getPaymentDetail(payment_id, req.user.vendorId);
 
     if (!payment) {
-      return res.status(404).render('partials/remittance_viewer.html', {
-        remittanceUrl: null,
-        error: 'Payment not found'
-      });
+      return handlePartialError(
+        new NotFoundError('Payment'),
+        req,
+        res,
+        'partials/remittance_viewer.html',
+        defaultData
+      );
     }
 
     if (!payment.remittance_url) {
       return res.render('partials/remittance_viewer.html', {
         remittanceUrl: null,
+        payment: payment,
         error: 'No remittance document available for this payment'
       });
     }
 
+    // 4. Render response
     res.render('partials/remittance_viewer.html', {
       remittanceUrl: payment.remittance_url,
       payment: payment,
       error: null
     });
   } catch (error) {
-    console.error('Error in GET /partials/remittance-viewer.html:', error);
-    logError(error, { path: req.path, userId: req.user?.id });
-    res.status(500).render('partials/remittance_viewer.html', {
+    handlePartialError(error, req, res, 'partials/remittance_viewer.html', {
       remittanceUrl: null,
-      error: error.message || 'Failed to load remittance viewer'
+      payment: null
     });
   }
 });
@@ -2575,37 +2366,27 @@ app.get('/partials/remittance-viewer.html', async (req, res) => {
 // GET: Invoice List Page
 app.get('/invoices', async (req, res) => {
   try {
-    if (!req.user) {
-      return res.redirect('/login');
-    }
+    // 1. Authentication
+    if (!requireAuth(req, res)) return;
 
+    // 2. Render response
     res.render('pages/invoices.html', {
       title: 'Invoices',
       user: req.user,
       isInternal: req.user?.isInternal || false
     });
   } catch (error) {
-    console.error('Error in GET /invoices:', error);
-    logError(error, { path: req.path, userId: req.user?.id });
-    res.status(500).render('pages/error.html', {
-      error: {
-        status: 500,
-        message: 'Failed to load invoices page'
-      }
-    });
+    handleRouteError(error, req, res);
   }
 });
 
 // GET: Invoice List Partial
 app.get('/partials/invoice-list.html', async (req, res) => {
   try {
-    if (!req.user) {
-      return res.status(401).render('partials/invoice_list.html', {
-        invoices: [],
-        error: 'Authentication required'
-      });
-    }
+    // 1. Authentication
+    if (!requireAuth(req, res)) return;
 
+    // 2. Business logic
     const { status, search, company_id } = req.query;
     const filters = {};
     if (status) filters.status = status;
@@ -2617,6 +2398,7 @@ app.get('/partials/invoice-list.html', async (req, res) => {
       filters
     );
 
+    // 3. Render response
     res.render('partials/invoice_list.html', {
       invoices: invoices || [],
       isInternal: req.user?.isInternal || false,
@@ -2624,11 +2406,10 @@ app.get('/partials/invoice-list.html', async (req, res) => {
       error: null
     });
   } catch (error) {
-    console.error('Error in GET /partials/invoice-list.html:', error);
-    res.status(500).render('partials/invoice_list.html', {
+    handlePartialError(error, req, res, 'partials/invoice_list.html', {
       invoices: [],
       isInternal: req.user?.isInternal || false,
-      error: error.message
+      query: req.query
     });
   }
 });
@@ -2636,21 +2417,14 @@ app.get('/partials/invoice-list.html', async (req, res) => {
 // GET: Invoice Detail Page
 app.get('/invoices/:id', async (req, res) => {
   try {
+    // 1. Authentication
+    if (!requireAuth(req, res)) return;
+
+    // 2. Input validation
     const invoiceId = req.params.id;
+    if (!validateUUIDParam(invoiceId, res)) return;
 
-    if (!req.user) {
-      return res.redirect('/login');
-    }
-
-    if (!invoiceId || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(invoiceId)) {
-      return res.status(400).render('pages/error.html', {
-        error: {
-          status: 400,
-          message: 'Invalid invoice ID format'
-        }
-      });
-    }
-
+    // 3. Business logic
     const invoice = await vmpAdapter.getInvoiceDetail(invoiceId, req.user.vendorId);
 
     if (!invoice) {
@@ -2662,6 +2436,7 @@ app.get('/invoices/:id', async (req, res) => {
       });
     }
 
+    // 4. Render response
     res.render('pages/invoice_detail.html', {
       title: `Invoice ${invoice.invoice_num}`,
       invoiceId,
@@ -2670,56 +2445,53 @@ app.get('/invoices/:id', async (req, res) => {
       isInternal: req.user?.isInternal || false
     });
   } catch (error) {
-    console.error('Error in GET /invoices/:id:', error);
-    logError(error, { path: req.path, userId: req.user?.id });
-    res.status(500).render('pages/error.html', {
-      error: {
-        status: 500,
-        message: 'Failed to load invoice'
-      }
-    });
+    handleRouteError(error, req, res);
   }
 });
 
 // GET: Invoice Detail Partial
 app.get('/partials/invoice-detail.html', async (req, res) => {
   try {
+    // 1. Authentication
+    if (!requireAuth(req, res)) return;
+
+    // 2. Input validation
     const invoiceId = req.query.invoice_id;
+    const defaultData = {
+      invoice: null,
+      isInternal: req.user?.isInternal || false
+    };
 
-    if (!req.user) {
-      return res.status(401).render('partials/invoice_detail.html', {
-        invoice: null,
-        error: 'Authentication required'
-      });
+    if (!validateRequiredQuery(invoiceId, 'invoice_id', res, 'partials/invoice_detail.html', defaultData)) {
+      return;
     }
 
-    if (!invoiceId) {
-      return res.status(400).render('partials/invoice_detail.html', {
-        invoice: null,
-        error: 'Invoice ID is required'
-      });
-    }
+    // Validate UUID format
+    if (!validateUUIDParam(invoiceId, res, 'partials/invoice_detail.html')) return;
 
+    // 3. Business logic
     const invoice = await vmpAdapter.getInvoiceDetail(invoiceId, req.user.vendorId);
 
     if (!invoice) {
-      return res.status(404).render('partials/invoice_detail.html', {
-        invoice: null,
-        error: 'Invoice not found or access denied'
-      });
+      return handlePartialError(
+        new NotFoundError('Invoice'),
+        req,
+        res,
+        'partials/invoice_detail.html',
+        defaultData
+      );
     }
 
+    // 4. Render response
     res.render('partials/invoice_detail.html', {
       invoice,
       isInternal: req.user?.isInternal || false,
       error: null
     });
   } catch (error) {
-    console.error('Error in GET /partials/invoice-detail.html:', error);
-    res.status(500).render('partials/invoice_detail.html', {
+    handlePartialError(error, req, res, 'partials/invoice_detail.html', {
       invoice: null,
-      isInternal: req.user?.isInternal || false,
-      error: error.message
+      isInternal: req.user?.isInternal || false
     });
   }
 });
@@ -2727,42 +2499,42 @@ app.get('/partials/invoice-detail.html', async (req, res) => {
 // GET: Matching Status Partial
 app.get('/partials/matching-status.html', async (req, res) => {
   try {
+    // 1. Authentication
+    if (!requireAuth(req, res)) return;
+
+    // 2. Input validation
     const invoiceId = req.query.invoice_id;
+    const defaultData = { matchingStatus: null };
 
-    if (!req.user) {
-      return res.status(401).render('partials/matching_status.html', {
-        matchingStatus: null,
-        error: 'Authentication required'
-      });
+    if (!validateRequiredQuery(invoiceId, 'invoice_id', res, 'partials/matching_status.html', defaultData)) {
+      return;
     }
 
-    if (!invoiceId) {
-      return res.status(400).render('partials/matching_status.html', {
-        matchingStatus: null,
-        error: 'Invoice ID is required'
-      });
-    }
+    // Validate UUID format
+    if (!validateUUIDParam(invoiceId, res, 'partials/matching_status.html')) return;
 
-    // Verify invoice access
+    // 3. Business logic - Verify invoice access
     const invoice = await vmpAdapter.getInvoiceDetail(invoiceId, req.user.vendorId);
     if (!invoice) {
-      return res.status(404).render('partials/matching_status.html', {
-        matchingStatus: null,
-        error: 'Invoice not found or access denied'
-      });
+      return handlePartialError(
+        new NotFoundError('Invoice'),
+        req,
+        res,
+        'partials/matching_status.html',
+        defaultData
+      );
     }
 
     const matchingStatus = await vmpAdapter.getMatchingStatus(invoiceId);
 
+    // 4. Render response
     res.render('partials/matching_status.html', {
       matchingStatus,
       error: null
     });
   } catch (error) {
-    console.error('Error in GET /partials/matching-status.html:', error);
-    res.status(500).render('partials/matching_status.html', {
-      matchingStatus: null,
-      error: error.message
+    handlePartialError(error, req, res, 'partials/matching_status.html', {
+      matchingStatus: null
     });
   }
 });
@@ -2770,22 +2542,16 @@ app.get('/partials/matching-status.html', async (req, res) => {
 // POST: Create Case from Invoice
 app.post('/invoices/:id/open-case', async (req, res) => {
   try {
+    // 1. Authentication
+    if (!requireAuth(req, res)) return;
+
+    // 2. Input validation
     const invoiceId = req.params.id;
+    if (!validateUUIDParam(invoiceId, res)) return;
+
     const { subject } = req.body;
 
-    if (!req.user) {
-      return res.status(401).json({
-        error: 'Authentication required'
-      });
-    }
-
-    if (!invoiceId || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(invoiceId)) {
-      return res.status(400).json({
-        error: 'Invalid invoice ID format'
-      });
-    }
-
-    // Verify invoice access
+    // 3. Business logic - Verify invoice access
     const invoice = await vmpAdapter.getInvoiceDetail(invoiceId, req.user.vendorId);
     if (!invoice) {
       return res.status(404).json({
@@ -2801,11 +2567,10 @@ app.post('/invoices/:id/open-case', async (req, res) => {
       subject || null
     );
 
-    // Redirect to case detail page
+    // 4. Redirect to case detail page
     res.redirect(`/cases/${newCase.id}`);
   } catch (error) {
-    console.error('Error in POST /invoices/:id/open-case:', error);
-    logError(error, { path: req.path, userId: req.user?.id });
+    logError(error, { path: req.path, userId: req.user?.id, invoiceId: req.params.id });
     res.status(500).json({
       error: error.message || 'Failed to create case from invoice'
     });
@@ -2819,66 +2584,37 @@ app.post('/invoices/:id/open-case', async (req, res) => {
 // GET: New Invite Page (Internal Only)
 app.get('/ops/invites/new', async (req, res) => {
   try {
-    if (!req.user) {
-      return res.redirect('/login');
-    }
+    // 1. Authentication & Authorization
+    if (!requireInternal(req, res)) return;
 
-    if (!req.user.isInternal) {
-      return res.status(403).render('pages/error.html', {
-        error: {
-          status: 403,
-          message: 'Access denied. Internal users only.'
-        }
-      });
-    }
-
+    // 2. Render response
     res.render('pages/ops_invite_new.html', {
       title: 'Invite Supplier',
       user: req.user,
       isInternal: true
     });
   } catch (error) {
-    console.error('Error in GET /ops/invites/new:', error);
-    logError(error, { path: req.path, userId: req.user?.id });
-    res.status(500).render('pages/error.html', {
-      error: {
-        status: 500,
-        message: 'Failed to load invite form'
-      }
-    });
+    handleRouteError(error, req, res);
   }
 });
 
 // GET: Invite Form Partial
 app.get('/partials/invite-form.html', async (req, res) => {
   try {
-    if (!req.user) {
-      return res.status(401).render('partials/invite_form.html', {
-        orgTree: null,
-        error: 'Authentication required'
-      });
-    }
+    // 1. Authentication & Authorization
+    if (!requireInternal(req, res, 'partials/invite_form.html')) return;
 
-    if (!req.user.isInternal) {
-      return res.status(403).render('partials/invite_form.html', {
-        orgTree: null,
-        error: 'Access denied. Internal users only.'
-      });
-    }
-
-    // Get org tree for company selection
+    // 2. Business logic - Get org tree for company selection
     const orgTree = await vmpAdapter.getOrgTree(req.user.id);
 
+    // 3. Render response
     res.render('partials/invite_form.html', {
       orgTree,
       error: null
     });
   } catch (error) {
-    console.error('Error in GET /partials/invite-form.html:', error);
-    logError(error, { path: req.path, userId: req.user?.id });
-    res.status(500).render('partials/invite_form.html', {
-      orgTree: null,
-      error: error.message || 'Failed to load invite form'
+    handlePartialError(error, req, res, 'partials/invite_form.html', {
+      orgTree: null
     });
   }
 });
@@ -2886,27 +2622,33 @@ app.get('/partials/invite-form.html', async (req, res) => {
 // POST: Create Invite (Internal Only)
 app.post('/ops/invites', async (req, res) => {
   try {
-    if (!req.user) {
-      return res.status(401).json({
-        error: 'Authentication required'
-      });
-    }
+    // 1. Authentication & Authorization
+    if (!requireInternal(req, res)) return;
 
-    if (!req.user.isInternal) {
-      return res.status(403).json({
-        error: 'Access denied. Internal users only.'
-      });
-    }
-
+    // 2. Input validation
     const { vendor_name, email, company_ids } = req.body;
 
-    if (!vendor_name || !email) {
+    if (!validateRequired(vendor_name, 'vendor_name')) {
       return res.status(400).json({
-        error: 'vendor_name and email are required'
+        error: 'vendor_name is required'
       });
     }
 
-    // Get user context to determine tenant
+    if (!validateRequired(email, 'email')) {
+      return res.status(400).json({
+        error: 'email is required'
+      });
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({
+        error: 'Invalid email format'
+      });
+    }
+
+    // 3. Business logic - Get user context to determine tenant
     const userContext = await vmpAdapter.getVendorContext(req.user.id);
     if (!userContext.vmp_vendors?.tenant_id) {
       return res.status(400).json({
@@ -2950,17 +2692,9 @@ app.post('/ops/invites', async (req, res) => {
         vendorId = newVendor.id;
       }
     } catch (vendorError) {
-      console.error('Error creating/getting vendor:', vendorError);
+      logError(vendorError, { path: req.path, userId: req.user?.id, operation: 'createOrGetVendor' });
       return res.status(500).json({
         error: 'Failed to create or find vendor'
-      });
-    }
-
-    // Validate email format
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      return res.status(400).json({
-        error: 'Invalid email format'
       });
     }
 
@@ -2984,16 +2718,24 @@ app.post('/ops/invites', async (req, res) => {
 
     const inviteUrl = `${req.protocol}://${req.get('host')}${invite.invite_url}`;
 
-    // Return success message as HTML (for HTMX)
-    res.render('partials/invite_form.html', {
-      orgTree: await vmpAdapter.getOrgTree(req.user.id),
-      error: null,
+    // 4. Return JSON response with invite link (for copy-paste)
+    res.status(201).json({
       success: true,
-      inviteUrl: inviteUrl,
-      inviteEmail: email
+      invite: {
+        id: invite.id,
+        token: invite.token,
+        email: invite.email,
+        expires_at: invite.expires_at,
+        link: inviteUrl,
+        invite_url: invite.invite_url // Relative URL path
+      },
+      vendor: {
+        id: vendorId,
+        name: vendor_name.trim()
+      },
+      companies: companyIdsArray.length > 0 ? companyIdsArray : null
     });
   } catch (error) {
-    console.error('Error in POST /ops/invites:', error);
     logError(error, { path: req.path, userId: req.user?.id });
     res.status(500).json({
       error: error.message || 'Failed to create invite'
@@ -3001,49 +2743,57 @@ app.post('/ops/invites', async (req, res) => {
   }
 });
 
-// GET: Accept Invite Page
+// GET: Accept Invite Page (Public Route - No Auth Required)
 app.get('/accept', async (req, res) => {
   try {
+    // 1. Input validation - token is required for this route
     const { token } = req.query;
+    const defaultData = {
+      error: null,
+      invite: null,
+      companies: [],
+      token: null,
+      vendorName: null,
+      tenantName: null
+    };
 
-    if (!token) {
-      return res.render('pages/accept.html', {
-        error: 'Invite token is required',
-        invite: null,
-        companies: []
-      });
+    // Use validateRequiredQuery helper for standardization
+    if (!validateRequiredQuery(token, 'token', res, 'pages/accept.html', defaultData)) {
+      return;
     }
 
-    // Get invite by token
+    // 2. Business logic - Validate invite token
     const invite = await vmpAdapter.getInviteByToken(token);
 
     if (!invite) {
       return res.render('pages/accept.html', {
-        error: 'Invalid or expired invite token',
-        invite: null,
-        companies: []
+        ...defaultData,
+        error: 'Invalid or expired invite token'
       });
     }
 
     if (invite.expired) {
       return res.render('pages/accept.html', {
-        error: 'This invite has expired. Please request a new invite.',
-        invite: null,
-        companies: []
+        ...defaultData,
+        error: 'This invite has expired. Please request a new invite.'
       });
     }
 
     if (invite.used) {
       return res.render('pages/accept.html', {
-        error: 'This invite has already been used.',
-        invite: null,
-        companies: []
+        ...defaultData,
+        error: 'This invite has already been used.'
       });
     }
 
     // Extract companies from vendor-company links
     const companies = invite.vmp_vendor_company_links?.map(link => link.vmp_companies).filter(c => c) || [];
+    
+    // Extract vendor and tenant names
+    const vendorName = invite.vmp_vendors?.name || 'Vendor';
+    const tenantName = invite.vmp_vendors?.vmp_tenants?.name || 'Organization';
 
+    // 3. Render response
     res.render('pages/accept.html', {
       error: null,
       invite: {
@@ -3052,15 +2802,17 @@ app.get('/accept', async (req, res) => {
         vendor: invite.vmp_vendors,
         companies: companies
       },
-      token: token
+      token: token,
+      vendorName: vendorName,
+      tenantName: tenantName
     });
   } catch (error) {
-    console.error('Error in GET /accept:', error);
     logError(error, { path: req.path });
     res.status(500).render('pages/accept.html', {
       error: error.message || 'Failed to load invite',
       invite: null,
-      companies: []
+      companies: [],
+      token: req.query.token || null
     });
   }
 });
@@ -3068,90 +2820,88 @@ app.get('/accept', async (req, res) => {
 // POST: Accept Invite & Create Account
 app.post('/accept', async (req, res) => {
   try {
+    // 1. Input validation (Public Route - No Auth Required)
     const { token, password, password_confirm, display_name } = req.body;
+    const defaultData = {
+      error: null,
+      invite: null,
+      companies: [],
+      token: null,
+      vendorName: null,
+      tenantName: null
+    };
 
-    if (!token) {
+    // Use validateRequired helper for standardization
+    if (!validateRequired(token, 'token')) {
       return res.status(400).render('pages/accept.html', {
-        error: 'Invite token is required',
-        invite: null,
-        companies: []
+        ...defaultData,
+        error: 'Invite token is required'
       });
     }
 
-    if (!password || password.length < 8) {
+    if (!validateRequired(password, 'password')) {
+      const invite = await vmpAdapter.getInviteByToken(token).catch(() => null);
+      const companies = invite?.vmp_vendor_company_links?.map(link => link.vmp_companies).filter(c => c) || [];
       return res.status(400).render('pages/accept.html', {
+        ...defaultData,
+        error: 'Password is required',
+        invite: invite,
+        token: token,
+        companies: companies
+      });
+    }
+
+    if (password.length < 8) {
+      const invite = await vmpAdapter.getInviteByToken(token).catch(() => null);
+      const companies = invite?.vmp_vendor_company_links?.map(link => link.vmp_companies).filter(c => c) || [];
+      return res.status(400).render('pages/accept.html', {
+        ...defaultData,
         error: 'Password must be at least 8 characters long',
-        invite: await vmpAdapter.getInviteByToken(token).catch(() => null),
-        companies: [],
-        token: token
+        invite: invite,
+        token: token,
+        companies: companies
       });
     }
 
     if (password !== password_confirm) {
+      const invite = await vmpAdapter.getInviteByToken(token).catch(() => null);
+      const companies = invite?.vmp_vendor_company_links?.map(link => link.vmp_companies).filter(c => c) || [];
       return res.status(400).render('pages/accept.html', {
+        ...defaultData,
         error: 'Passwords do not match',
-        invite: await vmpAdapter.getInviteByToken(token).catch(() => null),
-        companies: [],
-        token: token
+        invite: invite,
+        token: token,
+        companies: companies
       });
     }
 
-    // Get invite by token
-    const invite = await vmpAdapter.getInviteByToken(token);
-
-    if (!invite) {
-      return res.status(400).render('pages/accept.html', {
-        error: 'Invalid or expired invite token',
-        invite: null,
-        companies: []
-      });
-    }
-
-    if (invite.expired) {
-      return res.status(400).render('pages/accept.html', {
-        error: 'This invite has expired. Please request a new invite.',
-        invite: null,
-        companies: []
-      });
-    }
-
-    if (invite.used) {
-      return res.status(400).render('pages/accept.html', {
-        error: 'This invite has already been used.',
-        invite: null,
-        companies: []
-      });
-    }
-
-    // Hash password
-    const passwordHash = await bcrypt.hash(password, 10);
-
-    // Create vendor user
-    const user = await vmpAdapter.createVendorUser(
-      invite.vendor_id,
-      invite.email,
-      passwordHash,
+    // 2. Business logic - Accept invite and create user (atomic operation)
+    const { user, invite } = await vmpAdapter.acceptInviteAndCreateUser(
+      token,
+      password,
       display_name || null
     );
 
-    // Mark invite as used
-    await vmpAdapter.markInviteAsUsed(invite.id, user.id);
-
-    // Create onboarding case
+    // 3. Create onboarding case
     const companyId = invite.vmp_vendor_company_links?.[0]?.company_id || null;
     const onboardingCase = await vmpAdapter.createOnboardingCase(
       invite.vendor_id,
       companyId
     );
 
-    // Create session and log user in
-    const session = await vmpAdapter.createSession(user.id);
-    req.session.sessionId = session.sessionId;
-
-    // Redirect to onboarding case
-    res.redirect(`/cases/${onboardingCase.id}`);
+    // 4. Create session and log user in (express-session stores userId in session)
+    req.session.userId = user.id;
+    req.session.save((err) => {
+      if (err) {
+        logError(err, { path: req.path, operation: 'createSession' });
+        return res.status(500).render('pages/error.html', {
+          error: { status: 500, message: 'Failed to create session' }
+        });
+      }
+      // 5. Redirect to onboarding case
+      res.redirect(`/cases/${onboardingCase.id}`);
+    });
   } catch (error) {
-    console.error('Error in POST /accept:', error);
     logError(error, { path: req.path });
 
     // Try to get invite for error display
@@ -3174,27 +2924,14 @@ app.post('/accept', async (req, res) => {
 // POST: Approve Onboarding (Internal Only)
 app.post('/cases/:id/approve-onboarding', async (req, res) => {
   try {
+    // 1. Authentication & Authorization
+    if (!requireInternal(req, res)) return;
+
+    // 2. Input validation
     const caseId = req.params.id;
+    if (!validateUUIDParam(caseId, res)) return;
 
-    if (!req.user) {
-      return res.status(401).json({
-        error: 'Authentication required'
-      });
-    }
-
-    if (!req.user.isInternal) {
-      return res.status(403).json({
-        error: 'Access denied. Internal users only.'
-      });
-    }
-
-    if (!caseId || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(caseId)) {
-      return res.status(400).json({
-        error: 'Invalid case ID format'
-      });
-    }
-
-    // Approve onboarding
+    // 3. Business logic - Approve onboarding
     const updatedCase = await vmpAdapter.approveOnboarding(caseId, req.user.id);
 
     // Fetch updated case detail and return refreshed partial
@@ -3207,7 +2944,7 @@ app.post('/cases/:id/approve-onboarding', async (req, res) => {
         user: req.user
       });
     } catch (refreshError) {
-      console.error('Error refreshing case detail after approval:', refreshError);
+      logError(refreshError, { path: req.path, userId: req.user?.id, operation: 'refreshCaseDetailAfterApproval' });
       // Return JSON fallback if refresh fails
       res.json({
         success: true,
@@ -3216,7 +2953,6 @@ app.post('/cases/:id/approve-onboarding', async (req, res) => {
       });
     }
   } catch (error) {
-    console.error('Error in POST /cases/:id/approve-onboarding:', error);
     logError(error, { path: req.path, userId: req.user?.id });
     res.status(500).json({
       error: error.message || 'Failed to approve onboarding'
@@ -3228,7 +2964,7 @@ app.post('/cases/:id/approve-onboarding', async (req, res) => {
 // LOCKED to login3.html - No rollback switches
 app.get('/login', (req, res) => {
   // If already logged in, redirect to home
-  if (req.session?.sessionId) {
+  if (req.session?.userId) {
     return res.redirect('/home');
   }
   res.render('pages/login3.html', { error: null });
@@ -3236,7 +2972,7 @@ app.get('/login', (req, res) => {
 
 // Legacy login redirects
 app.get('/login4', (req, res) => {
-  if (req.session?.sessionId) {
+  if (req.session?.userId) {
     return res.redirect('/home');
   }
   res.redirect(302, '/login');
@@ -3277,20 +3013,20 @@ app.post('/login', async (req, res) => {
       });
     }
 
-    // Create session
-    const { sessionId } = await vmpAdapter.createSession(user.id, {
-      email: user.email,
-      loginAt: new Date().toISOString()
-    });
-
-    // Set session cookie
-    req.session.sessionId = sessionId;
+    // Create session (express-session stores userId in session)
     req.session.userId = user.id;
-
-    // Redirect to home
-    res.redirect('/home');
+    req.session.save((err) => {
+      if (err) {
+        logError(err, { path: req.path, operation: 'createSession' });
+        return res.status(500).render('pages/error.html', {
+          error: { status: 500, message: 'Failed to create session' }
+        });
+      }
+      // Redirect to home
+      res.redirect('/home');
+    });
   } catch (error) {
-    console.error('Login error:', error);
+    logError(error, { path: req.path, operation: 'login' });
     res.render('pages/login3.html', {
       error: 'An error occurred during login. Please try again.'
     });
@@ -3299,18 +3035,13 @@ app.post('/login', async (req, res) => {
 
 // 3b. Logout Handler
 app.post('/logout', async (req, res) => {
-  const sessionId = req.session?.sessionId;
-
-  if (sessionId) {
-    try {
-      await vmpAdapter.deleteSession(sessionId);
-    } catch (error) {
-      console.error('Logout error:', error);
+  // Destroy session (express-session handles cleanup in PostgreSQL)
+  req.session.destroy((err) => {
+    if (err) {
+      logError(err, { path: req.path, operation: 'logout' });
     }
-  }
-
-  req.session = null;
-  res.redirect('/login');
+    res.redirect('/login');
+  });
 });
 
 // 3b. Login3 (Canonical redirect to /login) - handled above
@@ -3358,7 +3089,7 @@ app.get('/test', (req, res) => {
   try {
     res.render('pages/test.html');
   } catch (error) {
-    console.error('Error rendering test page:', error);
+    logError(error, { path: req.path, operation: 'renderTestPage' });
     res.status(500).send(`<h1>Error: ${error.message}</h1>`);
   }
 });
@@ -3368,7 +3099,7 @@ app.get('/examples', (req, res) => {
   try {
     res.render('pages/examples.html');
   } catch (error) {
-    console.error('Error rendering examples page:', error);
+    logError(error, { path: req.path, operation: 'renderExamplesPage' });
     res.status(500).send(`
             <h1>Error loading examples</h1>
             <pre>${error.message}</pre>
@@ -3382,7 +3113,7 @@ app.get('/components', (req, res) => {
   try {
     res.render('pages/components-showcase.html');
   } catch (error) {
-    console.error('Error rendering components showcase:', error);
+    logError(error, { path: req.path, operation: 'renderComponentsShowcase' });
     res.status(500).send(`
             <h1>Error loading components showcase</h1>
             <pre>${error.message}</pre>
@@ -3396,7 +3127,7 @@ app.get('/snippets-test', (req, res) => {
   try {
     res.render('pages/snippets-test.html');
   } catch (error) {
-    console.error('Error rendering snippets test page:', error);
+    logError(error, { path: req.path, operation: 'renderSnippetsTestPage' });
     res.status(500).send(`
             <h1>Error loading snippets test page</h1>
             <pre>${error.message}</pre>
@@ -3477,3 +3208,4 @@ if (env.NODE_ENV !== 'production' && env.NODE_ENV !== 'test') {
     console.log(`Environment: ${env.NODE_ENV}`);
   });
 }
+

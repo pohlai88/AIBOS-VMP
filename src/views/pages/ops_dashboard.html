@@ -18,20 +18,69 @@
         </aside>
 
         <!-- Main Content Area -->
-        <main class="flex-1 overflow-y-auto">
+        <main id="dashboard-main-content" class="flex-1 overflow-y-auto">
             <div class="vmp-container max-w-7xl mx-auto p-6">
                 <header class="mb-6">
                     <h1 class="vmp-h1 mb-2">Dashboard</h1>
                     <p class="vmp-body vmp-muted">
                         {% if scopeType == 'group' %}
                         Director View: Group-wide metrics
-                        {% else %}
+                        {% elif scopeType == 'company' %}
                         Manager View: Company-specific metrics
+                        {% else %}
+                        Super Admin View: Tenant-wide metrics
                         {% endif %}
                     </p>
                 </header>
 
-                <!-- Scoped Dashboard Content -->
+                <!-- Dashboard Metrics Cards -->
+                {% if dashboardMetrics %}
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                    <!-- Action Items Card -->
+                    <div class="vmp-panel p-4 border vmp-border-color">
+                        <div class="vmp-label-kicker opacity-50 mb-1">ACTION ITEMS</div>
+                        <div class="vmp-h3 vmp-text-warn">
+                            {{ dashboardMetrics.metrics.actionItems }}
+                        </div>
+                        <div class="vmp-caption vmp-muted mt-1">High Priority Cases</div>
+                    </div>
+
+                    <!-- Pending Invoice Volume Card -->
+                    <div class="vmp-panel p-4 border vmp-border-color">
+                        <div class="vmp-label-kicker opacity-50 mb-1">PENDING VOLUME</div>
+                        <div class="vmp-h3">
+                            {{ "%.2f"|format(dashboardMetrics.metrics.pendingInvoiceVolume) if dashboardMetrics.metrics.pendingInvoiceVolume else '0.00' }}
+                        </div>
+                        <div class="vmp-caption vmp-muted mt-1">Total AP Exposure</div>
+                    </div>
+
+                    <!-- Pending Invites Card -->
+                    <div class="vmp-panel p-4 border vmp-border-color">
+                        <div class="vmp-label-kicker opacity-50 mb-1">PENDING INVITES</div>
+                        <div class="vmp-h3">
+                            {{ dashboardMetrics.metrics.pendingInvites }}
+                        </div>
+                        <div class="vmp-caption vmp-muted mt-1">Awaiting Response</div>
+                    </div>
+
+                    <!-- Active Vendors Card -->
+                    <div class="vmp-panel p-4 border vmp-border-color">
+                        <div class="vmp-label-kicker opacity-50 mb-1">ACTIVE VENDORS</div>
+                        <div class="vmp-h3">
+                            {{ dashboardMetrics.metrics.activeVendors }}
+                        </div>
+                        <div class="vmp-caption vmp-muted mt-1">Onboarded Suppliers</div>
+                    </div>
+                </div>
+                {% else %}
+                <div class="vmp-panel p-6 border vmp-border-color mb-6">
+                    <div class="vmp-body vmp-muted text-center">
+                        Loading dashboard metrics...
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Scoped Dashboard Content (Detailed View) -->
                 <div id="scoped-dashboard-container"
                      hx-get="/partials/scoped-dashboard.html?scope_type={{ scopeType }}&scope_id={{ scopeId }}"
                      hx-trigger="load"

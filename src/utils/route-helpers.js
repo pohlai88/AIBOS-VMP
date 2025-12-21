@@ -51,19 +51,25 @@ export function requireAuth(req, res) {
  * @param {object} req - Express request object
  * @param {object} res - Express response object
  * @param {string} template - Template to render on error (default: 'pages/error.html')
+ * @param {string} customMessage - Custom error message (optional)
  * @returns {boolean} - True if internal, false if access denied
  */
-export function requireInternal(req, res, template = 'pages/error.html') {
+export function requireInternal(req, res, template = 'pages/error.html', customMessage = null) {
   if (!req.user) {
     res.status(401).redirect('/login');
     return false;
   }
   
   if (!req.user.isInternal) {
+    const message = customMessage || 'Access denied. Internal users only.';
+    
+    // Partial templates expect error as a string, page templates expect an object
+    const isPartial = template.startsWith('partials/');
+    
     res.status(403).render(template, {
-      error: {
+      error: isPartial ? message : {
         status: 403,
-        message: 'Access denied. Internal users only.'
+        message: message
       }
     });
     return false;
@@ -165,14 +171,15 @@ export function handleRouteError(error, req, res, template = 'pages/error.html',
 
 /**
  * Standardized partial error handler (for HTMX partials)
- * Returns 200 with error in template for graceful degradation
+ * Returns 200 with error in template for graceful degradation, unless useStatusCodes is true
  * @param {Error} error - Error to handle
  * @param {object} req - Express request object
  * @param {object} res - Express response object
  * @param {string} template - Template to render
  * @param {object} defaultData - Default data to pass to template
+ * @param {boolean} useStatusCodes - If true, return proper HTTP status codes instead of 200
  */
-export function handlePartialError(error, req, res, template, defaultData = {}) {
+export function handlePartialError(error, req, res, template, defaultData = {}, useStatusCodes = false) {
   // Log error with context
   logError(error, {
     path: req.path,
@@ -180,10 +187,32 @@ export function handlePartialError(error, req, res, template, defaultData = {}) 
     userId: req.user?.id
   });
 
-  // Return 200 with error in template (graceful degradation for HTMX)
-  res.status(200).render(template, {
+  // Determine status code
+  let status = 200;
+  let message = error.message || 'An error occurred';
+
+  if (useStatusCodes) {
+    if (error instanceof ValidationError) {
+      status = 400;
+    } else if (error instanceof NotFoundError) {
+      status = 404;
+    } else if (error instanceof ForbiddenError) {
+      status = 403;
+    } else if (error instanceof UnauthorizedError) {
+      status = 401;
+    } else if (error.statusCode) {
+      status = error.statusCode;
+    } else {
+      status = 500;
+    }
+  }
+
+  // Render error response
+  // Templates expect error as a string, so pass message directly
+  // This ensures the error message appears in the rendered HTML for tests
+  res.status(status).render(template, {
     ...defaultData,
-    error: error.message || 'An error occurred'
+    error: message
   });
 }
 

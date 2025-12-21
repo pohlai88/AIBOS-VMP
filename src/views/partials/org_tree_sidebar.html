@@ -16,30 +16,51 @@
             <div class="vmp-body-small font-medium">{{ orgTree.tenant.name }}</div>
         </div>
 
+        <!-- Tenant Root Link (Super Admin) -->
+        <div class="mb-4">
+            <a href="/ops/dashboard"
+               hx-get="/ops/dashboard"
+               hx-target="#dashboard-main-content"
+               hx-select="#dashboard-main-content"
+               hx-swap="innerHTML"
+               hx-push-url="true"
+               class="block p-2 rounded-lg border vmp-border-color hover:vmp-bg-panel transition-colors
+                      {% if not currentScope.type or not currentScope.id %}vmp-bg-panel{% endif %}">
+                <div class="vmp-body-small font-medium">{{ orgTree.tenant.name }}</div>
+                <div class="vmp-caption vmp-muted">All Groups & Companies</div>
+            </a>
+        </div>
+
         <!-- Groups -->
         {% if orgTree.groups and orgTree.groups|length > 0 %}
         <div class="space-y-1">
             <div class="vmp-label-kicker mb-2 opacity-60">GROUPS</div>
             {% for group in orgTree.groups %}
             <div class="mb-2">
-                <a href="/ops/dashboard?scope_type=group&scope_id={{ group.id }}"
-                   hx-get="/partials/scoped-dashboard.html?scope_type=group&scope_id={{ group.id }}"
-                   hx-target="#dashboard-content"
+                <a href="/ops/dashboard?scope_id={{ group.id }}"
+                   hx-get="/ops/dashboard?scope_id={{ group.id }}"
+                   hx-target="#dashboard-main-content"
+                   hx-select="#dashboard-main-content"
                    hx-swap="innerHTML"
+                   hx-push-url="true"
                    class="block p-2 rounded-lg border vmp-border-color hover:vmp-bg-panel transition-colors
                           {% if currentScope.type == 'group' and currentScope.id == group.id %}vmp-bg-panel{% endif %}">
                     <div class="vmp-body-small font-medium">{{ group.name }}</div>
+                    {% if group.code %}
                     <div class="vmp-caption vmp-muted">{{ group.code }}</div>
+                    {% endif %}
                 </a>
                 
                 <!-- Companies in Group -->
                 {% if group.companies and group.companies|length > 0 %}
                 <div class="ml-4 mt-1 space-y-1">
                     {% for company in group.companies %}
-                    <a href="/ops/dashboard?scope_type=company&scope_id={{ company.id }}"
-                       hx-get="/partials/scoped-dashboard.html?scope_type=company&scope_id={{ company.id }}"
-                       hx-target="#dashboard-content"
+                    <a href="/ops/dashboard?scope_id={{ company.id }}"
+                       hx-get="/ops/dashboard?scope_id={{ company.id }}"
+                       hx-target="#dashboard-main-content"
+                       hx-select="#dashboard-main-content"
                        hx-swap="innerHTML"
+                       hx-push-url="true"
                        class="block p-1.5 rounded border vmp-border-color hover:vmp-bg-panel transition-colors text-sm
                               {% if currentScope.type == 'company' and currentScope.id == company.id %}vmp-bg-panel{% endif %}">
                         <div class="vmp-body-small">{{ company.name }}</div>
@@ -60,10 +81,12 @@
         <div class="space-y-1 mt-4">
             <div class="vmp-label-kicker mb-2 opacity-60">COMPANIES</div>
             {% for company in orgTree.ungroupedCompanies %}
-            <a href="/ops/dashboard?scope_type=company&scope_id={{ company.id }}"
-               hx-get="/partials/scoped-dashboard.html?scope_type=company&scope_id={{ company.id }}"
-               hx-target="#dashboard-content"
+            <a href="/ops/dashboard?scope_id={{ company.id }}"
+               hx-get="/ops/dashboard?scope_id={{ company.id }}"
+               hx-target="#dashboard-main-content"
+               hx-select="#dashboard-main-content"
                hx-swap="innerHTML"
+               hx-push-url="true"
                class="block p-2 rounded-lg border vmp-border-color hover:vmp-bg-panel transition-colors
                       {% if currentScope.type == 'company' and currentScope.id == company.id %}vmp-bg-panel{% endif %}">
                 <div class="vmp-body-small font-medium">{{ company.name }}</div>

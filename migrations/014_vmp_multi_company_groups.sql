@@ -12,7 +12,8 @@ CREATE TABLE IF NOT EXISTS vmp_groups (
     name TEXT NOT NULL, -- e.g., "Global Retail Group", "Retail Division"
     code TEXT NOT NULL, -- Internal Alias Code (e.g., "RETAIL-GROUP")
     director_user_id UUID REFERENCES vmp_vendor_users(id) ON DELETE SET NULL,
-    director_name TEXT, -- e.g., "John Smith (Director, Retail Division)"
+    director_name TEXT, -- e.g., "John Smith"
+    director_title TEXT, -- e.g., "Director, Retail Division"
     director_phone TEXT, -- Emergency contact phone (revealed on Break Glass)
     director_email TEXT, -- Emergency contact email (revealed on Break Glass)
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -23,7 +24,8 @@ CREATE TABLE IF NOT EXISTS vmp_groups (
 COMMENT ON TABLE vmp_groups IS 'Logical grouping of companies for "Director View" - allows monitoring across multiple legal entities';
 COMMENT ON COLUMN vmp_groups.code IS 'Internal alias code for programmatic reference (e.g., "RETAIL-GROUP", "HOLDINGS")';
 COMMENT ON COLUMN vmp_groups.director_user_id IS 'Internal user assigned as Group Director (for Break Glass Protocol)';
-COMMENT ON COLUMN vmp_groups.director_name IS 'Director display name (e.g., "John Smith (Director, Retail Division)")';
+COMMENT ON COLUMN vmp_groups.director_name IS 'Director display name (e.g., "John Smith")';
+COMMENT ON COLUMN vmp_groups.director_title IS 'Director title/role (e.g., "Director, Retail Division")';
 COMMENT ON COLUMN vmp_groups.director_phone IS 'Emergency contact phone - revealed only on Level 3 escalation (Break Glass)';
 COMMENT ON COLUMN vmp_groups.director_email IS 'Emergency contact email - revealed only on Level 3 escalation (Break Glass)';
 
