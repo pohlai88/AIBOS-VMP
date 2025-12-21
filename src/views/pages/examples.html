@@ -1,0 +1,373 @@
+{% extends "layout.html" %}
+
+{% block title %}Supabase UI Examples · NexusCanon VMP{% endblock %}
+
+{% block content %}
+<div class="h-full overflow-y-auto">
+  <div class="max-w-[1400px] mx-auto p-6 pb-12">
+    
+    <!-- Header -->
+    <div class="mb-8">
+      <div class="vmp-kicker mb-3">// design system examples</div>
+      <h1 class="font-serif text-4xl md:text-5xl tracking-[-0.02em] leading-[1.05] mb-4">
+        Supabase UI Integration
+      </h1>
+      <p class="text-sm leading-relaxed max-w-[64ch] vmp-muted mb-6">
+        All components maintain the "Deep Void" aesthetic and SSOT compliance. 
+        Reference: <span class="vmp-inline vmp-inline-mono">GSS v1.3.1</span>
+      </p>
+      
+      <!-- Quick Links -->
+      <div class="vmp-slab p-4 mb-6">
+        <div class="vmp-kicker mb-3">// new components</div>
+        <div class="flex flex-wrap items-center gap-3 mb-3">
+          <a href="/components" class="vmp-btn vmp-btn-primary text-sm">
+            View New Components →
+          </a>
+        </div>
+        <div class="text-xs vmp-muted leading-relaxed">
+          <span class="vmp-inline">File Upload</span> · 
+          <span class="vmp-inline">Avatar</span> · 
+          <span class="vmp-inline">OAuth</span> · 
+          <span class="vmp-inline">Validation</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Examples Content -->
+    <div class="space-y-8">
+      
+      <!-- Button Variants -->
+      <section class="vmp-card">
+        <div class="vmp-card-head">
+          <div class="vmp-kicker vmp-kicker-strong">button variants</div>
+        </div>
+        <div class="vmp-card-body space-y-4">
+          <div class="flex flex-wrap gap-3">
+            <button class="vmp-btn">Default</button>
+            <button class="vmp-btn vmp-btn-primary">Primary</button>
+            <button class="vmp-btn vmp-btn-danger">Danger</button>
+            <button class="vmp-btn vmp-btn-ghost">Ghost</button>
+            <button class="vmp-btn vmp-btn-outline">Outline</button>
+            <button class="vmp-btn" disabled>Disabled</button>
+            <button class="vmp-btn vmp-btn-loading">Loading</button>
+          </div>
+          <div class="text-xs vmp-muted mt-4">
+            Use <span class="vmp-inline vmp-inline-mono">vmp-btn</span> with variants: 
+            <span class="vmp-inline">primary</span>, 
+            <span class="vmp-inline">danger</span>, 
+            <span class="vmp-inline">ghost</span>, 
+            <span class="vmp-inline">outline</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Enhanced Form Controls -->
+      <section class="vmp-card">
+        <div class="vmp-card-head">
+          <div class="vmp-kicker vmp-kicker-strong">form controls</div>
+        </div>
+        <div class="vmp-card-body space-y-4">
+          <div>
+            <label class="block text-xs vmp-muted mb-2.5 font-medium" for="example-input">
+              Text Input
+            </label>
+            <input id="example-input" type="text" class="vmp-input" placeholder="Enter text..." />
+          </div>
+          
+          <div>
+            <label class="block text-xs vmp-muted mb-2.5 font-medium" for="example-input-error">
+              Text Input (Error State)
+            </label>
+            <input id="example-input-error" type="text" class="vmp-input vmp-input-error" value="invalid input" />
+            <div class="vmp-form-error">This field is required</div>
+          </div>
+          
+          <div>
+            <label class="block text-xs vmp-muted mb-2.5 font-medium" for="example-input-success">
+              Text Input (Success State)
+            </label>
+            <input id="example-input-success" type="email" class="vmp-input vmp-input-success" value="user@example.com" />
+            <div class="vmp-form-success">Valid email address</div>
+          </div>
+          
+          <div>
+            <label class="block text-xs vmp-muted mb-2.5 font-medium" for="example-textarea">
+              Textarea
+            </label>
+            <textarea id="example-textarea" class="vmp-textarea" placeholder="Enter message..."></textarea>
+          </div>
+          
+          <div>
+            <label class="block text-xs vmp-muted mb-2.5 font-medium" for="example-select">
+              Select Dropdown
+            </label>
+            <select id="example-select" class="vmp-select">
+              <option>Option 1</option>
+              <option>Option 2</option>
+              <option>Option 3</option>
+            </select>
+          </div>
+          
+          <div class="flex items-center gap-4">
+            <label class="inline-flex items-center gap-2 text-sm vmp-muted">
+              <input type="checkbox" class="vmp-checkbox" />
+              Checkbox option
+            </label>
+          </div>
+          
+          <div class="flex items-center gap-4">
+            <label class="inline-flex items-center gap-2 text-sm vmp-muted">
+              <input type="radio" class="vmp-radio" name="example-radio" />
+              Radio option 1
+            </label>
+            <label class="inline-flex items-center gap-2 text-sm vmp-muted">
+              <input type="radio" class="vmp-radio" name="example-radio" />
+              Radio option 2
+            </label>
+          </div>
+        </div>
+      </section>
+
+      <!-- File Upload Dropzone -->
+      <section class="vmp-card">
+        <div class="vmp-card-head">
+          <div class="vmp-kicker vmp-kicker-strong">file upload</div>
+        </div>
+        <div class="vmp-card-body">
+          {% include "partials/file_upload_dropzone.html" %}
+        </div>
+      </section>
+
+      <!-- Avatar Component -->
+      <section class="vmp-card">
+        <div class="vmp-card-head">
+          <div class="vmp-kicker vmp-kicker-strong">avatar</div>
+        </div>
+        <div class="vmp-card-body">
+          <div class="flex items-center gap-6 flex-wrap">
+            <div>
+              <div class="text-xs vmp-muted mb-2">Small</div>
+              {% set size = 'sm' %}
+              {% set name = 'JD' %}
+              {% include "partials/avatar-component.html" %}
+            </div>
+            <div>
+              <div class="text-xs vmp-muted mb-2">Medium</div>
+              {% set size = 'md' %}
+              {% set name = 'John Doe' %}
+              {% include "partials/avatar-component.html" %}
+            </div>
+            <div>
+              <div class="text-xs vmp-muted mb-2">Large</div>
+              {% set size = 'lg' %}
+              {% set name = 'Jane Smith' %}
+              {% include "partials/avatar-component.html" %}
+            </div>
+            <div>
+              <div class="text-xs vmp-muted mb-2">With Image</div>
+              {% set size = 'xl' %}
+              {% set src = 'https://i.pravatar.cc/150?img=12' %}
+              {% set name = 'User' %}
+              {% set uploadable = true %}
+              {% include "partials/avatar-component.html" %}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- OAuth Buttons -->
+      <section class="vmp-card">
+        <div class="vmp-card-head">
+          <div class="vmp-kicker vmp-kicker-strong">oauth authentication</div>
+        </div>
+        <div class="vmp-card-body">
+          <div class="max-w-md">
+            {% include "partials/oauth-github-button.html" %}
+          </div>
+        </div>
+      </section>
+
+      <!-- Badges -->
+      <section class="vmp-card">
+        <div class="vmp-card-head">
+          <div class="vmp-kicker vmp-kicker-strong">badges & status</div>
+        </div>
+        <div class="vmp-card-body">
+          <div class="flex flex-wrap gap-3">
+            <span class="vmp-badge">Default</span>
+            <span class="vmp-badge vmp-badge-ok">Verified</span>
+            <span class="vmp-badge vmp-badge-warn">Pending</span>
+            <span class="vmp-badge vmp-badge-danger">Action Required</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Alerts -->
+      <section class="vmp-card">
+        <div class="vmp-card-head">
+          <div class="vmp-kicker vmp-kicker-strong">alerts</div>
+        </div>
+        <div class="vmp-card-body space-y-3">
+          <div class="vmp-alert">
+            This is a default informational alert.
+          </div>
+          <div class="vmp-alert vmp-alert-ok">
+            Success! Your changes have been saved.
+          </div>
+          <div class="vmp-alert vmp-alert-warn">
+            Warning: This action cannot be undone.
+          </div>
+          <div class="vmp-alert vmp-alert-danger">
+            Error: Failed to process your request.
+          </div>
+        </div>
+      </section>
+
+      <!-- Table -->
+      <section class="vmp-card">
+        <div class="vmp-card-head">
+          <div class="vmp-kicker vmp-kicker-strong">table pattern</div>
+        </div>
+        <div class="vmp-card-body p-0">
+          <table class="vmp-table">
+            <thead>
+              <tr>
+                <th>Case ID</th>
+                <th>Status</th>
+                <th>Created</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>CASE-001</td>
+                <td><span class="vmp-badge vmp-badge-ok">Open</span></td>
+                <td>2025-01-20</td>
+                <td>
+                  <button class="vmp-btn vmp-btn-ghost text-xs">View</button>
+                </td>
+              </tr>
+              <tr>
+                <td>CASE-002</td>
+                <td><span class="vmp-badge vmp-badge-warn">Pending</span></td>
+                <td>2025-01-19</td>
+                <td>
+                  <button class="vmp-btn vmp-btn-ghost text-xs">View</button>
+                </td>
+              </tr>
+              <tr>
+                <td>CASE-003</td>
+                <td><span class="vmp-badge vmp-badge-danger">Blocked</span></td>
+                <td>2025-01-18</td>
+                <td>
+                  <button class="vmp-btn vmp-btn-ghost text-xs">View</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- List -->
+      <section class="vmp-card">
+        <div class="vmp-card-head">
+          <div class="vmp-kicker vmp-kicker-strong">list pattern</div>
+        </div>
+        <div class="vmp-card-body p-0">
+          <ul class="vmp-list">
+            <li class="vmp-list-item">
+              <div class="flex items-center justify-between">
+                <div>
+                  <div class="font-medium">Case #001</div>
+                  <div class="text-sm vmp-muted mt-1">Invoice mismatch - waiting for evidence</div>
+                </div>
+                <span class="vmp-badge vmp-badge-warn">Pending</span>
+              </div>
+            </li>
+            <li class="vmp-list-item">
+              <div class="flex items-center justify-between">
+                <div>
+                  <div class="font-medium">Case #002</div>
+                  <div class="text-sm vmp-muted mt-1">Payment verification - completed</div>
+                </div>
+                <span class="vmp-badge vmp-badge-ok">Verified</span>
+              </div>
+            </li>
+            <li class="vmp-list-item">
+              <div class="flex items-center justify-between">
+                <div>
+                  <div class="font-medium">Case #003</div>
+                  <div class="text-sm vmp-muted mt-1">SOA mapping - action required</div>
+                </div>
+                <span class="vmp-badge vmp-badge-danger">Blocked</span>
+              </div>
+            </li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- Loading States -->
+      <section class="vmp-card">
+        <div class="vmp-card-head">
+          <div class="vmp-kicker vmp-kicker-strong">loading states</div>
+        </div>
+        <div class="vmp-card-body space-y-4">
+          <div class="flex items-center gap-4">
+            <div class="vmp-spinner"></div>
+            <span class="vmp-muted">Small spinner</span>
+          </div>
+          <div class="flex items-center gap-4">
+            <div class="vmp-spinner vmp-spinner-lg"></div>
+            <span class="vmp-muted">Large spinner</span>
+          </div>
+          <div class="space-y-2">
+            <div class="vmp-skeleton h-4 w-full"></div>
+            <div class="vmp-skeleton h-4 w-3/4"></div>
+            <div class="vmp-skeleton h-4 w-1/2"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Empty State -->
+      <section class="vmp-card">
+        <div class="vmp-card-head">
+          <div class="vmp-kicker vmp-kicker-strong">empty state</div>
+        </div>
+        <div class="vmp-card-body">
+          <div class="vmp-empty">
+            <div class="vmp-empty-icon">📭</div>
+            <div class="vmp-empty-title">No cases found</div>
+            <div class="vmp-empty-description">
+              Get started by creating your first case or importing data from your ERP system.
+            </div>
+            <button class="vmp-btn vmp-btn-primary mt-4">Create Case</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Dropdown Example (requires Alpine.js) -->
+      <section class="vmp-card" x-data="{ dropdownOpen: false }">
+        <div class="vmp-card-head">
+          <div class="vmp-kicker vmp-kicker-strong">dropdown (alpine.js)</div>
+        </div>
+        <div class="vmp-card-body">
+          <div class="vmp-dropdown" x-data="{ open: false }">
+            <button class="vmp-btn" @click="open = !open">Actions</button>
+            <div class="vmp-dropdown-menu" x-show="open" @click.away="open = false" x-cloak>
+              <a href="#" class="vmp-dropdown-item">Edit Case</a>
+              <a href="#" class="vmp-dropdown-item">Duplicate</a>
+              <a href="#" class="vmp-dropdown-item">Export</a>
+              <div class="border-t border-white/10 my-1"></div>
+              <a href="#" class="vmp-dropdown-item vmp-signal-danger">Delete</a>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </div>
+
+  </div>
+</div>
+{% endblock %}
+

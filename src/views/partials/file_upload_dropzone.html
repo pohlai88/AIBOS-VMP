@@ -1,0 +1,80 @@
+<!-- Supabase-style File Upload Dropzone Component
+     Usage: Include this partial in your forms
+     Requires: Alpine.js for drag/drop handling
+-->
+
+<div class="vmp-dropzone" x-data="{
+       files: [],
+       isDragging: false,
+       maxSize: {% if maxSize %}{{ maxSize }}{% else %}10485760{% endif %},
+       acceptedTypes: {% if acceptedTypes %}{{ acceptedTypes | tojson }}{% else %}[]{% endif %},
+       handleFiles(filesList) {
+         Array.from(filesList).forEach(file => {
+           if (file.size > this.maxSize) {
+             alert('File too large. Maximum size: ' + (this.maxSize / 1048576).toFixed(1) + 'MB');
+             return;
+           }
+           this.files.push({
+             file: file,
+             name: file.name,
+             size: file.size,
+             type: file.type,
+             status: 'pending',
+             progress: 0
+           });
+         });
+       }
+     }" @dragover.prevent="isDragging = true" @dragleave.prevent="isDragging = false"
+  @drop.prevent="isDragging = false; handleFiles($event.dataTransfer.files)" :class="{ 'dragover': isDragging }">
+
+  <input type="file" {% if multiple %}multiple{% endif %} {% if acceptedTypes %}accept="{{ acceptedTypes }}" {% else
+    %}accept="*/*" {% endif %} @change="handleFiles($event.target.files)" x-ref="fileInput" />
+
+  <div class="vmp-dropzone-icon">
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+        d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+    </svg>
+  </div>
+
+  <div class="vmp-dropzone-text">
+    <span x-show="files.length === 0">Drag and drop files here, or click to select</span>
+    <span x-show="files.length > 0" x-text="files.length + ' file(s) selected'"></span>
+  </div>
+
+  <div class="vmp-dropzone-hint">
+    Maximum file size: <span x-text="(maxSize / 1048576).toFixed(1)"></span>MB
+  </div>
+</div>
+
+<!-- File List -->
+<div class="vmp-file-list" x-show="files.length > 0" x-cloak>
+  <template x-for="(fileItem, index) in files" :key="index">
+    <div class="vmp-file-item">
+      <div class="vmp-file-item-info">
+        <div class="vmp-file-item-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" class="w-4 h-4">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+        </div>
+        <div class="vmp-file-item-details">
+          <div class="vmp-file-item-name" x-text="fileItem.name"></div>
+          <div class="vmp-file-item-size" x-text="(fileItem.size / 1024).toFixed(1) + ' KB'"></div>
+        </div>
+      </div>
+      <div class="vmp-file-item-status">
+        <span class="vmp-badge" x-show="fileItem.status === 'pending'" x-text="'Pending'"></span>
+        <span class="vmp-badge vmp-badge-ok" x-show="fileItem.status === 'uploaded'" x-text="'Uploaded'"></span>
+        <span class="vmp-badge vmp-badge-danger" x-show="fileItem.status === 'error'" x-text="'Error'"></span>
+        <button type="button" class="vmp-file-item-remove" @click="files.splice(index, 1)" aria-label="Remove file">
+          ×
+        </button>
+      </div>
+      <!-- Upload Progress -->
+      <div class="vmp-upload-progress" x-show="fileItem.status === 'uploading'">
+        <div class="vmp-upload-progress-bar" :style="'--progress-width: ' + fileItem.progress + '%'"></div>
+      </div>
+    </div>
+  </template>
+</div>

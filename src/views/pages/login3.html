@@ -1,0 +1,179 @@
+{% extends "layout.html" %}
+{% block title %}NexusCanon // NOIR PROTOCOL{% endblock %}
+
+{% block content %}
+<main class="vmp-login vmp-login--vault vmp-login--noir" x-data="{ 
+  email: '', 
+  password: '',
+  mode: 'login',
+  focused: false,
+  canSubmit() {
+    return this.email.length > 5 && this.password.length > 5;
+  }
+}">
+
+    <div class="vmp-login__bg" aria-hidden="true"></div>
+    <div class="noir-grid-overlay" aria-hidden="true"></div>
+    <div class="vertical-ticker font-mono">GO-LIVE // 2025-12-22 // VMP_2.0.1 // EVIDENCE-FIRST</div>
+
+    <div class="vmp-login__wrap vmp-login__wrap--noir">
+
+        <div class="vmp-login__hero vmp-login__hero--noir">
+            <div class="vmp-brand vmp-brand--noir">
+                <div class="vmp-brand__mark vmp-brand__mark--noir">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="1.5">
+                        <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="currentColor" />
+                        <path d="M2 17L12 22L22 17" stroke="currentColor" />
+                        <path d="M2 12L12 17L22 12" stroke="currentColor" />
+                    </svg>
+                </div>
+                <div class="vmp-brand__stack">
+                    <div class="vmp-brand__name vmp-brand__name--noir">NexusCanon</div>
+                    <div class="vmp-brand__sub vmp-brand__sub--noir font-mono">EST. 2024 // VMP</div>
+                </div>
+            </div>
+
+            <div class="vmp-login__content--noir">
+                <div class="vmp-chip vmp-chip--mono vmp-chip--noir">RESTRICTED ACCESS</div>
+                <h1 class="vmp-login__title vmp-login__title--noir font-serif display-shock">
+                    Enter the <br />
+                    <span class="vmp-title-italic">Protocol.</span>
+                </h1>
+                <p class="vmp-login__lead vmp-login__lead--noir">
+                    Authenticate to open your Case Inbox — upload PO/GRN/Invoice, resolve exceptions, and track payment
+                    posture.
+                </p>
+
+                <div class="mt-5 space-y-2 vmp-caption vmp-muted">
+                    <div>01 — Identify (email)</div>
+                    <div>02 — Attach evidence (PO / GRN / Invoice)</div>
+                    <div>03 — See status (review / approved / settled)</div>
+                </div>
+            </div>
+
+            <div class="vmp-ritual vmp-ritual--noir">
+                <div class="vmp-ritual__row">
+                    <span class="vmp-ritual__label font-mono">Policy</span>
+                    <span class="vmp-ritual__value">3-way match · evidence gates</span>
+                </div>
+                <div class="vmp-ritual__row vmp-ritual__row--border">
+                    <span class="vmp-ritual__label font-mono">Purpose</span>
+                    <span class="vmp-ritual__value vmp-ritual__value--status">
+                        <span class="vmp-status-indicator"></span>
+                        No WhatsApp drift · every claim becomes a case
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <div class="vmp-login__panel vmp-login__panel--noir">
+
+            <div class="vmp-login__card vmp-login__card--noir transition-all duration-500"
+                :class="{ 'is-ready': canSubmit() }">
+
+                <div class="vmp-login__cardhead vmp-login__cardhead--noir">
+                    <div class="vmp-status vmp-status--noir">
+                        <div class="vmp-status__dot"></div>
+                        <span class="vmp-status__text" x-text="canSubmit()
+                ? 'Key Verified — Ready'
+                : (email.length > 5 ? 'Identity captured — Awaiting passkey' : 'Awaiting identity')">
+                        </span>
+                    </div>
+                    <ul class="vmp-steps vmp-steps--noir font-mono">
+                        <li class="vmp-step" :class="{ 'is-on': mode === 'login' }">01</li>
+                        <li class="vmp-step" :class="{ 'is-on': mode === 'sso' }">02</li>
+                        <li class="vmp-step" :class="{ 'is-on': mode === 'rec' }">03</li>
+                    </ul>
+                </div>
+
+                <form class="vmp-login__form vmp-login__form--noir" method="POST" action="/login">
+
+                    <div class="vmp-segment vmp-segment--noir">
+                        <button type="button" class="vmp-segment__btn" :class="{ 'is-selected': mode === 'login' }"
+                            @click="mode = 'login'">EMAIL LOGIN</button>
+                        <button type="button" class="vmp-segment__btn" :class="{ 'is-selected': mode === 'sso' }"
+                            @click="mode = 'sso'">SSO</button>
+                        <button type="button" class="vmp-segment__btn" :class="{ 'is-selected': mode === 'rec' }"
+                            @click="mode = 'rec'">HELP</button>
+                    </div>
+
+                    <div class="vmp-form-fields" x-show="mode === 'login'" x-transition>
+                        <div class="vmp-field vmp-field--noir">
+                            <div class="vmp-field__top">
+                                <label class="vmp-label font-mono">Identity</label>
+                            </div>
+                            <input type="email" name="email" x-model="email" class="vmp-input vmp-input--noir"
+                                placeholder="user@nexus.void" required autocomplete="email">
+                        </div>
+
+                        <div class="vmp-field vmp-field--noir">
+                            <div class="vmp-field__top">
+                                <label class="vmp-label font-mono">Passkey</label>
+                                <button type="button" class="vmp-linkbtn">Forgot?</button>
+                            </div>
+                            <input type="password" name="password" x-model="password"
+                                class="vmp-input vmp-input--noir vmp-input--password" placeholder="••••••••" required
+                                autocomplete="current-password">
+                        </div>
+                    </div>
+
+                    <div class="vmp-form-sso" x-show="mode === 'sso'" x-cloak>
+                        <button type="button" class="vmp-btn vmp-btn-oauth vmp-btn-oauth-github vmp-btn-oauth--noir">
+                            <svg class="vmp-btn-oauth-icon" viewBox="0 0 24 24" fill="currentColor">
+                                <path
+                                    d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.225 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.695.24 2.925.12 3.225.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z" />
+                            </svg>
+                            <span>Continue with GitHub</span>
+                        </button>
+                    </div>
+
+                    <div class="vmp-form-recover" x-show="mode === 'rec'" x-cloak>
+                        <div class="vmp-panel p-4">
+                            <div class="vmp-body-small mb-2">Need help accessing your account?</div>
+                            <div class="vmp-caption vmp-muted mb-4">
+                                Contact your organization's VMP administrator or use the password recovery flow.
+                            </div>
+                            <button type="button" class="vmp-btn vmp-btn-outline w-full">Request Access</button>
+                        </div>
+                    </div>
+
+                    <div class="vmp-form-footer vmp-form-footer--noir">
+                        <div class="vmp-row vmp-row--noir">
+                            <label class="vmp-check vmp-check--noir">
+                                <input type="checkbox" class="vmp-check__box">
+                                <span class="vmp-check__text">Remember Identity</span>
+                            </label>
+                        </div>
+
+                        {% if error %}
+                        <div class="vmp-panel p-3 mb-4 border vmp-border-color"
+                            style="border-color: var(--vmp-danger);">
+                            <div class="vmp-caption vmp-text-danger">{{ error }}</div>
+                        </div>
+                        {% endif %}
+
+                        <button type="submit" class="vmp-btn vmp-btn-brand vmp-btn-wide vmp-btn-lg vmp-btn--noir"
+                            :disabled="!canSubmit()">
+                            <span>INITIATE SESSION</span>
+                            <svg class="vmp-btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M17 8l4 4m0 0l-4 4m4-4H3">
+                                </path>
+                            </svg>
+                        </button>
+                    </div>
+
+                </form>
+            </div>
+
+            <div class="vmp-login__footerline vmp-login__footerline--noir">
+                <p class="font-mono">
+                    Protected by NexusCanon VMP<br>
+                    Authorized Personnel Only
+                </p>
+            </div>
+        </div>
+    </div>
+</main>
+{% endblock %}

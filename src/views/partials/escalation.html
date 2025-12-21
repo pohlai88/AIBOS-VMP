@@ -1,0 +1,114 @@
+<!-- Escalation Cell - Displays escalation hierarchy and contact information -->
+<div class="p-5 border-t vmp-border-color vmp-bg-panel">
+    <div class="vmp-label-kicker vmp-label-kicker-strong mb-4">ESCALATION PATH</div>
+
+    <div class="space-y-4">
+        <!-- Level 1: AI Assistant -->
+        <div class="p-3 rounded-lg border vmp-border-color vmp-bg-panel">
+            <div class="flex items-center justify-between mb-2">
+                <div class="vmp-label">Level 1: AI Assistant</div>
+                <span class="vmp-badge vmp-badge-ok text-xs">ACTIVE</span>
+            </div>
+            <div class="vmp-caption vmp-muted">
+                Automated case resolution and evidence verification.
+            </div>
+        </div>
+
+        <!-- Level 2: AP Manager -->
+        <div class="p-3 rounded-lg border vmp-border-color vmp-bg-panel">
+            <div class="flex items-center justify-between mb-2">
+                <div class="vmp-label">Level 2: AP Manager</div>
+                {% if caseDetail and caseDetail.escalation_level >= 2 %}
+                <span class="vmp-badge vmp-badge-warn text-xs">ESCALATED</span>
+                {% else %}
+                <span class="vmp-badge text-xs">ON CALL</span>
+                {% endif %}
+            </div>
+            <div class="vmp-caption vmp-muted">
+                For complex cases requiring human review.
+            </div>
+            {% if caseDetail and caseDetail.owner_team %}
+            <div class="mt-2 vmp-caption font-mono vmp-subtle">
+                Owner: {{ caseDetail.owner_team }}
+            </div>
+            {% endif %}
+            {% if caseDetail and caseDetail.escalation_level < 2 %}
+            <form hx-post="/cases/{{ caseId }}/escalate" 
+                  hx-target="#case-escalation-container" 
+                  hx-swap="innerHTML"
+                  class="mt-2">
+                <input type="hidden" name="escalation_level" value="2">
+                <button type="submit" 
+                        class="px-3 py-1.5 rounded transition-colors border vmp-action-button vmp-action-button-ghost vmp-bg-veil vmp-border-color hover:vmp-bg-panel text-sm">
+                    ESCALATE TO AP MANAGER
+                </button>
+            </form>
+            {% endif %}
+        </div>
+
+        <!-- Level 3: Break-glass Contact -->
+        <div class="p-3 rounded-lg border vmp-border-color vmp-bg-panel">
+            <div class="flex items-center justify-between mb-2">
+                <div class="vmp-label">Level 3: Break-glass</div>
+                <span class="vmp-badge vmp-badge-warn text-xs">EMERGENCY</span>
+            </div>
+            <div class="vmp-caption vmp-muted">
+                Critical escalation for urgent payment or compliance issues.
+            </div>
+            {% if caseDetail and caseDetail.escalation_level >= 3 %}
+            <div class="mt-2 vmp-caption vmp-signal-warn">
+                ⚠️ Escalated to Level 3 (Break-glass)
+            </div>
+            {% else %}
+            <form hx-post="/cases/{{ caseId }}/escalate" 
+                  hx-target="#case-escalation-container" 
+                  hx-swap="innerHTML"
+                  class="mt-2">
+                <input type="hidden" name="escalation_level" value="3">
+                <button type="submit" 
+                        class="px-3 py-1.5 rounded transition-colors border vmp-action-button vmp-action-button-ghost vmp-bg-veil vmp-border-color hover:vmp-bg-panel text-sm">
+                    REQUEST ESCALATION
+                </button>
+            </form>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Escalation Status -->
+    {% if caseDetail and caseDetail.escalation_level > 0 %}
+    <div class="mt-4 p-3 rounded-lg border 
+        {% if caseDetail.escalation_level >= 3 %}vmp-border-warn vmp-bg-warn vmp-opacity-30
+        {% elif caseDetail.escalation_level >= 2 %}vmp-border-warn vmp-bg-warn vmp-opacity-20
+        {% else %}vmp-border-color vmp-bg-panel{% endif %}">
+        <div class="vmp-label 
+            {% if caseDetail.escalation_level >= 3 %}vmp-text-warn
+            {% elif caseDetail.escalation_level >= 2 %}vmp-text-warn
+            {% endif %} mb-1">
+            {% if caseDetail.escalation_level >= 3 %}
+            Case Escalated to Level 3 (Break-glass)
+            {% elif caseDetail.escalation_level >= 2 %}
+            Case Escalated to Level 2 (AP Manager)
+            {% else %}
+            Case Escalated to Level 1
+            {% endif %}
+        </div>
+        <div class="vmp-caption vmp-muted">
+            {% if caseDetail.escalation_level >= 3 %}
+            Critical escalation active. AP Manager and break-glass contacts have been notified.
+            {% elif caseDetail.escalation_level >= 2 %}
+            Case has been escalated to AP Manager for review.
+            {% else %}
+            Case is being handled by AI Assistant.
+            {% endif %}
+        </div>
+    </div>
+    {% elif caseDetail and caseDetail.status == 'blocked' %}
+    <div class="mt-4 p-3 rounded-lg border vmp-border-warn vmp-bg-warn vmp-opacity-30">
+        <div class="vmp-label vmp-text-warn mb-1">Case Blocked</div>
+        <div class="vmp-caption vmp-muted">
+            This case requires escalation. Contact your AP manager or use the break-glass option above.
+        </div>
+    </div>
+    {% endif %}
+</div>
+

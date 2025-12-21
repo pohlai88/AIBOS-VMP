@@ -1,0 +1,2484 @@
+﻿
+> nexus-vmp-canon@0.1.0 test:coverage
+> vitest run --coverage
+
+
+ RUN  v4.0.16 C:/AI-BOS/AIBOS-VMP
+      Coverage enabled with v8
+
+ Ô£ô tests/utils/checklist-rules.test.js (13 tests) 43ms
+stdout | tests/days5-8.test.js > Days 5-8: Case Detail Functionality
+Checking prerequisites...
+
+stdout | tests/days5-8.test.js > Days 5-8: Case Detail Functionality
+Ô£à Found test case: 64a0d83f-7512-4ca9-9cbc-fb0bb1db5340
+
+stdout | tests/days5-8.test.js > Days 5-8: Case Detail Functionality
+Ô£à Created test session: f31ff75a48b45cd98af1241bef9765fd86d9fa52810bd10ba44c0bfd874c71cb
+
+node.exe : stderr | tests/server-extended.test.js > Server Extended Routes > Home Routes with Data > GET /home3 should 
+handle adapter errors gracefully
+At line:1 char:1
++ & "C:\nvm4w\nodejs/node.exe" "C:\nvm4w\nodejs/node_modules/npm/bin/np ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (stderr | tests/...rors gracefully:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+Error loading cases for home3: Error: Database error
+    at C:/AI-BOS/AIBOS-VMP/tests/server-extended.test.js:80:55
+    at file:///C:/AI-BOS/AIBOS-VMP/node_modules/@vitest/runner/dist/index.js:145:11
+    at file:///C:/AI-BOS/AIBOS-VMP/node_modules/@vitest/runner/dist/index.js:915:26
+    at file:///C:/AI-BOS/AIBOS-VMP/node_modules/@vitest/runner/dist/index.js:1243:20
+    at new Promise (<anonymous>)
+    at runWithTimeout (file:///C:/AI-BOS/AIBOS-VMP/node_modules/@vitest/runner/dist/index.js:1209:10)
+    at file:///C:/AI-BOS/AIBOS-VMP/node_modules/@vitest/runner/dist/index.js:1653:37
+    at Traces.$ (file:///C:/AI-BOS/AIBOS-VMP/node_modules/vitest/dist/chunks/traces.U4xDYhzZ.js:115:27)
+    at trace (file:///C:/AI-BOS/AIBOS-VMP/node_modules/vitest/dist/chunks/test.B8ej_ZHS.js:239:21)
+    at runTest (file:///C:/AI-BOS/AIBOS-VMP/node_modules/@vitest/runner/dist/index.js:1653:12)
+
+stdout | tests/days5-8.test.js > Days 5-8: Case Detail Functionality > Prerequisites Check > Storage bucket check (manual verification required)
+ÔÜá´©Å  Manual check required: Verify vmp-evidence bucket exists in Supabase Storage
+   See: migrations/007_storage_bucket_setup.sql for setup instructions
+
+ ÔØ» tests/days5-8.test.js (29 tests | 9 failed) 5668ms
+       ├ù GET /partials/case-detail.html should return 200 with case_id 335ms
+       ├ù GET /partials/case-detail.html should handle missing case_id 29ms
+       Ô£ô GET /partials/case-detail.html should include HTMX containers 181ms
+       ├ù GET /partials/case-thread.html should return 200 209ms
+       Ô£ô GET /partials/case-thread.html should handle missing case_id 19ms
+       ├ù POST /cases/:id/messages should create a message 188ms
+       Ô£ô POST /cases/:id/messages should reject empty message 172ms
+       Ô£ô POST /cases/:id/messages should require authentication 12ms
+       ├ù GET /partials/case-checklist.html should return 200 522ms
+       ├ù GET /partials/case-checklist.html should handle missing case_id 11ms
+       Ô£ô Checklist rules engine should return steps for invoice case 1ms
+       Ô£ô Checklist rules engine should return steps for payment case 0ms
+       Ô£ô Checklist rules engine should return steps for onboarding case 0ms
+       Ô£ô Checklist rules engine should return steps for SOA case 0ms
+       Ô£ô Checklist rules engine should return default steps for unknown case type 0ms
+       ├ù GET /partials/case-evidence.html should return 200 174ms
+       Ô£ô GET /partials/case-evidence.html should handle missing case_id 8ms
+       Ô£ô POST /cases/:id/evidence should reject request without file 161ms
+       ├ù POST /cases/:id/evidence should reject request without evidence_type 21ms
+       Ô£ô POST /cases/:id/evidence should require authentication 5ms
+       Ô£ô Case detail should load all cells via HTMX  1120ms
+       ├ù Message posting should refresh thread 491ms
+       Ô£ô vmpAdapter.getMessages should return array 156ms
+       Ô£ô vmpAdapter.getChecklistSteps should return array 154ms
+       Ô£ô vmpAdapter.getEvidence should return array 148ms
+       Ô£ô vmpAdapter.ensureChecklistSteps should create steps for invoice case  394ms
+       Ô£ô DEMO_VENDOR_ID should be configured 0ms
+       Ô£ô Supabase connection should work 151ms
+       Ô£ô Storage bucket check (manual verification required) 0ms
+ ÔØ» tests/server-middleware.test.js (14 tests | 3 failed) 6149ms
+       Ô£ô should allow public routes without authentication  899ms
+       Ô£ô should redirect protected routes without session  331ms
+       Ô£ô should allow test auth bypass in test mode  359ms
+       Ô£ô should handle expired session  643ms
+       Ô£ô should handle inactive user  719ms
+       Ô£ô should handle auth middleware errors gracefully  629ms
+       ├ù should accept PDF files 305ms
+       ├ù should accept image files 313ms
+       ├ù should reject disallowed file types 321ms
+       Ô£ô should allow requests within limit  326ms
+       Ô£ô should handle 404 for non-existent routes  326ms
+       Ô£ô should handle async errors in routes  316ms
+       Ô£ô upper filter should uppercase strings  321ms
+       Ô£ô tojson filter should stringify objects  332ms
+ ÔØ» tests/server.test.js (35 tests | 2 failed) 17329ms
+       Ô£ô GET /health should return 200 with status ok  938ms
+       Ô£ô GET / should render landing page  670ms
+       Ô£ô GET /login should return 200  503ms
+       Ô£ô GET /login2 should return 200  491ms
+       Ô£ô GET /login3 should return 200  490ms
+       Ô£ô GET /login4 should return 200  524ms
+       ├ù GET /examples should return 200 501ms
+       ├ù GET /nonexistent should return 404 474ms
+       Ô£ô POST /login should redirect to /home on success  473ms
+       Ô£ô POST /login should show error for missing email  469ms
+       Ô£ô POST /login should show error for missing password  470ms
+       Ô£ô POST /login should show error for invalid credentials  467ms
+       Ô£ô POST /logout should redirect to /login  479ms
+       Ô£ô GET /home should redirect to /login when not authenticated  463ms
+       Ô£ô GET /home should return 200 when authenticated  478ms
+       Ô£ô GET /home2 should redirect to /login when not authenticated  465ms
+       Ô£ô GET /home2 should return 200 when authenticated  473ms
+       Ô£ô GET /dashboard should redirect to /login when not authenticated  465ms
+       Ô£ô GET /home3 should redirect to /login when not authenticated  479ms
+       Ô£ô GET /home4 should redirect to /login when not authenticated  465ms
+       Ô£ô GET /home5 should redirect to /login when not authenticated  479ms
+       Ô£ô GET /partials/case-inbox.html should redirect when not authenticated  464ms
+       Ô£ô GET /partials/case-detail.html should redirect when not authenticated  463ms
+       Ô£ô GET /partials/case-thread.html should redirect when not authenticated  462ms
+       Ô£ô GET /partials/case-checklist.html should redirect when not authenticated  467ms
+       Ô£ô GET /partials/case-evidence.html should redirect when not authenticated  464ms
+       Ô£ô GET /partials/escalation.html should redirect when not authenticated  469ms
+       Ô£ô GET /partials/login-help-access.html should return 200  472ms
+       Ô£ô GET /partials/login-help-sso.html should return 200  475ms
+       Ô£ô GET /partials/login-help-security.html should return 200  476ms
+       Ô£ô GET /partials/file-upload-dropzone.html should redirect when not authenticated  470ms
+       Ô£ô GET /partials/avatar-component.html should redirect when not authenticated  488ms
+       Ô£ô GET /partials/oauth-github-button.html should redirect when not authenticated  489ms
+       Ô£ô Should handle 404 errors  474ms
+       Ô£ô Should handle server errors gracefully  471ms
+stderr | tests/adapters/supabase.test.js > VMP Adapter - Supabase > Evidence Methods > getEvidenceSignedUrl should 
+throw error for invalid path
+Signed URL Error: StorageApiError: Object not found
+    at file:///C:/AI-BOS/AIBOS-VMP/node_modules/@supabase/storage-js/dist/index.mjs:166:10
+    at processTicksAndRejections (node:internal/process/task_queues:105:5) {
+  __isStorageError: true,
+  status: 400,
+  statusCode: '404'
+}
+
+ ÔØ» tests/server-extended.test.js (26 tests | 5 failed) 20364ms
+       Ô£ô GET /home3 should return 200 when authenticated  1386ms
+       Ô£ô GET /home3 should handle adapter errors gracefully  766ms
+       Ô£ô GET /home4 should return 200 when authenticated  806ms
+       Ô£ô GET /home4 should calculate metrics correctly  801ms
+       Ô£ô GET /home5 should return 200 when authenticated  801ms
+       Ô£ô GET /home5 should calculate all metrics  789ms
+       Ô£ô GET /dashboard should return 200 when authenticated  637ms
+       Ô£ô GET /partials/case-inbox.html should return cases when authenticated  791ms
+       ├ù GET /partials/case-inbox.html should handle missing DEMO_VENDOR_ID 809ms
+       Ô£ô GET /partials/case-detail.html should return case detail with caseId  791ms
+       Ô£ô GET /partials/case-detail.html should handle missing caseId  621ms
+       Ô£ô GET /partials/case-thread.html should return messages with caseId  807ms
+       Ô£ô GET /partials/case-thread.html should handle missing caseId  654ms
+       Ô£ô GET /partials/case-checklist.html should return checklist with caseId  1091ms
+       Ô£ô GET /partials/case-evidence.html should return evidence with caseId  806ms
+       Ô£ô GET /partials/escalation.html should return escalation view  627ms
+       Ô£ô POST /cases/:id/messages should create message with valid data  783ms
+       Ô£ô POST /cases/:id/messages should handle missing caseId  656ms
+       Ô£ô POST /cases/:id/messages should handle empty body  813ms
+       Ô£ô POST /cases/:id/messages should handle missing body  839ms
+       Ô£ô POST /cases/:id/evidence should handle missing file  824ms
+       ├ù POST /cases/:id/evidence should handle missing evidence_type 812ms
+       Ô£ô POST /logout should clear session  663ms
+       ├ù GET /test should return 200 646ms
+       ├ù GET /snippets-test should return 200 657ms
+       ├ù GET /components should return 200 679ms
+ Ô£ô tests/server-routes.test.js (29 tests) 21463ms
+       Ô£ô GET /partials/case-inbox.html should return 200 when authenticated  1289ms
+       Ô£ô GET /partials/case-inbox.html should handle missing DEMO_VENDOR_ID  877ms
+       Ô£ô GET /partials/case-detail.html should return 200 with case_id  829ms
+       Ô£ô GET /partials/case-detail.html should handle missing case_id  634ms
+       Ô£ô GET /partials/case-thread.html should return 200 with case_id  805ms
+       Ô£ô GET /partials/case-thread.html should handle missing case_id  635ms
+       Ô£ô POST /cases/:id/messages should create a message  775ms
+       Ô£ô POST /cases/:id/messages should handle empty message  792ms
+       Ô£ô POST /cases/:id/messages should require case_id  629ms
+       Ô£ô GET /partials/case-checklist.html should return 200 with case_id  1103ms
+       Ô£ô GET /partials/case-checklist.html should handle missing case_id  650ms
+       Ô£ô GET /partials/case-evidence.html should return 200 with case_id  785ms
+       Ô£ô GET /partials/case-evidence.html should handle missing case_id  653ms
+       Ô£ô POST /cases/:id/evidence should handle missing file  784ms
+       Ô£ô POST /cases/:id/evidence should reject missing evidence_type  631ms
+       Ô£ô GET /partials/escalation.html should return 200 with case_id  773ms
+       Ô£ô GET /partials/escalation.html should handle missing case_id  620ms
+       Ô£ô GET /home3 should return 200 when authenticated  794ms
+       Ô£ô GET /home4 should return 200 when authenticated  792ms
+       Ô£ô GET /home5 should return 200 when authenticated  819ms
+       Ô£ô POST /partials/login-mock-success.html should return 200  648ms
+       Ô£ô POST /partials/login-mock-magic-sent.html should return 200  639ms
+       Ô£ô GET /partials/login-mock-forgot.html should return 200  632ms
+       Ô£ô GET /partials/login-mock-sso.html should return 200  633ms
+       Ô£ô GET /partials/login-mock-passkey.html should return 200  641ms
+       Ô£ô GET /partials/login-gate-ritual.html should return 200  647ms
+       Ô£ô GET /partials/file-upload-dropzone.html should require authentication  648ms
+       Ô£ô Should handle malformed requests gracefully  649ms
+       Ô£ô Should handle timeout errors  652ms
+stderr | tests/adapters/supabase.test.js > VMP Adapter - Supabase > Error Paths and Edge Cases > getCaseDetail should 
+return null for case not belonging to vendor
+Case Detail Error: {
+  code: '22P02',
+  details: null,
+  hint: null,
+  message: 'invalid input syntax for type uuid: "fake-case-id"'
+}
+
+ Ô£ô tests/adapters/supabase.test.js (51 tests) 31580ms
+       Ô£ô getUserByEmail should return user for valid email  1001ms
+       Ô£ô getUserByEmail should return null for invalid email  533ms
+       Ô£ô verifyPassword should return false for invalid password  746ms
+       Ô£ô createSession should create a session  657ms
+       Ô£ô getSession should return session for valid sessionId  879ms
+       Ô£ô getSession should return null for invalid sessionId  637ms
+       Ô£ô deleteSession should delete a session  961ms
+       Ô£ô getVendorContext should return vendor context  626ms
+       Ô£ô cleanExpiredSessions should not throw  616ms
+       Ô£ô getInbox should return array of cases  629ms
+       Ô£ô getInbox should throw error for missing vendorId  480ms
+       Ô£ô getCaseDetail should return case for valid caseId  645ms
+       Ô£ô getCaseDetail should throw error for missing parameters  456ms
+       Ô£ô getMessages should return array of messages  623ms
+       Ô£ô getMessages should throw error for missing caseId  480ms
+       Ô£ô createMessage should create a message  639ms
+       Ô£ô createMessage should throw error for missing parameters  474ms
+       Ô£ô createMessage should throw error for invalid sender_type  475ms
+       Ô£ô createMessage should throw error for invalid channel_source  472ms
+       Ô£ô getChecklistSteps should return array of steps  663ms
+       Ô£ô getChecklistSteps should throw error for missing caseId  454ms
+       Ô£ô createChecklistStep should create a step  633ms
+       Ô£ô createChecklistStep should throw error for missing parameters  466ms
+       Ô£ô ensureChecklistSteps should create steps for case type  780ms
+       Ô£ô ensureChecklistSteps should throw error for missing parameters  476ms
+       Ô£ô getEvidence should return array of evidence  644ms
+       Ô£ô getEvidence should throw error for missing caseId  472ms
+       Ô£ô computeChecksum should compute SHA-256 hash  475ms
+       Ô£ô getNextEvidenceVersion should return 1 for new evidence type  652ms
+       Ô£ô getNextEvidenceVersion should throw error for missing parameters  477ms
+       Ô£ô generateEvidenceStoragePath should generate valid path  470ms
+       Ô£ô generateEvidenceStoragePath should sanitize filename  478ms
+       Ô£ô getEvidenceSignedUrl should throw error for invalid path  706ms
+       Ô£ô Methods should handle timeouts gracefully  636ms
+       Ô£ô verifyPassword should return true for valid password  695ms
+       Ô£ô verifyPassword should return false for user without password_hash  703ms
+       Ô£ô getSession should auto-delete expired sessions  802ms
+       Ô£ô getCaseDetail should return null for case not belonging to vendor  634ms
+       Ô£ô getInbox should return empty array for vendor with no cases  636ms
+       Ô£ô getMessages should return empty array for case with no messages  660ms
+       Ô£ô getChecklistSteps should return empty array for case with no steps  678ms
+       Ô£ô getEvidence should return empty array for case with no evidence  636ms
+       Ô£ô getNextEvidenceVersion should increment version correctly  641ms
+       Ô£ô generateEvidenceStoragePath should sanitize special characters  481ms
+       Ô£ô generateEvidenceStoragePath should include date  489ms
+       Ô£ô computeChecksum should produce consistent hashes  480ms
+       Ô£ô computeChecksum should produce different hashes for different content  480ms
+       Ô£ô ensureChecklistSteps should not duplicate existing steps  1115ms
+       Ô£ô getVendorContext should throw error for invalid userId  651ms
+       Ô£ô deleteSession should handle already deleted session  650ms
+       Ô£ô cleanExpiredSessions should not throw  627ms
+
+ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ» Failed Tests 19 ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»
+
+ FAIL  tests/days5-8.test.js > Days 5-8: Case Detail Functionality > Day 5: Case Detail Routes > GET 
+/partials/case-detail.html should return 200 with case_id
+AssertionError: expected '<div class="flex flex-col h-full vmp-ÔÇª' to contain 'caseId'
+
+- Expected
++ Received
+
+- caseId
++ <div class="flex flex-col h-full vmp-bg-veil">
++ 
++     <header class="shrink-0 p-6 border-b vmp-border-color vmp-bg-panel">
++         <div class="flex justify-between items-start mb-4">
++             <div>
++                 <div class="flex items-center gap-2 mb-2">
++                     <span class="vmp-tag vmp-tag-mono opacity-50">CASE-64a0d83f</span>
++                     <span class="vmp-subtle">ÔÇó</span>
++                     <span class="vmp-label-kicker">protocol</span>
++                 </div>
++                 <h2 class="vmp-h3 max-w-2xl">
++                     
++                     Invoice #INV-2024-001 Mismatch (Qty)
++                     
++                 </h2>
++             </div>
++ 
++             <div class="vmp-panel px-3 py-2 flex items-center gap-3 vmp-bg-veil">
++                 <div class="text-right">
++                     <div class="vmp-label-kicker opacity-50 mb-0.5">CURRENT STATE</div>
++                     
++                     <div class="vmp-label 
++                          vmp-signal-danger
++                         ">
++                         WAITING SUPPLIER
++                     </div>
++                 </div>
++                 <div class="w-1.5 h-8 rounded-full overflow-hidden relative vmp-bg-panel">
++                     <div class="absolute bottom-0 left-0 right-0 
++                          vmp-fill-danger h-full animate-pulse
++                         ">
++                     </div>
++                 </div>
++             </div>
++         </div>
++ 
++         <div class="grid grid-cols-4 gap-4 mt-2 pt-4 border-t vmp-border-color">
++             <div>
++                 <div class="vmp-label-kicker mb-1">Owner</div>
++                 <div class="vmp-body-small">ap</div>
++             </div>
++             <div>
++                 <div class="vmp-label-kicker mb-1">Entity</div>
++                 <div class="vmp-body-small">ÔÇö</div>
++             </div>
++             <div>
++                 <div class="vmp-label-kicker mb-1">SLA Target</div>
++                 <div class="vmp-body-small font-mono vmp-muted">
++                     
++                     Dec 21
++                     
++                 </div>
++             </div>
++             <div>
++                 <div class="vmp-label-kicker mb-1">Ref ID</div>
++                 <div class="vmp-body-small font-mono vmp-muted truncate">Pending</div>
++             </div>
++         </div>
++     </header>
++ 
++     <div class="flex-1 overflow-hidden grid lg:grid-cols-[1fr_380px]">
++         <!-- Left Column: Thread -->
++         <div class="flex flex-col border-r h-full vmp-border-color">
++             <div id="case-thread-container" 
+hx-get="/partials/case-thread.html?case_id=64a0d83f-7512-4ca9-9cbc-fb0bb1db5340" hx-trigger="load"
++                 hx-target="this" hx-swap="innerHTML" class="flex-1">
++                 <!-- HTMX will load case_thread.html here -->
++                 <div class="flex items-center justify-center h-full">
++                     <div class="vmp-label-kicker animate-pulse opacity-60">Loading thread...</div>
++                 </div>
++             </div>
++         </div>
++ 
++         <!-- Right Column: Checklist + Evidence + Escalation -->
++         <div class="flex flex-col h-full overflow-y-auto vmp-bg-panel">
++             <!-- Checklist Cell -->
++             <div id="case-checklist-container" 
+hx-get="/partials/case-checklist.html?case_id=64a0d83f-7512-4ca9-9cbc-fb0bb1db5340"
++                 hx-trigger="load" hx-target="this" hx-swap="innerHTML" class="shrink-0">
++                 <!-- HTMX will load case_checklist.html here -->
++                 <div class="p-5 border-b vmp-border-color">
++                     <div class="vmp-label-kicker animate-pulse opacity-60">Loading checklist...</div>
++                 </div>
++             </div>
++ 
++             <!-- Evidence Cell -->
++             <div id="case-evidence-container" 
+hx-get="/partials/case-evidence.html?case_id=64a0d83f-7512-4ca9-9cbc-fb0bb1db5340"
++                 hx-trigger="load" hx-target="this" hx-swap="innerHTML" class="flex-1">
++                 <!-- HTMX will load case_evidence.html here -->
++                 <div class="p-5">
++                     <div class="vmp-label-kicker animate-pulse opacity-60">Loading evidence...</div>
++                 </div>
++             </div>
++ 
++             <!-- Escalation Cell -->
++             <div id="case-escalation-container" 
+hx-get="/partials/escalation.html?case_id=64a0d83f-7512-4ca9-9cbc-fb0bb1db5340"
++                 hx-trigger="load" hx-target="this" hx-swap="innerHTML" class="shrink-0">
++                 <!-- HTMX will load escalation.html here -->
++                 <div class="p-5 border-t vmp-border-color">
++                     <div class="vmp-label-kicker animate-pulse opacity-60">Loading escalation...</div>
++                 </div>
++             </div>
++         </div>
++     </div>
++ </div>
+
+ ÔØ» tests/days5-8.test.js:109:29
+    107|       const response = await authenticatedRequest('get', `/partials/caÔÇª
+    108|       expect(response.statusCode).toBe(200);
+    109|       expect(response.text).toContain('caseId');
+       |                             ^
+    110|     });
+    111| 
+
+ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»[1/19]ÔÄ»
+
+ FAIL  tests/days5-8.test.js > Days 5-8: Case Detail Functionality > Day 5: Case Detail Routes > GET 
+/partials/case-detail.html should handle missing case_id
+AssertionError: expected '<div class="flex flex-col h-full vmp-ÔÇª' to contain 'caseId'
+
+- Expected
++ Received
+
+- caseId
++ <div class="flex flex-col h-full vmp-bg-veil">
++ 
++     <header class="shrink-0 p-6 border-b vmp-border-color vmp-bg-panel">
++         <div class="flex justify-between items-start mb-4">
++             <div>
++                 <div class="flex items-center gap-2 mb-2">
++                     <span class="vmp-tag vmp-tag-mono opacity-50">CASE-ÔÇö</span>
++                     <span class="vmp-subtle">ÔÇó</span>
++                     <span class="vmp-label-kicker">protocol</span>
++                 </div>
++                 <h2 class="vmp-h3 max-w-2xl">
++                     
++                     Case ÔÇö
++                     
++                 </h2>
++             </div>
++ 
++             <div class="vmp-panel px-3 py-2 flex items-center gap-3 vmp-bg-veil">
++                 <div class="text-right">
++                     <div class="vmp-label-kicker opacity-50 mb-0.5">CURRENT STATE</div>
++                     
++                     <div class="vmp-label 
++                          vmp-signal-warn
++                         ">
++                         OPEN
++                     </div>
++                 </div>
++                 <div class="w-1.5 h-8 rounded-full overflow-hidden relative vmp-bg-panel">
++                     <div class="absolute bottom-0 left-0 right-0 
++                          vmp-fill-warn h-1/2
++                         ">
++                     </div>
++                 </div>
++             </div>
++         </div>
++ 
++         <div class="grid grid-cols-4 gap-4 mt-2 pt-4 border-t vmp-border-color">
++             <div>
++                 <div class="vmp-label-kicker mb-1">Owner</div>
++                 <div class="vmp-body-small">Unassigned</div>
++             </div>
++             <div>
++                 <div class="vmp-label-kicker mb-1">Entity</div>
++                 <div class="vmp-body-small">ÔÇö</div>
++             </div>
++             <div>
++                 <div class="vmp-label-kicker mb-1">SLA Target</div>
++                 <div class="vmp-body-small font-mono vmp-muted">
++                     
++                     ÔÇö
++                     
++                 </div>
++             </div>
++             <div>
++                 <div class="vmp-label-kicker mb-1">Ref ID</div>
++                 <div class="vmp-body-small font-mono vmp-muted truncate">Pending</div>
++             </div>
++         </div>
++     </header>
++ 
++     <div class="flex-1 overflow-hidden grid lg:grid-cols-[1fr_380px]">
++         <!-- Left Column: Thread -->
++         <div class="flex flex-col border-r h-full vmp-border-color">
++             <div id="case-thread-container" hx-get="/partials/case-thread.html?case_id=" hx-trigger="load"
++                 hx-target="this" hx-swap="innerHTML" class="flex-1">
++                 <!-- HTMX will load case_thread.html here -->
++                 <div class="flex items-center justify-center h-full">
++                     <div class="vmp-label-kicker animate-pulse opacity-60">Loading thread...</div>
++                 </div>
++             </div>
++         </div>
++ 
++         <!-- Right Column: Checklist + Evidence + Escalation -->
++         <div class="flex flex-col h-full overflow-y-auto vmp-bg-panel">
++             <!-- Checklist Cell -->
++             <div id="case-checklist-container" hx-get="/partials/case-checklist.html?case_id="
++                 hx-trigger="load" hx-target="this" hx-swap="innerHTML" class="shrink-0">
++                 <!-- HTMX will load case_checklist.html here -->
++                 <div class="p-5 border-b vmp-border-color">
++                     <div class="vmp-label-kicker animate-pulse opacity-60">Loading checklist...</div>
++                 </div>
++             </div>
++ 
++             <!-- Evidence Cell -->
++             <div id="case-evidence-container" hx-get="/partials/case-evidence.html?case_id="
++                 hx-trigger="load" hx-target="this" hx-swap="innerHTML" class="flex-1">
++                 <!-- HTMX will load case_evidence.html here -->
++                 <div class="p-5">
++                     <div class="vmp-label-kicker animate-pulse opacity-60">Loading evidence...</div>
++                 </div>
++             </div>
++ 
++             <!-- Escalation Cell -->
++             <div id="case-escalation-container" hx-get="/partials/escalation.html?case_id="
++                 hx-trigger="load" hx-target="this" hx-swap="innerHTML" class="shrink-0">
++                 <!-- HTMX will load escalation.html here -->
++                 <div class="p-5 border-t vmp-border-color">
++                     <div class="vmp-label-kicker animate-pulse opacity-60">Loading escalation...</div>
++                 </div>
++             </div>
++         </div>
++     </div>
++ </div>
+
+ ÔØ» tests/days5-8.test.js:115:29
+    113|       const response = await authenticatedRequest('get', '/partials/caÔÇª
+    114|       expect(response.statusCode).toBe(200);
+    115|       expect(response.text).toContain('caseId');
+       |                             ^
+    116|     });
+    117| 
+
+ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»[2/19]ÔÄ»
+
+ FAIL  tests/days5-8.test.js > Days 5-8: Case Detail Functionality > Day 6: Thread Cell Routes > GET 
+/partials/case-thread.html should return 200
+AssertionError: expected '<!-- Case Thread Cell - Displays messÔÇª' to contain 'caseId'
+
+- Expected
++ Received
+
+- caseId
++ <!-- Case Thread Cell - Displays messages for a case -->
++ <div class="flex flex-col h-full">
++     <!-- Thread Messages Area -->
++     <div class="flex-1 overflow-y-auto p-6 space-y-8 relative">
++         <div class="absolute left-9 top-6 bottom-6 w-px vmp-bg-panel"></div>
++ 
++         
++         
++         <div class="relative pl-10 group">
++             <div
++                 class="absolute left-[9px] top-1.5 w-[7px] h-[7px] rounded-full bg-black border transition-colors 
+z-10 vmp-border-color-2 group-hover:vmp-border-color">
++             </div>
++ 
++             <div class="flex items-baseline justify-between mb-1">
++                 <span class="vmp-label">
++                     AI Assistant
++                     <span class="vmp-subtle mx-1">via</span>
++                     portal
++                 </span>
++                 <span class="vmp-caption">
++                     
++                     20:09
++                     
++                 </span>
++             </div>
++ 
++             <div class="vmp-body-small leading-relaxed vmp-panel p-3 rounded-lg rounded-tl-none">
++                 System detected mismatch: PO Qty 50 vs Invoice Qty 55.
++             </div>
++         </div>
++         
++         <div class="relative pl-10 group">
++             <div
++                 class="absolute left-[9px] top-1.5 w-[7px] h-[7px] rounded-full bg-black border transition-colors 
+z-10 vmp-border-color-2 group-hover:vmp-border-color">
++             </div>
++ 
++             <div class="flex items-baseline justify-between mb-1">
++                 <span class="vmp-label">
++                     Vendor
++                     <span class="vmp-subtle mx-1">via</span>
++                     whatsapp
++                 </span>
++                 <span class="vmp-caption">
++                     
++                     20:09
++                     
++                 </span>
++             </div>
++ 
++             <div class="vmp-body-small leading-relaxed vmp-panel p-3 rounded-lg rounded-tl-none">
++                 Checking with logistics.
++             </div>
++         </div>
++         
++         <div class="relative pl-10 group">
++             <div
++                 class="absolute left-[9px] top-1.5 w-[7px] h-[7px] rounded-full bg-black border transition-colors 
+z-10 vmp-border-color-2 group-hover:vmp-border-color">
++             </div>
++ 
++             <div class="flex items-baseline justify-between mb-1">
++                 <span class="vmp-label">
++                     Acme Admin
++                     <span class="vmp-subtle mx-1">via</span>
++                     portal
++                 </span>
++                 <span class="vmp-caption">
++                     
++                     17:00
++                     
++                 </span>
++             </div>
++ 
++             <div class="vmp-body-small leading-relaxed vmp-panel p-3 rounded-lg rounded-tl-none">
++                 Test message from test suite
++             </div>
++         </div>
++         
++         <div class="relative pl-10 group">
++             <div
++                 class="absolute left-[9px] top-1.5 w-[7px] h-[7px] rounded-full bg-black border transition-colors 
+z-10 vmp-border-color-2 group-hover:vmp-border-color">
++             </div>
++ 
++             <div class="flex items-baseline justify-between mb-1">
++                 <span class="vmp-label">
++                     Acme Admin
++                     <span class="vmp-subtle mx-1">via</span>
++                     portal
++                 </span>
++                 <span class="vmp-caption">
++                     
++                     17:00
++                     
++                 </span>
++             </div>
++ 
++             <div class="vmp-body-small leading-relaxed vmp-panel p-3 rounded-lg rounded-tl-none">
++                 Test message from test suite
++             </div>
++         </div>
++         
++         <div class="relative pl-10 group">
++             <div
++                 class="absolute left-[9px] top-1.5 w-[7px] h-[7px] rounded-full bg-black border transition-colors 
+z-10 vmp-border-color-2 group-hover:vmp-border-color">
++             </div>
++ 
++             <div class="flex items-baseline justify-between mb-1">
++                 <span class="vmp-label">
++                     Acme Admin
++                     <span class="vmp-subtle mx-1">via</span>
++                     portal
++                 </span>
++                 <span class="vmp-caption">
++                     
++                     17:00
++                     
++                 </span>
++             </div>
++ 
++             <div class="vmp-body-small leading-relaxed vmp-panel p-3 rounded-lg rounded-tl-none">
++                 Test message from test suite
++             </div>
++         </div>
++         
++         <div class="relative pl-10 group">
++             <div
++                 class="absolute left-[9px] top-1.5 w-[7px] h-[7px] rounded-full bg-black border transition-colors 
+z-10 vmp-border-color-2 group-hover:vmp-border-color">
++             </div>
++ 
++             <div class="flex items-baseline justify-between mb-1">
++                 <span class="vmp-label">
++                     Acme Admin
++                     <span class="vmp-subtle mx-1">via</span>
++                     portal
++                 </span>
++                 <span class="vmp-caption">
++                     
++                     17:01
++                     
++                 </span>
++             </div>
++ 
++             <div class="vmp-body-small leading-relaxed vmp-panel p-3 rounded-lg rounded-tl-none">
++                 Test message from test suite
++             </div>
++         </div>
++         
++         <div class="relative pl-10 group">
++             <div
++                 class="absolute left-[9px] top-1.5 w-[7px] h-[7px] rounded-full bg-black border transition-colors 
+z-10 vmp-border-color-2 group-hover:vmp-border-color">
++             </div>
++ 
++             <div class="flex items-baseline justify-between mb-1">
++                 <span class="vmp-label">
++                     Acme Admin
++                     <span class="vmp-subtle mx-1">via</span>
++                     portal
++                 </span>
++                 <span class="vmp-caption">
++                     
++                     17:01
++                     
++                 </span>
++             </div>
++ 
++             <div class="vmp-body-small leading-relaxed vmp-panel p-3 rounded-lg rounded-tl-none">
++                 Test message from test suite
++             </div>
++         </div>
++         
++         <div class="relative pl-10 group">
++             <div
++                 class="absolute left-[9px] top-1.5 w-[7px] h-[7px] rounded-full bg-black border transition-colors 
+z-10 vmp-border-color-2 group-hover:vmp-border-color">
++             </div>
++ 
++             <div class="flex items-baseline justify-between mb-1">
++                 <span class="vmp-label">
++                     Acme Admin
++                     <span class="vmp-subtle mx-1">via</span>
++                     portal
++                 </span>
++                 <span class="vmp-caption">
++                     
++                     17:02
++                     
++                 </span>
++             </div>
++ 
++             <div class="vmp-body-small leading-relaxed vmp-panel p-3 rounded-lg rounded-tl-none">
++                 Test message from test suite
++             </div>
++         </div>
++         
++         <div class="relative pl-10 group">
++             <div
++                 class="absolute left-[9px] top-1.5 w-[7px] h-[7px] rounded-full bg-black border transition-colors 
+z-10 vmp-border-color-2 group-hover:vmp-border-color">
++             </div>
++ 
++             <div class="flex items-baseline justify-between mb-1">
++                 <span class="vmp-label">
++                     Acme Admin
++                     <span class="vmp-subtle mx-1">via</span>
++                     portal
++                 </span>
++                 <span class="vmp-caption">
++                     
++                     17:04
++                     
++                 </span>
++             </div>
++ 
++             <div class="vmp-body-small leading-relaxed vmp-panel p-3 rounded-lg rounded-tl-none">
++                 Test message from test suite
++             </div>
++         </div>
++         
++         <div class="relative pl-10 group">
++             <div
++                 class="absolute left-[9px] top-1.5 w-[7px] h-[7px] rounded-full bg-black border transition-colors 
+z-10 vmp-border-color-2 group-hover:vmp-border-color">
++             </div>
++ 
++             <div class="flex items-baseline justify-between mb-1">
++                 <span class="vmp-label">
++                     Acme Admin
++                     <span class="vmp-subtle mx-1">via</span>
++                     portal
++                 </span>
++                 <span class="vmp-caption">
++                     
++                     17:07
++                     
++                 </span>
++             </div>
++ 
++             <div class="vmp-body-small leading-relaxed vmp-panel p-3 rounded-lg rounded-tl-none">
++                 Test message from test suite
++             </div>
++         </div>
++         
++         <div class="relative pl-10 group">
++             <div
++                 class="absolute left-[9px] top-1.5 w-[7px] h-[7px] rounded-full bg-black border transition-colors 
+z-10 vmp-border-color-2 group-hover:vmp-border-color">
++             </div>
++ 
++             <div class="flex items-baseline justify-between mb-1">
++                 <span class="vmp-label">
++                     Acme Admin
++                     <span class="vmp-subtle mx-1">via</span>
++                     portal
++                 </span>
++                 <span class="vmp-caption">
++                     
++                     17:08
++                     
++                 </span>
++             </div>
++ 
++             <div class="vmp-body-small leading-relaxed vmp-panel p-3 rounded-lg rounded-tl-none">
++                 Test message from test suite
++             </div>
++         </div>
++         
++         <div class="relative pl-10 group">
++             <div
++                 class="absolute left-[9px] top-1.5 w-[7px] h-[7px] rounded-full bg-black border transition-colors 
+z-10 vmp-border-color-2 group-hover:vmp-border-color">
++             </div>
++ 
++             <div class="flex items-baseline justify-between mb-1">
++                 <span class="vmp-label">
++                     Acme Admin
++                     <span class="vmp-subtle mx-1">via</span>
++                     portal
++                 </span>
++                 <span class="vmp-caption">
++                     
++                     17:09
++                     
++                 </span>
++             </div>
++ 
++             <div class="vmp-body-small leading-relaxed vmp-panel p-3 rounded-lg rounded-tl-none">
++                 Test message from test suite
++             </div>
++         </div>
++         
++         <div class="relative pl-10 group">
++             <div
++                 class="absolute left-[9px] top-1.5 w-[7px] h-[7px] rounded-full bg-black border transition-colors 
+z-10 vmp-border-color-2 group-hover:vmp-border-color">
++             </div>
++ 
++             <div class="flex items-baseline justify-between mb-1">
++                 <span class="vmp-label">
++                     Acme Admin
++                     <span class="vmp-subtle mx-1">via</span>
++                     portal
++                 </span>
++                 <span class="vmp-caption">
++                     
++                     17:09
++                     
++                 </span>
++             </div>
++ 
++             <div class="vmp-body-small leading-relaxed vmp-panel p-3 rounded-lg rounded-tl-none">
++                 Test message from test suite
++             </div>
++         </div>
++         
++         <div class="relative pl-10 group">
++             <div
++                 class="absolute left-[9px] top-1.5 w-[7px] h-[7px] rounded-full bg-black border transition-colors 
+z-10 vmp-border-color-2 group-hover:vmp-border-color">
++             </div>
++ 
++             <div class="flex items-baseline justify-between mb-1">
++                 <span class="vmp-label">
++                     Acme Admin
++                     <span class="vmp-subtle mx-1">via</span>
++                     portal
++                 </span>
++                 <span class="vmp-caption">
++                     
++                     17:10
++                     
++                 </span>
++             </div>
++ 
++             <div class="vmp-body-small leading-relaxed vmp-panel p-3 rounded-lg rounded-tl-none">
++                 Test message from test suite
++             </div>
++         </div>
++         
++         <div class="relative pl-10 group">
++             <div
++                 class="absolute left-[9px] top-1.5 w-[7px] h-[7px] rounded-full bg-black border transition-colors 
+z-10 vmp-border-color-2 group-hover:vmp-border-color">
++             </div>
++ 
++             <div class="flex items-baseline justify-between mb-1">
++                 <span class="vmp-label">
++                     Acme Admin
++                     <span class="vmp-subtle mx-1">via</span>
++                     portal
++                 </span>
++                 <span class="vmp-caption">
++                     
++                     17:12
++                     
++                 </span>
++             </div>
++ 
++             <div class="vmp-body-small leading-relaxed vmp-panel p-3 rounded-lg rounded-tl-none">
++                 Test message from test suite
++             </div>
++         </div>
++         
++         
++     </div>
++ 
++     <!-- Message Input Form -->
++     <div class="p-4 border-t vmp-border-color vmp-bg-veil">
++         <form class="relative group" hx-post="/cases/64a0d83f-7512-4ca9-9cbc-fb0bb1db5340/messages" 
+hx-target="#case-thread-container"
++             hx-swap="innerHTML" hx-indicator="#thread-loading" hx-trigger="submit"
++             hx-on::after-request="if(event.detail.successful) { this.querySelector('input[name=body]').value = ''; 
+}">
++             <input type="text" name="body" id="message-input-64a0d83f-7512-4ca9-9cbc-fb0bb1db5340"
++                 placeholder="Type a message or paste evidence..." class="vmp-form-input w-full pr-12" required
++                 autocomplete="off">
++ 
++             <button type="submit"
++                 class="absolute right-2 top-2 p-1.5 rounded-lg hover:bg-white/10 vmp-subtle hover:text-white 
+transition-colors">
++                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
++                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
++                         d="M14 5l7 7m0 0l-7 7m7-7H3" />
++                 </svg>
++             </button>
++         </form>
++         <div class="flex justify-between mt-2 px-1">
++             <span class="vmp-caption">Markdown supported</span>
++             <span class="vmp-caption">Enter to send</span>
++         </div>
++         <div id="thread-loading" class="htmx-indicator mt-2">
++             <div class="vmp-label-kicker animate-pulse opacity-60">Sending...</div>
++         </div>
++     </div>
++ </div>
+
+ ÔØ» tests/days5-8.test.js:147:29
+    145|       const response = await authenticatedRequest('get', `/partials/caÔÇª
+    146|       expect(response.statusCode).toBe(200);
+    147|       expect(response.text).toContain('caseId');
+       |                             ^
+    148|     });
+    149| 
+
+ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»[3/19]ÔÄ»
+
+ FAIL  tests/days5-8.test.js > Days 5-8: Case Detail Functionality > Day 6: Thread Cell Routes > POST 
+/cases/:id/messages should create a message
+AssertionError: expected '<!-- Case Thread Cell - Displays messÔÇª' to contain 'caseId'
+
+- Expected
++ Received
+
+- caseId
++ <!-- Case Thread Cell - Displays messages for a case -->
++ <div class="flex flex-col h-full">
++     <!-- Thread Messages Area -->
++     <div class="flex-1 overflow-y-auto p-6 space-y-8 relative">
++         <div class="absolute left-9 top-6 bottom-6 w-px vmp-bg-panel"></div>
++ 
++         
++         
++         <div class="relative pl-10 group">
++             <div
++                 class="absolute left-[9px] top-1.5 w-[7px] h-[7px] rounded-full bg-black border transition-colors 
+z-10 vmp-border-color-2 group-hover:vmp-border-color">
++             </div>
++ 
++             <div class="flex items-baseline justify-between mb-1">
++                 <span class="vmp-label">
++                     AI Assistant
++                     <span class="vmp-subtle mx-1">via</span>
++                     portal
++                 </span>
++                 <span class="vmp-caption">
++                     
++                     20:09
++                     
++                 </span>
++             </div>
++ 
++             <div class="vmp-body-small leading-relaxed vmp-panel p-3 rounded-lg rounded-tl-none">
++                 System detected mismatch: PO Qty 50 vs Invoice Qty 55.
++             </div>
++         </div>
++         
++         <div class="relative pl-10 group">
++             <div
++                 class="absolute left-[9px] top-1.5 w-[7px] h-[7px] rounded-full bg-black border transition-colors 
+z-10 vmp-border-color-2 group-hover:vmp-border-color">
++             </div>
++ 
++             <div class="flex items-baseline justify-between mb-1">
++                 <span class="vmp-label">
++                     Vendor
++                     <span class="vmp-subtle mx-1">via</span>
++                     whatsapp
++                 </span>
++                 <span class="vmp-caption">
++                     
++                     20:09
++                     
++                 </span>
++             </div>
++ 
++             <div class="vmp-body-small leading-relaxed vmp-panel p-3 rounded-lg rounded-tl-none">
++                 Checking with logistics.
++             </div>
++         </div>
++         
++         <div class="relative pl-10 group">
++             <div
++                 class="absolute left-[9px] top-1.5 w-[7px] h-[7px] rounded-full bg-black border transition-colors 
+z-10 vmp-border-color-2 group-hover:vmp-border-color">
++             </div>
++ 
++             <div class="flex items-baseline justify-between mb-1">
++                 <span class="vmp-label">
++                     Acme Admin
++                     <span class="vmp-subtle mx-1">via</span>
++                     portal
++                 </span>
++                 <span class="vmp-caption">
++                     
++                     17:00
++                     
++                 </span>
++             </div>
++ 
++             <div class="vmp-body-small leading-relaxed vmp-panel p-3 rounded-lg rounded-tl-none">
++                 Test message from test suite
++             </div>
++         </div>
++         
++         <div class="relative pl-10 group">
++             <div
++                 class="absolute left-[9px] top-1.5 w-[7px] h-[7px] rounded-full bg-black border transition-colors 
+z-10 vmp-border-color-2 group-hover:vmp-border-color">
++             </div>
++ 
++             <div class="flex items-baseline justify-between mb-1">
++                 <span class="vmp-label">
++                     Acme Admin
++                     <span class="vmp-subtle mx-1">via</span>
++                     portal
++                 </span>
++                 <span class="vmp-caption">
++                     
++                     17:00
++                     
++                 </span>
++             </div>
++ 
++             <div class="vmp-body-small leading-relaxed vmp-panel p-3 rounded-lg rounded-tl-none">
++                 Test message from test suite
++             </div>
++         </div>
++         
++         <div class="relative pl-10 group">
++             <div
++                 class="absolute left-[9px] top-1.5 w-[7px] h-[7px] rounded-full bg-black border transition-colors 
+z-10 vmp-border-color-2 group-hover:vmp-border-color">
++             </div>
++ 
++             <div class="flex items-baseline justify-between mb-1">
++                 <span class="vmp-label">
++                     Acme Admin
++                     <span class="vmp-subtle mx-1">via</span>
++                     portal
++                 </span>
++                 <span class="vmp-caption">
++                     
++                     17:00
++                     
++                 </span>
++             </div>
++ 
++             <div class="vmp-body-small leading-relaxed vmp-panel p-3 rounded-lg rounded-tl-none">
++                 Test message from test suite
++             </div>
++         </div>
++         
++         <div class="relative pl-10 group">
++             <div
++                 class="absolute left-[9px] top-1.5 w-[7px] h-[7px] rounded-full bg-black border transition-colors 
+z-10 vmp-border-color-2 group-hover:vmp-border-color">
++             </div>
++ 
++             <div class="flex items-baseline justify-between mb-1">
++                 <span class="vmp-label">
++                     Acme Admin
++                     <span class="vmp-subtle mx-1">via</span>
++                     portal
++                 </span>
++                 <span class="vmp-caption">
++                     
++                     17:01
++                     
++                 </span>
++             </div>
++ 
++             <div class="vmp-body-small leading-relaxed vmp-panel p-3 rounded-lg rounded-tl-none">
++                 Test message from test suite
++             </div>
++         </div>
++         
++         <div class="relative pl-10 group">
++             <div
++                 class="absolute left-[9px] top-1.5 w-[7px] h-[7px] rounded-full bg-black border transition-colors 
+z-10 vmp-border-color-2 group-hover:vmp-border-color">
++             </div>
++ 
++             <div class="flex items-baseline justify-between mb-1">
++                 <span class="vmp-label">
++                     Acme Admin
++                     <span class="vmp-subtle mx-1">via</span>
++                     portal
++                 </span>
++                 <span class="vmp-caption">
++                     
++                     17:01
++                     
++                 </span>
++             </div>
++ 
++             <div class="vmp-body-small leading-relaxed vmp-panel p-3 rounded-lg rounded-tl-none">
++                 Test message from test suite
++             </div>
++         </div>
++         
++         <div class="relative pl-10 group">
++             <div
++                 class="absolute left-[9px] top-1.5 w-[7px] h-[7px] rounded-full bg-black border transition-colors 
+z-10 vmp-border-color-2 group-hover:vmp-border-color">
++             </div>
++ 
++             <div class="flex items-baseline justify-between mb-1">
++                 <span class="vmp-label">
++                     Acme Admin
++                     <span class="vmp-subtle mx-1">via</span>
++                     portal
++                 </span>
++                 <span class="vmp-caption">
++                     
++                     17:02
++                     
++                 </span>
++             </div>
++ 
++             <div class="vmp-body-small leading-relaxed vmp-panel p-3 rounded-lg rounded-tl-none">
++                 Test message from test suite
++             </div>
++         </div>
++         
++         <div class="relative pl-10 group">
++             <div
++                 class="absolute left-[9px] top-1.5 w-[7px] h-[7px] rounded-full bg-black border transition-colors 
+z-10 vmp-border-color-2 group-hover:vmp-border-color">
++             </div>
++ 
++             <div class="flex items-baseline justify-between mb-1">
++                 <span class="vmp-label">
++                     Acme Admin
++                     <span class="vmp-subtle mx-1">via</span>
++                     portal
++                 </span>
++                 <span class="vmp-caption">
++                     
++                     17:04
++                     
++                 </span>
++             </div>
++ 
++             <div class="vmp-body-small leading-relaxed vmp-panel p-3 rounded-lg rounded-tl-none">
++                 Test message from test suite
++             </div>
++         </div>
++         
++         <div class="relative pl-10 group">
++             <div
++                 class="absolute left-[9px] top-1.5 w-[7px] h-[7px] rounded-full bg-black border transition-colors 
+z-10 vmp-border-color-2 group-hover:vmp-border-color">
++             </div>
++ 
++             <div class="flex items-baseline justify-between mb-1">
++                 <span class="vmp-label">
++                     Acme Admin
++                     <span class="vmp-subtle mx-1">via</span>
++                     portal
++                 </span>
++                 <span class="vmp-caption">
++                     
++                     17:07
++                     
++                 </span>
++             </div>
++ 
++             <div class="vmp-body-small leading-relaxed vmp-panel p-3 rounded-lg rounded-tl-none">
++                 Test message from test suite
++             </div>
++         </div>
++         
++         <div class="relative pl-10 group">
++             <div
++                 class="absolute left-[9px] top-1.5 w-[7px] h-[7px] rounded-full bg-black border transition-colors 
+z-10 vmp-border-color-2 group-hover:vmp-border-color">
++             </div>
++ 
++             <div class="flex items-baseline justify-between mb-1">
++                 <span class="vmp-label">
++                     Acme Admin
++                     <span class="vmp-subtle mx-1">via</span>
++                     portal
++                 </span>
++                 <span class="vmp-caption">
++                     
++                     17:08
++                     
++                 </span>
++             </div>
++ 
++             <div class="vmp-body-small leading-relaxed vmp-panel p-3 rounded-lg rounded-tl-none">
++                 Test message from test suite
++             </div>
++         </div>
++         
++         <div class="relative pl-10 group">
++             <div
++                 class="absolute left-[9px] top-1.5 w-[7px] h-[7px] rounded-full bg-black border transition-colors 
+z-10 vmp-border-color-2 group-hover:vmp-border-color">
++             </div>
++ 
++             <div class="flex items-baseline justify-between mb-1">
++                 <span class="vmp-label">
++                     Acme Admin
++                     <span class="vmp-subtle mx-1">via</span>
++                     portal
++                 </span>
++                 <span class="vmp-caption">
++                     
++                     17:09
++                     
++                 </span>
++             </div>
++ 
++             <div class="vmp-body-small leading-relaxed vmp-panel p-3 rounded-lg rounded-tl-none">
++                 Test message from test suite
++             </div>
++         </div>
++         
++         <div class="relative pl-10 group">
++             <div
++                 class="absolute left-[9px] top-1.5 w-[7px] h-[7px] rounded-full bg-black border transition-colors 
+z-10 vmp-border-color-2 group-hover:vmp-border-color">
++             </div>
++ 
++             <div class="flex items-baseline justify-between mb-1">
++                 <span class="vmp-label">
++                     Acme Admin
++                     <span class="vmp-subtle mx-1">via</span>
++                     portal
++                 </span>
++                 <span class="vmp-caption">
++                     
++                     17:09
++                     
++                 </span>
++             </div>
++ 
++             <div class="vmp-body-small leading-relaxed vmp-panel p-3 rounded-lg rounded-tl-none">
++                 Test message from test suite
++             </div>
++         </div>
++         
++         <div class="relative pl-10 group">
++             <div
++                 class="absolute left-[9px] top-1.5 w-[7px] h-[7px] rounded-full bg-black border transition-colors 
+z-10 vmp-border-color-2 group-hover:vmp-border-color">
++             </div>
++ 
++             <div class="flex items-baseline justify-between mb-1">
++                 <span class="vmp-label">
++                     Acme Admin
++                     <span class="vmp-subtle mx-1">via</span>
++                     portal
++                 </span>
++                 <span class="vmp-caption">
++                     
++                     17:10
++                     
++                 </span>
++             </div>
++ 
++             <div class="vmp-body-small leading-relaxed vmp-panel p-3 rounded-lg rounded-tl-none">
++                 Test message from test suite
++             </div>
++         </div>
++         
++         <div class="relative pl-10 group">
++             <div
++                 class="absolute left-[9px] top-1.5 w-[7px] h-[7px] rounded-full bg-black border transition-colors 
+z-10 vmp-border-color-2 group-hover:vmp-border-color">
++             </div>
++ 
++             <div class="flex items-baseline justify-between mb-1">
++                 <span class="vmp-label">
++                     Acme Admin
++                     <span class="vmp-subtle mx-1">via</span>
++                     portal
++                 </span>
++                 <span class="vmp-caption">
++                     
++                     17:12
++                     
++                 </span>
++             </div>
++ 
++             <div class="vmp-body-small leading-relaxed vmp-panel p-3 rounded-lg rounded-tl-none">
++                 Test message from test suite
++             </div>
++         </div>
++         
++         
++     </div>
++ 
++     <!-- Message Input Form -->
++     <div class="p-4 border-t vmp-border-color vmp-bg-veil">
++         <form class="relative group" hx-post="/cases/64a0d83f-7512-4ca9-9cbc-fb0bb1db5340/messages" 
+hx-target="#case-thread-container"
++             hx-swap="innerHTML" hx-indicator="#thread-loading" hx-trigger="submit"
++             hx-on::after-request="if(event.detail.successful) { this.querySelector('input[name=body]').value = ''; 
+}">
++             <input type="text" name="body" id="message-input-64a0d83f-7512-4ca9-9cbc-fb0bb1db5340"
++                 placeholder="Type a message or paste evidence..." class="vmp-form-input w-full pr-12" required
++                 autocomplete="off">
++ 
++             <button type="submit"
++                 class="absolute right-2 top-2 p-1.5 rounded-lg hover:bg-white/10 vmp-subtle hover:text-white 
+transition-colors">
++                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
++                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
++                         d="M14 5l7 7m0 0l-7 7m7-7H3" />
++                 </svg>
++             </button>
++         </form>
++         <div class="flex justify-between mt-2 px-1">
++             <span class="vmp-caption">Markdown supported</span>
++             <span class="vmp-caption">Enter to send</span>
++         </div>
++         <div id="thread-loading" class="htmx-indicator mt-2">
++             <div class="vmp-label-kicker animate-pulse opacity-60">Sending...</div>
++         </div>
++     </div>
++ </div>
+
+ ÔØ» tests/days5-8.test.js:166:29
+    164| 
+    165|       expect(response.statusCode).toBe(200);
+    166|       expect(response.text).toContain('caseId');
+       |                             ^
+    167|     });
+    168| 
+
+ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»[4/19]ÔÄ»
+
+ FAIL  tests/days5-8.test.js > Days 5-8: Case Detail Functionality > Day 7: Checklist Cell Routes > GET 
+/partials/case-checklist.html should return 200
+AssertionError: expected '<!-- Case Checklist Cell - Displays rÔÇª' to contain 'caseId'
+
+- Expected
++ Received
+
+- caseId
++ <!-- Case Checklist Cell - Displays required evidence steps for a case -->
++ <div class="p-5 border-b vmp-border-color">
++     <div class="flex items-center justify-between mb-4">
++         <div class="vmp-label-kicker vmp-label-kicker-strong">EVIDENCE GATES</div>
++         
++         
++         
++         <div class="vmp-caption font-mono vmp-muted">18/18 DONE</div>
++         
++     </div>
++ 
++     
++     <div class="space-y-2">
++         
++         
++         <div class="group flex items-center gap-3 p-2.5 rounded-lg border transition-colors 
++             
++                 vmp-border-warn vmp-bg-warn hover:vmp-border-warn vmp-opacity-30
++             ">
++ 
++             <!-- Status Icon -->
++             
++             <div class="w-4 h-4 rounded border bg-transparent grid place-items-center vmp-border-warn 
+vmp-opacity-50">
++                 <div class="w-1.5 h-1.5 rounded-full vmp-fill-warn animate-pulse"></div>
++             </div>
++             <span class="vmp-caption">Upload Signed Delivery Note (DO)</span>
++             <button
++                 class="ml-auto px-2 py-0.5 rounded transition-colors border vmp-action-button 
+vmp-action-button-ghost vmp-bg-panel vmp-border-color hover:vmp-bg-veil"
++                 hx-get="/partials/case-evidence.html?case_id=64a0d83f-7512-4ca9-9cbc-fb0bb1db5340&step_id=e599323b-d5
+ad-4fbb-b02a-a0aa1241d03c"
++                 hx-target="#case-evidence-container" hx-swap="innerHTML">
++                 UPLOAD
++             </button>
++             
++         </div>
++         
++         
++         <div class="group flex items-center gap-3 p-2.5 rounded-lg border transition-colors 
++             
++                 vmp-border-warn vmp-bg-warn hover:vmp-border-warn vmp-opacity-30
++             ">
++ 
++             <!-- Status Icon -->
++             
++             <div class="w-4 h-4 rounded border bg-transparent grid place-items-center vmp-border-warn 
+vmp-opacity-50">
++                 <div class="w-1.5 h-1.5 rounded-full vmp-fill-warn animate-pulse"></div>
++             </div>
++             <span class="vmp-caption">Provide Credit Note</span>
++             <button
++                 class="ml-auto px-2 py-0.5 rounded transition-colors border vmp-action-button 
+vmp-action-button-ghost vmp-bg-panel vmp-border-color hover:vmp-bg-veil"
++                 hx-get="/partials/case-evidence.html?case_id=64a0d83f-7512-4ca9-9cbc-fb0bb1db5340&step_id=33f3f438-5e
+8e-42b0-8529-b889a73569e1"
++                 hx-target="#case-evidence-container" hx-swap="innerHTML">
++                 UPLOAD
++             </button>
++             
++         </div>
++         
++         
++         <div class="group flex items-center gap-3 p-2.5 rounded-lg border transition-colors 
++             
++                 vmp-border-warn vmp-bg-warn hover:vmp-border-warn vmp-opacity-30
++             ">
++ 
++             <!-- Status Icon -->
++             
++             <div class="w-4 h-4 rounded border bg-transparent grid place-items-center vmp-border-warn 
+vmp-opacity-50">
++                 <div class="w-1.5 h-1.5 rounded-full vmp-fill-warn animate-pulse"></div>
++             </div>
++             <span class="vmp-caption">Upload Invoice PDF</span>
++             <button
++                 class="ml-auto px-2 py-0.5 rounded transition-colors border vmp-action-button 
+vmp-action-button-ghost vmp-bg-panel vmp-border-color hover:vmp-bg-veil"
++                 hx-get="/partials/case-evidence.html?case_id=64a0d83f-7512-4ca9-9cbc-fb0bb1db5340&step_id=6a6b0478-20
+a4-46ac-865a-528ffecfcf7e"
++                 hx-target="#case-evidence-container" hx-swap="innerHTML">
++                 UPLOAD
++             </button>
++             
++         </div>
++         
++         
++         <div class="group flex items-center gap-3 p-2.5 rounded-lg border transition-colors 
++             
++                 vmp-border-warn vmp-bg-warn hover:vmp-border-warn vmp-opacity-30
++             ">
++ 
++             <!-- Status Icon -->
++             
++             <div class="w-4 h-4 rounded border bg-transparent grid place-items-center vmp-border-warn 
+vmp-opacity-50">
++                 <div class="w-1.5 h-1.5 rounded-full vmp-fill-warn animate-pulse"></div>
++             </div>
++             <span class="vmp-caption">Confirm PO Number</span>
++             <button
++                 class="ml-auto px-2 py-0.5 rounded transition-colors border vmp-action-button 
+vmp-action-button-ghost vmp-bg-panel vmp-border-color hover:vmp-bg-veil"
++                 hx-get="/partials/case-evidence.html?case_id=64a0d83f-7512-4ca9-9cbc-fb0bb1db5340&step_id=daf32526-03
+90-4661-809e-e6b5605dccd8"
++                 hx-target="#case-evidence-container" hx-swap="innerHTML">
++                 UPLOAD
++             </button>
++             
++         </div>
++         
++         
++         <div class="group flex items-center gap-3 p-2.5 rounded-lg border transition-colors 
++             
++                 vmp-border-warn vmp-bg-warn hover:vmp-border-warn vmp-opacity-30
++             ">
++ 
++             <!-- Status Icon -->
++             
++             <div class="w-4 h-4 rounded border bg-transparent grid place-items-center vmp-border-warn 
+vmp-opacity-50">
++                 <div class="w-1.5 h-1.5 rounded-full vmp-fill-warn animate-pulse"></div>
++             </div>
++             <span class="vmp-caption">Upload Signed GRN</span>
++             <button
++                 class="ml-auto px-2 py-0.5 rounded transition-colors border vmp-action-button 
+vmp-action-button-ghost vmp-bg-panel vmp-border-color hover:vmp-bg-veil"
++                 hx-get="/partials/case-evidence.html?case_id=64a0d83f-7512-4ca9-9cbc-fb0bb1db5340&step_id=452f2f54-2c
+ac-4e95-8447-76987cab6115"
++                 hx-target="#case-evidence-container" hx-swap="innerHTML">
++                 UPLOAD
++             </button>
++             
++         </div>
++         
++         
++         <div class="group flex items-center gap-3 p-2.5 rounded-lg border transition-colors 
++             
++                 vmp-border-warn vmp-bg-warn hover:vmp-border-warn vmp-opacity-30
++             ">
++ 
++             <!-- Status Icon -->
++             
++             <div class="w-4 h-4 rounded border bg-transparent grid place-items-center vmp-border-warn 
+vmp-opacity-50">
++                 <div class="w-1.5 h-1.5 rounded-full vmp-fill-warn animate-pulse"></div>
++             </div>
++             <span class="vmp-caption">Test Checklist Step</span>
++             <button
++                 class="ml-auto px-2 py-0.5 rounded transition-colors border vmp-action-button 
+vmp-action-button-ghost vmp-bg-panel vmp-border-color hover:vmp-bg-veil"
++                 hx-get="/partials/case-evidence.html?case_id=64a0d83f-7512-4ca9-9cbc-fb0bb1db5340&step_id=ef92e520-59
+ad-4a8b-8bb2-643657e953f5"
++                 hx-target="#case-evidence-container" hx-swap="innerHTML">
++                 UPLOAD
++             </button>
++             
++         </div>
++         
++         
++         <div class="group flex items-center gap-3 p-2.5 rounded-lg border transition-colors 
++             
++                 vmp-border-warn vmp-bg-warn hover:vmp-border-warn vmp-opacity-30
++             ">
++ 
++             <!-- Status Icon -->
++             
++             <div class="w-4 h-4 rounded border bg-transparent grid place-items-center vmp-border-warn 
+vmp-opacity-50">
++                 <div class="w-1.5 h-1.5 rounded-full vmp-fill-warn animate-pulse"></div>
++             </div>
++             <span class="vmp-caption">Test Checklist Step</span>
++             <button
++                 class="ml-auto px-2 py-0.5 rounded transition-colors border vmp-action-button 
+vmp-action-button-ghost vmp-bg-panel vmp-border-color hover:vmp-bg-veil"
++                 hx-get="/partials/case-evidence.html?case_id=64a0d83f-7512-4ca9-9cbc-fb0bb1db5340&step_id=f75911a8-80
+d8-469a-8369-2e43e783663b"
++                 hx-target="#case-evidence-container" hx-swap="innerHTML">
++                 UPLOAD
++             </button>
++             
++         </div>
++         
++         
++         <div class="group flex items-center gap-3 p-2.5 rounded-lg border transition-colors 
++             
++                 vmp-border-warn vmp-bg-warn hover:vmp-border-warn vmp-opacity-30
++             ">
++ 
++             <!-- Status Icon -->
++             
++             <div class="w-4 h-4 rounded border bg-transparent grid place-items-center vmp-border-warn 
+vmp-opacity-50">
++                 <div class="w-1.5 h-1.5 rounded-full vmp-fill-warn animate-pulse"></div>
++             </div>
++             <span class="vmp-caption">Test Checklist Step</span>
++             <button
++                 class="ml-auto px-2 py-0.5 rounded transition-colors border vmp-action-button 
+vmp-action-button-ghost vmp-bg-panel vmp-border-color hover:vmp-bg-veil"
++                 hx-get="/partials/case-evidence.html?case_id=64a0d83f-7512-4ca9-9cbc-fb0bb1db5340&step_id=168a308a-48
+d1-4131-82cf-5fd63fb1f77e"
++                 hx-target="#case-evidence-container" hx-swap="innerHTML">
++                 UPLOAD
++             </button>
++             
++         </div>
++         
++         
++         <div class="group flex items-center gap-3 p-2.5 rounded-lg border transition-colors 
++             
++                 vmp-border-warn vmp-bg-warn hover:vmp-border-warn vmp-opacity-30
++             ">
++ 
++             <!-- Status Icon -->
++             
++             <div class="w-4 h-4 rounded border bg-transparent grid place-items-center vmp-border-warn 
+vmp-opacity-50">
++                 <div class="w-1.5 h-1.5 rounded-full vmp-fill-warn animate-pulse"></div>
++             </div>
++             <span class="vmp-caption">Test Checklist Step</span>
++             <button
++                 class="ml-auto px-2 py-0.5 rounded transition-colors border vmp-action-button 
+vmp-action-button-ghost vmp-bg-panel vmp-border-color hover:vmp-bg-veil"
++                 hx-get="/partials/case-evidence.html?case_id=64a0d83f-7512-4ca9-9cbc-fb0bb1db5340&step_id=07fb6935-5a
+ca-472c-8bde-8186bae0f97a"
++                 hx-target="#case-evidence-container" hx-swap="innerHTML">
++                 UPLOAD
++             </button>
++             
++         </div>
++         
++         
++         <div class="group flex items-center gap-3 p-2.5 rounded-lg border transition-colors 
++             
++                 vmp-border-warn vmp-bg-warn hover:vmp-border-warn vmp-opacity-30
++             ">
++ 
++             <!-- Status Icon -->
++             
++             <div class="w-4 h-4 rounded border bg-transparent grid place-items-center vmp-border-warn 
+vmp-opacity-50">
++                 <div class="w-1.5 h-1.5 rounded-full vmp-fill-warn animate-pulse"></div>
++             </div>
++             <span class="vmp-caption">Test Checklist Step</span>
++             <button
++                 class="ml-auto px-2 py-0.5 rounded transition-colors border vmp-action-button 
+vmp-action-button-ghost vmp-bg-panel vmp-border-color hover:vmp-bg-veil"
++                 hx-get="/partials/case-evidence.html?case_id=64a0d83f-7512-4ca9-9cbc-fb0bb1db5340&step_id=25683150-ac
+b6-4aa7-934f-3650aa218bd6"
++                 hx-target="#case-evidence-container" hx-swap="innerHTML">
++                 UPLOAD
++             </button>
++             
++         </div>
++         
++         
++         <div class="group flex items-center gap-3 p-2.5 rounded-lg border transition-colors 
++             
++                 vmp-border-warn vmp-bg-warn hover:vmp-border-warn vmp-opacity-30
++             ">
++ 
++             <!-- Status Icon -->
++             
++             <div class="w-4 h-4 rounded border bg-transparent grid place-items-center vmp-border-warn 
+vmp-opacity-50">
++                 <div class="w-1.5 h-1.5 rounded-full vmp-fill-warn animate-pulse"></div>
++             </div>
++             <span class="vmp-caption">Test Checklist Step</span>
++             <button
++                 class="ml-auto px-2 py-0.5 rounded transition-colors border vmp-action-button 
+vmp-action-button-ghost vmp-bg-panel vmp-border-color hover:vmp-bg-veil"
++                 hx-get="/partials/case-evidence.html?case_id=64a0d83f-7512-4ca9-9cbc-fb0bb1db5340&step_id=6df2b23a-8d
+b9-4fab-9958-2e2b6847cec1"
++                 hx-target="#case-evidence-container" hx-swap="innerHTML">
++                 UPLOAD
++             </button>
++             
++         </div>
++         
++         
++         <div class="group flex items-center gap-3 p-2.5 rounded-lg border transition-colors 
++             
++                 vmp-border-warn vmp-bg-warn hover:vmp-border-warn vmp-opacity-30
++             ">
++ 
++             <!-- Status Icon -->
++             
++             <div class="w-4 h-4 rounded border bg-transparent grid place-items-center vmp-border-warn 
+vmp-opacity-50">
++                 <div class="w-1.5 h-1.5 rounded-full vmp-fill-warn animate-pulse"></div>
++             </div>
++             <span class="vmp-caption">Test Checklist Step</span>
++             <button
++                 class="ml-auto px-2 py-0.5 rounded transition-colors border vmp-action-button 
+vmp-action-button-ghost vmp-bg-panel vmp-border-color hover:vmp-bg-veil"
++                 hx-get="/partials/case-evidence.html?case_id=64a0d83f-7512-4ca9-9cbc-fb0bb1db5340&step_id=9b465ff8-99
+14-441d-affe-1b9321fc67ef"
++                 hx-target="#case-evidence-container" hx-swap="innerHTML">
++                 UPLOAD
++             </button>
++             
++         </div>
++         
++         
++         <div class="group flex items-center gap-3 p-2.5 rounded-lg border transition-colors 
++             
++                 vmp-border-warn vmp-bg-warn hover:vmp-border-warn vmp-opacity-30
++             ">
++ 
++             <!-- Status Icon -->
++             
++             <div class="w-4 h-4 rounded border bg-transparent grid place-items-center vmp-border-warn 
+vmp-opacity-50">
++                 <div class="w-1.5 h-1.5 rounded-full vmp-fill-warn animate-pulse"></div>
++             </div>
++             <span class="vmp-caption">Test Checklist Step</span>
++             <button
++                 class="ml-auto px-2 py-0.5 rounded transition-colors border vmp-action-button 
+vmp-action-button-ghost vmp-bg-panel vmp-border-color hover:vmp-bg-veil"
++                 hx-get="/partials/case-evidence.html?case_id=64a0d83f-7512-4ca9-9cbc-fb0bb1db5340&step_id=6110697d-4f
+43-482e-9397-a471f4899a6b"
++                 hx-target="#case-evidence-container" hx-swap="innerHTML">
++                 UPLOAD
++             </button>
++             
++         </div>
++         
++         
++         <div class="group flex items-center gap-3 p-2.5 rounded-lg border transition-colors 
++             
++                 vmp-border-warn vmp-bg-warn hover:vmp-border-warn vmp-opacity-30
++             ">
++ 
++             <!-- Status Icon -->
++             
++             <div class="w-4 h-4 rounded border bg-transparent grid place-items-center vmp-border-warn 
+vmp-opacity-50">
++                 <div class="w-1.5 h-1.5 rounded-full vmp-fill-warn animate-pulse"></div>
++             </div>
++             <span class="vmp-caption">Test Checklist Step</span>
++             <button
++                 class="ml-auto px-2 py-0.5 rounded transition-colors border vmp-action-button 
+vmp-action-button-ghost vmp-bg-panel vmp-border-color hover:vmp-bg-veil"
++                 hx-get="/partials/case-evidence.html?case_id=64a0d83f-7512-4ca9-9cbc-fb0bb1db5340&step_id=5f04ba6c-cd
+1f-40e8-8933-e426d869cedc"
++                 hx-target="#case-evidence-container" hx-swap="innerHTML">
++                 UPLOAD
++             </button>
++             
++         </div>
++         
++         
++         <div class="group flex items-center gap-3 p-2.5 rounded-lg border transition-colors 
++             
++                 vmp-border-warn vmp-bg-warn hover:vmp-border-warn vmp-opacity-30
++             ">
++ 
++             <!-- Status Icon -->
++             
++             <div class="w-4 h-4 rounded border bg-transparent grid place-items-center vmp-border-warn 
+vmp-opacity-50">
++                 <div class="w-1.5 h-1.5 rounded-full vmp-fill-warn animate-pulse"></div>
++             </div>
++             <span class="vmp-caption">Test Checklist Step</span>
++             <button
++                 class="ml-auto px-2 py-0.5 rounded transition-colors border vmp-action-button 
+vmp-action-button-ghost vmp-bg-panel vmp-border-color hover:vmp-bg-veil"
++                 hx-get="/partials/case-evidence.html?case_id=64a0d83f-7512-4ca9-9cbc-fb0bb1db5340&step_id=219bc8fb-0e
+1a-47fc-8270-b7ee04839975"
++                 hx-target="#case-evidence-container" hx-swap="innerHTML">
++                 UPLOAD
++             </button>
++             
++         </div>
++         
++         
++         <div class="group flex items-center gap-3 p-2.5 rounded-lg border transition-colors 
++             
++                 vmp-border-warn vmp-bg-warn hover:vmp-border-warn vmp-opacity-30
++             ">
++ 
++             <!-- Status Icon -->
++             
++             <div class="w-4 h-4 rounded border bg-transparent grid place-items-center vmp-border-warn 
+vmp-opacity-50">
++                 <div class="w-1.5 h-1.5 rounded-full vmp-fill-warn animate-pulse"></div>
++             </div>
++             <span class="vmp-caption">Test Checklist Step</span>
++             <button
++                 class="ml-auto px-2 py-0.5 rounded transition-colors border vmp-action-button 
+vmp-action-button-ghost vmp-bg-panel vmp-border-color hover:vmp-bg-veil"
++                 hx-get="/partials/case-evidence.html?case_id=64a0d83f-7512-4ca9-9cbc-fb0bb1db5340&step_id=b95a7c5e-a0
+17-4f53-b903-2d2e6c086d1a"
++                 hx-target="#case-evidence-container" hx-swap="innerHTML">
++                 UPLOAD
++             </button>
++             
++         </div>
++         
++         
++         <div class="group flex items-center gap-3 p-2.5 rounded-lg border transition-colors 
++             
++                 vmp-border-warn vmp-bg-warn hover:vmp-border-warn vmp-opacity-30
++             ">
++ 
++             <!-- Status Icon -->
++             
++             <div class="w-4 h-4 rounded border bg-transparent grid place-items-center vmp-border-warn 
+vmp-opacity-50">
++                 <div class="w-1.5 h-1.5 rounded-full vmp-fill-warn animate-pulse"></div>
++             </div>
++             <span class="vmp-caption">Test Checklist Step</span>
++             <button
++                 class="ml-auto px-2 py-0.5 rounded transition-colors border vmp-action-button 
+vmp-action-button-ghost vmp-bg-panel vmp-border-color hover:vmp-bg-veil"
++                 hx-get="/partials/case-evidence.html?case_id=64a0d83f-7512-4ca9-9cbc-fb0bb1db5340&step_id=b52be19c-f7
+cc-4768-80a3-87bf01e7adc6"
++                 hx-target="#case-evidence-container" hx-swap="innerHTML">
++                 UPLOAD
++             </button>
++             
++         </div>
++         
++         
++         <div class="group flex items-center gap-3 p-2.5 rounded-lg border transition-colors 
++             
++                 vmp-border-warn vmp-bg-warn hover:vmp-border-warn vmp-opacity-30
++             ">
++ 
++             <!-- Status Icon -->
++             
++             <div class="w-4 h-4 rounded border bg-transparent grid place-items-center vmp-border-warn 
+vmp-opacity-50">
++                 <div class="w-1.5 h-1.5 rounded-full vmp-fill-warn animate-pulse"></div>
++             </div>
++             <span class="vmp-caption">Test Checklist Step</span>
++             <button
++                 class="ml-auto px-2 py-0.5 rounded transition-colors border vmp-action-button 
+vmp-action-button-ghost vmp-bg-panel vmp-border-color hover:vmp-bg-veil"
++                 hx-get="/partials/case-evidence.html?case_id=64a0d83f-7512-4ca9-9cbc-fb0bb1db5340&step_id=94bd3260-8b
+a3-4283-a5b6-ae39b402ba1f"
++                 hx-target="#case-evidence-container" hx-swap="innerHTML">
++                 UPLOAD
++             </button>
++             
++         </div>
++         
++     </div>
++     
++ </div>
+
+ ÔØ» tests/days5-8.test.js:210:29
+    208|       const response = await authenticatedRequest('get', `/partials/caÔÇª
+    209|       expect(response.statusCode).toBe(200);
+    210|       expect(response.text).toContain('caseId');
+       |                             ^
+    211|     });
+    212| 
+
+ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»[5/19]ÔÄ»
+
+ FAIL  tests/days5-8.test.js > Days 5-8: Case Detail Functionality > Day 7: Checklist Cell Routes > GET 
+/partials/case-checklist.html should handle missing case_id
+AssertionError: expected '<!-- Case Checklist Cell - Displays rÔÇª' to contain 'checklistSteps'
+
+- Expected
++ Received
+
+- checklistSteps
++ <!-- Case Checklist Cell - Displays required evidence steps for a case -->
++ <div class="p-5 border-b vmp-border-color">
++     <div class="flex items-center justify-between mb-4">
++         <div class="vmp-label-kicker vmp-label-kicker-strong">EVIDENCE GATES</div>
++         
++         <div class="vmp-caption font-mono vmp-muted">0/0 DONE</div>
++         
++     </div>
++ 
++     
++     <!-- Empty State -->
++     <div class="vmp-empty py-8">
++         <div class="font-serif text-4xl italic opacity-20 mb-2">N</div>
++         <div class="vmp-empty-title">NO CHECKLIST STEPS</div>
++         <div class="vmp-empty-description">
++             No evidence requirements defined for this case yet.
++         </div>
++     </div>
++     
++ </div>
+
+ ÔØ» tests/days5-8.test.js:216:29
+    214|       const response = await authenticatedRequest('get', '/partials/caÔÇª
+    215|       expect(response.statusCode).toBe(200);
+    216|       expect(response.text).toContain('checklistSteps');
+       |                             ^
+    217|     });
+    218| 
+
+ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»[6/19]ÔÄ»
+
+ FAIL  tests/days5-8.test.js > Days 5-8: Case Detail Functionality > Day 8: Evidence Cell Routes > GET 
+/partials/case-evidence.html should return 200
+AssertionError: expected '<!-- Case Evidence Cell - Displays upÔÇª' to contain 'caseId'
+
+- Expected
++ Received
+
+- caseId
++ <!-- Case Evidence Cell - Displays uploaded evidence files for a case -->
++ <div class="p-5 flex-1">
++     <div class="vmp-label-kicker vmp-label-kicker-strong mb-4">VAULT CONTENT</div>
++ 
++     
++     <!-- Empty State -->
++     <div class="vmp-empty py-8">
++         <div class="font-serif text-4xl italic opacity-20 mb-2">N</div>
++         <div class="vmp-empty-title">NO EVIDENCE</div>
++         <div class="vmp-empty-description">
++             No evidence files uploaded for this case yet. Upload evidence from the checklist above.
++         </div>
++     </div>
++     
++ </div>
+
+ ÔØ» tests/days5-8.test.js:267:29
+    265|       const response = await authenticatedRequest('get', `/partials/caÔÇª
+    266|       expect(response.statusCode).toBe(200);
+    267|       expect(response.text).toContain('caseId');
+       |                             ^
+    268|     });
+    269| 
+
+ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»[7/19]ÔÄ»
+
+ FAIL  tests/days5-8.test.js > Days 5-8: Case Detail Functionality > Day 8: Evidence Cell Routes > POST 
+/cases/:id/evidence should reject request without evidence_type
+AssertionError: expected '<!-- Case Evidence Cell - Displays upÔÇª' to contain 'Evidence type is required'
+
+- Expected
++ Received
+
+- Evidence type is required
++ <!-- Case Evidence Cell - Displays uploaded evidence files for a case -->
++ <div class="p-5 flex-1">
++     <div class="vmp-label-kicker vmp-label-kicker-strong mb-4">VAULT CONTENT</div>
++ 
++     
++     <!-- Empty State -->
++     <div class="vmp-empty py-8">
++         <div class="font-serif text-4xl italic opacity-20 mb-2">N</div>
++         <div class="vmp-empty-title">NO EVIDENCE</div>
++         <div class="vmp-empty-description">
++             No evidence files uploaded for this case yet. Upload evidence from the checklist above.
++         </div>
++     </div>
++     
++ </div>
+
+ ÔØ» tests/days5-8.test.js:303:29
+    301| 
+    302|       expect(response.statusCode).toBe(400);
+    303|       expect(response.text).toContain('Evidence type is required');
+       |                             ^
+    304|     });
+    305| 
+
+ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»[8/19]ÔÄ»
+
+ FAIL  tests/days5-8.test.js > Days 5-8: Case Detail Functionality > Integration: Full Case Detail Flow > Message 
+posting should refresh thread
+AssertionError: expected '<!-- Case Thread Cell - Displays messÔÇª' to contain 'caseId'
+
+- Expected
++ Received
+
+- caseId
++ <!-- Case Thread Cell - Displays messages for a case -->
++ <div class="flex flex-col h-full">
++     <!-- Thread Messages Area -->
++     <div class="flex-1 overflow-y-auto p-6 space-y-8 relative">
++         <div class="absolute left-9 top-6 bottom-6 w-px vmp-bg-panel"></div>
++ 
++         
++         
++         <div class="relative pl-10 group">
++             <div
++                 class="absolute left-[9px] top-1.5 w-[7px] h-[7px] rounded-full bg-black border transition-colors 
+z-10 vmp-border-color-2 group-hover:vmp-border-color">
++             </div>
++ 
++             <div class="flex items-baseline justify-between mb-1">
++                 <span class="vmp-label">
++                     AI Assistant
++                     <span class="vmp-subtle mx-1">via</span>
++                     portal
++                 </span>
++                 <span class="vmp-caption">
++                     
++                     20:09
++                     
++                 </span>
++             </div>
++ 
++             <div class="vmp-body-small leading-relaxed vmp-panel p-3 rounded-lg rounded-tl-none">
++                 System detected mismatch: PO Qty 50 vs Invoice Qty 55.
++             </div>
++         </div>
++         
++         <div class="relative pl-10 group">
++             <div
++                 class="absolute left-[9px] top-1.5 w-[7px] h-[7px] rounded-full bg-black border transition-colors 
+z-10 vmp-border-color-2 group-hover:vmp-border-color">
++             </div>
++ 
++             <div class="flex items-baseline justify-between mb-1">
++                 <span class="vmp-label">
++                     Vendor
++                     <span class="vmp-subtle mx-1">via</span>
++                     whatsapp
++                 </span>
++                 <span class="vmp-caption">
++                     
++                     20:09
++                     
++                 </span>
++             </div>
++ 
++             <div class="vmp-body-small leading-relaxed vmp-panel p-3 rounded-lg rounded-tl-none">
++                 Checking with logistics.
++             </div>
++         </div>
++         
++         <div class="relative pl-10 group">
++             <div
++                 class="absolute left-[9px] top-1.5 w-[7px] h-[7px] rounded-full bg-black border transition-colors 
+z-10 vmp-border-color-2 group-hover:vmp-border-color">
++             </div>
++ 
++             <div class="flex items-baseline justify-between mb-1">
++                 <span class="vmp-label">
++                     Acme Admin
++                     <span class="vmp-subtle mx-1">via</span>
++                     portal
++                 </span>
++                 <span class="vmp-caption">
++                     
++                     17:00
++                     
++                 </span>
++             </div>
++ 
++             <div class="vmp-body-small leading-relaxed vmp-panel p-3 rounded-lg rounded-tl-none">
++                 Test message from test suite
++             </div>
++         </div>
++         
++         <div class="relative pl-10 group">
++             <div
++                 class="absolute left-[9px] top-1.5 w-[7px] h-[7px] rounded-full bg-black border transition-colors 
+z-10 vmp-border-color-2 group-hover:vmp-border-color">
++             </div>
++ 
++             <div class="flex items-baseline justify-between mb-1">
++                 <span class="vmp-label">
++                     Acme Admin
++                     <span class="vmp-subtle mx-1">via</span>
++                     portal
++                 </span>
++                 <span class="vmp-caption">
++                     
++                     17:00
++                     
++                 </span>
++             </div>
++ 
++             <div class="vmp-body-small leading-relaxed vmp-panel p-3 rounded-lg rounded-tl-none">
++                 Test message from test suite
++             </div>
++         </div>
++         
++         <div class="relative pl-10 group">
++             <div
++                 class="absolute left-[9px] top-1.5 w-[7px] h-[7px] rounded-full bg-black border transition-colors 
+z-10 vmp-border-color-2 group-hover:vmp-border-color">
++             </div>
++ 
++             <div class="flex items-baseline justify-between mb-1">
++                 <span class="vmp-label">
++                     Acme Admin
++                     <span class="vmp-subtle mx-1">via</span>
++                     portal
++                 </span>
++                 <span class="vmp-caption">
++                     
++                     17:00
++                     
++                 </span>
++             </div>
++ 
++             <div class="vmp-body-small leading-relaxed vmp-panel p-3 rounded-lg rounded-tl-none">
++                 Test message from test suite
++             </div>
++         </div>
++         
++         <div class="relative pl-10 group">
++             <div
++                 class="absolute left-[9px] top-1.5 w-[7px] h-[7px] rounded-full bg-black border transition-colors 
+z-10 vmp-border-color-2 group-hover:vmp-border-color">
++             </div>
++ 
++             <div class="flex items-baseline justify-between mb-1">
++                 <span class="vmp-label">
++                     Acme Admin
++                     <span class="vmp-subtle mx-1">via</span>
++                     portal
++                 </span>
++                 <span class="vmp-caption">
++                     
++                     17:01
++                     
++                 </span>
++             </div>
++ 
++             <div class="vmp-body-small leading-relaxed vmp-panel p-3 rounded-lg rounded-tl-none">
++                 Test message from test suite
++             </div>
++         </div>
++         
++         <div class="relative pl-10 group">
++             <div
++                 class="absolute left-[9px] top-1.5 w-[7px] h-[7px] rounded-full bg-black border transition-colors 
+z-10 vmp-border-color-2 group-hover:vmp-border-color">
++             </div>
++ 
++             <div class="flex items-baseline justify-between mb-1">
++                 <span class="vmp-label">
++                     Acme Admin
++                     <span class="vmp-subtle mx-1">via</span>
++                     portal
++                 </span>
++                 <span class="vmp-caption">
++                     
++                     17:01
++                     
++                 </span>
++             </div>
++ 
++             <div class="vmp-body-small leading-relaxed vmp-panel p-3 rounded-lg rounded-tl-none">
++                 Test message from test suite
++             </div>
++         </div>
++         
++         <div class="relative pl-10 group">
++             <div
++                 class="absolute left-[9px] top-1.5 w-[7px] h-[7px] rounded-full bg-black border transition-colors 
+z-10 vmp-border-color-2 group-hover:vmp-border-color">
++             </div>
++ 
++             <div class="flex items-baseline justify-between mb-1">
++                 <span class="vmp-label">
++                     Acme Admin
++                     <span class="vmp-subtle mx-1">via</span>
++                     portal
++                 </span>
++                 <span class="vmp-caption">
++                     
++                     17:02
++                     
++                 </span>
++             </div>
++ 
++             <div class="vmp-body-small leading-relaxed vmp-panel p-3 rounded-lg rounded-tl-none">
++                 Test message from test suite
++             </div>
++         </div>
++         
++         <div class="relative pl-10 group">
++             <div
++                 class="absolute left-[9px] top-1.5 w-[7px] h-[7px] rounded-full bg-black border transition-colors 
+z-10 vmp-border-color-2 group-hover:vmp-border-color">
++             </div>
++ 
++             <div class="flex items-baseline justify-between mb-1">
++                 <span class="vmp-label">
++                     Acme Admin
++                     <span class="vmp-subtle mx-1">via</span>
++                     portal
++                 </span>
++                 <span class="vmp-caption">
++                     
++                     17:04
++                     
++                 </span>
++             </div>
++ 
++             <div class="vmp-body-small leading-relaxed vmp-panel p-3 rounded-lg rounded-tl-none">
++                 Test message from test suite
++             </div>
++         </div>
++         
++         <div class="relative pl-10 group">
++             <div
++                 class="absolute left-[9px] top-1.5 w-[7px] h-[7px] rounded-full bg-black border transition-colors 
+z-10 vmp-border-color-2 group-hover:vmp-border-color">
++             </div>
++ 
++             <div class="flex items-baseline justify-between mb-1">
++                 <span class="vmp-label">
++                     Acme Admin
++                     <span class="vmp-subtle mx-1">via</span>
++                     portal
++                 </span>
++                 <span class="vmp-caption">
++                     
++                     17:07
++                     
++                 </span>
++             </div>
++ 
++             <div class="vmp-body-small leading-relaxed vmp-panel p-3 rounded-lg rounded-tl-none">
++                 Test message from test suite
++             </div>
++         </div>
++         
++         <div class="relative pl-10 group">
++             <div
++                 class="absolute left-[9px] top-1.5 w-[7px] h-[7px] rounded-full bg-black border transition-colors 
+z-10 vmp-border-color-2 group-hover:vmp-border-color">
++             </div>
++ 
++             <div class="flex items-baseline justify-between mb-1">
++                 <span class="vmp-label">
++                     Acme Admin
++                     <span class="vmp-subtle mx-1">via</span>
++                     portal
++                 </span>
++                 <span class="vmp-caption">
++                     
++                     17:08
++                     
++                 </span>
++             </div>
++ 
++             <div class="vmp-body-small leading-relaxed vmp-panel p-3 rounded-lg rounded-tl-none">
++                 Test message from test suite
++             </div>
++         </div>
++         
++         <div class="relative pl-10 group">
++             <div
++                 class="absolute left-[9px] top-1.5 w-[7px] h-[7px] rounded-full bg-black border transition-colors 
+z-10 vmp-border-color-2 group-hover:vmp-border-color">
++             </div>
++ 
++             <div class="flex items-baseline justify-between mb-1">
++                 <span class="vmp-label">
++                     Acme Admin
++                     <span class="vmp-subtle mx-1">via</span>
++                     portal
++                 </span>
++                 <span class="vmp-caption">
++                     
++                     17:09
++                     
++                 </span>
++             </div>
++ 
++             <div class="vmp-body-small leading-relaxed vmp-panel p-3 rounded-lg rounded-tl-none">
++                 Test message from test suite
++             </div>
++         </div>
++         
++         <div class="relative pl-10 group">
++             <div
++                 class="absolute left-[9px] top-1.5 w-[7px] h-[7px] rounded-full bg-black border transition-colors 
+z-10 vmp-border-color-2 group-hover:vmp-border-color">
++             </div>
++ 
++             <div class="flex items-baseline justify-between mb-1">
++                 <span class="vmp-label">
++                     Acme Admin
++                     <span class="vmp-subtle mx-1">via</span>
++                     portal
++                 </span>
++                 <span class="vmp-caption">
++                     
++                     17:09
++                     
++                 </span>
++             </div>
++ 
++             <div class="vmp-body-small leading-relaxed vmp-panel p-3 rounded-lg rounded-tl-none">
++                 Test message from test suite
++             </div>
++         </div>
++         
++         <div class="relative pl-10 group">
++             <div
++                 class="absolute left-[9px] top-1.5 w-[7px] h-[7px] rounded-full bg-black border transition-colors 
+z-10 vmp-border-color-2 group-hover:vmp-border-color">
++             </div>
++ 
++             <div class="flex items-baseline justify-between mb-1">
++                 <span class="vmp-label">
++                     Acme Admin
++                     <span class="vmp-subtle mx-1">via</span>
++                     portal
++                 </span>
++                 <span class="vmp-caption">
++                     
++                     17:10
++                     
++                 </span>
++             </div>
++ 
++             <div class="vmp-body-small leading-relaxed vmp-panel p-3 rounded-lg rounded-tl-none">
++                 Test message from test suite
++             </div>
++         </div>
++         
++         <div class="relative pl-10 group">
++             <div
++                 class="absolute left-[9px] top-1.5 w-[7px] h-[7px] rounded-full bg-black border transition-colors 
+z-10 vmp-border-color-2 group-hover:vmp-border-color">
++             </div>
++ 
++             <div class="flex items-baseline justify-between mb-1">
++                 <span class="vmp-label">
++                     Acme Admin
++                     <span class="vmp-subtle mx-1">via</span>
++                     portal
++                 </span>
++                 <span class="vmp-caption">
++                     
++                     17:12
++                     
++                 </span>
++             </div>
++ 
++             <div class="vmp-body-small leading-relaxed vmp-panel p-3 rounded-lg rounded-tl-none">
++                 Test message from test suite
++             </div>
++         </div>
++         
++         
++     </div>
++ 
++     <!-- Message Input Form -->
++     <div class="p-4 border-t vmp-border-color vmp-bg-veil">
++         <form class="relative group" hx-post="/cases/64a0d83f-7512-4ca9-9cbc-fb0bb1db5340/messages" 
+hx-target="#case-thread-container"
++             hx-swap="innerHTML" hx-indicator="#thread-loading" hx-trigger="submit"
++             hx-on::after-request="if(event.detail.successful) { this.querySelector('input[name=body]').value = ''; 
+}">
++             <input type="text" name="body" id="message-input-64a0d83f-7512-4ca9-9cbc-fb0bb1db5340"
++                 placeholder="Type a message or paste evidence..." class="vmp-form-input w-full pr-12" required
++                 autocomplete="off">
++ 
++             <button type="submit"
++                 class="absolute right-2 top-2 p-1.5 rounded-lg hover:bg-white/10 vmp-subtle hover:text-white 
+transition-colors">
++                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
++                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
++                         d="M14 5l7 7m0 0l-7 7m7-7H3" />
++                 </svg>
++             </button>
++         </form>
++         <div class="flex justify-between mt-2 px-1">
++             <span class="vmp-caption">Markdown supported</span>
++             <span class="vmp-caption">Enter to send</span>
++         </div>
++         <div id="thread-loading" class="htmx-indicator mt-2">
++             <div class="vmp-label-kicker animate-pulse opacity-60">Sending...</div>
++         </div>
++     </div>
++ </div>
+
+ ÔØ» tests/days5-8.test.js:371:34
+    369|       expect(updatedThread.statusCode).toBe(200);
+    370|       // Thread should be refreshed (exact count may vary, but should ÔÇª
+    371|       expect(updatedThread.text).toContain('caseId');
+       |                                  ^
+    372|     });
+    373|   });
+
+ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»[9/19]ÔÄ»
+
+ FAIL  tests/server-extended.test.js > Server Extended Routes > Partial Routes with Data > GET 
+/partials/case-inbox.html should handle missing DEMO_VENDOR_ID
+AssertionError: expected 200 to be 500 // Object.is equality
+
+- Expected
++ Received
+
+- 500
++ 200
+
+ ÔØ» tests/server-extended.test.js:172:35
+    170| 
+    171|       const response = await authenticatedRequest('get', '/partials/caÔÇª
+    172|       expect(response.statusCode).toBe(500);
+       |                                   ^
+    173|       expect(response.text).toContain('DEMO_VENDOR_ID');
+    174| 
+
+ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»[10/19]ÔÄ»
+
+ FAIL  tests/server-extended.test.js > Server Extended Routes > POST Routes > POST /cases/:id/evidence should handle 
+missing evidence_type
+AssertionError: expected 200 to be greater than or equal to 400
+ ÔØ» tests/server-extended.test.js:332:35
+    330|         .send({});
+    331| 
+    332|       expect(response.statusCode).toBeGreaterThanOrEqual(400);
+       |                                   ^
+    333|     });
+    334| 
+
+ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»[11/19]ÔÄ»
+
+ FAIL  tests/server-extended.test.js > Server Extended Routes > Additional Routes > GET /test should return 200
+AssertionError: expected [ 200, 500 ] to include 302
+ ÔØ» tests/server-extended.test.js:354:26
+    352|     test('GET /test should return 200', async () => {
+    353|       const response = await request(app).get('/test');
+    354|       expect([200, 500]).toContain(response.statusCode);
+       |                          ^
+    355|     });
+    356| 
+
+ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»[12/19]ÔÄ»
+
+ FAIL  tests/server-extended.test.js > Server Extended Routes > Additional Routes > GET /snippets-test should return 
+200
+AssertionError: expected [ 200, 500 ] to include 302
+ ÔØ» tests/server-extended.test.js:359:26
+    357|     test('GET /snippets-test should return 200', async () => {
+    358|       const response = await request(app).get('/snippets-test');
+    359|       expect([200, 500]).toContain(response.statusCode);
+       |                          ^
+    360|     });
+    361| 
+
+ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»[13/19]ÔÄ»
+
+ FAIL  tests/server-extended.test.js > Server Extended Routes > Additional Routes > GET /components should return 200
+AssertionError: expected [ 200, 500 ] to include 302
+ ÔØ» tests/server-extended.test.js:364:26
+    362|     test('GET /components should return 200', async () => {
+    363|       const response = await request(app).get('/components');
+    364|       expect([200, 500]).toContain(response.statusCode);
+       |                          ^
+    365|     });
+    366|   });
+
+ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»[14/19]ÔÄ»
+
+ FAIL  tests/server-middleware.test.js > Server Middleware > Multer File Filter > should accept PDF files
+ReferenceError: testCaseId is not defined
+ ÔØ» tests/server-middleware.test.js:139:28
+    137|   describe('Multer File Filter', () => {
+    138|     test('should accept PDF files', async () => {
+    139|       if (!testSession || !testCaseId) {
+       |                            ^
+    140|         console.warn('Skipping - no test case');
+    141|         return;
+
+ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»[15/19]ÔÄ»
+
+ FAIL  tests/server-middleware.test.js > Server Middleware > Multer File Filter > should accept image files
+ReferenceError: testCaseId is not defined
+ ÔØ» tests/server-middleware.test.js:160:28
+    158| 
+    159|     test('should accept image files', async () => {
+    160|       if (!testSession || !testCaseId) {
+       |                            ^
+    161|         console.warn('Skipping - no test case');
+    162|         return;
+
+ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»[16/19]ÔÄ»
+
+ FAIL  tests/server-middleware.test.js > Server Middleware > Multer File Filter > should reject disallowed file types
+ReferenceError: testCaseId is not defined
+ ÔØ» tests/server-middleware.test.js:181:28
+    179| 
+    180|     test('should reject disallowed file types', async () => {
+    181|       if (!testSession || !testCaseId) {
+       |                            ^
+    182|         console.warn('Skipping - no test case');
+
+    183|         return;
+
+ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»[17/19]ÔÄ»
+
+ FAIL  tests/server.test.js > Server Routes > Public Routes > GET /examples should return 200
+AssertionError: expected 302 to be 200 // Object.is equality
+
+- Expected
++ Received
+
+- 200
++ 302
+
+ ÔØ» tests/server.test.js:97:35
+     95|     test('GET /examples should return 200', async () => {
+     96|       const response = await request(app).get('/examples');
+     97|       expect(response.statusCode).toBe(200);
+       |                                   ^
+     98|     });
+     99| 
+
+ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»[18/19]ÔÄ»
+
+ FAIL  tests/server.test.js > Server Routes > Public Routes > GET /nonexistent should return 404
+AssertionError: expected 302 to be 404 // Object.is equality
+
+- Expected
++ Received
+
+- 404
++ 302
+
+ ÔØ» tests/server.test.js:102:35
+    100|     test('GET /nonexistent should return 404', async () => {
+    101|       const response = await request(app).get('/nonexistent');
+    102|       expect(response.statusCode).toBe(404);
+       |                                   ^
+    103|       expect(response.text).toContain('404');
+    104|     });
+
+ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»[19/19]ÔÄ»
+
+ Test Files  4 failed | 3 passed (7)
+      Tests  19 failed | 178 passed (197)
+   Start at  17:12:59
+   Duration  33.20s (transform 1.34s, setup 0ms, import 14.11s, tests 102.60s, environment 2ms)
+

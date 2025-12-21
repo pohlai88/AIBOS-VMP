@@ -1,0 +1,213 @@
+{% extends "layout.html" %}
+
+{% block title %}NexusCanon // Console{% endblock %}
+
+{% block content %}
+<style>
+  .vmp-beast-bg {
+    position: fixed; inset: 0; z-index: -1; pointer-events: none;
+    background: 
+      radial-gradient(circle at 15% 50%, rgba(96, 255, 198, 0.03), transparent 25%),
+      radial-gradient(circle at 85% 30%, rgba(19, 185, 255, 0.04), transparent 35%);
+    mix-blend-mode: screen;
+  }
+  .vmp-noise-layer {
+    position: fixed; inset: 0; z-index: 0; pointer-events: none;
+    opacity: 0.05;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+  }
+  .vmp-grid-layer {
+    position: fixed; inset: 0; z-index: 0; pointer-events: none;
+    background-size: 40px 40px;
+    background-image: linear-gradient(to right, rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+                      linear-gradient(to bottom, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+    mask-image: radial-gradient(circle at center, black 40%, transparent 100%);
+  }
+</style>
+
+<div class="vmp-beast-bg"></div>
+<div class="vmp-noise-layer"></div>
+<div class="vmp-grid-layer"></div>
+
+<div class="vmp-container vmp-container-wide vmp-py-8 relative z-10" x-data="{ 
+  mode: 'live',
+  riskLevel: 12,
+  scanActive: true 
+}">
+
+  <header class="flex flex-wrap items-end justify-between gap-6 mb-12 border-b vmp-border-color pb-6">
+    <div>
+      <div class="vmp-label-kicker mb-1">OPERATIONAL REALITY</div>
+      <h1 class="vmp-h3 text-4xl">Governance Console</h1>
+    </div>
+    
+    <div class="flex items-center gap-4">
+      <div class="vmp-ritual px-4 py-2 flex items-center gap-3">
+        <span class="vmp-spinner vmp-text-brand" x-show="scanActive"></span>
+        <span class="vmp-label-kicker-strong">SYSTEM: NOMINAL</span>
+      </div>
+      <div class="vmp-label-kicker vmp-mono" x-text="'STAMP: ' + new Date().toISOString().slice(0,16).replace('T',' ')"></div>
+    </div>
+  </header>
+
+  <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+
+    <div class="lg:col-span-8 flex flex-col gap-8">
+      
+      <section class="vmp-card relative overflow-hidden group">
+        <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none transform -skew-x-12 translate-x-[-100%] group-hover:translate-x-[100%]"></div>
+
+        <div class="vmp-card-head flex justify-between items-center">
+          <h2 class="vmp-h5 flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+            Active Posture
+          </h2>
+          <div class="flex gap-2">
+            <button @click="mode = 'live'" :class="mode === 'live' ? 'vmp-badge-ok' : 'vmp-badge'" class="vmp-badge cursor-pointer transition-all">LIVE</button>
+            <button @click="mode = 'audit'" :class="mode === 'audit' ? 'vmp-badge-warn' : 'vmp-badge'" class="vmp-badge cursor-pointer transition-all">AUDIT</button>
+          </div>
+        </div>
+
+        <div class="vmp-card-body">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+            <div>
+              <div class="vmp-label-kicker mb-2">Matching Discipline</div>
+              <p class="vmp-body-large mb-6 max-w-prose text-opacity-80">
+                Current policy enforces <span class="vmp-text-brand">3-Way Match</span> (PO + GRN + Invoice). 
+                Exceptions require owned case notes.
+              </p>
+              
+              <div class="flex flex-col gap-4">
+                <div class="flex justify-between items-end">
+                  <span class="vmp-label">Trust Index</span>
+                  <span class="vmp-mono text-xl">82%</span>
+                </div>
+                <div class="vmp-progress">
+                  <div class="vmp-progress-bar" style="width: 82%"></div>
+                </div>
+                
+                <div class="flex justify-between items-end mt-2">
+                  <span class="vmp-label">Risk Exposure</span>
+                  <span class="vmp-mono text-xl vmp-text-danger" x-text="riskLevel + '%'"></span>
+                </div>
+                <div class="vmp-progress">
+                  <div class="vmp-progress-bar vmp-progress-bar-danger" :style="'width: ' + riskLevel + '%'"></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="vmp-panel p-6 flex flex-col items-center justify-center min-h-[200px] border-dashed border border-white/10">
+              <div class="text-6xl font-serif italic mb-2 opacity-90">A+</div>
+              <div class="vmp-label-kicker text-center">VENDOR COMPLIANCE<br>GRADE</div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="vmp-card-foot flex justify-between items-center">
+          <span class="vmp-code-small">ID: CF-2024-X99</span>
+          <button class="vmp-btn-ghost vmp-btn-sm group-hover:text-white">Inspect Evidence &rarr;</button>
+        </div>
+      </section>
+
+      <section>
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="vmp-h6">Evidence Stream</h3>
+          <span class="vmp-badge">REALTIME</span>
+        </div>
+
+        <div class="vmp-list border-t vmp-border-color">
+          <div class="vmp-list-item hover:bg-white/5 transition-colors cursor-pointer group">
+            <div class="flex items-baseline justify-between">
+              <div class="flex items-center gap-4">
+                <span class="vmp-mono text-xs vmp-subtle">10:42</span>
+                <span class="vmp-inline-brand vmp-mono text-xs">DETECTED</span>
+                <span class="vmp-body text-sm">Price variance detected on Invoice #9921</span>
+              </div>
+              <span class="vmp-code-small opacity-0 group-hover:opacity-100 transition-opacity">VIEW CASE</span>
+            </div>
+          </div>
+
+          <div class="vmp-list-item hover:bg-white/5 transition-colors cursor-pointer group">
+            <div class="flex items-baseline justify-between">
+              <div class="flex items-center gap-4">
+                <span class="vmp-mono text-xs vmp-subtle">09:15</span>
+                <span class="vmp-inline-ok vmp-mono text-xs">SETTLED</span>
+                <span class="vmp-body text-sm">Auto-approval: Recurring SaaS Vendor (Slack)</span>
+              </div>
+              <span class="vmp-code-small opacity-0 group-hover:opacity-100 transition-opacity">JSON EXPORT</span>
+            </div>
+          </div>
+
+           <div class="vmp-list-item hover:bg-white/5 transition-colors cursor-pointer group">
+            <div class="flex items-baseline justify-between">
+              <div class="flex items-center gap-4">
+                <span class="vmp-mono text-xs vmp-subtle">08:30</span>
+                <span class="vmp-inline-warn vmp-mono text-xs">PENDING</span>
+                <span class="vmp-body text-sm">Missing GRN for Purchase Order PO-442</span>
+              </div>
+              <span class="vmp-code-small opacity-0 group-hover:opacity-100 transition-opacity">NUDGE OWNER</span>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <div class="lg:col-span-4 flex flex-col gap-6">
+
+      <div class="vmp-panel p-6 flex flex-col gap-4 sticky top-6">
+        <div class="vmp-label-kicker-strong mb-2">QUICK ACTIONS</div>
+        
+        <button class="vmp-btn-brand vmp-btn-wide justify-between group">
+          <span>Generate Case</span>
+          <span class="opacity-70 group-hover:translate-x-1 transition-transform">+</span>
+        </button>
+
+        <button class="vmp-btn vmp-btn-wide justify-between">
+          <span>Export Pack</span>
+          <span class="vmp-mono text-xs opacity-50">JSON</span>
+        </button>
+
+        <div class="vmp-divider border-t vmp-border-color my-2"></div>
+
+        <div class="vmp-label-kicker mb-2">ACTIVE PROTOCOLS</div>
+        
+        <div class="flex items-center justify-between p-3 border vmp-border-color rounded-md bg-white/5">
+          <div class="flex flex-col">
+            <span class="vmp-body-small">Audit Narrative</span>
+            <span class="vmp-caption text-emerald-400">Running</span>
+          </div>
+          <div class="vmp-toggle w-8 h-4 rounded-full bg-emerald-500/20 border border-emerald-500/50"></div>
+        </div>
+
+        <div class="flex items-center justify-between p-3 border vmp-border-color rounded-md bg-white/5">
+          <div class="flex flex-col">
+            <span class="vmp-body-small">Auto-Settle</span>
+            <span class="vmp-caption vmp-text-warn">Paused</span>
+          </div>
+          <div class="w-8 h-4 rounded-full border vmp-border-color"></div>
+        </div>
+
+      </div>
+
+      <div class="grid grid-cols-2 gap-4">
+        <div class="vmp-card p-4 text-center">
+          <div class="vmp-h4 mb-1">24</div>
+          <div class="vmp-label-kicker vmp-subtle">OPEN CASES</div>
+        </div>
+        <div class="vmp-card p-4 text-center">
+          <div class="vmp-h4 mb-1">1.2s</div>
+          <div class="vmp-label-kicker vmp-subtle">AVG SETTLE</div>
+        </div>
+      </div>
+
+      <div class="mt-auto pt-8 text-right opacity-50 hover:opacity-100 transition-opacity">
+        <div class="vmp-mono text-xs">VMP-CONSOLE-v6.0.1</div>
+        <div class="vmp-serif text-xs italic mt-1">"Calm over noise."</div>
+      </div>
+
+    </div>
+
+  </div>
+</div>
+{% endblock %}
+

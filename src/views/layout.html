@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en" data-surface="vmp" class="h-full" x-data="{ theme: localStorage.getItem('vmp-theme') || 'dark' }"
+  x-init="
+    const initialTheme = localStorage.getItem('vmp-theme') || 'dark';
+    document.documentElement.setAttribute('data-theme', initialTheme);
+    document.documentElement.setAttribute('data-color-scheme', initialTheme);
+    $watch('theme', val => { 
+      document.documentElement.setAttribute('data-theme', val); 
+      document.documentElement.setAttribute('data-color-scheme', val);
+      localStorage.setItem('vmp-theme', val); 
+    });
+  ">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="color-scheme" content="dark light" />
+  <title>{% block title %}NexusCanon VMP{% endblock %}</title>
+
+  <!-- Theme Initialization (Prevents FOUC) -->
+  <script>
+    (function () {
+      const theme = localStorage.getItem('vmp-theme') || 'dark';
+      document.documentElement.setAttribute('data-theme', theme);
+      document.documentElement.setAttribute('data-color-scheme', theme);
+    })();
+  </script>
+
+  <!-- Favicon -->
+  <link rel="icon"
+    href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90' font-family='serif' font-style='italic'>N</text></svg>" />
+
+  <!-- AHA Stack -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+  <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <!-- Liter font loaded via globals.css -->
+  <!-- JetBrains Mono and Playfair Display -->
+  <link
+    href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300&family=Playfair+Display:wght@300&display=swap"
+    rel="stylesheet">
+
+  <!-- Design System SSOT (v2.0.0) -->
+  <link rel="stylesheet" href="/globals.css" />
+</head>
+
+<body class="h-full flex">
+  <!-- Sidebar -->
+  <aside class="hidden md:flex w-64 flex-none vmp-sidebar p-4 z-10">
+    <div class="flex flex-col w-full">
+
+      <!-- Brand -->
+      <div class="flex items-center gap-3 p-3 vmp-panel">
+        <div class="w-9 h-9 rounded-lg vmp-brand-mark grid place-items-center font-serif text-lg italic">
+          N
+        </div>
+        <div class="min-w-0">
+          <div class="vmp-label-kicker vmp-label-kicker-strong truncate">NEXUSCANON</div>
+          <div class="vmp-caption truncate">Vendor Management Portal</div>
+        </div>
+      </div>
+
+      <!-- Navigation -->
+      <nav class="mt-6 space-y-1 flex-1">
+        {% if user %}
+        <div class="mb-4 pb-4 border-b vmp-border-color">
+          <div class="vmp-caption vmp-muted mb-1">Logged in as</div>
+          <div class="vmp-body-small font-medium">{{ user.displayName or user.email }}</div>
+        </div>
+        {% endif %}
+        <a href="/home" class="vmp-navigation-link vmp-navigation-link-active">
+          <span class="vmp-body-small">Console</span>
+          <span class="vmp-label-kicker vmp-subtle">HOME</span>
+        </a>
+
+        <a href="#" class="vmp-navigation-link">
+          <span class="vmp-body-small">Cases</span>
+          <span class="vmp-label-kicker vmp-subtle">VMP-CASE</span>
+        </a>
+
+        <a href="#" class="vmp-navigation-link">
+          <span class="vmp-body-small">Documents</span>
+          <span class="vmp-label-kicker vmp-subtle">DOC</span>
+        </a>
+
+        <a href="#" class="vmp-navigation-link">
+          <span class="vmp-body-small">SOA Mapping</span>
+          <span class="vmp-label-kicker vmp-subtle">SOA</span>
+        </a>
+
+        <a href="/examples" class="vmp-navigation-link">
+          <span class="vmp-body-small">UI Examples</span>
+          <span class="vmp-label-kicker vmp-subtle">EXAMPLES</span>
+        </a>
+
+        <a href="/components" class="vmp-navigation-link">
+          <span class="vmp-body-small">Components</span>
+          <span class="vmp-label-kicker vmp-subtle">SHOWCASE</span>
+        </a>
+      </nav>
+
+      <!-- Doctrine -->
+      <div class="pt-4 mt-4 border-t vmp-border-color">
+        <div class="vmp-label-kicker mb-2">// doctrine</div>
+        <p class="vmp-caption leading-relaxed vmp-muted">
+          No evidence, no movement. Every message becomes a case note. Every case is auditable.
+        </p>
+      </div>
+
+      <!-- Theme Toggle -->
+      <div class="pt-4 mt-4 border-t vmp-border-color">
+        <button type="button" class="vmp-theme-toggle w-full" @click="theme = (theme === 'dark') ? 'light' : 'dark'"
+          :aria-label="theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'" title="Toggle theme">
+          <svg x-show="theme === 'dark'" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+            stroke="currentColor" x-cloak>
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+          </svg>
+          <svg x-show="theme === 'light'" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+            stroke="currentColor" x-cloak>
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+          </svg>
+        </button>
+      </div>
+
+      {% if user %}
+      <!-- User Info & Logout -->
+      <div class="pt-4 mt-4 border-t vmp-border-color">
+        <div class="mb-3">
+          <div class="vmp-caption vmp-muted mb-1">Logged in as</div>
+          <div class="vmp-body-small font-medium truncate">{{ user.displayName or user.email }}</div>
+        </div>
+        <form method="POST" action="/logout">
+          <button type="submit" class="vmp-btn vmp-btn-outline w-full">
+            Sign Out
+          </button>
+        </form>
+      </div>
+      {% endif %}
+
+    </div>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="flex-1 min-w-0 relative z-10">
+    {% block content %}{% endblock %}
+  </main>
+</body>
+
+</html>

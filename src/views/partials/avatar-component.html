@@ -1,0 +1,56 @@
+<!-- Supabase-style Avatar Component
+     Usage: Include this partial for user avatars with upload capability
+     Props: size (sm|md|lg|xl|2xl), src (image URL), name (for initials), uploadable (boolean)
+-->
+
+<div class="vmp-avatar-upload" 
+     x-data="{
+       size: '{% if size %}{{ size }}{% else %}md{% endif %}',
+       src: '{% if src %}{{ src }}{% else %}{% endif %}',
+       name: '{% if name %}{{ name }}{% else %}{% endif %}',
+       uploading: false,
+       uploadable: {% if uploadable %}true{% else %}false{% endif %},
+       handleUpload(event) {
+         const file = event.target.files[0];
+         if (!file) return;
+         
+         // Validate image
+         if (!file.type.startsWith('image/')) {
+           alert('Please select an image file');
+           return;
+         }
+         
+         // Show preview
+         const reader = new FileReader();
+         reader.onload = (e) => {
+           this.src = e.target.result;
+         };
+         reader.readAsDataURL(file);
+         
+         // Upload via HTMX or fetch
+         this.uploading = true;
+         // TODO: Implement actual upload
+         setTimeout(() => { this.uploading = false; }, 1000);
+       }
+     }"
+     :class="'vmp-avatar-' + size">
+  
+  <div class="vmp-avatar" :class="'vmp-avatar-' + size">
+    <img x-show="src" :src="src" alt="Avatar" />
+    <div class="vmp-avatar-placeholder" x-show="!src" x-text="name ? name.charAt(0).toUpperCase() : '?'"></div>
+  </div>
+  
+  <div class="vmp-avatar-upload-overlay" x-show="uploading" x-cloak>
+    <div class="vmp-spinner vmp-spinner-lg"></div>
+  </div>
+  
+  <input type="file" 
+         accept="image/*"
+         @change="handleUpload($event)"
+         x-show="false" />
+  
+  <div class="vmp-avatar-upload-overlay" x-show="!uploading && uploadable" x-cloak>
+    <span>Change</span>
+  </div>
+</div>
+

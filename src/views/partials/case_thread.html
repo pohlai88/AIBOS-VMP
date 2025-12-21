@@ -1,0 +1,74 @@
+<!-- Case Thread Cell - Displays messages for a case -->
+<div class="flex flex-col h-full">
+    <!-- Thread Messages Area -->
+    <div class="flex-1 overflow-y-auto p-6 space-y-8 relative">
+        <div class="absolute left-9 top-6 bottom-6 w-px vmp-bg-panel"></div>
+
+        {% if messages and messages|length > 0 %}
+        {% for msg in messages %}
+        <div class="relative pl-10 group">
+            <div
+                class="absolute left-[9px] top-1.5 w-[7px] h-[7px] rounded-full bg-black border transition-colors z-10 vmp-border-color-2 group-hover:vmp-border-color">
+            </div>
+
+            <div class="flex items-baseline justify-between mb-1">
+                <span class="vmp-label">
+                    {{ msg.sender_party if msg.sender_party else 'SYSTEM' }}
+                    <span class="vmp-subtle mx-1">via</span>
+                    {{ msg.channel_source if msg.channel_source else 'PORTAL' }}
+                </span>
+                <span class="vmp-caption">
+                    {% if msg.created_at %}
+                    {{ msg.created_at | date('%H:%M') }}
+                    {% else %}
+                    —
+                    {% endif %}
+                </span>
+            </div>
+
+            <div class="vmp-body-small leading-relaxed vmp-panel p-3 rounded-lg rounded-tl-none">
+                {{ msg.body if msg.body else '—' }}
+            </div>
+        </div>
+        {% endfor %}
+        {% else %}
+        <!-- Empty State -->
+        <div class="relative pl-10 opacity-50">
+            <div class="absolute left-[9px] top-1.5 w-[7px] h-[7px] rounded-full vmp-bg-panel"></div>
+            <div class="vmp-empty">
+                <div class="font-serif text-4xl italic opacity-20 mb-2">N</div>
+                <div class="vmp-empty-title">NO MESSAGES</div>
+                <div class="vmp-empty-description">
+                    Case initialized. No messages yet. Start the conversation below.
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Message Input Form -->
+    <div class="p-4 border-t vmp-border-color vmp-bg-veil">
+        <form class="relative group" hx-post="/cases/{{ caseId }}/messages" hx-target="#case-thread-container"
+            hx-swap="innerHTML" hx-indicator="#thread-loading" hx-trigger="submit"
+            hx-on::after-request="if(event.detail.successful) { this.querySelector('input[name=body]').value = ''; }">
+            <input type="text" name="body" id="message-input-{{ caseId }}"
+                placeholder="Type a message or paste evidence..." class="vmp-form-input w-full pr-12" required
+                autocomplete="off">
+
+            <button type="submit"
+                class="absolute right-2 top-2 p-1.5 rounded-lg hover:bg-white/10 vmp-subtle hover:text-white transition-colors">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                </svg>
+            </button>
+        </form>
+        <div class="flex justify-between mt-2 px-1">
+            <span class="vmp-caption">Markdown supported</span>
+            <span class="vmp-caption">Enter to send</span>
+        </div>
+        <div id="thread-loading" class="htmx-indicator mt-2">
+            <div class="vmp-label-kicker animate-pulse opacity-60">Sending...</div>
+        </div>
+    </div>
+</div>

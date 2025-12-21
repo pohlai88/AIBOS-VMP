@@ -1,0 +1,133 @@
+<!-- Case Checklist Cell - Displays required evidence steps for a case -->
+<div class="p-5 border-b vmp-border-color">
+    <div class="flex items-center justify-between mb-4">
+        <div class="vmp-label-kicker vmp-label-kicker-strong">EVIDENCE GATES</div>
+        {% if checklistSteps and checklistSteps|length > 0 %}
+        {% set completed = checklistSteps | selectattr('status', 'equalto', 'verified') | list | length %}
+        {% set total = checklistSteps | length %}
+        <div class="vmp-caption font-mono vmp-muted">{{ completed }}/{{ total }} DONE</div>
+        {% else %}
+        <div class="vmp-caption font-mono vmp-muted">0/0 DONE</div>
+        {% endif %}
+    </div>
+
+    {% if checklistSteps and checklistSteps|length > 0 %}
+    <div class="space-y-2">
+        {% for step in checklistSteps %}
+        {% set stepStatus = (step.status or 'required') | lower %}
+        <div class="group flex items-center gap-3 p-2.5 rounded-lg border transition-colors 
+            {% if stepStatus == 'verified' or stepStatus == 'waived' %}
+                vmp-border-color vmp-bg-panel hover:vmp-border-color-2
+            {% elif stepStatus == 'submitted' %}
+                vmp-border-warn vmp-bg-warn hover:vmp-border-warn vmp-opacity-30
+            {% else %}
+                vmp-border-warn vmp-bg-warn hover:vmp-border-warn vmp-opacity-30
+            {% endif %}">
+
+            <!-- Status Icon -->
+            {% if stepStatus == 'verified' or stepStatus == 'waived' %}
+            <div
+                class="w-4 h-4 rounded border grid place-items-center vmp-signal-ok vmp-border-ok vmp-bg-ok vmp-opacity-50">
+                <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" />
+                </svg>
+            </div>
+            <span class="vmp-caption vmp-muted line-through">{{ step.label or 'Evidence required' }}</span>
+            {% elif stepStatus == 'submitted' %}
+            <div class="w-4 h-4 rounded border bg-transparent grid place-items-center vmp-border-warn vmp-opacity-50">
+                <div class="w-1.5 h-1.5 rounded-full vmp-fill-warn animate-pulse"></div>
+            </div>
+            <span class="vmp-caption">{{ step.label or 'Evidence required' }}</span>
+            <div class="ml-auto flex gap-2">
+                {% if isInternal %}
+                <!-- Internal-only: Verify/Reject buttons -->
+                <form hx-post="/cases/{{ caseId }}/verify-evidence" 
+                      hx-target="#case-checklist-container" 
+                      hx-swap="innerHTML"
+                      class="inline">
+                    <input type="hidden" name="checklist_step_id" value="{{ step.id }}">
+                    <button type="submit" 
+                            class="px-2 py-0.5 rounded transition-colors border vmp-action-button vmp-action-button-primary text-xs">
+                        VERIFY
+                    </button>
+                </form>
+                <button
+                    class="px-2 py-0.5 rounded transition-colors border vmp-action-button vmp-action-button-ghost vmp-bg-panel vmp-border-color hover:vmp-bg-veil text-xs"
+                    onclick="showRejectModal('{{ step.id }}', '{{ step.label }}')">
+                    REJECT
+                </button>
+                {% else %}
+                <span class="px-2 py-0.5 rounded border vmp-action-button vmp-action-button-ghost vmp-bg-panel vmp-border-color text-xs">
+                    PENDING
+                </span>
+                {% endif %}
+            </div>
+            {% else %}
+            <div class="w-4 h-4 rounded border bg-transparent grid place-items-center vmp-border-warn vmp-opacity-50">
+                <div class="w-1.5 h-1.5 rounded-full vmp-fill-warn animate-pulse"></div>
+            </div>
+            <span class="vmp-caption">{{ step.label or 'Evidence required' }}</span>
+            <button
+                class="ml-auto px-2 py-0.5 rounded transition-colors border vmp-action-button vmp-action-button-ghost vmp-bg-panel vmp-border-color hover:vmp-bg-veil"
+                hx-get="/partials/case-evidence.html?case_id={{ caseId }}&step_id={{ step.id }}"
+                hx-target="#case-evidence-container" hx-swap="innerHTML">
+                UPLOAD
+            </button>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <!-- Empty State -->
+    <div class="vmp-empty py-8">
+        <div class="font-serif text-4xl italic opacity-20 mb-2">N</div>
+        <div class="vmp-empty-title">NO CHECKLIST STEPS</div>
+        <div class="vmp-empty-description">
+            No evidence requirements defined for this case yet.
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Reject Evidence Modal (Internal Only) -->
+    {% if isInternal %}
+    <div id="reject-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center vmp-bg-veil bg-black/50">
+        <div class="vmp-panel p-6 rounded-lg border vmp-border-color max-w-md w-full mx-4">
+            <h3 class="vmp-h3 mb-4">Reject Evidence</h3>
+            <p class="vmp-body-small mb-4" id="reject-step-label">Step label</p>
+            <form hx-post="/cases/{{ caseId }}/reject-evidence" 
+                  hx-target="#case-checklist-container" 
+                  hx-swap="innerHTML"
+                  hx-on::after-request="document.getElementById('reject-modal').classList.add('hidden')">
+                <input type="hidden" name="checklist_step_id" id="reject-step-id">
+                <div class="mb-4">
+                    <label class="vmp-label-kicker mb-2 block">Rejection Reason</label>
+                    <textarea name="reason" 
+                              class="vmp-form-input w-full" 
+                              rows="3" 
+                              placeholder="Explain why this evidence is rejected..."
+                              required></textarea>
+                </div>
+                <div class="flex justify-end gap-3">
+                    <button type="button" 
+                            class="vmp-action-button vmp-action-button-ghost"
+                            onclick="document.getElementById('reject-modal').classList.add('hidden')">
+                        Cancel
+                    </button>
+                    <button type="submit" 
+                            class="vmp-action-button vmp-action-button-primary">
+                        Reject
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        function showRejectModal(stepId, stepLabel) {
+            document.getElementById('reject-step-id').value = stepId;
+            document.getElementById('reject-step-label').textContent = stepLabel;
+            document.getElementById('reject-modal').classList.remove('hidden');
+        }
+    </script>
+    {% endif %}
+</div>

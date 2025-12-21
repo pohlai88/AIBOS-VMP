@@ -1,0 +1,126 @@
+<!--
+  NexusCanon VMP Partial/Cell Boilerplate
+  ========================================
+  
+  This is a standalone HTMX-swappable partial component.
+  Use this template when creating new cells/partials for the VMP system.
+  
+  CONTRACT-001 Compliance:
+  - NO inline styles (use CSS classes from globals.css)
+  - Use semantic classes (.vmp-*)
+  - Follow HTMX patterns for dynamic updates
+  - Use Alpine.js for client-side interactivity (if needed)
+  
+  Usage:
+  - Save as: src/views/partials/your_component_name.html
+  - Load via: hx-get="/partials/your-component-name?param=value"
+  - Target: hx-target="#target-element-id"
+-->
+
+<div class="flex flex-col h-full" x-data="{ /* Alpine.js state */ }">
+
+    <!-- Optional: Header Section -->
+    <header class="shrink-0 p-6 vmp-border-b vmp-border-color">
+        <div class="flex justify-between items-start mb-4">
+            <div>
+                <div class="flex items-center gap-2 mb-2">
+                    <span class="vmp-tag vmp-tag-mono opacity-50">REF-ID</span>
+                    <span class="vmp-subtle">•</span>
+                    <span class="vmp-label-kicker">section</span>
+                </div>
+                <h2 class="vmp-h3">
+                    Component Title
+                </h2>
+            </div>
+
+            <!-- Optional: Status Badge -->
+            <div class="vmp-panel px-3 py-2 flex items-center gap-3">
+                <div class="text-right">
+                    <div class="vmp-label-kicker opacity-50 mb-0.5">STATUS</div>
+                    <div class="vmp-label vmp-signal-ok">ACTIVE</div>
+                </div>
+                <div class="w-1.5 h-8 rounded-full overflow-hidden relative vmp-bg-panel">
+                    <div class="absolute bottom-0 left-0 right-0 vmp-fill-ok h-full"></div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <div class="flex-1 overflow-y-auto p-6">
+
+        <!-- Example: List/Grid Content -->
+        <div class="space-y-4">
+            {% if items and items|length > 0 %}
+            {% for item in items %}
+            <div class="vmp-panel p-4 rounded-lg vmp-border vmp-border-color">
+                <div class="flex items-start justify-between gap-3">
+                    <div class="min-w-0 flex-1">
+                        <div class="vmp-body-small mb-1">{{ item.title or 'Item Title' }}</div>
+                        <div class="vmp-caption vmp-muted">{{ item.description or 'Item description' }}</div>
+                    </div>
+                    <div class="shrink-0">
+                        <span class="vmp-tag vmp-tag-mono">{{ item.status or 'STATUS' }}</span>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+            {% else %}
+            <!-- Empty State -->
+            <div class="vmp-empty">
+                <div class="font-serif text-6xl italic opacity-35">N</div>
+                <div class="vmp-empty-title">NO ITEMS</div>
+                <div class="vmp-empty-description">
+                    No items found. Add items to get started.
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Example: Form Section -->
+        <div class="mt-8 pt-6 vmp-border-t vmp-border-color">
+            <form hx-post="/api/endpoint" hx-target="#target-element" hx-swap="innerHTML"
+                hx-indicator="#loading-indicator" class="space-y-4">
+
+                <div>
+                    <label class="vmp-label-kicker mb-2 block">Field Label</label>
+                    <input type="text" name="field_name" placeholder="Enter value..." class="vmp-form-input w-full"
+                        required>
+                </div>
+
+                <div class="flex justify-end gap-3">
+                    <button type="button" class="vmp-action-button vmp-action-button-ghost" onclick="history.back()">
+                        Cancel
+                    </button>
+                    <button type="submit" class="vmp-action-button vmp-action-button-primary">
+                        Submit
+                    </button>
+                </div>
+            </form>
+
+            <!-- HTMX Loading Indicator -->
+            <div id="loading-indicator" class="htmx-indicator mt-4">
+                <div class="vmp-label-kicker animate-pulse opacity-60">Loading...</div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Optional: Footer/Actions Section -->
+    <footer class="shrink-0 p-4 vmp-border-t vmp-border-color vmp-bg-veil">
+        <div class="flex justify-between items-center">
+            <div class="vmp-caption vmp-muted">
+                Footer information or metadata
+            </div>
+            <div class="flex gap-2">
+                <button class="vmp-action-button vmp-action-button-ghost text-sm">
+                    Secondary Action
+                </button>
+                <button class="vmp-action-button vmp-action-button-primary text-sm">
+                    Primary Action
+                </button>
+            </div>
+        </div>
+    </footer>
+
+</div>

@@ -1,0 +1,14 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="vmp-panel">
+  <div class="vmp-card">
+    <div class="vmp-card-body">
+      <h1 class="vmp-h2">Error {{ error.status }}</h1>
+      <p class="vmp-body">{{ error.message }}</p>
+      <a href="/home" class="vmp-btn vmp-btn-primary">Go Home</a>
+    </div>
+  </div>
+</div>
+{% endblock %}
+

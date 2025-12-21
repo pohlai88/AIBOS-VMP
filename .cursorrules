@@ -1,0 +1,147 @@
+# NexusCanon VMP: IDE Rules & Standards
+
+**Version:** 2.0.1 (Patched)
+**Context:** Node.js, Express, Nunjucks, HTMX, VMP Design System
+
+## 1. 🚨 Prime Directives (CRITICAL)
+
+* **Route-First Architecture:** Never create an HTML file without a corresponding route in `server.js`.
+* **No Direct Access:** HTML files are **never** served statically. They must be rendered via `res.render()`.
+* **Foundation vs. Design:** Use VMP semantic classes (`.vmp-h*`, `.vmp-body`, `.vmp-label`) for typography. Inline styles and `<style>` blocks **ALLOWED** for creative visual design.
+* **Engine:** Use **Nunjucks** syntax (`{% extends %}`, `{{ var }}`). Do not use EJS or Handlebars.
+
+---
+
+## 2. 📂 File System & Naming Conventions
+
+### Directory Structure
+
+| Type | Path | Description |
+| --- | --- | --- |
+| **Pages** | `src/views/pages/` | Full layouts extending `layout.html`. |
+| **Partials** | `src/views/partials/` | HTMX fragments (cells). Standalone. |
+| **Templates** | `src/views/templates/` | **READ-ONLY** boilerplate references. |
+
+### Casing Standards (Strict Mapping)
+
+The system uses **Kebab-Case** for URLs/Routes and **Snake_Case** for filenames.
+
+| Context | Case Style | Example |
+| --- | --- | --- |
+| **Route URL** | `kebab-case` | `/partials/case-detail.html` |
+| **File Name** | `snake_case` | `case_detail.html` |
+| **Render Call** | `snake_case` | `res.render('partials/case_detail.html')` |
+
+**❌ Incorrect:** `res.render('partials/case-detail.html')` (Will fail)
+**✅ Correct:** `res.render('partials/case_detail.html')`
+
+---
+
+## 3. 🛠️ Code Patterns
+
+### A. Route Definition (`server.js`)
+
+**Constraint:** Routes must be defined before the HTML file is created.
+
+```javascript
+// 1. PAGE Route (User Interface)
+app.get('/case-dashboard', async (req, res) => {
+    // Data fetching logic here...
+    res.render('pages/case_dashboard.html', { 
+        title: 'Dashboard',
+        user: req.user 
+    });
+});
+
+// 2. PARTIAL Route (HTMX Component)
+app.get('/partials/case-list.html', async (req, res) => {
+    // Data fetching logic here...
+    res.render('partials/case_list.html', { 
+        items: data 
+    });
+});
+
+```
+
+### B. HTML Templates (Nunjucks)
+
+**Constraint:** Use the provided boilerplate files as the starting point.
+
+**Page Structure:**
+
+```html
+{% extends "layout.html" %}
+
+{% block content %}
+  <div class="vmp-container">
+     <h1 class="vmp-h1">Page Title</h1>
+     </div>
+{% endblock %}
+
+```
+
+**Partial Structure (HTMX):**
+
+```html
+<div class="vmp-panel p-4" id="component-root">
+  </div>
+
+```
+
+### C. HTMX Integration
+
+**Constraint:** Always handle Loading and Empty states.
+
+```html
+<div hx-get="/partials/user-list.html" 
+     hx-trigger="load" 
+     hx-target="#target-id" 
+     hx-indicator="#loading-id">
+</div>
+
+<div id="loading-id" class="htmx-indicator">
+    <div class="vmp-spinner"></div> Loading...
+</div>
+
+```
+
+---
+
+## 4. 🎨 Design System (Contract-001)
+
+**Constraint:** You are strictly bound to `public/globals.css`.
+
+| Feature | Rule |
+| --- | --- |
+| **Classes** | MUST use `.vmp-*` prefix (e.g., `.vmp-btn-primary`). |
+| **Font Weight** | MUST be `300` (Light). Do not use bold. |
+| **Colors** | MUST use CSS vars (e.g., `var(--vmp-text)`). No hex codes. |
+| **Spacing** | MUST use spacing scale (e.g., `p-4`, `gap-3`). |
+| **New CSS** | **FORBIDDEN.** Do not invent classes. Ask user if a token is missing. |
+
+---
+
+## 5. ✅ AI Workflow Checklist
+
+Before generating any code, the AI must verify:
+
+1. [ ] **Route Check:** Does `app.get('/target-route')` exist in `server.js`?
+* *If NO:* Stop. Create the route first.
+
+
+2. [ ] **Naming Check:** Is the file `snake_case` and the route `kebab-case`?
+3. [ ] **Location Check:** Is it a Page (`pages/`) or a Partial (`partials/`)?
+4. [ ] **Boilerplate Check:** Did I copy `src/views/templates/partial-boilerplate.html`?
+5. [ ] **VMP Check:** Am I using only `.vmp-*` classes? (No inline styles).
+
+---
+
+## 6. 🚫 Strict Anti-Patterns
+
+* ❌ **NEVER** use `style="color: red"` (Use `.vmp-text-danger`).
+* ❌ **NEVER** create files in `src/views/` root (must be in subfolders).
+* ❌ **NEVER** use CDS / Bootstrap / Tailwind classes without VMP wrappers.
+* ❌ **NEVER** write logic inside the HTML (keep it in `server.js` or adapters).
+* ❌ **NEVER** leave a route returning 404 while creating the View.
+
+---

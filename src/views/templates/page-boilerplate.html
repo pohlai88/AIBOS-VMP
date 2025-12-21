@@ -1,0 +1,72 @@
+{% extends "layout.html" %}
+{% block title %}NexusCanon VMP — Page Title{% endblock %}
+
+{% block content %}
+<div class="h-full overflow-y-auto">
+    <div class="max-w-[1400px] mx-auto p-6 pb-12">
+
+        <!-- Page Header -->
+        <div class="flex flex-wrap justify-between items-end gap-6 mb-8">
+            <div class="min-w-0">
+                <div class="vmp-label-kicker mb-3">// section label</div>
+                <h1 class="vmp-h2">
+                    Page Title
+                </h1>
+                <p class="mt-4 vmp-body-small leading-relaxed max-w-[64ch] vmp-muted">
+                    Page description or subtitle text.
+                </p>
+            </div>
+
+            <!-- Optional: Status Panel -->
+            <div class="vmp-panel px-4 py-3 min-w-[320px]">
+                <div class="flex items-center gap-4">
+                    <div class="relative">
+                        <div class="w-2 h-2 rounded-full vmp-fill-ok"></div>
+                        <div class="absolute inset-0 rounded-full opacity-60 animate-ping vmp-fill-ok"></div>
+                    </div>
+                    <div class="min-w-0">
+                        <div class="vmp-label-kicker vmp-signal-ok">status</div>
+                        <div class="vmp-caption vmp-muted mt-1 truncate">Status description</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content Area -->
+        <section class="vmp-card flex flex-col">
+            <header class="vmp-card-header flex justify-between items-start">
+                <div>
+                    <div class="vmp-label-kicker vmp-label-kicker-strong mb-1">content section</div>
+                    <div class="vmp-caption vmp-muted leading-snug">
+                        Section description or instructions.
+                    </div>
+                </div>
+                <div class="vmp-tag vmp-tag-mono">
+                    LABEL
+                </div>
+            </header>
+
+            <div class="flex-1 p-6">
+                <!-- Content goes here -->
+                <div class="vmp-body-small vmp-muted">
+                    Your content here...
+                </div>
+            </div>
+        </section>
+
+        <!-- Optional: Grid Layout Example -->
+        <div class="grid lg:grid-cols-2 gap-4 mt-6">
+            <section class="vmp-card p-6">
+                <div class="vmp-label-kicker mb-3">left column</div>
+                <div class="vmp-body-small vmp-muted">Content...</div>
+            </section>
+
+            <section class="vmp-card p-6">
+                <div class="vmp-label-kicker mb-3">right column</div>
+                <div class="vmp-body-small vmp-muted">Content...</div>
+            </section>
+        </div>
+
+    </div>
+</div>
+{% endblock %}

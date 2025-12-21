@@ -1,0 +1,386 @@
+{% extends "layout.html" %}
+{% block title %}NexusCanon VMP — Console{% endblock %}
+
+{% block content %}
+<div class="h-full overflow-y-auto" x-data="{
+  q: '',
+  posture: 'action',
+  channel: 'all',
+  matchMode: 3,
+  audit: true,
+  override: false,
+  init() {
+    // Watch for HUD state changes and refresh inbox
+    this.$watch('q', () => this.refreshInbox());
+    this.$watch('posture', () => this.refreshInbox());
+    this.$watch('channel', () => this.refreshInbox());
+    this.$watch('matchMode', () => this.refreshInbox());
+    this.$watch('audit', () => this.refreshInbox());
+    this.$watch('override', () => this.refreshInbox());
+  },
+  refreshInbox() {
+    if (window.htmx && document.getElementById('case-inbox')) {
+      const params = new URLSearchParams({
+        q: this.q || '',
+        posture: this.posture || 'action',
+        channel: this.channel || 'all',
+        matchMode: this.matchMode || 3,
+        audit: this.audit ? 'true' : 'false',
+        override: this.override ? 'true' : 'false'
+      });
+      htmx.ajax('GET', '/partials/case-inbox.html?' + params.toString(), {
+        target: '#case-inbox',
+        swap: 'innerHTML'
+      });
+    }
+  }
+}">
+  <div class="relative isolate">
+    <!-- Atmospheric layers (CSS-native; no inline styles) -->
+    <div class="vmp-login__bg" aria-hidden="true"></div>
+    <div class="noir-grid-overlay" aria-hidden="true"></div>
+
+    <div class="max-w-[1400px] mx-auto p-6 pb-12 relative z-10">
+
+      <!-- Console Header -->
+      <div class="flex flex-wrap justify-between items-end gap-6 mb-6">
+        <div class="min-w-0">
+          <div class="vmp-label-kicker mb-3">// operational console</div>
+          <h1 class="vmp-h2">
+            The Connection.<br />The Law.
+          </h1>
+          <p class="mt-4 vmp-body-small leading-relaxed max-w-[64ch] vmp-muted">
+            Self-service truth surface for vendors: resolve exceptions, upload evidence, and track statement/payment
+            posture without WhatsApp drift.
+          </p>
+        </div>
+
+        <!-- Protocol Status -->
+        <div class="vmp-panel px-4 py-3 min-w-[320px]">
+          <div class="flex items-center gap-4">
+            <div class="relative" aria-hidden="true">
+              <div class="w-2 h-2 rounded-full vmp-fill-ok"></div>
+              <div class="absolute inset-0 rounded-full opacity-60 animate-ping vmp-fill-ok"></div>
+            </div>
+            <div class="min-w-0">
+              <div class="vmp-label-kicker vmp-signal-ok">protocol enforcing</div>
+              <div class="vmp-caption vmp-muted mt-1 truncate">
+                <span x-text="matchMode === 3 ? '3-way match required' : (matchMode === 2 ? '2-way match required' : '1-way (invoice only)')"></span>
+                <span class="vmp-subtle"> · </span>
+                <span x-text="audit ? 'narrative enabled' : 'narrative muted'"></span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Control Plane (OS HUD) -->
+      <div class="vmp-panel px-4 py-3 mb-8">
+        <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <div class="min-w-[280px]">
+              <label class="sr-only" for="q">Search</label>
+              <input id="q" class="vmp-input w-full" type="search" placeholder="Search case / invoice / vendor / PO"
+                x-model="q" autocomplete="off" />
+            </div>
+
+            <div class="flex items-center gap-2">
+              <div class="vmp-label-kicker">Posture</div>
+              <div class="vmp-segment" role="group" aria-label="Posture filter">
+                <button type="button" class="vmp-segment__btn" :aria-pressed="posture === 'action'" @click="posture='action'">Action</button>
+                <button type="button" class="vmp-segment__btn" :aria-pressed="posture === 'open'" @click="posture='open'">Open</button>
+                <button type="button" class="vmp-segment__btn" :aria-pressed="posture === 'soa'" @click="posture='soa'">SOA</button>
+                <button type="button" class="vmp-segment__btn" :aria-pressed="posture === 'paid'" @click="posture='paid'">Paid</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
+            <div class="flex items-center gap-2">
+              <div class="vmp-label-kicker">Channel</div>
+              <div class="vmp-segment" role="group" aria-label="Channel filter">
+                <button type="button" class="vmp-segment__btn" :aria-pressed="channel === 'all'" @click="channel='all'">All</button>
+                <button type="button" class="vmp-segment__btn" :aria-pressed="channel === 'whatsapp'" @click="channel='whatsapp'">WA</button>
+                <button type="button" class="vmp-segment__btn" :aria-pressed="channel === 'email'" @click="channel='email'">Email</button>
+                <button type="button" class="vmp-segment__btn" :aria-pressed="channel === 'portal'" @click="channel='portal'">Portal</button>
+              </div>
+            </div>
+
+            <div class="flex items-center gap-2">
+              <div class="vmp-label-kicker">Matching</div>
+              <div class="vmp-segment" role="group" aria-label="Matching mode">
+                <button type="button" class="vmp-segment__btn" :aria-pressed="matchMode === 1" @click="matchMode=1">1</button>
+                <button type="button" class="vmp-segment__btn" :aria-pressed="matchMode === 2" @click="matchMode=2">2</button>
+                <button type="button" class="vmp-segment__btn" :aria-pressed="matchMode === 3" @click="matchMode=3">3</button>
+              </div>
+            </div>
+
+            <div class="flex items-center gap-2">
+              <button type="button" class="vmp-btn vmp-btn-outline" @click="audit=!audit" :aria-pressed="audit">
+                <span x-text="audit ? 'Audit on' : 'Audit off'"></span>
+              </button>
+              <button type="button" class="vmp-btn vmp-btn-outline" @click="override=!override" :aria-pressed="override">
+                <span x-text="override ? 'Override armed' : 'Override locked'"></span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div class="vmp-caption vmp-muted">
+            Lens is not a theme. It changes what can move forward: policy → checklist → evidence → export.
+          </div>
+          <div class="vmp-caption vmp-muted">
+            Stamp: <span x-text="new Date().toISOString().slice(0,16).replace('T',' ')"></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Posture Rail -->
+      <div class="grid grid-cols-2 md:grid-cols-4 border-y mb-8 vmp-border-color" role="group" aria-label="Posture rail">
+        <button type="button" @click="posture='action'"
+          class="p-6 border-r hover:bg-white/[0.02] transition-colors vmp-border-color text-left"
+          :class="posture==='action' ? 'bg-white/[0.03]' : ''"
+          aria-label="Action required">
+          <div class="vmp-label-kicker mb-2">action required</div>
+          <div class="vmp-h3">{{ actionCount }}</div>
+          <div class="vmp-label mt-2">WAITING: YOU</div>
+        </button>
+
+        <button type="button" @click="posture='open'"
+          class="p-6 border-r hover:bg-white/[0.02] transition-colors vmp-border-color text-left"
+          :class="posture==='open' ? 'bg-white/[0.03]' : ''"
+          aria-label="Open cases">
+          <div class="vmp-label-kicker mb-2">open cases</div>
+          <div class="vmp-h3">{{ openCount }}</div>
+          <div class="vmp-label mt-2">SLA LIVE</div>
+        </button>
+
+        <button type="button" @click="posture='soa'"
+          class="p-6 border-r hover:bg-white/[0.02] transition-colors vmp-border-color text-left"
+          :class="posture==='soa' ? 'bg-white/[0.03]' : ''"
+          aria-label="Statements">
+          <div class="vmp-label-kicker mb-2">statements</div>
+          <div class="vmp-h3">{{ soaCount }}</div>
+          <div class="vmp-label mt-2">CURRENT CYCLE</div>
+        </button>
+
+        <button type="button" @click="posture='paid'"
+          class="p-6 hover:bg-white/[0.02] transition-colors text-left"
+          :class="posture==='paid' ? 'bg-white/[0.03]' : ''"
+          aria-label="Payments">
+          <div class="vmp-label-kicker mb-2">payments</div>
+          <div class="vmp-h3">{{ paidCount }}</div>
+          <div class="vmp-label mt-2">IN REVIEW</div>
+        </button>
+      </div>
+
+      <!-- Workspace Grid -->
+      <div class="grid xl:grid-cols-[400px_1fr_360px] gap-4 min-h-[640px]">
+
+        <!-- Case Inbox -->
+        <section class="vmp-card flex flex-col" aria-label="Case inbox">
+          <header class="vmp-card-header flex justify-between items-start">
+            <div>
+              <div class="vmp-label-kicker vmp-label-kicker-strong mb-1">case inbox</div>
+              <div class="vmp-caption vmp-muted leading-snug max-w-[28ch]">
+                Newest updates on top (WhatsApp rhythm).
+              </div>
+            </div>
+            <div class="vmp-label-kicker">sort · updated</div>
+          </header>
+
+          <div id="case-inbox"
+            class="flex-1 overflow-y-auto"
+            x-init="
+              if (window.htmx) {
+                const params = new URLSearchParams({
+                  q: q || '',
+                  posture: posture || 'action',
+                  channel: channel || 'all',
+                  matchMode: matchMode || 3,
+                  audit: audit ? 'true' : 'false',
+                  override: override ? 'true' : 'false'
+                });
+                htmx.ajax('GET', '/partials/case-inbox.html?' + params.toString(), {
+                  target: '#case-inbox',
+                  swap: 'innerHTML'
+                });
+              }
+            ">
+            <div id="inbox-loading" class="htmx-indicator p-4 space-y-3 animate-pulse opacity-60">
+              <div class="h-20 rounded-xl vmp-bg-panel"></div>
+              <div class="h-20 rounded-xl vmp-bg-panel"></div>
+              <div class="h-20 rounded-xl vmp-bg-panel"></div>
+            </div>
+          </div>
+
+          <footer class="p-4 border-t vmp-border-color">
+            <button type="button" class="vmp-btn vmp-btn-outline w-full" aria-label="Create a new case">
+              Create new Case
+            </button>
+          </footer>
+        </section>
+
+        <!-- Truth Panel -->
+        <section class="vmp-card flex flex-col relative" aria-label="Truth panel">
+          <header class="vmp-card-header flex justify-between items-start">
+            <div>
+              <div class="vmp-label-kicker vmp-label-kicker-strong mb-1">workspace</div>
+              <div class="vmp-caption vmp-muted leading-snug">Thread · Checklist · Evidence — enforceable chain.</div>
+            </div>
+            <div class="vmp-tag vmp-tag-mono">TRUTH PANEL</div>
+          </header>
+
+          <div id="case-detail-panel" class="flex-1 relative" aria-live="polite">
+            <div class="vmp-empty">
+              <div class="font-serif text-6xl italic opacity-35">N</div>
+              <div class="vmp-empty-title">SELECT CASE</div>
+              <div class="vmp-empty-description">
+                Choose a case to reveal the audit chain: messages → checklist → evidence → export pack.
+              </div>
+            </div>
+
+            <div id="detail-loading" class="htmx-indicator absolute inset-0 grid place-items-center vmp-bg-veil">
+              <div class="vmp-label-kicker animate-pulse">loading case…</div>
+            </div>
+          </div>
+
+          <footer class="p-4 border-t vmp-border-color flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div class="vmp-caption vmp-muted">
+              Break-glass is visible — but controlled. Overrides require narrative stamps.
+            </div>
+            <div class="flex items-center gap-2">
+              <button type="button" class="vmp-btn vmp-btn-outline" aria-label="Preview proof pack">Preview proof pack</button>
+              <button type="button" class="vmp-btn vmp-btn-primary" aria-label="Request escalation">Escalate</button>
+            </div>
+          </footer>
+        </section>
+
+        <!-- Protocol Drawer -->
+        <aside class="vmp-card flex flex-col" aria-label="Protocol drawer">
+          <header class="vmp-card-header flex justify-between items-start">
+            <div>
+              <div class="vmp-label-kicker vmp-label-kicker-strong mb-1">protocol drawer</div>
+              <div class="vmp-caption vmp-muted leading-snug">Actions + protocols + evidence pulse.</div>
+            </div>
+            <div class="vmp-label-kicker">LIVE</div>
+          </header>
+
+          <div class="vmp-card-body space-y-4">
+            <div class="vmp-panel p-4">
+              <div class="vmp-label-kicker vmp-label-kicker-strong mb-3">quick actions</div>
+              <div class="grid grid-cols-1 gap-2">
+                <button type="button" class="vmp-btn vmp-btn-primary w-full justify-between">
+                  <span>Upload evidence</span>
+                  <span class="vmp-subtle">+</span>
+                </button>
+                <button type="button" class="vmp-btn vmp-btn-outline w-full justify-between">
+                  <span>Generate Case</span>
+                  <span class="vmp-subtle">+</span>
+                </button>
+                <button type="button" class="vmp-btn vmp-btn-outline w-full justify-between">
+                  <span>Export pack</span>
+                  <span class="vmp-label-kicker">JSON</span>
+                </button>
+              </div>
+            </div>
+
+            <div class="vmp-panel p-4">
+              <div class="vmp-label-kicker vmp-label-kicker-strong mb-3">active protocols</div>
+
+              <div class="space-y-2">
+                <div class="flex items-center justify-between p-3 border vmp-border-color rounded-md bg-white/5">
+                  <div class="flex flex-col">
+                    <span class="vmp-body-small">Matching discipline</span>
+                    <span class="vmp-caption vmp-muted" x-text="matchMode === 3 ? '3-way' : (matchMode === 2 ? '2-way' : '1-way')"></span>
+                  </div>
+                  <span class="vmp-badge vmp-badge-ok">ENFORCED</span>
+                </div>
+
+                <div class="flex items-center justify-between p-3 border vmp-border-color rounded-md bg-white/5">
+                  <div class="flex flex-col">
+                    <span class="vmp-body-small">Audit narrative</span>
+                    <span class="vmp-caption" :class="audit ? 'vmp-signal-ok' : 'vmp-muted'" x-text="audit ? 'Running' : 'Muted'"></span>
+                  </div>
+                  <div class="w-10 h-5 rounded-full border vmp-border-color bg-white/5 relative">
+                    <div class="absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full"
+                      :class="audit ? 'right-1 vmp-bg-ok' : 'left-1 vmp-bg-panel'"></div>
+                  </div>
+                </div>
+
+                <div class="flex items-center justify-between p-3 border vmp-border-color rounded-md bg-white/5">
+                  <div class="flex flex-col">
+                    <span class="vmp-body-small">Break-glass override</span>
+                    <span class="vmp-caption" :class="override ? 'vmp-signal-warn' : 'vmp-muted'" x-text="override ? 'Armed' : 'Locked'"></span>
+                  </div>
+                  <span class="vmp-badge" :class="override ? 'vmp-badge-warn' : ''" x-text="override ? 'L3' : '—'"></span>
+                </div>
+              </div>
+
+              <div class="mt-3 vmp-caption vmp-muted">
+                If evidence is waived, the export pack must show the downgrade (who / why / what changed).
+              </div>
+            </div>
+
+            <div class="vmp-panel p-4">
+              <div class="flex items-center justify-between">
+                <div class="vmp-label-kicker vmp-label-kicker-strong">evidence stream</div>
+                <span class="vmp-badge">REALTIME</span>
+              </div>
+
+              <div class="vmp-list border-t vmp-border-color mt-3">
+                <div class="vmp-list-item hover:bg-white/5 transition-colors cursor-pointer">
+                  <div class="flex items-baseline justify-between gap-3">
+                    <div class="min-w-0">
+                      <div class="flex items-center gap-3">
+                        <span class="vmp-label-kicker vmp-subtle">10:42</span>
+                        <span class="vmp-badge vmp-badge-danger">DETECTED</span>
+                        <span class="vmp-caption truncate">Price variance detected (INV #9921)</span>
+                      </div>
+                    </div>
+                    <span class="vmp-caption vmp-muted">VIEW</span>
+                  </div>
+                </div>
+
+                <div class="vmp-list-item hover:bg-white/5 transition-colors cursor-pointer">
+                  <div class="flex items-baseline justify-between gap-3">
+                    <div class="min-w-0">
+                      <div class="flex items-center gap-3">
+                        <span class="vmp-label-kicker vmp-subtle">09:15</span>
+                        <span class="vmp-badge vmp-badge-ok">SETTLED</span>
+                        <span class="vmp-caption truncate">Auto-approval: recurring vendor</span>
+                      </div>
+                    </div>
+                    <span class="vmp-caption vmp-muted">EXPORT</span>
+                  </div>
+                </div>
+
+                <div class="vmp-list-item hover:bg-white/5 transition-colors cursor-pointer">
+                  <div class="flex items-baseline justify-between gap-3">
+                    <div class="min-w-0">
+                      <div class="flex items-center gap-3">
+                        <span class="vmp-label-kicker vmp-subtle">08:30</span>
+                        <span class="vmp-badge vmp-badge-warn">PENDING</span>
+                        <span class="vmp-caption truncate">Missing GRN for PO-442</span>
+                      </div>
+                    </div>
+                    <span class="vmp-caption vmp-muted">NUDGE</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="pt-2 text-right opacity-50 hover:opacity-100 transition-opacity">
+              <div class="vmp-label-kicker">VMP-CONSOLE-v7.0.0</div>
+              <div class="vmp-caption vmp-muted italic">"Calm over noise."</div>
+            </div>
+          </div>
+        </aside>
+
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
