@@ -1,0 +1,147 @@
+<!-- Profile Form Partial -->
+<div class="vmp-panel p-6 border vmp-border-color">
+    {% if error %}
+    <div class="p-4 mb-4 rounded-lg border vmp-border-warn vmp-bg-warn vmp-opacity-30">
+        <div class="vmp-label vmp-text-warn">{{ error }}</div>
+    </div>
+    {% endif %}
+
+    <div class="vmp-label-kicker vmp-label-kicker-strong mb-4">VENDOR PROFILE</div>
+
+    {% if vendorProfile and vendorProfile.vendor %}
+    <div class="space-y-6">
+        <!-- Vendor Master Data -->
+        <div class="grid grid-cols-2 gap-4">
+            <div>
+                <div class="vmp-label-kicker mb-1">Vendor Name</div>
+                <div class="vmp-body">{{ vendorProfile.vendor.name }}</div>
+            </div>
+            <div>
+                <div class="vmp-label-kicker mb-1">Status</div>
+                <div class="vmp-body">
+                    <span class="vmp-tag vmp-tag-mono text-xs">
+                        {{ (vendorProfile.vendor.status or 'invited') | upper }}
+                    </span>
+                </div>
+            </div>
+            <div>
+                <div class="vmp-label-kicker mb-1">Tenant</div>
+                <div class="vmp-body">
+                    {{ vendorProfile.vendor.vmp_tenants.name if vendorProfile.vendor.vmp_tenants else '—' }}
+                </div>
+            </div>
+            <div>
+                <div class="vmp-label-kicker mb-1">Created</div>
+                <div class="vmp-body">
+                    {{ vendorProfile.vendor.created_at | date('%b %d, %Y') if vendorProfile.vendor.created_at else '—'
+                    }}
+                </div>
+            </div>
+        </div>
+
+        <!-- Company Links -->
+        {% if vendorProfile.companyLinks and vendorProfile.companyLinks|length > 0 %}
+        <div class="border-t vmp-border-color pt-4">
+            <div class="vmp-label-kicker vmp-label-kicker-strong mb-3">LINKED COMPANIES</div>
+            <div class="space-y-2">
+                {% for link in vendorProfile.companyLinks %}
+                <div class="p-3 rounded-lg border vmp-border-color vmp-bg-panel">
+                    <div class="vmp-body-small font-medium mb-1">
+                        {{ link.vmp_companies.name if link.vmp_companies else 'Unknown Company' }}
+                    </div>
+                    {% if link.vmp_companies and link.vmp_companies.legal_name %}
+                    <div class="vmp-caption vmp-muted">
+                        {{ link.vmp_companies.legal_name }}
+                    </div>
+                    {% endif %}
+                    {% if link.vmp_companies and link.vmp_companies.country_code %}
+                    <div class="vmp-caption vmp-muted mt-1">
+                        {{ link.vmp_companies.country_code }}
+                        {% if link.vmp_companies.currency_code %}
+                        • {{ link.vmp_companies.currency_code }}
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Vendor Users -->
+        {% if vendorProfile.users and vendorProfile.users|length > 0 %}
+        <div class="border-t vmp-border-color pt-4">
+            <div class="vmp-label-kicker vmp-label-kicker-strong mb-3">USER ACCOUNTS</div>
+            <div class="space-y-2">
+                {% for user in vendorProfile.users %}
+                <div class="p-3 rounded-lg border vmp-border-color vmp-bg-panel">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <div class="vmp-body-small font-medium">
+                                {{ user.display_name or user.email }}
+                            </div>
+                            <div class="vmp-caption vmp-muted">{{ user.email }}</div>
+                        </div>
+                        <span class="vmp-tag vmp-tag-mono text-xs">
+                            {{ 'ACTIVE' if user.is_active else 'INACTIVE' }}
+                        </span>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Bank Details Change -->
+        <div class="border-t vmp-border-color pt-4">
+            <div class="vmp-label-kicker vmp-label-kicker-strong mb-3">BANK DETAILS</div>
+            <div class="vmp-body vmp-muted mb-4">
+                To change your bank details, please submit a request. A Bank Letter will be required as evidence.
+            </div>
+            <form hx-post="/profile/bank-details" hx-target="#bank-details-result" hx-swap="innerHTML"
+                class="space-y-4">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="vmp-label-kicker mb-2 block">Account Name</label>
+                        <input type="text" name="account_name" required class="vmp-form-input w-full">
+                    </div>
+                    <div>
+                        <label class="vmp-label-kicker mb-2 block">Account Number</label>
+                        <input type="text" name="account_number" required class="vmp-form-input w-full">
+                    </div>
+                    <div>
+                        <label class="vmp-label-kicker mb-2 block">Bank Name</label>
+                        <input type="text" name="bank_name" required class="vmp-form-input w-full">
+                    </div>
+                    <div>
+                        <label class="vmp-label-kicker mb-2 block">SWIFT Code</label>
+                        <input type="text" name="swift_code" required class="vmp-form-input w-full">
+                    </div>
+                    <div>
+                        <label class="vmp-label-kicker mb-2 block">Branch Address (Optional)</label>
+                        <input type="text" name="branch_address" class="vmp-form-input w-full">
+                    </div>
+                    <div>
+                        <label class="vmp-label-kicker mb-2 block">Currency (Optional)</label>
+                        <input type="text" name="currency" class="vmp-form-input w-full" placeholder="USD">
+                    </div>
+                </div>
+                <div class="flex justify-end">
+                    <button type="submit" class="vmp-btn-primary">
+                        Request Bank Details Change
+                    </button>
+                </div>
+                <div id="bank-details-result"></div>
+            </form>
+        </div>
+    </div>
+    {% else %}
+    <div class="vmp-body vmp-muted text-center py-8">
+        {% if error %}
+        {{ error }}
+        {% else %}
+        No profile data available.
+        {% endif %}
+    </div>
+    {% endif %}
+</div>

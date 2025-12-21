@@ -1,0 +1,94 @@
+<!-- Scoped Dashboard Partial -->
+<div class="space-y-6">
+    {% if error %}
+    <div class="p-4 mb-4 rounded-lg border vmp-border-warn vmp-bg-warn vmp-opacity-30">
+        <div class="vmp-label vmp-text-warn">{{ error }}</div>
+    </div>
+    {% endif %}
+
+    {% if dashboard %}
+    <!-- Metrics Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div class="vmp-panel p-4 border vmp-border-color">
+            <div class="vmp-label-kicker opacity-50 mb-1">TOTAL CASES</div>
+            <div class="vmp-h3">{{ dashboard.metrics.totalCases }}</div>
+        </div>
+        <div class="vmp-panel p-4 border vmp-border-color">
+            <div class="vmp-label-kicker opacity-50 mb-1">CRITICAL CASES</div>
+            <div class="vmp-h3 vmp-text-warn">{{ dashboard.metrics.criticalCases }}</div>
+        </div>
+        <div class="vmp-panel p-4 border vmp-border-color">
+            <div class="vmp-label-kicker opacity-50 mb-1">OPEN CASES</div>
+            <div class="vmp-h3">{{ dashboard.metrics.openCases }}</div>
+        </div>
+        <div class="vmp-panel p-4 border vmp-border-color">
+            <div class="vmp-label-kicker opacity-50 mb-1">AP EXPOSURE</div>
+            <div class="vmp-h3">
+                {{ "%.2f"|format(dashboard.metrics.apExposure) if dashboard.metrics.apExposure else '0.00' }}
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Cases -->
+    <div class="vmp-panel p-6 border vmp-border-color">
+        <div class="vmp-label-kicker vmp-label-kicker-strong mb-4">RECENT CASES</div>
+        
+        {% if dashboard.recentCases and dashboard.recentCases|length > 0 %}
+        <div class="divide-y vmp-border-color">
+            {% for case in dashboard.recentCases %}
+            <a href="/ops/cases/{{ case.id }}" 
+               class="block px-4 py-3.5 hover:bg-white/[0.02] active:bg-white/[0.04] transition-all">
+                <div class="flex items-start justify-between gap-3">
+                    <div class="flex items-start gap-3 min-w-0 flex-1">
+                        <div class="mt-1.5 relative shrink-0">
+                            {% if case.escalation_level >= 3 %}
+                            <div class="w-1.5 h-1.5 rounded-full vmp-fill-danger animate-pulse"></div>
+                            {% elif case.escalation_level >= 2 %}
+                            <div class="w-1.5 h-1.5 rounded-full vmp-fill-warn"></div>
+                            {% else %}
+                            <div class="w-1.5 h-1.5 rounded-full vmp-bg-panel"></div>
+                            {% endif %}
+                        </div>
+                        <div class="min-w-0 flex-1">
+                            <div class="flex items-center gap-2 mb-1">
+                                <span class="vmp-code">{{ case.case_type | upper }}</span>
+                                {% if case.vmp_companies %}
+                                <span class="vmp-caption vmp-muted">{{ case.vmp_companies.name }}</span>
+                                {% endif %}
+                            </div>
+                            <div class="vmp-body-small leading-snug truncate">
+                                {{ case.subject or 'No subject' }}
+                            </div>
+                            <div class="mt-2 flex items-center gap-2">
+                                <span class="vmp-caption vmp-muted">
+                                    {{ case.created_at | date('%b %d, %Y') if case.created_at else '—' }}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="shrink-0">
+                        <span class="vmp-tag vmp-tag-mono text-xs">
+                            {{ (case.status or 'open') | upper }}
+                        </span>
+                    </div>
+                </div>
+            </a>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="vmp-body vmp-muted text-center py-8">
+            No cases found for this scope.
+        </div>
+        {% endif %}
+    </div>
+    {% else %}
+    <div class="vmp-body vmp-muted text-center py-8">
+        {% if error %}
+        {{ error }}
+        {% else %}
+        No dashboard data available.
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+

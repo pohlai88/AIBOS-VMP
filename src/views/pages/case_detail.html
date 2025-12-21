@@ -1,0 +1,39 @@
+{% extends "layout.html" %}
+
+{% block title %}Case {{ caseId|string|truncate(8, True, '') if caseId else '—' }} — NexusCanon VMP{% endblock %}
+
+{% block content %}
+<div class="h-full overflow-y-auto">
+  <!-- Case Detail Panel Container -->
+  <div id="case-detail-panel">
+    {% if caseDetail %}
+      <!-- Render case detail partial inline (data already loaded from route) -->
+      {% set error = null %}
+      {% include "partials/case_detail.html" %}
+    {% elif caseId %}
+      <!-- Empty State (case not found) -->
+      <div class="flex items-center justify-center h-full min-h-[600px]">
+        <div class="text-center max-w-md p-8">
+          <div class="vmp-h3 mb-4">Case Not Found</div>
+          <div class="vmp-body vmp-muted mb-6">
+            The case you're looking for doesn't exist or you don't have access to it.
+          </div>
+          <a href="/home" class="vmp-btn-primary">Return to Home</a>
+        </div>
+      </div>
+    {% else %}
+      <!-- Invalid case ID -->
+      <div class="flex items-center justify-center h-full min-h-[600px]">
+        <div class="text-center max-w-md p-8">
+          <div class="vmp-h3 mb-4">Invalid Case ID</div>
+          <div class="vmp-body vmp-muted mb-6">
+            Please provide a valid case ID.
+          </div>
+          <a href="/home" class="vmp-btn-primary">Return to Home</a>
+        </div>
+      </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
+

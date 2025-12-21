@@ -1,0 +1,104 @@
+{% extends "layout.html" %}
+{% block title %}Accept Invite — NexusCanon VMP{% endblock %}
+
+{% block content %}
+<div class="h-full overflow-y-auto">
+    <div class="vmp-container max-w-2xl mx-auto p-6">
+        <header class="mb-6 text-center">
+            <h1 class="vmp-h1 mb-2">Accept Invitation</h1>
+            <p class="vmp-body vmp-muted">Complete your account setup to get started</p>
+        </header>
+
+        {% if error %}
+        <div class="vmp-panel p-4 mb-6 border vmp-border-warn vmp-bg-warn vmp-opacity-30">
+            <div class="vmp-label vmp-text-warn">{{ error }}</div>
+        </div>
+        {% endif %}
+
+        {% if invite %}
+        <div class="vmp-panel p-6 rounded-lg border vmp-border-color mb-6">
+            <div class="vmp-label-kicker vmp-label-kicker-strong mb-4">INVITATION DETAILS</div>
+            
+            <div class="space-y-3 mb-6">
+                <div>
+                    <div class="vmp-label-kicker mb-1">Email</div>
+                    <div class="vmp-body-small font-mono">{{ invite.email }}</div>
+                </div>
+                
+                {% if invite.vendor %}
+                <div>
+                    <div class="vmp-label-kicker mb-1">Vendor</div>
+                    <div class="vmp-body-small">{{ invite.vendor.name }}</div>
+                </div>
+                {% endif %}
+
+                {% if invite.companies and invite.companies|length > 0 %}
+                <div>
+                    <div class="vmp-label-kicker mb-2">Companies</div>
+                    <div class="space-y-1">
+                        {% for company in invite.companies %}
+                        <div class="vmp-body-small">{{ company.name }}{% if company.legal_name %} ({{ company.legal_name }}){% endif %}</div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+
+            <form method="POST" action="/accept" class="space-y-4">
+                <input type="hidden" name="token" value="{{ token }}">
+
+                <div>
+                    <label class="vmp-label-kicker mb-2 block">Display Name</label>
+                    <input type="text" 
+                           name="display_name" 
+                           placeholder="Your name (optional)" 
+                           class="vmp-form-input w-full"
+                           value="{{ invite.email.split('@')[0] }}">
+                    <div class="vmp-caption vmp-muted mt-1">How your name will appear in the system</div>
+                </div>
+
+                <div>
+                    <label class="vmp-label-kicker mb-2 block">Password</label>
+                    <input type="password" 
+                           name="password" 
+                           placeholder="Enter password (min 8 characters)" 
+                           required 
+                           minlength="8"
+                           class="vmp-form-input w-full">
+                    <div class="vmp-caption vmp-muted mt-1">Password must be at least 8 characters long</div>
+                </div>
+
+                <div>
+                    <label class="vmp-label-kicker mb-2 block">Confirm Password</label>
+                    <input type="password" 
+                           name="password_confirm" 
+                           placeholder="Confirm password" 
+                           required 
+                           minlength="8"
+                           class="vmp-form-input w-full">
+                </div>
+
+                <div class="flex justify-end gap-3 pt-4">
+                    <button type="submit" class="vmp-btn-primary">
+                        Create Account & Continue
+                    </button>
+                </div>
+            </form>
+        </div>
+        {% else %}
+        <div class="vmp-panel p-6 rounded-lg border vmp-border-color text-center">
+            <div class="vmp-h3 mb-2">No Invitation Found</div>
+            <div class="vmp-body vmp-muted mb-4">
+                {% if error %}
+                {{ error }}
+                {% else %}
+                Please check your invitation link and try again.
+                {% endif %}
+            </div>
+            <a href="/login" class="vmp-btn-outline">Go to Login</a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+

@@ -2,7 +2,7 @@
 
 **Document ID:** CONTRACT-001  
 **Title:** Design System Specification (GSS SSOT)  
-**Version:** 2.0.0 (CURRENT)  
+**Version:** 2.1.0 (CURRENT - Figma Validated)  
 **Date:** 2025-01-XX  
 **Status:** Active (Updated with v2.0.0 Foundation vs. Design philosophy)  
 **Owner:** NexusCanon VMP Development Team
@@ -20,9 +20,11 @@ This approach ensures consistency where it matters (data presentation, typograph
 
 The foundation layer is scoped to `html[data-surface="vmp"]` and maintained in `public/globals.css`. The design layer allows inline styles and `<style>` blocks for creative work.
 
-**CRITICAL RULE (v2.0.0):** 
-- **Foundation Layer:** Typography and spacing must use VMP semantic classes and tokens from `public/globals.css`
-- **Design Layer:** Inline styles and `<style>` blocks are **ALLOWED** for creative visual design
+**CRITICAL RULES (v2.0.0):** 
+- **Foundation Layer (Controlled):** Typography and spacing must use VMP semantic classes and tokens from `public/globals.css` - **ONLY for data presentation purposes**
+- **Design Layer (Free Hand):** Inline styles and `<style>` blocks are **ALLOWED** for creative visual design - **Marketing and others have full freedom, no control**
+- **NO CDS Template Design:** No prescriptive component templates or design system templates - visual components are free-form
+- **NO SaaS Typical Design Model:** No typical SaaS design patterns, templates, or prescriptive UI models enforced
 - No Tailwind custom config (CDN utilities only)
 
 ---
@@ -34,33 +36,43 @@ The foundation layer is scoped to `html[data-surface="vmp"]` and maintained in `
 The VMP design system separates **structural/functional concerns** (Foundation) from **visual/creative concerns** (Design):
 
 #### Foundation Layer (CSS - `public/globals.css`)
-**Purpose:** Ensure consistency for information architecture and data presentation
+**Purpose:** Ensure consistency for information architecture and **data presentation ONLY**
+
+**Scope:** Only controls what is necessary for data presentation purposes
 
 **Includes:**
-- Typography hierarchy (`.vmp-h1` through `.vmp-h6`, `.vmp-body`, `.vmp-label`)
-- Spacing system (`--vmp-space-*` tokens)
-- Semantic color tokens (`--vmp-text`, `--vmp-ok`, `--vmp-danger` for meaning)
-- Data presentation components (`.vmp-table`, `.vmp-list`)
+- Typography hierarchy (`.vmp-h1` through `.vmp-h6`, `.vmp-body`, `.vmp-label`) - **For data presentation consistency**
+- Spacing system (`--vmp-space-*` tokens) - **For data presentation consistency**
+- Semantic color tokens (`--vmp-text`, `--vmp-ok`, `--vmp-danger` for meaning) - **For data presentation meaning**
+- Data presentation components (`.vmp-table`, `.vmp-list`) - **For data presentation only**
 
 **Rules:**
-- Must use VMP semantic classes for typography
-- Must use VMP spacing tokens for consistency (recommended)
-- Must use semantic color tokens for meaning (success, error, text hierarchy)
+- Must use VMP semantic classes for typography in data presentation contexts
+- Must use VMP spacing tokens for consistency in data presentation (recommended)
+- Must use semantic color tokens for meaning in data presentation (success, error, text hierarchy)
+- **NOT applicable to marketing pages, landing pages, or creative content**
 
 #### Design Layer (HTML/Templates)
-**Purpose:** Allow full creative freedom for visual design
+**Purpose:** Allow full creative freedom for visual design - **Marketing and others have free hand, without control**
+
+**Scope:** All visual design, marketing content, landing pages, creative components
 
 **Includes:**
-- Visual components (buttons, cards, modals, badges)
-- Layout variations
-- Gradients, effects, shadows
-- Custom styling
+- Visual components (buttons, cards, modals, badges) - **NO prescriptive templates**
+- Layout variations - **Full freedom**
+- Gradients, effects, shadows - **Full freedom**
+- Custom styling - **Full freedom**
+- Marketing pages - **Full freedom, no design system constraints**
+- Landing pages - **Full freedom, no design system constraints**
 
 **Rules:**
-- Inline `style=""` attributes **ALLOWED**
-- `<style>` blocks **ALLOWED**
-- Custom component styling **ENCOURAGED**
-- Figma designs can be implemented as-is
+- Inline `style=""` attributes **ALLOWED** - **No restrictions**
+- `<style>` blocks **ALLOWED** - **No restrictions**
+- Custom component styling **ENCOURAGED** - **No prescriptive patterns**
+- Figma designs can be implemented as-is - **Keep all visual design from Figma**
+- **NO CDS Template Design:** No component design system templates or prescriptive component patterns
+- **NO SaaS Typical Design Model:** No typical SaaS design patterns, templates, or prescriptive UI models enforced
+- Marketing content is **exempt** from Foundation Layer rules
 
 ### 1.2 SSOT Structure
 
@@ -70,6 +82,46 @@ The VMP design system separates **structural/functional concerns** (Foundation) 
 - **AHA Stack:** Alpine.js + HTMX + Atom CSS
 - **Template Rule:** Templates link to `/globals.css` via `<link rel="stylesheet" href="/globals.css" />`
 - **Design Freedom:** Inline styles and `<style>` blocks allowed for creative work
+
+### 1.3 IDE-Friendly Creativity Markers
+
+**Purpose:** Help IDE understand when Foundation Layer rules do NOT apply
+
+**IDE Creativity Markers (Design Layer):**
+- `.vmp-creative` - Signals creative content (not data presentation)
+- `.vmp-marketing` - Signals marketing/landing page content
+- `.vmp-free-form` - Signals free-form creative component
+
+**IDE Behavior:**
+- When IDE sees `.vmp-creative`, `.vmp-marketing`, or `.vmp-free-form`:
+  - Foundation Layer rules do NOT apply
+  - Inline styles and `<style>` blocks are ENCOURAGED
+  - Figma designs can be implemented as-is
+  - Font weight restrictions do NOT apply
+  - Typography hierarchy restrictions do NOT apply
+
+**Usage:**
+```html
+<!-- Marketing/Landing Page: Use creativity marker -->
+<div class="vmp-marketing">
+  <!-- IDE understands: Foundation rules do NOT apply -->
+  <!-- IDE understands: Inline styles ENCOURAGED -->
+  <h1 style="font-weight: 700; background: linear-gradient(...);">Hero Title</h1>
+</div>
+
+<!-- Creative Component: Use creativity marker -->
+<div class="vmp-creative">
+  <!-- IDE understands: Foundation rules do NOT apply -->
+  <button style="background: radial-gradient(...); box-shadow: ...;">Creative Button</button>
+</div>
+
+<!-- Data Presentation: NO marker (Foundation rules apply) -->
+<div>
+  <!-- IDE understands: Foundation rules DO apply -->
+  <h1 class="vmp-h1">Case Title</h1>
+  <p class="vmp-body">Case description</p>
+</div>
+```
 
 ### 1.3 Design Philosophy
 
@@ -674,30 +726,40 @@ src/views/
 | 1.6.0   | 2025-01-XX | Figma typography standards: 12px/14px/16px scale, line-height 1.3/1.5/1.6/1.75, letter-spacing 0/+0.01em/+0.02em |
 | 1.7.0   | 2025-01-XX | Semantic typography hierarchy + IDE-friendly aliases: Added .vmp-h1 through .vmp-h6, .vmp-body, .vmp-label, .vmp-code classes. Added semantic aliases (.vmp-sidebar, .vmp-panel, .vmp-brand, .vmp-label-section, .vmp-token) for better IDE understanding |
 | 2.0.0   | 2025-01-XX | Foundation vs. Design separation: Foundation layer (typography, spacing, semantic colors) for consistency; Design layer (visual components, effects) allows full creative freedom with inline styles and style blocks |
+| 2.1.0   | 2025-01-XX | Figma validated: Foundation layer scope clarified to **data presentation ONLY**. Design layer explicitly allows marketing/creative free hand. **NO CDS Template Design** - no prescriptive component templates enforced. **NO SaaS Typical Design Model** - no typical SaaS design patterns or templates enforced. |
 
 ---
 
-## 16. Compliance Checklist (v2.0.0)
+## 16. Compliance Checklist (v2.1.0)
 
-### Foundation Layer (Required)
+### Foundation Layer (Required - Data Presentation ONLY)
 
-- [ ] Typography uses VMP semantic classes (`.vmp-h1` through `.vmp-h6`, `.vmp-body`, `.vmp-label`)
-- [ ] Spacing uses VMP tokens (`var(--vmp-space-*)`) for consistency (recommended)
-- [ ] Semantic colors use VMP tokens (`var(--vmp-ok)`, `var(--vmp-danger)`, `var(--vmp-text)`) for meaning
+**Scope:** Only applies to data presentation contexts (tables, forms, lists, case details, invoice details, etc.)
+
+- [ ] Typography uses VMP semantic classes (`.vmp-h1` through `.vmp-h6`, `.vmp-body`, `.vmp-label`) - **Data presentation only**
+- [ ] Spacing uses VMP tokens (`var(--vmp-space-*)`) for consistency (recommended) - **Data presentation only**
+- [ ] Semantic colors use VMP tokens (`var(--vmp-ok)`, `var(--vmp-danger)`, `var(--vmp-text)`) for meaning - **Data presentation only**
 - [ ] Data presentation uses VMP classes (`.vmp-table`, `.vmp-list`) for consistency
-- [ ] Typography follows Figma standards (v1.6.0+): 12px/14px/16px scale
-- [ ] Spacing follows 8px grid system (v1.5.0+)
+- [ ] Typography follows Figma standards (v1.6.0+): 12px/14px/16px scale - **Data presentation only**
+- [ ] Spacing follows 8px grid system (v1.5.0+) - **Data presentation only**
 - [ ] No bold font weights for data presentation (use weight 300/light only - v1.4.0+)
 - [ ] No `<b>` or `<strong>` tags for data presentation (use CSS variables for emphasis)
 - [ ] Uses HSL color system (v1.3.0+) for semantic tokens
 - [ ] Scoped to `html[data-surface="vmp"]`
 
-### Design Layer (Creative Freedom)
+### Design Layer (Free Hand - Marketing & Creative)
 
-- [ ] Visual components can use inline styles or `<style>` blocks
-- [ ] Creative effects (gradients, shadows, animations) are allowed
-- [ ] Custom component styling is encouraged
-- [ ] Figma designs can be implemented as-is
+**Scope:** Marketing pages, landing pages, creative content, visual components
+
+- [ ] Marketing content has full creative freedom - **No Foundation Layer constraints**
+- [ ] Landing pages can use any styling - **No Foundation Layer constraints**
+- [ ] Visual components (buttons, cards, modals) are free-form - **NO prescriptive templates**
+- [ ] Inline styles and `<style>` blocks used freely - **No restrictions**
+- [ ] Figma designs implemented as-is - **Keep all visual design**
+- [ ] **NO CDS Template Design:** No component design system templates enforced
+- [ ] **NO SaaS Typical Design Model:** No typical SaaS design patterns, templates, or prescriptive UI models enforced
+- [ ] Creative effects (gradients, shadows, animations) are allowed - **No restrictions**
+- [ ] Custom component styling is encouraged - **No prescriptive patterns**
 
 ### General Rules
 

@@ -1,0 +1,47 @@
+<!-- Remittance Drop Form -->
+<div class="vmp-panel p-6 rounded-lg border vmp-border-color">
+    <div class="vmp-label-kicker vmp-label-kicker-strong mb-4">REMITANCE PDF UPLOAD</div>
+    
+    <form hx-post="/ops/ingest/remittances"
+          hx-target="#remittance-drop-result"
+          hx-swap="innerHTML"
+          hx-encoding="multipart/form-data"
+          hx-indicator="#remittance-drop-loading"
+          class="space-y-4">
+        
+        <div>
+            <label class="vmp-label-kicker mb-2 block">Company</label>
+            <select name="company_id" required class="vmp-form-input w-full">
+                <option value="">Select Company...</option>
+                <!-- TODO: Populate from vmp_companies (Sprint 6 will add dynamic loading) -->
+            </select>
+            <div class="vmp-caption vmp-muted mt-1">Select the company for these remittances</div>
+        </div>
+
+        <div>
+            <label class="vmp-label-kicker mb-2 block">PDF Files</label>
+            <input type="file" 
+                   name="remittance_files" 
+                   accept=".pdf,application/pdf" 
+                   multiple
+                   required 
+                   class="vmp-form-input w-full">
+            <div class="vmp-caption vmp-muted mt-1">
+                Upload multiple PDF files. Filenames should match invoice numbers (e.g., "INV-123.pdf") or payment references (e.g., "PAY-456.pdf")
+            </div>
+        </div>
+
+        <div class="flex justify-end gap-3">
+            <button type="submit" class="vmp-btn-primary">
+                Upload & Match
+            </button>
+        </div>
+    </form>
+
+    <div id="remittance-drop-loading" class="htmx-indicator mt-4">
+        <div class="vmp-label-kicker animate-pulse opacity-60">Processing PDFs...</div>
+    </div>
+
+    <div id="remittance-drop-result" class="mt-4"></div>
+</div>
+

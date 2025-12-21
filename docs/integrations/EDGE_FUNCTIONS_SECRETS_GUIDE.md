@@ -41,6 +41,61 @@ These secrets are automatically available to all Edge Functions:
 
 ---
 
+## Quick Decision: Do I Need `.env.local`?
+
+**Short Answer:** Only if you're developing/testing Edge Functions **locally**.
+
+### When You NEED `.env.local`
+
+✅ **You need it if:**
+1. **Testing Edge Functions locally:**
+   ```bash
+   supabase functions serve process-document --env-file .env.local
+   ```
+
+2. **Running local Supabase instance:**
+   ```bash
+   supabase start
+   supabase functions serve process-document
+   ```
+
+3. **Developing new Edge Functions:**
+   - Need to test with custom secrets (OpenAI, Stripe, etc.)
+   - Want to use different values than production
+
+### When You DON'T Need `.env.local`
+
+❌ **You don't need it if:**
+1. **Only deploying to production:**
+   - Production secrets are set via `supabase secrets set` or Dashboard
+   - No local file needed
+
+2. **Not developing Edge Functions:**
+   - If you're only using the Express server (Node.js)
+   - Edge Functions are deployed and working in production
+
+3. **Using production secrets only:**
+   - Secrets are managed in Supabase Dashboard
+   - No local development/testing needed
+
+### Decision Tree
+
+```
+Are you developing/testing Edge Functions locally?
+│
+├─ YES → You need .env.local
+│   └─ Use: supabase functions serve <function> --env-file .env.local
+│
+└─ NO → You don't need .env.local
+    └─ Production secrets are set via:
+        - supabase secrets set KEY=value
+        - Supabase Dashboard → Edge Functions → Secrets Management
+```
+
+**Bottom Line:** `.env.local` is a **development convenience**, not a requirement. Production Edge Functions use secrets from Supabase (set via CLI or Dashboard), not from files.
+
+---
+
 ## Local Development Setup
 
 ### 1. Create Local Environment File

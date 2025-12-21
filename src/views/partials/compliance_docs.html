@@ -1,0 +1,49 @@
+<!-- Compliance Docs Partial -->
+<div class="vmp-panel p-6 border vmp-border-color">
+    <div class="vmp-label-kicker vmp-label-kicker-strong mb-4">COMPLIANCE DOCUMENTS</div>
+
+    {% if error %}
+    <div class="p-3 mb-4 rounded-lg border vmp-border-warn vmp-bg-warn vmp-opacity-30">
+        <div class="vmp-caption vmp-text-warn">{{ error }}</div>
+    </div>
+    {% endif %}
+
+    {% if complianceDocs and complianceDocs|length > 0 %}
+    <div class="space-y-3">
+        {% for doc in complianceDocs %}
+        <div class="p-3 rounded-lg border vmp-border-color vmp-bg-panel">
+            <div class="flex items-start justify-between">
+                <div class="flex-1 min-w-0">
+                    <div class="vmp-body-small font-medium mb-1 truncate">
+                        {{ doc.filename }}
+                    </div>
+                    <div class="vmp-caption vmp-muted">
+                        {{ doc.evidence_type | upper }}
+                        {% if doc.case_subject %}
+                        • {{ doc.case_subject }}
+                        {% endif %}
+                    </div>
+                    <div class="vmp-caption vmp-muted mt-1">
+                        {{ doc.uploaded_at | date('%b %d, %Y') if doc.uploaded_at else '—' }}
+                    </div>
+                </div>
+                <div class="shrink-0 ml-3">
+                    <span class="vmp-tag vmp-tag-mono text-xs">
+                        {{ (doc.status or 'submitted') | upper }}
+                    </span>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="vmp-body vmp-muted text-center py-8">
+        {% if error %}
+        {{ error }}
+        {% else %}
+        No compliance documents found. Documents will appear here after they are uploaded during onboarding.
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+

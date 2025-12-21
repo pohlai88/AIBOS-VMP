@@ -1,0 +1,54 @@
+{% extends "layout.html" %}
+{% block title %}Profile — NexusCanon VMP{% endblock %}
+
+{% block content %}
+<div class="h-full overflow-y-auto">
+    <div class="vmp-container max-w-7xl mx-auto p-6">
+        <header class="mb-6">
+            <h1 class="vmp-h1 mb-2">Profile</h1>
+            <p class="vmp-body vmp-muted">Manage your vendor profile and compliance documents</p>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Left Column: Profile Form -->
+            <div class="lg:col-span-2">
+                <div id="profile-form-container"
+                     hx-get="/partials/profile-form.html"
+                     hx-trigger="load"
+                     hx-target="this"
+                     hx-swap="innerHTML">
+                    <div class="flex items-center justify-center h-64">
+                        <div class="vmp-label-kicker animate-pulse opacity-60">Loading profile...</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column: Compliance & Contracts -->
+            <div class="space-y-6">
+                <!-- Compliance Docs -->
+                <div id="compliance-docs-container"
+                     hx-get="/partials/compliance-docs.html"
+                     hx-trigger="load"
+                     hx-target="this"
+                     hx-swap="innerHTML">
+                    <div class="flex items-center justify-center h-32">
+                        <div class="vmp-label-kicker animate-pulse opacity-60">Loading...</div>
+                    </div>
+                </div>
+
+                <!-- Contract Library -->
+                <div id="contract-library-container"
+                     hx-get="/partials/contract-library.html"
+                     hx-trigger="load"
+                     hx-target="this"
+                     hx-swap="innerHTML">
+                    <div class="flex items-center justify-center h-32">
+                        <div class="vmp-label-kicker animate-pulse opacity-60">Loading...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

@@ -1,0 +1,93 @@
+<!-- Ops Case Queue Partial -->
+<div class="space-y-6">
+    {% if error %}
+    <div class="p-4 mb-4 rounded-lg border vmp-border-warn vmp-bg-warn vmp-opacity-30">
+        <div class="vmp-label vmp-text-warn">{{ error }}</div>
+    </div>
+    {% endif %}
+
+    <!-- Filters -->
+    <div class="vmp-panel p-4 border vmp-border-color">
+        <form hx-get="/partials/ops-case-queue.html?scope_type={{ scopeType }}&scope_id={{ scopeId }}"
+              hx-target="#case-queue-container"
+              hx-swap="innerHTML"
+              class="flex gap-4 items-center flex-wrap">
+            <select name="status" class="vmp-form-input text-sm">
+                <option value="">All Status</option>
+                <option value="open" {% if filters.status == 'open' %}selected{% endif %}>Open</option>
+                <option value="resolved" {% if filters.status == 'resolved' %}selected{% endif %}>Resolved</option>
+                <option value="closed" {% if filters.status == 'closed' %}selected{% endif %}>Closed</option>
+            </select>
+            <select name="owner_team" class="vmp-form-input text-sm">
+                <option value="">All Teams</option>
+                <option value="procurement" {% if filters.owner_team == 'procurement' %}selected{% endif %}>Procurement</option>
+                <option value="ap" {% if filters.owner_team == 'ap' %}selected{% endif %}>AP</option>
+                <option value="finance" {% if filters.owner_team == 'finance' %}selected{% endif %}>Finance</option>
+            </select>
+            <select name="case_type" class="vmp-form-input text-sm">
+                <option value="">All Types</option>
+                <option value="invoice" {% if filters.case_type == 'invoice' %}selected{% endif %}>Invoice</option>
+                <option value="payment" {% if filters.case_type == 'payment' %}selected{% endif %}>Payment</option>
+                <option value="onboarding" {% if filters.case_type == 'onboarding' %}selected{% endif %}>Onboarding</option>
+            </select>
+            <button type="submit" class="vmp-btn-outline text-sm">Filter</button>
+        </form>
+    </div>
+
+    <!-- Case List -->
+    {% if cases and cases|length > 0 %}
+    <div class="divide-y vmp-border-color">
+        {% for case in cases %}
+        <a href="/ops/cases/{{ case.id }}" 
+           class="block px-4 py-3.5 hover:bg-white/[0.02] active:bg-white/[0.04] transition-all">
+            <div class="flex items-start justify-between gap-3">
+                <div class="flex items-start gap-3 min-w-0 flex-1">
+                    <div class="mt-1.5 relative shrink-0">
+                        {% if case.escalation_level >= 3 %}
+                        <div class="w-1.5 h-1.5 rounded-full vmp-fill-danger animate-pulse"></div>
+                        {% elif case.escalation_level >= 2 %}
+                        <div class="w-1.5 h-1.5 rounded-full vmp-fill-warn"></div>
+                        {% else %}
+                        <div class="w-1.5 h-1.5 rounded-full vmp-bg-panel"></div>
+                        {% endif %}
+                    </div>
+                    <div class="min-w-0 flex-1">
+                        <div class="flex items-center gap-2 mb-1">
+                            <span class="vmp-code">{{ case.case_type | upper }}</span>
+                            {% if case.vmp_companies %}
+                            <span class="vmp-caption vmp-muted">{{ case.vmp_companies.name }}</span>
+                            {% endif %}
+                            {% if case.owner_team %}
+                            <span class="vmp-caption vmp-muted">• {{ case.owner_team | upper }}</span>
+                            {% endif %}
+                        </div>
+                        <div class="vmp-body-small leading-snug truncate">
+                            {{ case.subject or 'No subject' }}
+                        </div>
+                        <div class="mt-2 flex items-center gap-2">
+                            <span class="vmp-caption vmp-muted">
+                                {{ case.updated_at | date('%b %d, %Y') if case.updated_at else '—' }}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                <div class="shrink-0">
+                    <span class="vmp-tag vmp-tag-mono text-xs">
+                        {{ (case.status or 'open') | upper }}
+                    </span>
+                </div>
+            </div>
+        </a>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="vmp-body vmp-muted text-center py-8">
+        {% if error %}
+        {{ error }}
+        {% else %}
+        No cases found for this scope.
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+

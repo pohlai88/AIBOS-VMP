@@ -1,6 +1,37 @@
 /* ==========================================================================
-   NexusCanon VMP Design System (SSOT) v2.0.1
+   NexusCanon VMP Design System (SSOT) v2.2.0 (Figma Validated - Clean Semantic)
    Built with Figma Best Practices & IDE-First Philosophy
+   
+   ===== DESIGN HIERARCHY (IDE-Readable Structure) =====
+   
+   FOUNDATION LAYER (Data Presentation - Controlled):
+   ├── Typography Scale: .vmp-h1 (64px) → .vmp-h6 (20px), .vmp-body (16px), .vmp-label (12px)
+   ├── Spacing Scale: var(--vmp-space-0) → var(--vmp-space-16) (8px grid system)
+   ├── Color Tokens: var(--vmp-text), var(--vmp-ok), var(--vmp-danger) (semantic meaning)
+   └── Data Components: .vmp-table, .vmp-list (enforce Foundation rules)
+   
+   DESIGN LAYER (Marketing/Creative - Free Hand):
+   ├── Visual Components: .vmp-btn, .vmp-card, .vmp-modal (NO prescriptive templates)
+   ├── Marketing Pages: Full freedom, inline styles ALLOWED
+   └── Creative Markers: .vmp-creative, .vmp-marketing, .vmp-free-form (exempt from Foundation)
+   
+   COMPONENT HIERARCHY:
+   ├── Layout: .vmp-container, .vmp-panel, .vmp-card, .vmp-sidebar
+   ├── Typography: .vmp-h1-.vmp-h6, .vmp-body, .vmp-label, .vmp-caption, .vmp-code
+   ├── Forms: .vmp-input, .vmp-textarea, .vmp-select, .vmp-checkbox, .vmp-radio
+   ├── Actions: .vmp-btn, .vmp-btn-primary, .vmp-btn-danger, .vmp-btn-ghost
+   ├── Data: .vmp-table, .vmp-list, .vmp-list-item
+   ├── Feedback: .vmp-badge, .vmp-alert, .vmp-spinner, .vmp-skeleton, .vmp-empty
+   └── Overlays: .vmp-modal, .vmp-dropdown
+   
+   IDE AUTocomplete Support:
+   - Type "var(--vmp-" to see all design tokens
+   - Type ".vmp-h" to see heading classes (data presentation)
+   - Type ".vmp-body" to see body text classes (data presentation)
+   - Type ".vmp-label" to see label classes (data presentation)
+   - Type ".vmp-creative" to mark creative content (Foundation rules exempt)
+   - Type ".vmp-marketing" to mark marketing content (Foundation rules exempt)
+   - Type ".vmp-free-form" to mark free-form content (Foundation rules exempt)
    
    CSS NESTING REQUIREMENT:
    This file uses native CSS nesting (CSS Nesting Level 1).
@@ -40,9 +71,48 @@
    2. DESIGN TOKENS (Figma-Aligned)
    ========================================================================== */
 
+/* 
+ * ===== IDE AUTocomplete Hints =====
+ * 
+ * DESIGN HIERARCHY (IDE-Readable):
+ * 
+ * 1. FOUNDATION LAYER (Data Presentation - Controlled):
+ *    - Typography: .vmp-h1 through .vmp-h6, .vmp-body, .vmp-label
+ *    - Spacing: var(--vmp-space-*) - 8px grid system
+ *    - Colors: var(--vmp-text), var(--vmp-ok), var(--vmp-danger) - semantic meaning
+ *    - Components: .vmp-table, .vmp-list - data presentation only
+ * 
+ * 2. DESIGN LAYER (Marketing/Creative - Free Hand):
+ *    - Visual components: .vmp-btn, .vmp-card, .vmp-modal - NO prescriptive templates
+ *    - Marketing pages: Full freedom, inline styles ALLOWED
+ *    - Creative content: Use .vmp-creative, .vmp-marketing, .vmp-free-form markers
+ * 
+ * TOKEN DISCOVERY:
+ * - Type "var(--vmp-" to see all design tokens
+ * - Type ".vmp-h" to see heading classes (data presentation)
+ * - Type ".vmp-body" to see body text classes (data presentation)
+ * - Type ".vmp-label" to see label classes (data presentation)
+ * - Type ".vmp-creative" to mark creative content (Foundation rules exempt)
+ * - Type ".vmp-marketing" to mark marketing content (Foundation rules exempt)
+ * - Type ".vmp-free-form" to mark free-form content (Foundation rules exempt)
+ * 
+ * COMPONENT HIERARCHY:
+ * - Layout: .vmp-container, .vmp-panel, .vmp-card, .vmp-sidebar
+ * - Typography: .vmp-h1-.vmp-h6, .vmp-body, .vmp-label, .vmp-caption, .vmp-code
+ * - Forms: .vmp-input, .vmp-textarea, .vmp-select, .vmp-checkbox, .vmp-radio
+ * - Actions: .vmp-btn, .vmp-btn-primary, .vmp-btn-danger, .vmp-btn-ghost
+ * - Data: .vmp-table, .vmp-list, .vmp-list-item
+ * - Feedback: .vmp-badge, .vmp-alert, .vmp-spinner, .vmp-skeleton, .vmp-empty
+ * - Overlays: .vmp-modal, .vmp-dropdown, .vmp-tooltip
+ */
+
 :root,
 html[data-theme="dark"] {
   /* ===== COLORS (HSL System - Theme Switching) ===== */
+  /* 
+   * IDE: Type "var(--vmp-" to see all color tokens
+   * Hierarchy: Background → Panel → Text → Signals
+   */
   
   /* Backgrounds */
   --vmp-bg-h: 0;
@@ -74,7 +144,7 @@ html[data-theme="dark"] {
   --vmp-ok-l: 71%;
   --vmp-ok: hsl(var(--vmp-ok-h), var(--vmp-ok-s), var(--vmp-ok-l));
   
-  /* [NEW] Brand / Accent (Electric Cyan) */
+  /* Brand / Accent (Electric Cyan) */
   --vmp-brand-h: 195;
   --vmp-brand-s: 100%;
   --vmp-brand-l: 71%;
@@ -89,8 +159,13 @@ html[data-theme="dark"] {
   --vmp-danger-s: 100%;
   --vmp-danger-l: 71%;
   --vmp-danger: hsl(var(--vmp-danger-h), var(--vmp-danger-s), var(--vmp-danger-l));
-  
+
   /* ===== SPACING (Figma 8px Grid System) ===== */
+  /* 
+   * IDE: Type "var(--vmp-space-" to see spacing scale
+   * Hierarchy: 0 → 1 (4px) → 2 (8px base) → 3 (12px) → 4 (16px) → 5 (20px) → 6 (24px) → 8 (32px) → 10 (40px) → 12 (48px) → 16 (64px)
+   * Usage: Data presentation components use spacing tokens for consistency
+   */
   --vmp-space-0: 0;
   --vmp-space-1: 0.25rem;     /* 4px */
   --vmp-space-2: 0.5rem;      /* 8px - base unit */
@@ -103,15 +178,29 @@ html[data-theme="dark"] {
   --vmp-space-12: 3rem;       /* 48px */
   --vmp-space-16: 4rem;       /* 64px */
 
-  /* ===== BORDER RADIUS ===== */
+  /* ===== BORDER RADIUS (Figma-Aligned) ===== */
+  /* 
+   * IDE: Type "var(--vmp-radius-" to see border radius scale
+   * Hierarchy: sm (6px) → md (8px) → lg (12px) → xl (14px) → 16 (16px) → 18 (18px) → 2xl (20px) → 3xl (24px) → 34 (34px) → full (999px)
+   * Figma Standards: 16px, 18px, 34px, and fully-rounded (999px) added for Figma alignment
+   */
   --vmp-radius-sm: 6px;
   --vmp-radius-md: 8px;
   --vmp-radius-lg: 12px;
   --vmp-radius-xl: 14px;
+  --vmp-radius-16: 16px;      /* Figma standard */
+  --vmp-radius-18: 18px;      /* Figma standard */
   --vmp-radius-2xl: 20px;
   --vmp-radius-3xl: 24px;
+  --vmp-radius-34: 34px;       /* Figma standard */
+  --vmp-radius-full: 999px;    /* Fully rounded (Figma standard) */
   
   /* ===== TYPOGRAPHY (Figma Standards) ===== */
+  /* 
+   * IDE: Type "var(--vmp-font-" to see typography scale
+   * Hierarchy: xs (12px) → sm (14px) → base (16px) → md (18px) → lg (20px) → xl (24px) → 2xl (32px) → 3xl (40px) → 4xl (48px) → 5xl (64px)
+   * Usage: Use with semantic classes (.vmp-h1 uses --vmp-font-5xl, .vmp-body uses --vmp-font-base)
+   */
   --vmp-font-xs: 0.75rem;     /* 12px */
   --vmp-font-sm: 0.875rem;    /* 14px */
   --vmp-font-base: 1rem;      /* 16px */
@@ -124,12 +213,22 @@ html[data-theme="dark"] {
   --vmp-font-5xl: 4rem;       /* 64px */
 
   /* ===== LINE HEIGHT (Figma Standards) ===== */
+  /* 
+   * IDE: Type "var(--vmp-line-height-" to see line height scale
+   * Hierarchy: tight (1.3) → normal (1.5) → relaxed (1.6) → loose (1.75)
+   * Usage: Headings use tight, body uses relaxed, labels use normal
+   */
   --vmp-line-height-tight: 1.3;
   --vmp-line-height-normal: 1.5;
   --vmp-line-height-relaxed: 1.6;
   --vmp-line-height-loose: 1.75;
 
   /* ===== LETTER SPACING (Figma Standards) ===== */
+  /* 
+   * IDE: Type "var(--vmp-letter-spacing-" to see letter spacing scale
+   * Hierarchy: tighter (0) → tight (0) → normal (0) → wide (0.01em) → wider (0.02em)
+   * Usage: Headings use tighter/tight, labels use wider for uppercase
+   */
   --vmp-letter-spacing-tighter: 0;
   --vmp-letter-spacing-tight: 0;
   --vmp-letter-spacing-normal: 0;
@@ -171,7 +270,7 @@ html[data-theme="light"] {
   --vmp-muted: hsla(0, 0%, 9%, 0.90);
   --vmp-subtle: hsla(0, 0%, 9%, 0.65);
   --vmp-ok: hsl(155, 70%, 50%);
-  --vmp-brand: hsl(195, 85%, 50%); /* Dark mode adjust for Brand */
+  --vmp-brand: hsl(195, 85%, 50%);
   --vmp-warn: hsl(42, 90%, 55%);
   --vmp-danger: hsl(0, 80%, 55%);
 }
@@ -271,80 +370,47 @@ html[data-surface="vmp"] {
   /* ===== BASE STYLES ===== */
   & body {
     margin: 0;
-  background: var(--vmp-bg);
-  color: var(--vmp-text);
-  font-family: "Liter", ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+    background: var(--vmp-bg);
+    color: var(--vmp-text);
+    font-family: "Liter", ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
     font-size: var(--vmp-font-base);
     font-weight: 300;
     line-height: var(--vmp-line-height-relaxed);
     letter-spacing: var(--vmp-letter-spacing-normal);
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  text-rendering: optimizeLegibility;
-    overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
-
-  /* ===== GLOBAL LINKS ===== */
-  & a {
-    color: var(--vmp-text);
-    text-decoration: underline;
-    text-decoration-thickness: 1px;
-    text-underline-offset: 2px;
-    transition: color var(--vmp-transition-fast), text-decoration-color var(--vmp-transition-fast);
-  }
-
-  & a:hover {
-    color: var(--vmp-muted);
-    text-decoration-color: var(--vmp-muted);
-  }
-
-  & a:visited {
-    color: var(--vmp-text);
-  }
-
-  & a:focus-visible {
-    outline: 2px solid hsla(0, 0%, 100%, 0.25);
-    outline-offset: 3px;
-    border-radius: var(--vmp-radius-sm);
-  }
-
-  /* ===== ACCESSIBILITY: REDUCED MOTION ===== */
-  @media (prefers-reduced-motion: reduce) {
-    & *, & *::before, & *::after {
-      animation-duration: 0.01ms !important;
-      animation-iteration-count: 1 !important;
-      transition-duration: 0.01ms !important;
-      scroll-behavior: auto !important;
-    }
-  }
-
-  /* Alpine.js Cloak */
-  & [x-cloak] {
-    display: none !important;
-  }
-
-  /* ===== FONT UTILITIES ===== */
-  & .font-mono {
-  font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
-    font-weight: 300;
-    letter-spacing: var(--vmp-letter-spacing-wide);
-  -webkit-font-smoothing: antialiased;
-}
-
-  & .font-serif {
-  font-family: "Playfair Display", ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
-    font-weight: 300;
-    letter-spacing: var(--vmp-letter-spacing-tighter);
-  -webkit-font-smoothing: antialiased;
-}
 
   /* ===== TYPOGRAPHY HIERARCHY (Semantic - IDE-Friendly) ===== */
-  
-  /* Headings */
+  /* 
+   * ===== DESIGN HIERARCHY (IDE-Readable) =====
+   * 
+   * TYPOGRAPHY SCALE:
+   * - Headings: .vmp-h1 (64px) → .vmp-h2 (48px) → .vmp-h3 (40px) → .vmp-h4 (32px) → .vmp-h5 (24px) → .vmp-h6 (20px)
+   * - Body: .vmp-body (16px) → .vmp-body-large (18px) → .vmp-body-small (14px)
+   * - Labels: .vmp-label (12px uppercase) → .vmp-label-strong (12px uppercase, stronger color)
+   * - Metadata: .vmp-caption (12px) → .vmp-code (14px monospace) → .vmp-code-small (12px monospace)
+   * 
+   * FONT FAMILIES:
+   * - Headings (h1-h4): "Playfair Display" (serif)
+   * - Headings (h5-h6): "Liter" (sans-serif)
+   * - Body: "Liter" (sans-serif)
+   * - Labels/Code: "JetBrains Mono" (monospace)
+   * 
+   * IDE AUTocomplete:
+   * - Type ".vmp-h" to see all heading classes (h1-h6)
+   * - Type ".vmp-body" to see body text classes
+   * - Type ".vmp-label" to see label classes
+   * - Type ".vmp-code" to see code classes
+   * 
+   * SCOPE: Data presentation ONLY
+   * For creative/marketing: Use class="vmp-creative" or class="vmp-marketing" to exempt
+   */
+
   & h1, & .vmp-h1 {
     font-family: "Playfair Display", ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
     font-size: var(--vmp-font-5xl);
-    line-height: var(--vmp-line-height-loose);
+    line-height: var(--vmp-line-height-tight);
     letter-spacing: var(--vmp-letter-spacing-tighter);
     font-weight: 300;
     color: var(--vmp-text);
@@ -354,8 +420,8 @@ html[data-surface="vmp"] {
   & h2, & .vmp-h2 {
     font-family: "Playfair Display", ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
     font-size: var(--vmp-font-4xl);
-    line-height: var(--vmp-line-height-loose);
-    letter-spacing: var(--vmp-letter-spacing-tighter);
+    line-height: var(--vmp-line-height-tight);
+    letter-spacing: var(--vmp-letter-spacing-tight);
     font-weight: 300;
     color: var(--vmp-text);
     -webkit-font-smoothing: antialiased;
@@ -364,7 +430,7 @@ html[data-surface="vmp"] {
   & h3, & .vmp-h3 {
     font-family: "Playfair Display", ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
     font-size: var(--vmp-font-3xl);
-    line-height: var(--vmp-line-height-loose);
+    line-height: var(--vmp-line-height-tight);
     letter-spacing: var(--vmp-letter-spacing-tight);
     font-weight: 300;
     color: var(--vmp-text);
@@ -431,13 +497,13 @@ html[data-surface="vmp"] {
 
   /* Labels & Metadata */
   & .vmp-label {
-  font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+    font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
     font-size: var(--vmp-font-xs);
     line-height: var(--vmp-line-height-normal);
     letter-spacing: var(--vmp-letter-spacing-wider);
     font-weight: 300;
     text-transform: uppercase;
-  color: var(--vmp-subtle);
+    color: var(--vmp-subtle);
   }
 
   & .vmp-label-strong {
@@ -477,11 +543,11 @@ html[data-surface="vmp"] {
     color: var(--vmp-subtle);
   }
 
-  /* ===== COLOR UTILITIES ===== */
+  /* ===== COLOR UTILITIES (Semantic Only) ===== */
   & .vmp-text { color: var(--vmp-text); }
   & .vmp-muted { color: var(--vmp-muted); }
   & .vmp-subtle { color: var(--vmp-subtle); }
-  & .vmp-text-brand { color: var(--vmp-brand); } /* [NEW] */
+  & .vmp-text-brand { color: var(--vmp-brand); }
   & .vmp-signal-ok { color: var(--vmp-ok); }
   & .vmp-signal-warn { color: var(--vmp-warn); }
   & .vmp-signal-danger { color: var(--vmp-danger); }
@@ -489,8 +555,35 @@ html[data-surface="vmp"] {
   & .vmp-fill-warn { background-color: var(--vmp-warn); }
   & .vmp-fill-danger { background-color: var(--vmp-danger); }
 
-  /* ===== LAYOUT COMPONENTS ===== */
+  /* ===== LAYOUT COMPONENTS (Semantic) ===== */
+  /* 
+   * ===== LAYOUT HIERARCHY (IDE-Readable) =====
+   * 
+   * COMPONENT STRUCTURE:
+   * - .vmp-container: Centered container (max-width: 1280px)
+   * - .vmp-sidebar/.vmp-rail: Side navigation with backdrop blur
+   * - .vmp-panel/.vmp-slab: Glass panel with border
+   * - .vmp-card: Card container with header/body/footer
+   *   - .vmp-card-head/.vmp-card-header: Card header section
+   *   - .vmp-card-body: Card content section
+   *   - .vmp-card-foot/.vmp-card-footer: Card footer section
+   * 
+   * IDE AUTocomplete:
+   * - Type ".vmp-container" for centered layout
+   * - Type ".vmp-panel" for glass panel
+   * - Type ".vmp-card" for card component
+   */
   
+  /* Container */
+  & .vmp-container {
+    width: 100%;
+    margin-left: auto;
+    margin-right: auto;
+    max-width: var(--vmp-container-max-width);
+    padding-left: var(--vmp-space-4);
+    padding-right: var(--vmp-space-4);
+  }
+
   /* Sidebar */
   & .vmp-sidebar,
   & .vmp-rail {
@@ -500,7 +593,6 @@ html[data-surface="vmp"] {
     backdrop-filter: blur(12px);
   }
 
-  /* Backdrop-Filter Fallback for Sidebar */
   @supports not (backdrop-filter: blur(12px)) {
     & .vmp-sidebar,
     & .vmp-rail {
@@ -511,15 +603,15 @@ html[data-surface="vmp"] {
   /* Panel */
   & .vmp-panel,
   & .vmp-slab {
-  background: var(--vmp-panel);
-  border: 1px solid var(--vmp-border);
+    background: var(--vmp-panel);
+    border: 1px solid var(--vmp-border);
     border-radius: var(--vmp-radius-xl);
-}
+  }
 
   /* Card */
   & .vmp-card {
-  background: var(--vmp-panel);
-  border: 1px solid var(--vmp-border);
+    background: var(--vmp-panel);
+    border: 1px solid var(--vmp-border);
     border-radius: var(--vmp-radius-2xl);
     overflow: hidden;
   }
@@ -527,9 +619,9 @@ html[data-surface="vmp"] {
   & .vmp-card-head,
   & .vmp-card-header {
     padding: var(--vmp-space-4);
-  background: var(--vmp-veil);
-  border-bottom: 1px solid var(--vmp-border);
-}
+    background: var(--vmp-veil);
+    border-bottom: 1px solid var(--vmp-border);
+  }
 
   & .vmp-card-body {
     padding: var(--vmp-space-5);
@@ -538,11 +630,11 @@ html[data-surface="vmp"] {
   & .vmp-card-foot,
   & .vmp-card-footer {
     padding: var(--vmp-space-4);
-  background: var(--vmp-veil);
-  border-top: 1px solid var(--vmp-border);
-}
+    background: var(--vmp-veil);
+    border-top: 1px solid var(--vmp-border);
+  }
 
-  /* ===== NAVIGATION ===== */
+  /* ===== NAVIGATION (Semantic) ===== */
   & .vmp-navlink,
   & .vmp-navigation-link {
     display: flex;
@@ -556,20 +648,20 @@ html[data-surface="vmp"] {
     transition: background-color var(--vmp-transition-fast), color var(--vmp-transition-fast), border-color var(--vmp-transition-fast);
 
     &:hover {
-  background: hsla(0, 0%, 100%, 0.02);
-  color: hsla(0, 0%, 93%, 0.85);
-}
+      background: hsla(0, 0%, 100%, 0.02);
+      color: hsla(0, 0%, 93%, 0.85);
+    }
   }
 
   & .vmp-navlink-active,
   & .vmp-navigation-link-active {
     position: relative;
-  background: var(--vmp-panel);
-  border: 1px solid var(--vmp-border);
-  color: hsla(0, 0%, 93%, 0.90);
+    background: var(--vmp-panel);
+    border: 1px solid var(--vmp-border);
+    color: hsla(0, 0%, 93%, 0.90);
 
     &:hover {
-  background: hsla(0, 0%, 100%, 0.04);
+      background: hsla(0, 0%, 100%, 0.04);
     }
 
     &::before {
@@ -584,7 +676,31 @@ html[data-surface="vmp"] {
     }
   }
 
-  /* ===== FORM COMPONENTS ===== */
+  /* ===== FORM COMPONENTS (Semantic) ===== */
+  /* 
+   * ===== FORM HIERARCHY (IDE-Readable) =====
+   * 
+   * COMPONENT STRUCTURE:
+   * - .vmp-input/.vmp-form-input: Text input field
+   *   - .vmp-input-error/.vmp-form-error: Error helper text
+   * - .vmp-textarea/.vmp-form-textarea: Multi-line text input
+   * - .vmp-select/.vmp-form-select: Dropdown select
+   * - .vmp-checkbox/.vmp-form-checkbox: Checkbox input
+   * - .vmp-radio/.vmp-form-radio: Radio button input
+   * 
+   * STATES:
+   * - :focus: Enhanced border and background
+   * - :invalid, [aria-invalid="true"], .is-invalid: Danger color
+   * - :disabled, [disabled]: Reduced opacity, not-allowed cursor
+   * - [readonly]: Muted background, default cursor
+   * 
+   * IDE AUTocomplete:
+   * - Type ".vmp-input" for text input
+   * - Type ".vmp-textarea" for multi-line input
+   * - Type ".vmp-select" for dropdown
+   * - Type ".vmp-checkbox" for checkbox
+   * - Type ".vmp-radio" for radio button
+   */
   
   /* Input */
   & .vmp-input,
@@ -592,10 +708,10 @@ html[data-surface="vmp"] {
     width: 100%;
     padding: var(--vmp-space-2) var(--vmp-space-3);
     border-radius: var(--vmp-radius-md);
-  border: 1px solid var(--vmp-border);
-  background: hsla(0, 0%, 100%, 0.05);
-  color: var(--vmp-text);
-  font-family: "Liter", ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+    border: 1px solid var(--vmp-border);
+    background: hsla(0, 0%, 100%, 0.05);
+    color: var(--vmp-text);
+    font-family: "Liter", ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
     font-size: var(--vmp-font-base);
     font-weight: 300;
     line-height: var(--vmp-line-height-relaxed);
@@ -603,16 +719,15 @@ html[data-surface="vmp"] {
 
     &:focus {
       outline: none;
-  border-color: var(--vmp-border2);
+      border-color: var(--vmp-border2);
       background: hsla(0, 0%, 100%, 0.10);
-}
+    }
 
     &::placeholder {
-  color: var(--vmp-subtle);
-  font-family: "Liter", ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-}
+      color: var(--vmp-subtle);
+      font-family: "Liter", ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+    }
 
-    /* Validation States */
     &:invalid, &[aria-invalid="true"], &.is-invalid {
       border-color: var(--vmp-danger);
       background: hsla(0, 100%, 71%, 0.05);
@@ -643,31 +758,30 @@ html[data-surface="vmp"] {
   /* Textarea */
   & .vmp-textarea,
   & .vmp-form-textarea {
-  width: 100%;
+    width: 100%;
     padding: var(--vmp-space-2) var(--vmp-space-3);
-  border-radius: var(--vmp-radius-md);
-  border: 1px solid var(--vmp-border);
+    border-radius: var(--vmp-radius-md);
+    border: 1px solid var(--vmp-border);
     background: hsla(0, 0%, 100%, 0.05);
-  color: var(--vmp-text);
-  font-family: "Liter", ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+    color: var(--vmp-text);
+    font-family: "Liter", ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
     font-size: var(--vmp-font-base);
     font-weight: 300;
     line-height: var(--vmp-line-height-normal);
-  resize: vertical;
-  min-height: 80px;
+    resize: vertical;
+    min-height: 80px;
     transition: border-color var(--vmp-transition-fast), background-color var(--vmp-transition-fast);
 
     &:focus {
-  outline: none;
-  border-color: var(--vmp-border2);
+      outline: none;
+      border-color: var(--vmp-border2);
       background: hsla(0, 0%, 100%, 0.08);
-}
-
-    &::placeholder {
-  color: var(--vmp-subtle);
     }
 
-    /* Validation States */
+    &::placeholder {
+      color: var(--vmp-subtle);
+    }
+
     &:invalid, &[aria-invalid="true"], &.is-invalid {
       border-color: var(--vmp-danger);
       background: hsla(0, 100%, 71%, 0.05);
@@ -678,49 +792,28 @@ html[data-surface="vmp"] {
       cursor: not-allowed;
       background: hsla(0, 0%, 100%, 0.02);
     }
-
-    &[readonly] {
-      background: hsla(0, 0%, 100%, 0.02);
-      cursor: default;
-    }
   }
 
   /* Select */
   & .vmp-select,
   & .vmp-form-select {
-  width: 100%;
+    width: 100%;
     padding: var(--vmp-space-2) var(--vmp-space-3);
-    padding-right: var(--vmp-space-10);
-  border-radius: var(--vmp-radius-md);
-  border: 1px solid var(--vmp-border);
-  background: hsla(0, 0%, 100%, 0.05);
-  background-image: url("data:image/svg+xml,%3Csvg width='12' height='12' viewBox='0 0 12 12' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M3 4.5L6 7.5L9 4.5' stroke='%23ededed' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-    background-position: right var(--vmp-space-3) center;
-  background-size: 12px;
-  color: var(--vmp-text);
-  font-family: "Liter", ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+    border-radius: var(--vmp-radius-md);
+    border: 1px solid var(--vmp-border);
+    background: hsla(0, 0%, 100%, 0.05);
+    color: var(--vmp-text);
+    font-family: "Liter", ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
     font-size: var(--vmp-font-base);
     font-weight: 300;
-    line-height: var(--vmp-line-height-normal);
-  appearance: none;
+    line-height: var(--vmp-line-height-relaxed);
+    cursor: pointer;
     transition: border-color var(--vmp-transition-fast), background-color var(--vmp-transition-fast);
 
     &:focus {
-  outline: none;
-  border-color: var(--vmp-border2);
-  background-color: hsla(0, 0%, 100%, 0.08);
-}
-
-    & option {
-  background: var(--vmp-bg);
-  color: var(--vmp-text);
-    }
-
-    /* Validation States */
-    &:invalid, &[aria-invalid="true"], &.is-invalid {
-      border-color: var(--vmp-danger);
-      background: hsla(0, 100%, 71%, 0.05);
+      outline: none;
+      border-color: var(--vmp-border2);
+      background: hsla(0, 0%, 100%, 0.10);
     }
 
     &:disabled, &[disabled] {
@@ -733,31 +826,116 @@ html[data-surface="vmp"] {
   /* Checkbox */
   & .vmp-checkbox,
   & .vmp-form-checkbox {
-  width: 16px;
-  height: 16px;
-  border: 1px solid var(--vmp-border);
-  background: hsla(0, 0%, 100%, 0.05);
-    border-radius: 4px;
+    width: 18px;
+    height: 18px;
+    border: 1px solid var(--vmp-border);
+    border-radius: var(--vmp-radius-sm);
+    background: hsla(0, 0%, 100%, 0.05);
+    cursor: pointer;
     transition: border-color var(--vmp-transition-fast), background-color var(--vmp-transition-fast);
-  cursor: pointer;
-  appearance: none;
-  position: relative;
 
     &:checked {
-  background: hsla(0, 0%, 100%, 0.12);
-  border-color: var(--vmp-border2);
+      background: var(--vmp-ok);
+      border-color: var(--vmp-ok);
+    }
 
-      &::after {
-  content: "";
-  position: absolute;
-  left: 3px;
-  top: 0px;
-  width: 4px;
-  height: 8px;
-  border: solid var(--vmp-text);
-  border-width: 0 2px 2px 0;
-  transform: rotate(45deg);
-}
+    &:focus {
+      outline: 2px solid hsla(0, 0%, 100%, 0.25);
+      outline-offset: 2px;
+    }
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  }
+
+  /* Radio */
+  & .vmp-radio,
+  & .vmp-form-radio {
+    width: 18px;
+    height: 18px;
+    border: 1px solid var(--vmp-border);
+    border-radius: 50%;
+    background: hsla(0, 0%, 100%, 0.05);
+    cursor: pointer;
+    transition: border-color var(--vmp-transition-fast), background-color var(--vmp-transition-fast);
+
+    &:checked {
+      background: var(--vmp-ok);
+      border-color: var(--vmp-ok);
+    }
+
+    &:focus {
+      outline: 2px solid hsla(0, 0%, 100%, 0.25);
+      outline-offset: 2px;
+    }
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  }
+
+  /* ===== BUTTONS (Semantic) ===== */
+  /* 
+   * ===== BUTTON HIERARCHY (IDE-Readable) =====
+   * 
+   * COMPONENT STRUCTURE:
+   * - .vmp-btn/.vmp-action-button: Base button
+   *   - .vmp-btn-ghost: Transparent background
+   *   - .vmp-btn-brand: Brand color (electric cyan)
+   *   - .vmp-btn-primary: Primary action (green/ok)
+   *   - .vmp-btn-danger: Destructive action (red)
+   *   - .vmp-btn-outline: Outlined style
+   *   - .vmp-btn-wide: Full width
+   *   - .vmp-btn-loading: Loading state with spinner
+   * 
+   * STATES:
+   * - :hover: Enhanced background and border
+   * - :active: Pressed state
+   * - :disabled, [disabled]: Reduced opacity, no pointer events
+   * - :focus-visible: Focus outline
+   * 
+   * IDE AUTocomplete:
+   * - Type ".vmp-btn" for base button
+   * - Type ".vmp-btn-primary" for primary action
+   * - Type ".vmp-btn-danger" for destructive action
+   * - Type ".vmp-btn-ghost" for minimal style
+   */
+  
+  & .vmp-btn,
+  & .vmp-action-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--vmp-space-2);
+    padding: var(--vmp-space-2) var(--vmp-space-4);
+    border-radius: var(--vmp-radius-md);
+    border: 1px solid var(--vmp-border);
+    background: hsla(0, 0%, 100%, 0.05);
+    color: var(--vmp-text);
+    font-family: "Liter", ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+    font-size: var(--vmp-font-base);
+    font-weight: 300;
+    line-height: var(--vmp-line-height-normal);
+    text-decoration: none;
+    cursor: pointer;
+    transition: background-color var(--vmp-transition-fast), border-color var(--vmp-transition-fast), color var(--vmp-transition-fast);
+
+    &:hover {
+      background: hsla(0, 0%, 100%, 0.08);
+      border-color: var(--vmp-border2);
+    }
+
+    &:active {
+      background: hsla(0, 0%, 100%, 0.12);
+    }
+
+    &:disabled, &[disabled] {
+      opacity: 0.5;
+      cursor: not-allowed;
+      pointer-events: none;
     }
 
     &:focus-visible {
@@ -766,123 +944,31 @@ html[data-surface="vmp"] {
     }
   }
 
-  /* Radio */
-  & .vmp-radio,
-  & .vmp-form-radio {
-    width: 16px;
-    height: 16px;
-    border: 1px solid var(--vmp-border);
-    background: hsla(0, 0%, 100%, 0.05);
-    border-radius: 50%;
-    transition: border-color var(--vmp-transition-fast), background-color var(--vmp-transition-fast);
-    cursor: pointer;
-    appearance: none;
-    position: relative;
-
-    &:checked {
-      background: hsla(0, 0%, 100%, 0.12);
-      border-color: var(--vmp-border2);
-
-      &::after {
-  content: "";
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--vmp-text);
-  transform: translate(-50%, -50%);
-}
-    }
-
-    &:focus-visible {
-  outline: 2px solid hsla(0, 0%, 100%, 0.25);
-  outline-offset: 2px;
-    }
-  }
-
-  /* ===== BUTTONS ===== */
-  
-  & .vmp-btn,
-  & .vmp-action-button {
-  display: inline-flex;
-  align-items: center;
-    justify-content: center;
-    gap: var(--vmp-space-2);
-    padding: var(--vmp-space-2) var(--vmp-space-4);
-  border-radius: var(--vmp-radius-sm);
-    border: 1px solid var(--vmp-border);
-    background: hsla(0, 0%, 100%, 0.12);
-    color: var(--vmp-text);
-    font-family: "Liter", ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-    font-size: var(--vmp-font-base);
-    font-weight: 300;
-    line-height: var(--vmp-line-height-relaxed);
-    transition: background-color var(--vmp-transition-fast), border-color var(--vmp-transition-fast);
-    text-decoration: none;
-    cursor: pointer;
-
-    &:hover {
-      background: hsla(0, 0%, 100%, 0.18);
-      border-color: var(--vmp-border2);
-    }
-
-    &:active {
-      background: hsla(0, 0%, 100%, 0.15);
-    }
-
-    &:focus-visible {
-      outline: 2px solid hsla(0, 0%, 100%, 0.25);
-      outline-offset: 3px;
-      border-radius: var(--vmp-radius-sm);
-    }
-
-    &:disabled,
-    &[disabled] {
-      opacity: 0.4;
-      cursor: not-allowed;
-      pointer-events: none;
-    }
-  }
-
   & .vmp-btn-ghost,
   & .vmp-action-button-ghost {
-    background: hsla(0, 0%, 100%, 0.04);
-    color: var(--vmp-text);
-    border-color: var(--vmp-border);
+    background: transparent;
+    border-color: transparent;
 
     &:hover {
-      background: hsla(0, 0%, 100%, 0.08);
-      border-color: var(--vmp-border2);
+      background: hsla(0, 0%, 100%, 0.05);
     }
   }
 
-  /* [NEW] Brand Button (Electric Cyan) */
   & .vmp-btn-brand {
-    background: hsla(195, 100%, 71%, 0.12);
-    border-color: hsla(195, 100%, 71%, 0.30);
-    color: var(--vmp-brand);
-    font-weight: 400; /* Slight bump for the primary action */
-    letter-spacing: var(--vmp-letter-spacing-wide);
+    background: var(--vmp-brand);
+    border-color: var(--vmp-brand);
+    color: hsl(0, 0%, 2%);
 
     &:hover {
-      background: hsla(195, 100%, 71%, 0.20);
-      border-color: var(--vmp-brand);
-      box-shadow: 0 0 15px -4px hsla(195, 100%, 71%, 0.3); /* Electric Glow */
+      background: hsl(var(--vmp-brand-h), var(--vmp-brand-s), calc(var(--vmp-brand-l) + 5%));
     }
   }
 
   & .vmp-btn-primary,
   & .vmp-action-button-primary {
-    background: hsla(0, 0%, 100%, 0.15);
-    border-color: var(--vmp-border2);
-    color: var(--vmp-text);
-
-    &:hover {
-      background: hsla(0, 0%, 100%, 0.22);
-      border-color: hsla(0, 0%, 93%, 0.30);
-    }
+    background: var(--vmp-ok);
+    border-color: var(--vmp-ok);
+    color: hsl(0, 0%, 2%);
   }
 
   & .vmp-btn-wide {
@@ -891,25 +977,18 @@ html[data-surface="vmp"] {
 
   & .vmp-btn-danger,
   & .vmp-action-button-danger {
-    background: rgba(255, 100, 100, 0.12);
-    border-color: rgba(255, 100, 100, 0.30);
-    color: var(--vmp-danger);
-
-    &:hover {
-      background: rgba(255, 100, 100, 0.18);
-      border-color: rgba(255, 100, 100, 0.40);
-    }
+    background: var(--vmp-danger);
+    border-color: var(--vmp-danger);
+    color: hsl(0, 0%, 2%);
   }
 
   & .vmp-btn-outline,
   & .vmp-action-button-outline {
     background: transparent;
-    border-color: var(--vmp-border);
-    color: var(--vmp-text);
+    border-color: var(--vmp-border2);
 
     &:hover {
-      background: hsla(0, 0%, 100%, 0.04);
-      border-color: var(--vmp-border2);
+      background: hsla(0, 0%, 100%, 0.05);
     }
   }
 
@@ -917,28 +996,50 @@ html[data-surface="vmp"] {
   & .vmp-action-button-loading {
     position: relative;
     color: transparent;
+    pointer-events: none;
 
     &::after {
       content: "";
       position: absolute;
-      width: 14px;
-      height: 14px;
-      top: 50%;
-      left: 50%;
-      margin-left: -7px;
-      margin-top: -7px;
+      width: 16px;
+      height: 16px;
       border: 2px solid var(--vmp-text);
-      border-radius: 50%;
       border-top-color: transparent;
+      border-radius: 50%;
       animation: vmp-spin 0.6s linear infinite;
     }
   }
 
-  @keyframes vmp-spin {
-    to { transform: rotate(360deg); }
-  }
-
-  /* ===== BADGES & STATUS ===== */
+  /* ===== BADGES (Semantic) ===== */
+  /* 
+   * ===== FEEDBACK COMPONENTS HIERARCHY (IDE-Readable) =====
+   * 
+   * COMPONENT STRUCTURE:
+   * - .vmp-badge/.vmp-status-badge: Status badge
+   *   - .vmp-badge-ok: Success state (green)
+   *   - .vmp-badge-warn: Warning state (yellow)
+   *   - .vmp-badge-danger: Error state (red)
+   * 
+   * - .vmp-alert/.vmp-notification-alert: Alert message
+   *   - .vmp-alert-ok: Success alert
+   *   - .vmp-alert-warn: Warning alert
+   *   - .vmp-alert-danger: Error alert
+   * 
+   * - .vmp-spinner/.vmp-loading-spinner: Loading spinner
+   *   - .vmp-spinner-lg: Large spinner
+   * 
+   * - .vmp-skeleton/.vmp-loading-skeleton: Loading skeleton
+   * 
+   * - .vmp-empty/.vmp-state-empty: Empty state
+   *   - .vmp-empty-title: Empty state title
+   *   - .vmp-empty-description: Empty state description
+   * 
+   * IDE AUTocomplete:
+   * - Type ".vmp-badge" for status badge
+   * - Type ".vmp-alert" for alert message
+   * - Type ".vmp-spinner" for loading indicator
+   * - Type ".vmp-empty" for empty state
+   */
   
   & .vmp-badge,
   & .vmp-status-badge {
@@ -947,41 +1048,42 @@ html[data-surface="vmp"] {
     gap: var(--vmp-space-1);
     padding: var(--vmp-space-1) var(--vmp-space-2);
     border-radius: var(--vmp-radius-sm);
+    border: 1px solid var(--vmp-border);
+    background: hsla(0, 0%, 100%, 0.05);
+    color: var(--vmp-text);
     font-size: var(--vmp-font-xs);
     font-weight: 300;
-  line-height: 1.4;
-  border: 1px solid var(--vmp-border);
-  background: hsla(0, 0%, 100%, 0.04);
-  color: var(--vmp-muted);
-}
+    text-transform: uppercase;
+    letter-spacing: var(--vmp-letter-spacing-wider);
+  }
 
   & .vmp-badge-ok {
     background: rgba(86, 255, 184, 0.08);
     border-color: rgba(86, 255, 184, 0.20);
-  color: var(--vmp-ok);
-}
+    color: var(--vmp-ok);
+  }
 
   & .vmp-badge-warn {
     background: rgba(255, 210, 120, 0.08);
     border-color: rgba(255, 210, 120, 0.20);
-  color: var(--vmp-warn);
-}
+    color: var(--vmp-warn);
+  }
 
   & .vmp-badge-danger {
     background: rgba(255, 100, 100, 0.08);
     border-color: rgba(255, 100, 100, 0.20);
-  color: var(--vmp-danger);
-}
+    color: var(--vmp-danger);
+  }
 
-  /* ===== ALERTS ===== */
+  /* ===== ALERTS (Semantic) ===== */
   
   & .vmp-alert,
   & .vmp-notification-alert {
     padding: var(--vmp-space-3) var(--vmp-space-4);
-  border-radius: var(--vmp-radius-md);
-  border: 1px solid var(--vmp-border);
-  background: hsla(0, 0%, 100%, 0.04);
-  color: var(--vmp-text);
+    border-radius: var(--vmp-radius-md);
+    border: 1px solid var(--vmp-border);
+    background: hsla(0, 0%, 100%, 0.04);
+    color: var(--vmp-text);
     font-size: var(--vmp-font-base);
     font-weight: 300;
     line-height: var(--vmp-line-height-normal);
@@ -990,105 +1092,146 @@ html[data-surface="vmp"] {
   & .vmp-alert-ok {
     background: rgba(86, 255, 184, 0.08);
     border-color: rgba(86, 255, 184, 0.20);
-  color: var(--vmp-ok);
-}
+    color: var(--vmp-ok);
+  }
 
   & .vmp-alert-warn {
     background: rgba(255, 210, 120, 0.08);
     border-color: rgba(255, 210, 120, 0.20);
-  color: var(--vmp-warn);
-}
+    color: var(--vmp-warn);
+  }
 
   & .vmp-alert-danger {
     background: rgba(255, 100, 100, 0.08);
     border-color: rgba(255, 100, 100, 0.20);
-  color: var(--vmp-danger);
-}
+    color: var(--vmp-danger);
+  }
 
-  /* ===== TABLES ===== */
+  /* ===== TABLES (Semantic - Data Presentation) ===== */
+  /* 
+   * ===== DATA PRESENTATION HIERARCHY (IDE-Readable) =====
+   * 
+   * COMPONENT STRUCTURE:
+   * - .vmp-table/.vmp-data-table: Data table
+   *   - thead: Header row with background
+   *   - th: Header cells (monospace, uppercase, subtle color)
+   *   - tbody tr: Data rows with hover effect
+   *   - td: Data cells (sans-serif, normal color)
+   * 
+   * - .vmp-list/.vmp-data-list: List container
+   *   - .vmp-list-item: List item with border and hover
+   * 
+   * SCOPE: Foundation Layer - Data presentation ONLY
+   * These components enforce typography and spacing rules
+   * 
+   * IDE AUTocomplete:
+   * - Type ".vmp-table" for data table
+   * - Type ".vmp-list" for data list
+   */
   
   & .vmp-table,
   & .vmp-data-table {
-  width: 100%;
-  border-collapse: separate;
-  border-spacing: 0;
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
 
     & thead {
-  background: var(--vmp-veil);
-}
+      background: var(--vmp-veil);
+    }
 
     & th {
       padding: var(--vmp-space-3) var(--vmp-space-4);
-  text-align: left;
+      text-align: left;
       font-size: var(--vmp-font-xs);
       font-weight: 300;
       line-height: var(--vmp-line-height-normal);
       letter-spacing: var(--vmp-letter-spacing-wider);
-  text-transform: uppercase;
-  color: var(--vmp-subtle);
-  border-bottom: 1px solid var(--vmp-border);
-  font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
-}
+      text-transform: uppercase;
+      color: var(--vmp-subtle);
+      border-bottom: 1px solid var(--vmp-border);
+      font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+    }
 
     & td {
       padding: var(--vmp-space-3) var(--vmp-space-4);
-  border-bottom: 1px solid hsla(0, 0%, 100%, 0.05);
-  color: var(--vmp-text);
+      border-bottom: 1px solid hsla(0, 0%, 100%, 0.05);
+      color: var(--vmp-text);
       font-size: var(--vmp-font-base);
       font-weight: 300;
       line-height: var(--vmp-line-height-relaxed);
     }
 
     & tbody tr:hover {
-  background: hsla(0, 0%, 100%, 0.02);
-}
+      background: hsla(0, 0%, 100%, 0.02);
+    }
 
     & tbody tr:last-child td {
-  border-bottom: none;
+      border-bottom: none;
     }
   }
 
-  /* ===== LISTS ===== */
+  /* ===== LISTS (Semantic - Data Presentation) ===== */
   
   & .vmp-list,
   & .vmp-data-list {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-}
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
 
   & .vmp-list-item {
     padding: var(--vmp-space-3) var(--vmp-space-4);
-  border-bottom: 1px solid hsla(0, 0%, 100%, 0.05);
+    border-bottom: 1px solid hsla(0, 0%, 100%, 0.05);
     transition: background-color var(--vmp-transition-fast);
     font-weight: 300;
     line-height: var(--vmp-line-height-relaxed);
 
     &:hover {
-  background: hsla(0, 0%, 100%, 0.02);
-}
+      background: hsla(0, 0%, 100%, 0.02);
+    }
 
     &:last-child {
-  border-bottom: none;
+      border-bottom: none;
     }
-}
+  }
 
-  /* ===== MODALS ===== */
+  /* ===== MODALS (Semantic) ===== */
+  /* 
+   * ===== OVERLAY COMPONENTS HIERARCHY (IDE-Readable) =====
+   * 
+   * COMPONENT STRUCTURE:
+   * - .vmp-modal-overlay: Modal backdrop with blur
+   * - .vmp-modal/.vmp-dialog-modal: Modal container
+   *   - .vmp-modal-header: Modal header section
+   *   - .vmp-modal-body: Modal content section (scrollable)
+   *   - .vmp-modal-footer: Modal footer section
+   * 
+   * - .vmp-dropdown/.vmp-menu-dropdown: Dropdown container
+   *   - .vmp-dropdown-menu: Dropdown menu (hidden by default)
+   *   - .vmp-dropdown-item: Dropdown menu item
+   * 
+   * STATES:
+   * - .vmp-dropdown[data-open] .vmp-dropdown-menu: Show menu
+   * - .vmp-dropdown-menu.show: Alternative show class
+   * 
+   * IDE AUTocomplete:
+   * - Type ".vmp-modal" for modal dialog
+   * - Type ".vmp-dropdown" for dropdown menu
+   */
   
   & .vmp-modal-overlay {
-  position: fixed;
-  inset: 0;
+    position: fixed;
+    inset: 0;
     background: rgba(0, 0, 0, 0.60);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
-  z-index: var(--vmp-z-modal);
-  display: flex;
-  align-items: center;
-  justify-content: center;
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    z-index: var(--vmp-z-modal);
+    display: flex;
+    align-items: center;
+    justify-content: center;
     padding: var(--vmp-space-4);
-}
+  }
 
-  /* Backdrop-Filter Fallback */
   @supports not (backdrop-filter: blur(4px)) {
     & .vmp-modal-overlay {
       background: rgba(0, 0, 0, 0.80);
@@ -1097,155 +1240,144 @@ html[data-surface="vmp"] {
 
   & .vmp-modal,
   & .vmp-dialog-modal {
-  background: var(--vmp-panel);
-  border: 1px solid var(--vmp-border);
-  border-radius: var(--vmp-radius-2xl);
-  max-width: 32rem;
-  width: 100%;
-  max-height: 90vh;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-}
+    background: var(--vmp-panel);
+    border: 1px solid var(--vmp-border);
+    border-radius: var(--vmp-radius-2xl);
+    max-width: 32rem;
+    width: 100%;
+    max-height: 90vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
 
   & .vmp-modal-header {
     padding: var(--vmp-space-5) var(--vmp-space-6);
-  border-bottom: 1px solid var(--vmp-border);
-  background: var(--vmp-veil);
-}
+    border-bottom: 1px solid var(--vmp-border);
+    background: var(--vmp-veil);
+  }
 
   & .vmp-modal-body {
     padding: var(--vmp-space-6);
-  overflow-y: auto;
-  flex: 1;
-}
+    overflow-y: auto;
+    flex: 1;
+  }
 
   & .vmp-modal-footer {
     padding: var(--vmp-space-4) var(--vmp-space-6);
-  border-top: 1px solid var(--vmp-border);
-  background: var(--vmp-veil);
-  display: flex;
+    border-top: 1px solid var(--vmp-border);
+    background: var(--vmp-veil);
+    display: flex;
     gap: var(--vmp-space-3);
-  justify-content: flex-end;
-}
+    justify-content: flex-end;
+  }
 
-  /* ===== DROPDOWNS ===== */
+  /* ===== DROPDOWNS (Semantic) ===== */
   
   & .vmp-dropdown,
   & .vmp-menu-dropdown {
-  position: relative;
-  display: inline-block;
-}
+    position: relative;
+    display: inline-block;
+  }
 
   & .vmp-dropdown-menu {
-  position: absolute;
-  top: 100%;
-  left: 0;
+    position: absolute;
+    top: 100%;
+    left: 0;
     margin-top: var(--vmp-space-1);
-  min-width: 12rem;
-  background: var(--vmp-panel);
-  border: 1px solid var(--vmp-border);
-  border-radius: var(--vmp-radius-lg);
+    min-width: 12rem;
+    background: var(--vmp-panel);
+    border: 1px solid var(--vmp-border);
+    border-radius: var(--vmp-radius-lg);
     padding: var(--vmp-space-2);
-  z-index: var(--vmp-z-dropdown);
-  display: none;
-  animation: vmp-fade-in var(--vmp-transition-fast);
-}
+    z-index: var(--vmp-z-dropdown);
+    display: none;
+    animation: vmp-fade-in var(--vmp-transition-fast);
+  }
 
   & .vmp-dropdown[data-open] .vmp-dropdown-menu,
   & .vmp-dropdown-menu.show {
-  display: block;
-}
+    display: block;
+  }
 
   & .vmp-dropdown-item {
-  display: block;
-  width: 100%;
+    display: block;
+    width: 100%;
     padding: var(--vmp-space-2) var(--vmp-space-3);
-  border-radius: var(--vmp-radius-sm);
-  color: var(--vmp-text);
+    border-radius: var(--vmp-radius-sm);
+    color: var(--vmp-text);
     font-size: var(--vmp-font-base);
     font-weight: 300;
     line-height: var(--vmp-line-height-relaxed);
-  text-align: left;
-  text-decoration: none;
+    text-align: left;
+    text-decoration: none;
     transition: background-color var(--vmp-transition-fast);
-  border: none;
-  background: none;
-  cursor: pointer;
+    border: none;
+    background: none;
+    cursor: pointer;
 
     &:hover {
-  background: hsla(0, 0%, 100%, 0.04);
+      background: hsla(0, 0%, 100%, 0.05);
     }
   }
 
-  /* ===== LOADING STATES ===== */
+  /* ===== LOADING STATES (Semantic) ===== */
   
   & .vmp-spinner,
   & .vmp-loading-spinner {
-  display: inline-block;
-  width: 16px;
-  height: 16px;
-  border: 2px solid hsla(0, 0%, 100%, 0.2);
-  border-top-color: var(--vmp-text);
-  border-radius: 50%;
-  animation: vmp-spin 0.6s linear infinite;
-}
+    width: 20px;
+    height: 20px;
+    border: 2px solid var(--vmp-border);
+    border-top-color: var(--vmp-text);
+    border-radius: 50%;
+    animation: vmp-spin 0.6s linear infinite;
+  }
 
   & .vmp-spinner-lg {
-  width: 24px;
-  height: 24px;
-  border-width: 3px;
-}
+    width: 32px;
+    height: 32px;
+    border-width: 3px;
+  }
 
   & .vmp-skeleton,
   & .vmp-loading-skeleton {
-  background: hsla(0, 0%, 100%, 0.05);
-  border-radius: var(--vmp-radius-sm);
-  animation: vmp-pulse 1.5s ease-in-out infinite;
-}
-
-  @keyframes vmp-pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.5; }
+    background: hsla(0, 0%, 100%, 0.05);
+    border-radius: var(--vmp-radius-sm);
+    animation: vmp-skeleton-pulse 1.5s ease-in-out infinite;
   }
 
-  /* ===== EMPTY STATES ===== */
-  
   & .vmp-empty,
   & .vmp-state-empty {
-    padding: var(--vmp-space-12) var(--vmp-space-6);
-  text-align: center;
-  color: var(--vmp-subtle);
-}
+    padding: var(--vmp-space-8);
+    text-align: center;
+    color: var(--vmp-subtle);
+  }
 
   & .vmp-empty-title {
-    font-size: var(--vmp-font-md);
+    font-size: var(--vmp-font-lg);
     font-weight: 300;
-    line-height: var(--vmp-line-height-relaxed);
-  color: var(--vmp-muted);
     margin-bottom: var(--vmp-space-2);
+    color: var(--vmp-muted);
   }
 
   & .vmp-empty-description {
-    font-size: var(--vmp-font-base);
-    line-height: var(--vmp-line-height-relaxed);
-  color: var(--vmp-subtle);
-  max-width: 24rem;
-  margin: 0 auto;
-}
+    font-size: var(--vmp-font-sm);
+    color: var(--vmp-subtle);
+  }
 
-  /* ===== INLINE TOKENS ===== */
+  /* ===== INLINE ELEMENTS (Semantic) ===== */
   
   & .vmp-inline,
   & .vmp-tag {
-    display: inline-block;
-    padding: 0.14em 0.5em;
-    border-radius: var(--vmp-radius-lg);
-    background: hsla(0, 0%, 100%, 0.04);
+    display: inline-flex;
+    align-items: center;
+    padding: var(--vmp-space-1) var(--vmp-space-2);
+    border-radius: var(--vmp-radius-sm);
+    background: hsla(0, 0%, 100%, 0.05);
     border: 1px solid var(--vmp-border);
-    color: var(--vmp-muted);
-    line-height: 1.4;
-    vertical-align: baseline;
+    font-size: var(--vmp-font-xs);
+    font-weight: 300;
+    color: var(--vmp-text);
   }
 
   & .vmp-inline-mono,
@@ -1254,319 +1386,7 @@ html[data-surface="vmp"] {
     letter-spacing: var(--vmp-letter-spacing-wider);
   }
 
-  /* [NEW] Brand Inline Tag */
-  & .vmp-inline-brand { color: var(--vmp-brand); border-color: hsla(195, 100%, 71%, 0.2); background: hsla(195, 100%, 71%, 0.05); }
-
-  & .vmp-inline-ok,
-  & .vmp-tag-ok { color: var(--vmp-ok); }
-  & .vmp-inline-warn,
-  & .vmp-tag-warn { color: var(--vmp-warn); }
-  & .vmp-inline-danger,
-  & .vmp-tag-danger { color: var(--vmp-danger); }
-
-  /* ===== KICKER LABELS ===== */
-  
-  & .vmp-kicker,
-  & .vmp-label-kicker {
-    font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
-    font-size: var(--vmp-font-xs);
-    letter-spacing: 0.22em;
-    text-transform: uppercase;
-    color: var(--vmp-subtle);
-    font-weight: 300;
-  }
-
-  & .vmp-kicker-strong,
-  & .vmp-label-kicker-strong {
-    color: var(--vmp-muted);
-  }
-
-  /* ===== BRAND MARK ===== */
-  
-  & .vmp-mark,
-  & .vmp-brand-mark,
-  & .vmp-logo {
-    background: hsla(0, 0%, 93%, 0.92);
-    color: hsl(0, 0%, 2%);
-  }
-
-  /* ===== ACCESSIBILITY: SCREEN READER ONLY ===== */
-  
-  & .vmp-sr-only {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    padding: 0;
-    margin: -1px;
-    overflow: hidden;
-    clip: rect(0, 0, 0, 0);
-    white-space: nowrap;
-    border: 0;
-  }
-
-  /* ===== LAYOUT: CONTAINER ===== */
-  
-  & .vmp-container {
-    width: 100%;
-    margin-left: auto;
-    margin-right: auto;
-    max-width: var(--vmp-container-max-width);
-    padding-left: var(--vmp-space-4);
-    padding-right: var(--vmp-space-4);
-    
-    /* Container variants */
-    &.vmp-container-narrow { max-width: 768px; }
-    &.vmp-container-wide { max-width: 1536px; }
-  }
-
-  /* ===== SWITCH/TOGGLE ===== */
-  
-  & .vmp-switch,
-  & .vmp-toggle {
-    position: relative;
-    display: inline-block;
-    width: 44px;
-    height: 24px;
-  }
-
-  & .vmp-switch input {
-    opacity: 0;
-    width: 0;
-    height: 0;
-  }
-
-  & .vmp-switch-slider {
-    position: absolute;
-    cursor: pointer;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: hsla(0, 0%, 100%, 0.12);
-    border: 1px solid var(--vmp-border);
-    border-radius: 24px;
-    transition: var(--vmp-transition-base);
-  }
-
-  & .vmp-switch-slider::before {
-    position: absolute;
-    content: "";
-    height: 18px;
-    width: 18px;
-    left: 2px;
-    bottom: 2px;
-    background: var(--vmp-text);
-    border-radius: 50%;
-    transition: var(--vmp-transition-base);
-  }
-
-  & .vmp-switch input:checked + .vmp-switch-slider {
-    background: var(--vmp-ok);
-    border-color: var(--vmp-ok);
-  }
-
-  & .vmp-switch input:checked + .vmp-switch-slider::before {
-    transform: translateX(20px);
-  }
-
-  & .vmp-switch input:disabled + .vmp-switch-slider {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-
-  /* ===== TOOLTIPS ===== */
-  
-  & .vmp-tooltip {
-    position: relative;
-    display: inline-block;
-  }
-
-  & .vmp-tooltip-trigger {
-    cursor: help;
-  }
-
-  & .vmp-tooltip-content {
-    position: absolute;
-    z-index: var(--vmp-z-tooltip);
-    padding: var(--vmp-space-2) var(--vmp-space-3);
-    background: var(--vmp-bg2);
-    border: 1px solid var(--vmp-border);
-    border-radius: var(--vmp-radius-md);
-    color: var(--vmp-text);
-    font-size: var(--vmp-font-xs);
-    line-height: var(--vmp-line-height-normal);
-    white-space: nowrap;
-    opacity: 0;
-    pointer-events: none;
-    transform: translateY(-4px);
-    transition: opacity var(--vmp-transition-fast), transform var(--vmp-transition-fast);
-  }
-
-  & .vmp-tooltip[data-tooltip-visible] .vmp-tooltip-content,
-  & .vmp-tooltip:hover .vmp-tooltip-content {
-    opacity: 1;
-    transform: translateY(0);
-    pointer-events: auto;
-  }
-
-  & .vmp-tooltip-content[data-position="top"] {
-    bottom: 100%;
-    left: 50%;
-    transform: translateX(-50%) translateY(-4px);
-    margin-bottom: var(--vmp-space-1);
-  }
-
-  & .vmp-tooltip-content[data-position="bottom"] {
-    top: 100%;
-    left: 50%;
-    transform: translateX(-50%) translateY(4px);
-    margin-top: var(--vmp-space-1);
-  }
-
-  & .vmp-tooltip-content[data-position="left"] {
-    right: 100%;
-    top: 50%;
-    transform: translateY(-50%) translateX(-4px);
-    margin-right: var(--vmp-space-1);
-  }
-
-  & .vmp-tooltip-content[data-position="right"] {
-    left: 100%;
-    top: 50%;
-    transform: translateY(-50%) translateX(4px);
-    margin-left: var(--vmp-space-1);
-  }
-
-  /* ===== AVATAR ===== */
-  
-  & .vmp-avatar,
-  & .vmp-user-avatar {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    background: var(--vmp-panel);
-    border: 1px solid var(--vmp-border);
-    overflow: hidden;
-    flex-shrink: 0;
-  }
-
-  & .vmp-avatar img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-  }
-
-  & .vmp-avatar-initials {
-    font-size: var(--vmp-font-sm);
-    font-weight: 300;
-    color: var(--vmp-text);
-    text-transform: uppercase;
-    letter-spacing: var(--vmp-letter-spacing-wide);
-  }
-
-  & .vmp-avatar-sm {
-    width: 24px;
-    height: 24px;
-    font-size: var(--vmp-font-xs);
-  }
-
-  & .vmp-avatar-lg {
-    width: 56px;
-    height: 56px;
-    font-size: var(--vmp-font-base);
-  }
-
-  & .vmp-avatar-xl {
-    width: 80px;
-    height: 80px;
-    font-size: var(--vmp-font-lg);
-  }
-
-  /* ===== BREADCRUMBS ===== */
-  
-  & .vmp-breadcrumbs {
-    display: flex;
-    align-items: center;
-    gap: var(--vmp-space-2);
-    flex-wrap: wrap;
-  }
-
-  & .vmp-breadcrumb-item {
-    display: flex;
-    align-items: center;
-    gap: var(--vmp-space-2);
-    font-size: var(--vmp-font-sm);
-    color: var(--vmp-muted);
-    text-decoration: none;
-    transition: color var(--vmp-transition-fast);
-  }
-
-  & .vmp-breadcrumb-item:hover {
-    color: var(--vmp-text);
-  }
-
-  & .vmp-breadcrumb-item[aria-current="page"] {
-    color: var(--vmp-text);
-    font-weight: 300;
-  }
-
-  & .vmp-breadcrumb-separator {
-    color: var(--vmp-subtle);
-    font-size: var(--vmp-font-xs);
-  }
-
-  /* ===== TABS ===== */
-  
-  & .vmp-tabs {
-    display: flex;
-    flex-direction: column;
-  }
-
-  & .vmp-tabs-list {
-    display: flex;
-    gap: var(--vmp-space-1);
-    border-bottom: 1px solid var(--vmp-border);
-    overflow-x: auto;
-  }
-
-  & .vmp-tab {
-    padding: var(--vmp-space-3) var(--vmp-space-4);
-    border: none;
-    background: none;
-    color: var(--vmp-muted);
-    font-size: var(--vmp-font-base);
-    font-weight: 300;
-    line-height: var(--vmp-line-height-relaxed);
-    cursor: pointer;
-    border-bottom: 2px solid transparent;
-    transition: color var(--vmp-transition-fast), border-color var(--vmp-transition-fast);
-    white-space: nowrap;
-  }
-
-  & .vmp-tab:hover {
-    color: var(--vmp-text);
-  }
-
-  & .vmp-tab[aria-selected="true"],
-  & .vmp-tab-active {
-    color: var(--vmp-text);
-    border-bottom-color: var(--vmp-text);
-  }
-
-  & .vmp-tab-panel {
-    padding: var(--vmp-space-6) 0;
-    display: none;
-  }
-
-  & .vmp-tab-panel[aria-hidden="false"],
-  & .vmp-tab-panel-active {
-    display: block;
-  }
-
-  /* ===== PROGRESS BAR ===== */
+  /* ===== PROGRESS BAR (Semantic) ===== */
   
   & .vmp-progress {
     width: 100%;
@@ -1599,21 +1419,8 @@ html[data-surface="vmp"] {
     height: 12px;
   }
 
-  /* ===== MODAL & DROPDOWN ANIMATIONS ===== */
+  /* ===== ANIMATIONS ===== */
   
-  & .vmp-modal-overlay {
-    animation: vmp-fade-in var(--vmp-transition-base);
-  }
-
-  & .vmp-modal,
-  & .vmp-dialog-modal {
-    animation: vmp-zoom-in var(--vmp-transition-base);
-  }
-
-  & .vmp-dropdown-menu {
-    animation: vmp-fade-in var(--vmp-transition-fast);
-  }
-
   @keyframes vmp-fade-in {
     from {
       opacity: 0;
@@ -1623,75 +1430,19 @@ html[data-surface="vmp"] {
     }
   }
 
-  @keyframes vmp-zoom-in {
-    from {
-      opacity: 0;
-      transform: scale(0.95);
-    }
-    to {
-      opacity: 1;
-      transform: scale(1);
-    }
-  }
-
   @keyframes vmp-spin {
     to {
       transform: rotate(360deg);
     }
   }
 
-  /* ===== RESPONSIVE UTILITIES ===== */
-  
-  /* Small screens (640px+) */
-  @media (min-width: 640px) {
-    & .vmp-sm\:grid-cols-1 { grid-template-columns: repeat(1, minmax(0, 1fr)) !important; }
-    & .vmp-sm\:grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
-    & .vmp-sm\:grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
-    & .vmp-sm\:grid-cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)) !important; }
-    & .vmp-sm\:flex-row { flex-direction: row !important; }
-    & .vmp-sm\:flex-col { flex-direction: column !important; }
-    & .vmp-sm\:hidden { display: none !important; }
-    & .vmp-sm\:block { display: block !important; }
-    & .vmp-sm\:flex { display: flex !important; }
-  }
-
-  /* Medium screens (768px+) */
-  @media (min-width: 768px) {
-    & .vmp-md\:grid-cols-1 { grid-template-columns: repeat(1, minmax(0, 1fr)) !important; }
-    & .vmp-md\:grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
-    & .vmp-md\:grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
-    & .vmp-md\:grid-cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)) !important; }
-    & .vmp-md\:flex-row { flex-direction: row !important; }
-    & .vmp-md\:flex-col { flex-direction: column !important; }
-    & .vmp-md\:hidden { display: none !important; }
-    & .vmp-md\:block { display: block !important; }
-    & .vmp-md\:flex { display: flex !important; }
-  }
-
-  /* Large screens (1024px+) */
-  @media (min-width: 1024px) {
-    & .vmp-lg\:grid-cols-1 { grid-template-columns: repeat(1, minmax(0, 1fr)) !important; }
-    & .vmp-lg\:grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
-    & .vmp-lg\:grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
-    & .vmp-lg\:grid-cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)) !important; }
-    & .vmp-lg\:flex-row { flex-direction: row !important; }
-    & .vmp-lg\:flex-col { flex-direction: column !important; }
-    & .vmp-lg\:hidden { display: none !important; }
-    & .vmp-lg\:block { display: block !important; }
-    & .vmp-lg\:flex { display: flex !important; }
-  }
-
-  /* Extra large screens (1280px+) */
-  @media (min-width: 1280px) {
-    & .vmp-xl\:grid-cols-1 { grid-template-columns: repeat(1, minmax(0, 1fr)) !important; }
-    & .vmp-xl\:grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
-    & .vmp-xl\:grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
-    & .vmp-xl\:grid-cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)) !important; }
-    & .vmp-xl\:flex-row { flex-direction: row !important; }
-    & .vmp-xl\:flex-col { flex-direction: column !important; }
-    & .vmp-xl\:hidden { display: none !important; }
-    & .vmp-xl\:block { display: block !important; }
-    & .vmp-xl\:flex { display: flex !important; }
+  @keyframes vmp-skeleton-pulse {
+    0%, 100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.5;
+    }
   }
 
   /* ===== POLICY CLAMPS ===== */
@@ -1719,11 +1470,6 @@ html[data-surface="vmp"] {
     filter: none !important;
   }
 
-  /* Exception: Luxury Glow */
-  & .vmp-glow {
-    box-shadow: 0 0 80px -20px hsla(0, 0%, 100%, 0.08) !important;
-  }
-
   /* Exception: Glass Effect */
   & .vmp-glass {
     background: linear-gradient(180deg, hsla(0, 0%, 100%, 0.03) 0%, hsla(0, 0%, 100%, 0.005) 100%) !important;
@@ -1731,14 +1477,13 @@ html[data-surface="vmp"] {
     -webkit-backdrop-filter: blur(12px);
   }
 
-  /* Backdrop-Filter Fallback for Glass */
   @supports not (backdrop-filter: blur(12px)) {
     & .vmp-glass {
       background: hsla(0, 0%, 100%, 0.08) !important;
     }
   }
 
-  /* Weight Policy: LIGHT (300) ONLY */
+  /* Weight Policy: LIGHT (300) ONLY - Data Presentation */
   & * {
     font-weight: 300 !important;
   }
@@ -1755,7 +1500,47 @@ html[data-surface="vmp"] {
     font-weight: 300 !important;
   }
 
-  /* ===== UTILITIES ===== */
+  /* ==========================================================================
+     IDE CREATIVITY MARKERS (Design Layer - Free Hand)
+     ========================================================================== */
+
+  /* 
+   * CREATIVITY MARKER: .vmp-creative
+   * Purpose: Signal to IDE that this is creative content (not data presentation)
+   * IDE Behavior: Foundation Layer rules do NOT apply, inline styles ENCOURAGED
+   * Usage: Add class="vmp-creative" to containers for marketing/landing/creative pages
+   * IDE AUTocomplete: Type ".vmp-creative" to mark creative content
+   */
+  & .vmp-creative,
+  & .vmp-creative * {
+    font-weight: initial !important; /* Creative content can use any font weight */
+  }
+
+  /* 
+   * CREATIVITY MARKER: .vmp-marketing
+   * Purpose: Signal to IDE that this is marketing content (not data presentation)
+   * IDE Behavior: Foundation Layer rules do NOT apply, inline styles ENCOURAGED
+   * Usage: Add class="vmp-marketing" to marketing pages/landing pages
+   * IDE AUTocomplete: Type ".vmp-marketing" to mark marketing content
+   */
+  & .vmp-marketing,
+  & .vmp-marketing * {
+    font-weight: initial !important; /* Marketing can use different weights if needed */
+  }
+
+  /* 
+   * CREATIVITY MARKER: .vmp-free-form
+   * Purpose: Signal to IDE that this is free-form creative content
+   * IDE Behavior: Foundation Layer rules do NOT apply, inline styles ENCOURAGED
+   * Usage: Add class="vmp-free-form" to any creative component
+   * IDE AUTocomplete: Type ".vmp-free-form" to mark free-form content
+   */
+  & .vmp-free-form,
+  & .vmp-free-form * {
+    font-weight: initial !important; /* Free-form content can use any styling */
+  }
+
+  /* ===== UTILITIES (Semantic Only) ===== */
   
   /* HTMX Indicator */
   & .htmx-indicator {
@@ -1770,7 +1555,7 @@ html[data-surface="vmp"] {
   & :where(a, button, [role="button"], input, textarea, select):focus-visible {
     outline: 2px solid hsla(0, 0%, 100%, 0.25);
     outline-offset: 3px;
-  border-radius: var(--vmp-radius-lg);
+    border-radius: var(--vmp-radius-lg);
   }
 
   /* Scrollbar */
@@ -1779,7 +1564,7 @@ html[data-surface="vmp"] {
   }
 
   & ::-webkit-scrollbar-track {
-  background: transparent;
+    background: transparent;
   }
 
   & ::-webkit-scrollbar-thumb {
@@ -1791,3342 +1576,55 @@ html[data-surface="vmp"] {
     }
   }
 
-  /* Typography Scale Overrides (Figma Standards) */
-  & .text-xs { font-size: var(--vmp-font-xs) !important; }
-  & .text-sm { font-size: var(--vmp-font-sm) !important; }
-  & .text-base { font-size: var(--vmp-font-base) !important; }
-  & .text-md { font-size: var(--vmp-font-md) !important; }
-  & .text-lg { font-size: var(--vmp-font-lg) !important; }
-  & .text-xl { font-size: var(--vmp-font-xl) !important; }
-  & .text-2xl { font-size: var(--vmp-font-2xl) !important; }
-  & .text-3xl { font-size: var(--vmp-font-3xl) !important; }
-  & .text-4xl { font-size: var(--vmp-font-4xl) !important; }
-  & .text-5xl { font-size: var(--vmp-font-5xl) !important; }
-
-  /* Spacing Utilities (8px Grid) */
-  & .gap-1 { gap: var(--vmp-space-1) !important; }
-  & .gap-2 { gap: var(--vmp-space-2) !important; }
-  & .gap-3 { gap: var(--vmp-space-3) !important; }
-  & .gap-4 { gap: var(--vmp-space-4) !important; }
-  & .gap-6 { gap: var(--vmp-space-6) !important; }
-  & .gap-8 { gap: var(--vmp-space-8) !important; }
-
-  & .p-1 { padding: var(--vmp-space-1) !important; }
-  & .p-2 { padding: var(--vmp-space-2) !important; }
-  & .p-3 { padding: var(--vmp-space-3) !important; }
-  & .p-4 { padding: var(--vmp-space-4) !important; }
-  & .p-5 { padding: var(--vmp-space-5) !important; }
-  & .p-6 { padding: var(--vmp-space-6) !important; }
-  & .p-8 { padding: var(--vmp-space-8) !important; }
-
-  & .px-1 { padding-left: var(--vmp-space-1) !important; padding-right: var(--vmp-space-1) !important; }
-  & .px-2 { padding-left: var(--vmp-space-2) !important; padding-right: var(--vmp-space-2) !important; }
-  & .px-3 { padding-left: var(--vmp-space-3) !important; padding-right: var(--vmp-space-3) !important; }
-  & .px-4 { padding-left: var(--vmp-space-4) !important; padding-right: var(--vmp-space-4) !important; }
-
-  & .py-1 { padding-top: var(--vmp-space-1) !important; padding-bottom: var(--vmp-space-1) !important; }
-  & .py-2 { padding-top: var(--vmp-space-2) !important; padding-bottom: var(--vmp-space-2) !important; }
-  & .py-3 { padding-top: var(--vmp-space-3) !important; padding-bottom: var(--vmp-space-3) !important; }
-  & .py-4 { padding-top: var(--vmp-space-4) !important; padding-bottom: var(--vmp-space-4) !important; }
-
-  & .mb-1 { margin-bottom: var(--vmp-space-1) !important; }
-  & .mb-2 { margin-bottom: var(--vmp-space-2) !important; }
-  & .mb-3 { margin-bottom: var(--vmp-space-3) !important; }
-  & .mb-4 { margin-bottom: var(--vmp-space-4) !important; }
-  & .mb-5 { margin-bottom: var(--vmp-space-5) !important; }
-  & .mb-6 { margin-bottom: var(--vmp-space-6) !important; }
-  & .mb-8 { margin-bottom: var(--vmp-space-8) !important; }
-
-  & .mt-1 { margin-top: var(--vmp-space-1) !important; }
-  & .mt-2 { margin-top: var(--vmp-space-2) !important; }
-  & .mt-3 { margin-top: var(--vmp-space-3) !important; }
-  & .mt-4 { margin-top: var(--vmp-space-4) !important; }
-
-  & .space-y-1 > * + * { margin-top: var(--vmp-space-1) !important; }
-  & .space-y-2 > * + * { margin-top: var(--vmp-space-2) !important; }
-  & .space-y-3 > * + * { margin-top: var(--vmp-space-3) !important; }
-  & .space-y-4 > * + * { margin-top: var(--vmp-space-4) !important; }
-  & .space-y-5 > * + * { margin-top: var(--vmp-space-5) !important; }
-  & .space-y-6 > * + * { margin-top: var(--vmp-space-6) !important; }
-  & .space-y-8 > * + * { margin-top: var(--vmp-space-8) !important; }
-  & .space-y-10 > * + * { margin-top: var(--vmp-space-10) !important; }
-  & .space-y-12 > * + * { margin-top: var(--vmp-space-12) !important; }
-  & .space-y-16 > * + * { margin-top: var(--vmp-space-16) !important; }
-
-  & .space-x-1 > * + * { margin-left: var(--vmp-space-1) !important; }
-  & .space-x-2 > * + * { margin-left: var(--vmp-space-2) !important; }
-  & .space-x-3 > * + * { margin-left: var(--vmp-space-3) !important; }
-  & .space-x-4 > * + * { margin-left: var(--vmp-space-4) !important; }
-  & .space-x-5 > * + * { margin-left: var(--vmp-space-5) !important; }
-  & .space-x-6 > * + * { margin-left: var(--vmp-space-6) !important; }
-  & .space-x-8 > * + * { margin-left: var(--vmp-space-8) !important; }
-  & .space-x-10 > * + * { margin-left: var(--vmp-space-10) !important; }
-  & .space-x-12 > * + * { margin-left: var(--vmp-space-12) !important; }
-  & .space-x-16 > * + * { margin-left: var(--vmp-space-16) !important; }
-
-  /* ===== COMPREHENSIVE UTILITY CLASSES (Advanced Designer System) ===== */
+  /* ===== ACCESSIBILITY: SCREEN READER ONLY ===== */
   
-  /* COLOR UTILITIES - Background */
-  & .vmp-bg { background-color: var(--vmp-bg) !important; }
-  & .vmp-bg-2 { background-color: var(--vmp-bg2) !important; }
-  & .vmp-bg-panel { background-color: var(--vmp-panel) !important; }
-  & .vmp-bg-veil { background-color: var(--vmp-veil) !important; }
-  & .vmp-bg-ok { background-color: var(--vmp-ok) !important; }
-  & .vmp-bg-warn { background-color: var(--vmp-warn) !important; }
-  & .vmp-bg-danger { background-color: var(--vmp-danger) !important; }
-
-  /* COLOR UTILITIES - Text */
-  & .vmp-text-primary { color: var(--vmp-text) !important; }
-  & .vmp-text-muted { color: var(--vmp-muted) !important; }
-  & .vmp-text-subtle { color: var(--vmp-subtle) !important; }
-  & .vmp-text-ok { color: var(--vmp-ok) !important; }
-  & .vmp-text-warn { color: var(--vmp-warn) !important; }
-  & .vmp-text-danger { color: var(--vmp-danger) !important; }
-
-  /* COLOR UTILITIES - Border */
-  & .vmp-border-color { border-color: var(--vmp-border) !important; }
-  & .vmp-border-color-2 { border-color: var(--vmp-border2) !important; }
-  & .vmp-border-ok { border-color: var(--vmp-ok) !important; }
-  & .vmp-border-warn { border-color: var(--vmp-warn) !important; }
-  & .vmp-border-danger { border-color: var(--vmp-danger) !important; }
-
-  /* SPACING UTILITIES - Padding (All Directions, All Tokens) */
-  & .vmp-p-0 { padding: var(--vmp-space-0) !important; }
-  & .vmp-p-1 { padding: var(--vmp-space-1) !important; }
-  & .vmp-p-2 { padding: var(--vmp-space-2) !important; }
-  & .vmp-p-3 { padding: var(--vmp-space-3) !important; }
-  & .vmp-p-4 { padding: var(--vmp-space-4) !important; }
-  & .vmp-p-5 { padding: var(--vmp-space-5) !important; }
-  & .vmp-p-6 { padding: var(--vmp-space-6) !important; }
-  & .vmp-p-8 { padding: var(--vmp-space-8) !important; }
-  & .vmp-p-10 { padding: var(--vmp-space-10) !important; }
-  & .vmp-p-12 { padding: var(--vmp-space-12) !important; }
-  & .vmp-p-16 { padding: var(--vmp-space-16) !important; }
-
-  /* SPACING UTILITIES - Padding Horizontal */
-  & .vmp-px-0 { padding-left: var(--vmp-space-0) !important; padding-right: var(--vmp-space-0) !important; }
-  & .vmp-px-1 { padding-left: var(--vmp-space-1) !important; padding-right: var(--vmp-space-1) !important; }
-  & .vmp-px-2 { padding-left: var(--vmp-space-2) !important; padding-right: var(--vmp-space-2) !important; }
-  & .vmp-px-3 { padding-left: var(--vmp-space-3) !important; padding-right: var(--vmp-space-3) !important; }
-  & .vmp-px-4 { padding-left: var(--vmp-space-4) !important; padding-right: var(--vmp-space-4) !important; }
-  & .vmp-px-5 { padding-left: var(--vmp-space-5) !important; padding-right: var(--vmp-space-5) !important; }
-  & .vmp-px-6 { padding-left: var(--vmp-space-6) !important; padding-right: var(--vmp-space-6) !important; }
-  & .vmp-px-8 { padding-left: var(--vmp-space-8) !important; padding-right: var(--vmp-space-8) !important; }
-  & .vmp-px-10 { padding-left: var(--vmp-space-10) !important; padding-right: var(--vmp-space-10) !important; }
-  & .vmp-px-12 { padding-left: var(--vmp-space-12) !important; padding-right: var(--vmp-space-12) !important; }
-  & .vmp-px-16 { padding-left: var(--vmp-space-16) !important; padding-right: var(--vmp-space-16) !important; }
-
-  /* SPACING UTILITIES - Padding Vertical */
-  & .vmp-py-0 { padding-top: var(--vmp-space-0) !important; padding-bottom: var(--vmp-space-0) !important; }
-  & .vmp-py-1 { padding-top: var(--vmp-space-1) !important; padding-bottom: var(--vmp-space-1) !important; }
-  & .vmp-py-2 { padding-top: var(--vmp-space-2) !important; padding-bottom: var(--vmp-space-2) !important; }
-  & .vmp-py-3 { padding-top: var(--vmp-space-3) !important; padding-bottom: var(--vmp-space-3) !important; }
-  & .vmp-py-4 { padding-top: var(--vmp-space-4) !important; padding-bottom: var(--vmp-space-4) !important; }
-  & .vmp-py-5 { padding-top: var(--vmp-space-5) !important; padding-bottom: var(--vmp-space-5) !important; }
-  & .vmp-py-6 { padding-top: var(--vmp-space-6) !important; padding-bottom: var(--vmp-space-6) !important; }
-  & .vmp-py-8 { padding-top: var(--vmp-space-8) !important; padding-bottom: var(--vmp-space-8) !important; }
-  & .vmp-py-10 { padding-top: var(--vmp-space-10) !important; padding-bottom: var(--vmp-space-10) !important; }
-  & .vmp-py-12 { padding-top: var(--vmp-space-12) !important; padding-bottom: var(--vmp-space-12) !important; }
-  & .vmp-py-16 { padding-top: var(--vmp-space-16) !important; padding-bottom: var(--vmp-space-16) !important; }
-
-  /* SPACING UTILITIES - Padding Top */
-  & .vmp-pt-0 { padding-top: var(--vmp-space-0) !important; }
-  & .vmp-pt-1 { padding-top: var(--vmp-space-1) !important; }
-  & .vmp-pt-2 { padding-top: var(--vmp-space-2) !important; }
-  & .vmp-pt-3 { padding-top: var(--vmp-space-3) !important; }
-  & .vmp-pt-4 { padding-top: var(--vmp-space-4) !important; }
-  & .vmp-pt-5 { padding-top: var(--vmp-space-5) !important; }
-  & .vmp-pt-6 { padding-top: var(--vmp-space-6) !important; }
-  & .vmp-pt-8 { padding-top: var(--vmp-space-8) !important; }
-  & .vmp-pt-10 { padding-top: var(--vmp-space-10) !important; }
-  & .vmp-pt-12 { padding-top: var(--vmp-space-12) !important; }
-  & .vmp-pt-16 { padding-top: var(--vmp-space-16) !important; }
-
-  /* SPACING UTILITIES - Padding Bottom */
-  & .vmp-pb-0 { padding-bottom: var(--vmp-space-0) !important; }
-  & .vmp-pb-1 { padding-bottom: var(--vmp-space-1) !important; }
-  & .vmp-pb-2 { padding-bottom: var(--vmp-space-2) !important; }
-  & .vmp-pb-3 { padding-bottom: var(--vmp-space-3) !important; }
-  & .vmp-pb-4 { padding-bottom: var(--vmp-space-4) !important; }
-  & .vmp-pb-5 { padding-bottom: var(--vmp-space-5) !important; }
-  & .vmp-pb-6 { padding-bottom: var(--vmp-space-6) !important; }
-  & .vmp-pb-8 { padding-bottom: var(--vmp-space-8) !important; }
-  & .vmp-pb-10 { padding-bottom: var(--vmp-space-10) !important; }
-  & .vmp-pb-12 { padding-bottom: var(--vmp-space-12) !important; }
-  & .vmp-pb-16 { padding-bottom: var(--vmp-space-16) !important; }
-
-  /* SPACING UTILITIES - Padding Left */
-  & .vmp-pl-0 { padding-left: var(--vmp-space-0) !important; }
-  & .vmp-pl-1 { padding-left: var(--vmp-space-1) !important; }
-  & .vmp-pl-2 { padding-left: var(--vmp-space-2) !important; }
-  & .vmp-pl-3 { padding-left: var(--vmp-space-3) !important; }
-  & .vmp-pl-4 { padding-left: var(--vmp-space-4) !important; }
-  & .vmp-pl-5 { padding-left: var(--vmp-space-5) !important; }
-  & .vmp-pl-6 { padding-left: var(--vmp-space-6) !important; }
-  & .vmp-pl-8 { padding-left: var(--vmp-space-8) !important; }
-  & .vmp-pl-10 { padding-left: var(--vmp-space-10) !important; }
-  & .vmp-pl-12 { padding-left: var(--vmp-space-12) !important; }
-  & .vmp-pl-16 { padding-left: var(--vmp-space-16) !important; }
-
-  /* SPACING UTILITIES - Padding Right */
-  & .vmp-pr-0 { padding-right: var(--vmp-space-0) !important; }
-  & .vmp-pr-1 { padding-right: var(--vmp-space-1) !important; }
-  & .vmp-pr-2 { padding-right: var(--vmp-space-2) !important; }
-  & .vmp-pr-3 { padding-right: var(--vmp-space-3) !important; }
-  & .vmp-pr-4 { padding-right: var(--vmp-space-4) !important; }
-  & .vmp-pr-5 { padding-right: var(--vmp-space-5) !important; }
-  & .vmp-pr-6 { padding-right: var(--vmp-space-6) !important; }
-  & .vmp-pr-8 { padding-right: var(--vmp-space-8) !important; }
-  & .vmp-pr-10 { padding-right: var(--vmp-space-10) !important; }
-  & .vmp-pr-12 { padding-right: var(--vmp-space-12) !important; }
-  & .vmp-pr-16 { padding-right: var(--vmp-space-16) !important; }
-
-  /* SPACING UTILITIES - Margin (All Directions, All Tokens) */
-  & .vmp-m-0 { margin: var(--vmp-space-0) !important; }
-  & .vmp-m-1 { margin: var(--vmp-space-1) !important; }
-  & .vmp-m-2 { margin: var(--vmp-space-2) !important; }
-  & .vmp-m-3 { margin: var(--vmp-space-3) !important; }
-  & .vmp-m-4 { margin: var(--vmp-space-4) !important; }
-  & .vmp-m-5 { margin: var(--vmp-space-5) !important; }
-  & .vmp-m-6 { margin: var(--vmp-space-6) !important; }
-  & .vmp-m-8 { margin: var(--vmp-space-8) !important; }
-  & .vmp-m-10 { margin: var(--vmp-space-10) !important; }
-  & .vmp-m-12 { margin: var(--vmp-space-12) !important; }
-  & .vmp-m-16 { margin: var(--vmp-space-16) !important; }
-
-  /* SPACING UTILITIES - Margin Horizontal */
-  & .vmp-mx-0 { margin-left: var(--vmp-space-0) !important; margin-right: var(--vmp-space-0) !important; }
-  & .vmp-mx-1 { margin-left: var(--vmp-space-1) !important; margin-right: var(--vmp-space-1) !important; }
-  & .vmp-mx-2 { margin-left: var(--vmp-space-2) !important; margin-right: var(--vmp-space-2) !important; }
-  & .vmp-mx-3 { margin-left: var(--vmp-space-3) !important; margin-right: var(--vmp-space-3) !important; }
-  & .vmp-mx-4 { margin-left: var(--vmp-space-4) !important; margin-right: var(--vmp-space-4) !important; }
-  & .vmp-mx-5 { margin-left: var(--vmp-space-5) !important; margin-right: var(--vmp-space-5) !important; }
-  & .vmp-mx-6 { margin-left: var(--vmp-space-6) !important; margin-right: var(--vmp-space-6) !important; }
-  & .vmp-mx-8 { margin-left: var(--vmp-space-8) !important; margin-right: var(--vmp-space-8) !important; }
-  & .vmp-mx-10 { margin-left: var(--vmp-space-10) !important; margin-right: var(--vmp-space-10) !important; }
-  & .vmp-mx-12 { margin-left: var(--vmp-space-12) !important; margin-right: var(--vmp-space-12) !important; }
-  & .vmp-mx-16 { margin-left: var(--vmp-space-16) !important; margin-right: var(--vmp-space-16) !important; }
-  & .vmp-mx-auto { margin-left: auto !important; margin-right: auto !important; }
-
-  /* SPACING UTILITIES - Margin Vertical */
-  & .vmp-my-0 { margin-top: var(--vmp-space-0) !important; margin-bottom: var(--vmp-space-0) !important; }
-  & .vmp-my-1 { margin-top: var(--vmp-space-1) !important; margin-bottom: var(--vmp-space-1) !important; }
-  & .vmp-my-2 { margin-top: var(--vmp-space-2) !important; margin-bottom: var(--vmp-space-2) !important; }
-  & .vmp-my-3 { margin-top: var(--vmp-space-3) !important; margin-bottom: var(--vmp-space-3) !important; }
-  & .vmp-my-4 { margin-top: var(--vmp-space-4) !important; margin-bottom: var(--vmp-space-4) !important; }
-  & .vmp-my-5 { margin-top: var(--vmp-space-5) !important; margin-bottom: var(--vmp-space-5) !important; }
-  & .vmp-my-6 { margin-top: var(--vmp-space-6) !important; margin-bottom: var(--vmp-space-6) !important; }
-  & .vmp-my-8 { margin-top: var(--vmp-space-8) !important; margin-bottom: var(--vmp-space-8) !important; }
-  & .vmp-my-10 { margin-top: var(--vmp-space-10) !important; margin-bottom: var(--vmp-space-10) !important; }
-  & .vmp-my-12 { margin-top: var(--vmp-space-12) !important; margin-bottom: var(--vmp-space-12) !important; }
-  & .vmp-my-16 { margin-top: var(--vmp-space-16) !important; margin-bottom: var(--vmp-space-16) !important; }
-
-  /* SPACING UTILITIES - Margin Top */
-  & .vmp-mt-0 { margin-top: var(--vmp-space-0) !important; }
-  & .vmp-mt-1 { margin-top: var(--vmp-space-1) !important; }
-  & .vmp-mt-2 { margin-top: var(--vmp-space-2) !important; }
-  & .vmp-mt-3 { margin-top: var(--vmp-space-3) !important; }
-  & .vmp-mt-4 { margin-top: var(--vmp-space-4) !important; }
-  & .vmp-mt-5 { margin-top: var(--vmp-space-5) !important; }
-  & .vmp-mt-6 { margin-top: var(--vmp-space-6) !important; }
-  & .vmp-mt-8 { margin-top: var(--vmp-space-8) !important; }
-  & .vmp-mt-10 { margin-top: var(--vmp-space-10) !important; }
-  & .vmp-mt-12 { margin-top: var(--vmp-space-12) !important; }
-  & .vmp-mt-16 { margin-top: var(--vmp-space-16) !important; }
-  & .vmp-mt-auto { margin-top: auto !important; }
-
-  /* SPACING UTILITIES - Margin Bottom */
-  & .vmp-mb-0 { margin-bottom: var(--vmp-space-0) !important; }
-  & .vmp-mb-1 { margin-bottom: var(--vmp-space-1) !important; }
-  & .vmp-mb-2 { margin-bottom: var(--vmp-space-2) !important; }
-  & .vmp-mb-3 { margin-bottom: var(--vmp-space-3) !important; }
-  & .vmp-mb-4 { margin-bottom: var(--vmp-space-4) !important; }
-  & .vmp-mb-5 { margin-bottom: var(--vmp-space-5) !important; }
-  & .vmp-mb-6 { margin-bottom: var(--vmp-space-6) !important; }
-  & .vmp-mb-8 { margin-bottom: var(--vmp-space-8) !important; }
-  & .vmp-mb-10 { margin-bottom: var(--vmp-space-10) !important; }
-  & .vmp-mb-12 { margin-bottom: var(--vmp-space-12) !important; }
-  & .vmp-mb-16 { margin-bottom: var(--vmp-space-16) !important; }
-  & .vmp-mb-auto { margin-bottom: auto !important; }
-
-  /* SPACING UTILITIES - Margin Left */
-  & .vmp-ml-0 { margin-left: var(--vmp-space-0) !important; }
-  & .vmp-ml-1 { margin-left: var(--vmp-space-1) !important; }
-  & .vmp-ml-2 { margin-left: var(--vmp-space-2) !important; }
-  & .vmp-ml-3 { margin-left: var(--vmp-space-3) !important; }
-  & .vmp-ml-4 { margin-left: var(--vmp-space-4) !important; }
-  & .vmp-ml-5 { margin-left: var(--vmp-space-5) !important; }
-  & .vmp-ml-6 { margin-left: var(--vmp-space-6) !important; }
-  & .vmp-ml-8 { margin-left: var(--vmp-space-8) !important; }
-  & .vmp-ml-10 { margin-left: var(--vmp-space-10) !important; }
-  & .vmp-ml-12 { margin-left: var(--vmp-space-12) !important; }
-  & .vmp-ml-16 { margin-left: var(--vmp-space-16) !important; }
-  & .vmp-ml-auto { margin-left: auto !important; }
-
-  /* SPACING UTILITIES - Margin Right */
-  & .vmp-mr-0 { margin-right: var(--vmp-space-0) !important; }
-  & .vmp-mr-1 { margin-right: var(--vmp-space-1) !important; }
-  & .vmp-mr-2 { margin-right: var(--vmp-space-2) !important; }
-  & .vmp-mr-3 { margin-right: var(--vmp-space-3) !important; }
-  & .vmp-mr-4 { margin-right: var(--vmp-space-4) !important; }
-  & .vmp-mr-5 { margin-right: var(--vmp-space-5) !important; }
-  & .vmp-mr-6 { margin-right: var(--vmp-space-6) !important; }
-  & .vmp-mr-8 { margin-right: var(--vmp-space-8) !important; }
-  & .vmp-mr-10 { margin-right: var(--vmp-space-10) !important; }
-  & .vmp-mr-12 { margin-right: var(--vmp-space-12) !important; }
-  & .vmp-mr-16 { margin-right: var(--vmp-space-16) !important; }
-  & .vmp-mr-auto { margin-right: auto !important; }
-
-  /* SPACING UTILITIES - Gap */
-  & .vmp-gap-0 { gap: var(--vmp-space-0) !important; }
-  & .vmp-gap-1 { gap: var(--vmp-space-1) !important; }
-  & .vmp-gap-2 { gap: var(--vmp-space-2) !important; }
-  & .vmp-gap-3 { gap: var(--vmp-space-3) !important; }
-  & .vmp-gap-4 { gap: var(--vmp-space-4) !important; }
-  & .vmp-gap-5 { gap: var(--vmp-space-5) !important; }
-  & .vmp-gap-6 { gap: var(--vmp-space-6) !important; }
-  & .vmp-gap-8 { gap: var(--vmp-space-8) !important; }
-  & .vmp-gap-10 { gap: var(--vmp-space-10) !important; }
-  & .vmp-gap-12 { gap: var(--vmp-space-12) !important; }
-  & .vmp-gap-16 { gap: var(--vmp-space-16) !important; }
-
-  /* BORDER RADIUS UTILITIES */
-  & .vmp-rounded-sm { border-radius: var(--vmp-radius-sm) !important; }
-  & .vmp-rounded-md { border-radius: var(--vmp-radius-md) !important; }
-  & .vmp-rounded-lg { border-radius: var(--vmp-radius-lg) !important; }
-  & .vmp-rounded-xl { border-radius: var(--vmp-radius-xl) !important; }
-  & .vmp-rounded-2xl { border-radius: var(--vmp-radius-2xl) !important; }
-  & .vmp-rounded-3xl { border-radius: var(--vmp-radius-3xl) !important; }
-  & .vmp-rounded-none { border-radius: 0 !important; }
-  & .vmp-rounded-full { border-radius: 9999px !important; }
-
-  /* TYPOGRAPHY UTILITIES - Line Height */
-  & .vmp-leading-tight { line-height: var(--vmp-line-height-tight) !important; }
-  & .vmp-leading-normal { line-height: var(--vmp-line-height-normal) !important; }
-  & .vmp-leading-relaxed { line-height: var(--vmp-line-height-relaxed) !important; }
-  & .vmp-leading-loose { line-height: var(--vmp-line-height-loose) !important; }
-
-  /* TYPOGRAPHY UTILITIES - Letter Spacing */
-  & .vmp-tracking-tighter { letter-spacing: var(--vmp-letter-spacing-tighter) !important; }
-  & .vmp-tracking-tight { letter-spacing: var(--vmp-letter-spacing-tight) !important; }
-  & .vmp-tracking-normal { letter-spacing: var(--vmp-letter-spacing-normal) !important; }
-  & .vmp-tracking-wide { letter-spacing: var(--vmp-letter-spacing-wide) !important; }
-  & .vmp-tracking-wider { letter-spacing: var(--vmp-letter-spacing-wider) !important; }
-
-  /* TYPOGRAPHY UTILITIES - Font Size (Using Design Tokens) */
-  & .vmp-text-xs { font-size: var(--vmp-font-xs) !important; }
-  & .vmp-text-sm { font-size: var(--vmp-font-sm) !important; }
-  & .vmp-text-base { font-size: var(--vmp-font-base) !important; }
-  & .vmp-text-md { font-size: var(--vmp-font-md) !important; }
-  & .vmp-text-lg { font-size: var(--vmp-font-lg) !important; }
-  & .vmp-text-xl { font-size: var(--vmp-font-xl) !important; }
-  & .vmp-text-2xl { font-size: var(--vmp-font-2xl) !important; }
-  & .vmp-text-3xl { font-size: var(--vmp-font-3xl) !important; }
-  & .vmp-text-4xl { font-size: var(--vmp-font-4xl) !important; }
-  & .vmp-text-5xl { font-size: var(--vmp-font-5xl) !important; }
-
-  /* LAYOUT UTILITIES - Display */
-  & .vmp-block { display: block !important; }
-  & .vmp-inline-block { display: inline-block !important; }
-  & .vmp-inline { display: inline !important; }
-  & .vmp-flex { display: flex !important; }
-  & .vmp-inline-flex { display: inline-flex !important; }
-  & .vmp-grid { display: grid !important; }
-  & .vmp-inline-grid { display: inline-grid !important; }
-  & .vmp-hidden { display: none !important; }
-
-  /* LAYOUT UTILITIES - Position */
-  & .vmp-static { position: static !important; }
-  & .vmp-fixed { position: fixed !important; }
-  & .vmp-absolute { position: absolute !important; }
-  & .vmp-relative { position: relative !important; }
-  & .vmp-sticky { position: sticky !important; }
-
-  /* LAYOUT UTILITIES - Width (Using Spacing Tokens) */
-  & .vmp-w-0 { width: var(--vmp-space-0) !important; }
-  & .vmp-w-1 { width: var(--vmp-space-1) !important; }
-  & .vmp-w-2 { width: var(--vmp-space-2) !important; }
-  & .vmp-w-3 { width: var(--vmp-space-3) !important; }
-  & .vmp-w-4 { width: var(--vmp-space-4) !important; }
-  & .vmp-w-5 { width: var(--vmp-space-5) !important; }
-  & .vmp-w-6 { width: var(--vmp-space-6) !important; }
-  & .vmp-w-8 { width: var(--vmp-space-8) !important; }
-  & .vmp-w-10 { width: var(--vmp-space-10) !important; }
-  & .vmp-w-12 { width: var(--vmp-space-12) !important; }
-  & .vmp-w-16 { width: var(--vmp-space-16) !important; }
-  & .vmp-w-full { width: 100% !important; }
-  & .vmp-w-auto { width: auto !important; }
-  & .vmp-w-fit { width: fit-content !important; }
-
-  /* LAYOUT UTILITIES - Height (Using Spacing Tokens) */
-  & .vmp-h-0 { height: var(--vmp-space-0) !important; }
-  & .vmp-h-1 { height: var(--vmp-space-1) !important; }
-  & .vmp-h-2 { height: var(--vmp-space-2) !important; }
-  & .vmp-h-3 { height: var(--vmp-space-3) !important; }
-  & .vmp-h-4 { height: var(--vmp-space-4) !important; }
-  & .vmp-h-5 { height: var(--vmp-space-5) !important; }
-  & .vmp-h-6 { height: var(--vmp-space-6) !important; }
-  & .vmp-h-8 { height: var(--vmp-space-8) !important; }
-  & .vmp-h-10 { height: var(--vmp-space-10) !important; }
-  & .vmp-h-12 { height: var(--vmp-space-12) !important; }
-  & .vmp-h-16 { height: var(--vmp-space-16) !important; }
-  & .vmp-h-full { height: 100% !important; }
-  & .vmp-h-auto { height: auto !important; }
-  & .vmp-h-fit { height: fit-content !important; }
-  & .vmp-h-screen { height: 100vh !important; }
-
-  /* FLEXBOX UTILITIES */
-  & .vmp-flex-row { flex-direction: row !important; }
-  & .vmp-flex-col { flex-direction: column !important; }
-  & .vmp-flex-wrap { flex-wrap: wrap !important; }
-  & .vmp-flex-nowrap { flex-wrap: nowrap !important; }
-  & .vmp-items-start { align-items: flex-start !important; }
-  & .vmp-items-end { align-items: flex-end !important; }
-  & .vmp-items-center { align-items: center !important; }
-  & .vmp-items-baseline { align-items: baseline !important; }
-  & .vmp-items-stretch { align-items: stretch !important; }
-  & .vmp-justify-start { justify-content: flex-start !important; }
-  & .vmp-justify-end { justify-content: flex-end !important; }
-  & .vmp-justify-center { justify-content: center !important; }
-  & .vmp-justify-between { justify-content: space-between !important; }
-  & .vmp-justify-around { justify-content: space-around !important; }
-  & .vmp-justify-evenly { justify-content: space-evenly !important; }
-  & .vmp-flex-1 { flex: 1 1 0% !important; }
-  & .vmp-flex-auto { flex: 1 1 auto !important; }
-  & .vmp-flex-none { flex: none !important; }
-  & .vmp-grow { flex-grow: 1 !important; }
-  & .vmp-shrink { flex-shrink: 1 !important; }
-  & .vmp-shrink-0 { flex-shrink: 0 !important; }
-
-  /* GRID UTILITIES */
-  & .vmp-grid-cols-1 { grid-template-columns: repeat(1, minmax(0, 1fr)) !important; }
-  & .vmp-grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
-  & .vmp-grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
-  & .vmp-grid-cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)) !important; }
-  & .vmp-grid-cols-5 { grid-template-columns: repeat(5, minmax(0, 1fr)) !important; }
-  & .vmp-grid-cols-6 { grid-template-columns: repeat(6, minmax(0, 1fr)) !important; }
-  & .vmp-grid-cols-12 { grid-template-columns: repeat(12, minmax(0, 1fr)) !important; }
-
-  /* OPACITY UTILITIES */
-  & .vmp-opacity-0 { opacity: 0 !important; }
-  & .vmp-opacity-10 { opacity: 0.1 !important; }
-  & .vmp-opacity-20 { opacity: 0.2 !important; }
-  & .vmp-opacity-30 { opacity: 0.3 !important; }
-  & .vmp-opacity-40 { opacity: 0.4 !important; }
-  & .vmp-opacity-50 { opacity: 0.5 !important; }
-  & .vmp-opacity-60 { opacity: 0.6 !important; }
-  & .vmp-opacity-70 { opacity: 0.7 !important; }
-  & .vmp-opacity-80 { opacity: 0.8 !important; }
-  & .vmp-opacity-90 { opacity: 0.9 !important; }
-  & .vmp-opacity-100 { opacity: 1 !important; }
-
-  /* OVERFLOW UTILITIES */
-  & .vmp-overflow-auto { overflow: auto !important; }
-  & .vmp-overflow-hidden { overflow: hidden !important; }
-  & .vmp-overflow-visible { overflow: visible !important; }
-  & .vmp-overflow-scroll { overflow: scroll !important; }
-  & .vmp-overflow-x-auto { overflow-x: auto !important; }
-  & .vmp-overflow-y-auto { overflow-y: auto !important; }
-  & .vmp-overflow-x-hidden { overflow-x: hidden !important; }
-  & .vmp-overflow-y-hidden { overflow-y: hidden !important; }
-
-  /* TEXT UTILITIES */
-  & .vmp-text-left { text-align: left !important; }
-  & .vmp-text-center { text-align: center !important; }
-  & .vmp-text-right { text-align: right !important; }
-  & .vmp-text-justify { text-align: justify !important; }
-  & .vmp-uppercase { text-transform: uppercase !important; }
-  & .vmp-lowercase { text-transform: lowercase !important; }
-  & .vmp-capitalize { text-transform: capitalize !important; }
-  & .vmp-normal-case { text-transform: none !important; }
-  & .vmp-truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  & .vmp-whitespace-nowrap { white-space: nowrap !important; }
-  & .vmp-whitespace-pre { white-space: pre !important; }
-  & .vmp-whitespace-pre-wrap { white-space: pre-wrap !important; }
-
-  /* BORDER UTILITIES */
-  & .vmp-border { border-width: 1px !important; }
-  & .vmp-border-0 { border-width: 0 !important; }
-  & .vmp-border-2 { border-width: 2px !important; }
-  & .vmp-border-t { border-top-width: 1px !important; }
-  & .vmp-border-b { border-bottom-width: 1px !important; }
-  & .vmp-border-l { border-left-width: 1px !important; }
-  & .vmp-border-r { border-right-width: 1px !important; }
-  & .vmp-border-x { border-left-width: 1px !important; border-right-width: 1px !important; }
-  & .vmp-border-y { border-top-width: 1px !important; border-bottom-width: 1px !important; }
-  & .vmp-border-none { border: none !important; }
-
-  /* CURSOR UTILITIES */
-  & .vmp-cursor-pointer { cursor: pointer !important; }
-  & .vmp-cursor-default { cursor: default !important; }
-  & .vmp-cursor-not-allowed { cursor: not-allowed !important; }
-  & .vmp-cursor-wait { cursor: wait !important; }
-  & .vmp-cursor-text { cursor: text !important; }
-  & .vmp-cursor-move { cursor: move !important; }
-
-  /* POINTER EVENTS UTILITIES */
-  & .vmp-pointer-events-none { pointer-events: none !important; }
-  & .vmp-pointer-events-auto { pointer-events: auto !important; }
-
-  /* USER SELECT UTILITIES */
-  & .vmp-select-none { user-select: none !important; }
-  & .vmp-select-text { user-select: text !important; }
-  & .vmp-select-all { user-select: all !important; }
-  & .vmp-select-auto { user-select: auto !important; }
-
-  /* Z-INDEX UTILITIES */
-  & .vmp-z-0 { z-index: var(--vmp-z-base) !important; }
-  & .vmp-z-10 { z-index: 10 !important; }
-  & .vmp-z-20 { z-index: 20 !important; }
-  & .vmp-z-30 { z-index: 30 !important; }
-  & .vmp-z-40 { z-index: var(--vmp-z-dropdown) !important; }
-  & .vmp-z-50 { z-index: var(--vmp-z-modal) !important; }
-  & .vmp-z-60 { z-index: var(--vmp-z-toast) !important; }
-  & .vmp-z-70 { z-index: var(--vmp-z-tooltip) !important; }
-  & .vmp-z-auto { z-index: auto !important; }
-
-  /* ==========================================================================
-     ENTERPRISE COMPONENTS (Linear/Palantir-Level)
-     ========================================================================== */
-
-  /* ===== TOAST/NOTIFICATION SYSTEM (CRITICAL) ===== */
-  
-  & .vmp-toast-container {
-    position: fixed;
-    z-index: var(--vmp-z-toast);
-    pointer-events: none;
-    display: flex;
-    flex-direction: column;
-    gap: var(--vmp-space-2);
-  }
-
-  & .vmp-toast-container[data-position="top-right"] {
-    top: var(--vmp-space-4);
-    right: var(--vmp-space-4);
-    align-items: flex-end;
-  }
-
-  & .vmp-toast-container[data-position="top-left"] {
-    top: var(--vmp-space-4);
-    left: var(--vmp-space-4);
-    align-items: flex-start;
-  }
-
-  & .vmp-toast-container[data-position="bottom-right"] {
-    bottom: var(--vmp-space-4);
-    right: var(--vmp-space-4);
-    align-items: flex-end;
-  }
-
-  & .vmp-toast-container[data-position="bottom-left"] {
-    bottom: var(--vmp-space-4);
-    left: var(--vmp-space-4);
-    align-items: flex-start;
-  }
-
-  & .vmp-toast-container[data-position="top-center"] {
-    top: var(--vmp-space-4);
-    left: 50%;
-    transform: translateX(-50%);
-    align-items: center;
-  }
-
-  & .vmp-toast-container[data-position="bottom-center"] {
-    bottom: var(--vmp-space-4);
-    left: 50%;
-    transform: translateX(-50%);
-    align-items: center;
-  }
-
-  & .vmp-toast {
-    pointer-events: auto;
-    min-width: 320px;
-    max-width: 420px;
-    padding: var(--vmp-space-3) var(--vmp-space-4);
-    background: var(--vmp-panel);
-    border: 1px solid var(--vmp-border);
-    border-radius: var(--vmp-radius-lg);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    display: flex;
-    align-items: flex-start;
-    gap: var(--vmp-space-3);
-    animation: vmp-toast-enter var(--vmp-transition-base);
-    transition: opacity var(--vmp-transition-fast), transform var(--vmp-transition-fast);
-  }
-
-  & .vmp-toast[data-exiting] {
-    animation: vmp-toast-exit var(--vmp-transition-fast);
-    opacity: 0;
-    transform: translateY(-8px);
-  }
-
-  & .vmp-toast-content {
-    flex: 1;
-    min-width: 0;
-  }
-
-  & .vmp-toast-title {
-    font-size: var(--vmp-font-sm);
-    font-weight: 300;
-    line-height: var(--vmp-line-height-normal);
-    color: var(--vmp-text);
-    margin-bottom: var(--vmp-space-1);
-  }
-
-  & .vmp-toast-message {
-    font-size: var(--vmp-font-sm);
-    font-weight: 300;
-    line-height: var(--vmp-line-height-relaxed);
-    color: var(--vmp-muted);
-  }
-
-  & .vmp-toast-close {
-    flex-shrink: 0;
-    width: 20px;
-    height: 20px;
+  & .vmp-sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
     padding: 0;
-    border: none;
-    background: none;
-    color: var(--vmp-subtle);
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: var(--vmp-radius-sm);
-    transition: color var(--vmp-transition-fast), background-color var(--vmp-transition-fast);
-
-    &:hover {
-      color: var(--vmp-text);
-      background: hsla(0, 0%, 100%, 0.05);
-    }
-  }
-
-  & .vmp-toast-action {
-    margin-top: var(--vmp-space-2);
-    display: flex;
-    gap: var(--vmp-space-2);
-  }
-
-  & .vmp-toast-success {
-    border-left: 3px solid var(--vmp-ok);
-  }
-
-  & .vmp-toast-error {
-    border-left: 3px solid var(--vmp-danger);
-  }
-
-  & .vmp-toast-warning {
-    border-left: 3px solid var(--vmp-warn);
-  }
-
-  & .vmp-toast-info {
-    border-left: 3px solid var(--vmp-border2);
-  }
-
-  @keyframes vmp-toast-enter {
-    from {
-      opacity: 0;
-      transform: translateY(-8px) scale(0.95);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0) scale(1);
-    }
-  }
-
-  @keyframes vmp-toast-exit {
-    from {
-      opacity: 1;
-      transform: translateY(0) scale(1);
-    }
-    to {
-      opacity: 0;
-      transform: translateY(-8px) scale(0.95);
-    }
-  }
-
-  /* ===== COMMAND PALETTE / SEARCH INTERFACE (CRITICAL) ===== */
-  
-  & .vmp-command-palette {
-    position: fixed;
-    inset: 0;
-    z-index: var(--vmp-z-modal);
-    display: flex;
-    align-items: flex-start;
-    justify-content: center;
-    padding-top: 10vh;
-    pointer-events: none;
-  }
-
-  & .vmp-command-palette[data-open] {
-    pointer-events: auto;
-  }
-
-  & .vmp-command-palette-overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.70);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-    animation: vmp-fade-in var(--vmp-transition-base);
-  }
-
-  & .vmp-command-palette-dialog {
-    position: relative;
-    width: 100%;
-    max-width: 640px;
-    margin: 0 var(--vmp-space-4);
-    background: var(--vmp-panel);
-    border: 1px solid var(--vmp-border);
-    border-radius: var(--vmp-radius-2xl);
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.30);
-    animation: vmp-zoom-in var(--vmp-transition-base);
+    margin: -1px;
     overflow: hidden;
-    display: flex;
-    flex-direction: column;
-    max-height: 80vh;
-  }
-
-  & .vmp-command-input {
-    width: 100%;
-    padding: var(--vmp-space-4) var(--vmp-space-5);
-    border: none;
-    border-bottom: 1px solid var(--vmp-border);
-    background: transparent;
-    color: var(--vmp-text);
-    font-size: var(--vmp-font-lg);
-    font-weight: 300;
-    line-height: var(--vmp-line-height-normal);
-    font-family: "Liter", ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-
-    &:focus {
-      outline: none;
-      border-bottom-color: var(--vmp-border2);
-    }
-
-    &::placeholder {
-      color: var(--vmp-subtle);
-    }
-  }
-
-  & .vmp-command-list {
-    overflow-y: auto;
-    max-height: 60vh;
-    padding: var(--vmp-space-2);
-  }
-
-  & .vmp-command-group {
-    padding: var(--vmp-space-2) 0;
-  }
-
-  & .vmp-command-group-title {
-    padding: var(--vmp-space-2) var(--vmp-space-3);
-    font-size: var(--vmp-font-xs);
-    font-weight: 300;
-    text-transform: uppercase;
-    letter-spacing: var(--vmp-letter-spacing-wider);
-    color: var(--vmp-subtle);
-    font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
-  }
-
-  & .vmp-command-item {
-    display: flex;
-    align-items: center;
-    gap: var(--vmp-space-3);
-    padding: var(--vmp-space-2) var(--vmp-space-3);
-    border-radius: var(--vmp-radius-md);
-    color: var(--vmp-text);
-    font-size: var(--vmp-font-base);
-    font-weight: 300;
-    line-height: var(--vmp-line-height-relaxed);
-    cursor: pointer;
-    transition: background-color var(--vmp-transition-fast);
-    text-decoration: none;
-
-    &:hover,
-    &[aria-selected="true"],
-    &.vmp-command-item-active {
-      background: hsla(0, 0%, 100%, 0.06);
-    }
-  }
-
-  & .vmp-command-item-icon {
-    flex-shrink: 0;
-    width: 20px;
-    height: 20px;
-    color: var(--vmp-muted);
-  }
-
-  & .vmp-command-item-content {
-    flex: 1;
-    min-width: 0;
-  }
-
-  & .vmp-command-item-title {
-    font-size: var(--vmp-font-base);
-    color: var(--vmp-text);
-    margin-bottom: var(--vmp-space-1);
-  }
-
-  & .vmp-command-item-description {
-    font-size: var(--vmp-font-sm);
-    color: var(--vmp-muted);
-  }
-
-  & .vmp-command-shortcut {
-    flex-shrink: 0;
-    display: flex;
-    gap: var(--vmp-space-1);
-    font-size: var(--vmp-font-xs);
-    font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
-    color: var(--vmp-subtle);
-  }
-
-  & .vmp-command-shortcut-key {
-    padding: var(--vmp-space-1) var(--vmp-space-2);
-    background: hsla(0, 0%, 100%, 0.08);
-    border: 1px solid var(--vmp-border);
-    border-radius: var(--vmp-radius-sm);
-    min-width: 20px;
-    text-align: center;
-  }
-
-  & .vmp-command-empty {
-    padding: var(--vmp-space-8) var(--vmp-space-4);
-    text-align: center;
-    color: var(--vmp-muted);
-    font-size: var(--vmp-font-sm);
-  }
-
-  /* ===== ADVANCED FOCUS MANAGEMENT (CRITICAL) ===== */
-  
-  & .vmp-focus-trap {
-    /* Focus trap is handled via JavaScript, this is a marker class */
-    /* No CSS needed - JavaScript handles focus trapping */
-    position: relative; /* Marker for JS focus trap */
-  }
-
-  & .vmp-skip-link {
-    position: absolute;
-    top: -100px;
-    left: var(--vmp-space-4);
-    z-index: 100;
-    padding: var(--vmp-space-2) var(--vmp-space-4);
-    background: var(--vmp-bg2);
-    border: 1px solid var(--vmp-border);
-    border-radius: var(--vmp-radius-md);
-    color: var(--vmp-text);
-    text-decoration: none;
-    font-size: var(--vmp-font-sm);
-    font-weight: 300;
-    transition: top var(--vmp-transition-fast);
-
-    &:focus {
-      top: var(--vmp-space-4);
-      outline: 2px solid hsla(0, 0%, 100%, 0.25);
-      outline-offset: 3px;
-    }
-  }
-
-  & .vmp-focus-restore {
-    /* Marker class for focus restoration via JavaScript */
-    /* No CSS needed - JavaScript handles focus restoration */
-    position: relative; /* Marker for JS focus restoration */
-  }
-
-  /* ===== DATA VISUALIZATION COMPONENTS (CRITICAL) ===== */
-  
-  & .vmp-chart-container {
-    position: relative;
-    width: 100%;
-    height: 100%;
-    min-height: 300px;
-  }
-
-  & .vmp-chart-legend {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--vmp-space-4);
-    margin-top: var(--vmp-space-4);
-    padding: var(--vmp-space-3);
-    border-top: 1px solid var(--vmp-border);
-  }
-
-  & .vmp-chart-legend-item {
-    display: flex;
-    align-items: center;
-    gap: var(--vmp-space-2);
-    font-size: var(--vmp-font-sm);
-    color: var(--vmp-muted);
-  }
-
-  & .vmp-chart-legend-color {
-    width: 12px;
-    height: 12px;
-    border-radius: 2px;
-    flex-shrink: 0;
-  }
-
-  & .vmp-chart-axis {
-    font-size: var(--vmp-font-xs);
-    color: var(--vmp-subtle);
-    font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
-  }
-
-  & .vmp-chart-tooltip {
-    position: absolute;
-    padding: var(--vmp-space-2) var(--vmp-space-3);
-    background: var(--vmp-bg2);
-    border: 1px solid var(--vmp-border);
-    border-radius: var(--vmp-radius-md);
-    font-size: var(--vmp-font-xs);
-    color: var(--vmp-text);
-    pointer-events: none;
-    z-index: var(--vmp-z-tooltip);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.20);
-  }
-
-  & .vmp-chart-empty {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: var(--vmp-space-12);
-    text-align: center;
-    color: var(--vmp-muted);
-    min-height: 300px;
-  }
-
-  & .vmp-chart-empty-title {
-    font-size: var(--vmp-font-lg);
-    color: var(--vmp-text);
-    margin-bottom: var(--vmp-space-2);
-  }
-
-  & .vmp-chart-empty-description {
-    font-size: var(--vmp-font-sm);
-    color: var(--vmp-muted);
-  }
-
-  /* ===== ADVANCED TABLE FEATURES (ESSENTIAL) ===== */
-  
-  & .vmp-table-sortable {
-    cursor: pointer;
-    user-select: none;
-    position: relative;
-    padding-right: var(--vmp-space-6);
-
-    &::after {
-      content: "↕";
-      position: absolute;
-      right: var(--vmp-space-2);
-      top: 50%;
-      transform: translateY(-50%);
-      font-size: var(--vmp-font-xs);
-      color: var(--vmp-subtle);
-      opacity: 0.5;
-    }
-
-    &:hover::after {
-      opacity: 1;
-    }
-
-    &[data-sort="asc"]::after {
-      content: "↑";
-      opacity: 1;
-      color: var(--vmp-text);
-    }
-
-    &[data-sort="desc"]::after {
-      content: "↓";
-      opacity: 1;
-      color: var(--vmp-text);
-    }
-  }
-
-  & .vmp-table-resizable {
-    position: relative;
-    resize: horizontal;
-    overflow: auto;
-    min-width: 100px;
-  }
-
-  & .vmp-table-row-selected {
-    background: hsla(0, 0%, 100%, 0.08) !important;
-  }
-
-  & .vmp-table-row-expanded {
-    background: hsla(0, 0%, 100%, 0.04);
-  }
-
-  & .vmp-table-sticky-header {
-    position: sticky;
-    top: 0;
-    z-index: 10;
-    background: var(--vmp-bg);
-  }
-
-  & .vmp-table-virtual {
-    overflow-y: auto;
-    height: 100%;
-    contain: strict;
-  }
-
-  /* ===== ADVANCED FORM PATTERNS (ESSENTIAL) ===== */
-  
-  & .vmp-form-group {
-    margin-bottom: var(--vmp-space-6);
-  }
-
-  & .vmp-form-section {
-    padding: var(--vmp-space-6) 0;
-    border-bottom: 1px solid var(--vmp-border);
-
-    &:last-child {
-      border-bottom: none;
-    }
-  }
-
-  & .vmp-form-section-title {
-    font-size: var(--vmp-font-lg);
-    color: var(--vmp-text);
-    margin-bottom: var(--vmp-space-4);
-    font-weight: 300;
-  }
-
-  & .vmp-form-step {
-    display: none;
-
-    &[data-active="true"] {
-      display: block;
-    }
-  }
-
-  & .vmp-form-validation-summary {
-    padding: var(--vmp-space-3) var(--vmp-space-4);
-    background: rgba(255, 100, 100, 0.08);
-    border: 1px solid var(--vmp-danger);
-    border-radius: var(--vmp-radius-md);
-    margin-bottom: var(--vmp-space-4);
-  }
-
-  & .vmp-form-validation-summary-title {
-    font-size: var(--vmp-font-sm);
-    color: var(--vmp-danger);
-    margin-bottom: var(--vmp-space-2);
-    font-weight: 300;
-  }
-
-  & .vmp-form-validation-summary-list {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-  }
-
-  & .vmp-form-validation-summary-item {
-    font-size: var(--vmp-font-sm);
-    color: var(--vmp-danger);
-    margin: var(--vmp-space-1) 0;
-  }
-
-  & .vmp-form-auto-save {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--vmp-space-2);
-    font-size: var(--vmp-font-xs);
-    color: var(--vmp-subtle);
-    margin-left: var(--vmp-space-3);
-  }
-
-  & .vmp-form-auto-save-indicator {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: var(--vmp-ok);
-    animation: vmp-pulse 2s ease-in-out infinite;
-  }
-
-  & .vmp-form-draft {
-    padding: var(--vmp-space-2) var(--vmp-space-3);
-    background: hsla(42, 100%, 74%, 0.08);
-    border: 1px solid var(--vmp-warn);
-    border-radius: var(--vmp-radius-sm);
-    font-size: var(--vmp-font-xs);
-    color: var(--vmp-warn);
-    display: inline-flex;
-    align-items: center;
-    gap: var(--vmp-space-2);
-  }
-
-  /* ===== ENHANCED LOADING STATES (ESSENTIAL) ===== */
-  
-  & .vmp-skeleton-text {
-    height: 1em;
-    background: hsla(0, 0%, 100%, 0.05);
-    border-radius: var(--vmp-radius-sm);
-    animation: vmp-pulse 1.5s ease-in-out infinite;
-    margin: var(--vmp-space-1) 0;
-  }
-
-  & .vmp-skeleton-text-sm {
-    height: 0.875em;
-  }
-
-  & .vmp-skeleton-text-lg {
-    height: 1.25em;
-  }
-
-  & .vmp-skeleton-image {
-    width: 100%;
-    aspect-ratio: 16 / 9;
-    background: hsla(0, 0%, 100%, 0.05);
-    border-radius: var(--vmp-radius-md);
-    animation: vmp-pulse 1.5s ease-in-out infinite;
-  }
-
-  & .vmp-skeleton-card {
-    padding: var(--vmp-space-4);
-    background: var(--vmp-panel);
-    border: 1px solid var(--vmp-border);
-    border-radius: var(--vmp-radius-lg);
-    animation: vmp-pulse 1.5s ease-in-out infinite;
-  }
-
-  & .vmp-skeleton-list {
-    display: flex;
-    flex-direction: column;
-    gap: var(--vmp-space-2);
-  }
-
-  & .vmp-skeleton-list-item {
-    height: 48px;
-    background: hsla(0, 0%, 100%, 0.05);
-    border-radius: var(--vmp-radius-md);
-    animation: vmp-pulse 1.5s ease-in-out infinite;
-  }
-
-  & .vmp-skeleton-shimmer {
-    position: relative;
-    overflow: hidden;
-
-    &::after {
-      content: "";
-      position: absolute;
-      top: 0;
-      left: -100%;
-      width: 100%;
-      height: 100%;
-      background: linear-gradient(90deg, transparent, hsla(0, 0%, 100%, 0.1), transparent);
-      animation: vmp-shimmer 1.5s infinite;
-    }
-  }
-
-  & .vmp-loading-overlay {
-    position: absolute;
-    inset: 0;
-    background: hsla(0, 0%, 0%, 0.60);
-    backdrop-filter: blur(4px);
-    -webkit-backdrop-filter: blur(4px);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 20;
-  }
-
-  @keyframes vmp-shimmer {
-    0% {
-      left: -100%;
-    }
-    100% {
-      left: 100%;
-    }
-  }
-
-  /* ===== ERROR BOUNDARY COMPONENTS (ESSENTIAL) ===== */
-  
-  & .vmp-error-boundary {
-    padding: var(--vmp-space-8);
-    text-align: center;
-  }
-
-  & .vmp-error-state {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: var(--vmp-space-4);
-    padding: var(--vmp-space-8);
-    max-width: 480px;
-    margin: 0 auto;
-  }
-
-  & .vmp-error-state-icon {
-    width: 64px;
-    height: 64px;
-    color: var(--vmp-danger);
-    opacity: 0.5;
-  }
-
-  & .vmp-error-state-title {
-    font-size: var(--vmp-font-xl);
-    color: var(--vmp-text);
-    font-weight: 300;
-  }
-
-  & .vmp-error-state-message {
-    font-size: var(--vmp-font-base);
-    color: var(--vmp-muted);
-    line-height: var(--vmp-line-height-relaxed);
-  }
-
-  & .vmp-error-retry {
-    margin-top: var(--vmp-space-4);
-  }
-
-  & .vmp-error-report {
-    margin-top: var(--vmp-space-2);
-    font-size: var(--vmp-font-sm);
-    color: var(--vmp-subtle);
-    text-decoration: underline;
-    cursor: pointer;
-
-    &:hover {
-      color: var(--vmp-text);
-    }
-  }
-
-  /* ===== KEYBOARD NAVIGATION SYSTEM (ESSENTIAL) ===== */
-  
-  & .vmp-keyboard-hint {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--vmp-space-1);
-    font-size: var(--vmp-font-xs);
-    color: var(--vmp-subtle);
-    margin-left: var(--vmp-space-2);
-  }
-
-  & .vmp-keyboard-shortcut {
-    display: inline-flex;
-    gap: var(--vmp-space-1);
-    font-size: var(--vmp-font-xs);
-    font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
-    color: var(--vmp-subtle);
-  }
-
-  & .vmp-keyboard-shortcut-key {
-    padding: var(--vmp-space-1) var(--vmp-space-2);
-    background: hsla(0, 0%, 100%, 0.08);
-    border: 1px solid var(--vmp-border);
-    border-radius: var(--vmp-radius-sm);
-    min-width: 20px;
-    text-align: center;
-  }
-
-  & .vmp-keyboard-overlay {
-    position: fixed;
-    inset: 0;
-    z-index: var(--vmp-z-modal);
-    background: rgba(0, 0, 0, 0.80);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: var(--vmp-space-4);
-    animation: vmp-fade-in var(--vmp-transition-base);
-  }
-
-  & .vmp-keyboard-overlay-content {
-    background: var(--vmp-panel);
-    border: 1px solid var(--vmp-border);
-    border-radius: var(--vmp-radius-2xl);
-    padding: var(--vmp-space-6);
-    max-width: 600px;
-    width: 100%;
-    max-height: 80vh;
-    overflow-y: auto;
-  }
-
-  & .vmp-keyboard-focus-ring {
-    outline: 2px solid hsla(0, 0%, 100%, 0.40);
-    outline-offset: 4px;
-    border-radius: var(--vmp-radius-md);
-  }
-
-  /* ===== INTERNATIONALIZATION (i18n) SUPPORT (ESSENTIAL) ===== */
-  
-  &[dir="rtl"] {
-    direction: rtl;
-  }
-
-  &[dir="ltr"] {
-    direction: ltr;
-  }
-
-  &[dir="rtl"] .vmp-breadcrumb-separator {
-    transform: scaleX(-1);
-  }
-
-  &[dir="rtl"] .vmp-command-shortcut {
-    flex-direction: row-reverse;
-  }
-
-  & .vmp-rtl {
-    direction: rtl;
-  }
-
-  & .vmp-ltr {
-    direction: ltr;
-  }
-
-  /* ===== ADVANCED LAYOUT PATTERNS (ESSENTIAL) ===== */
-  
-  & .vmp-split-pane {
-    display: flex;
-    height: 100%;
-    position: relative;
-  }
-
-  & .vmp-split-pane-left,
-  & .vmp-split-pane-right {
-    flex: 1;
-    overflow: auto;
-    min-width: 0;
-  }
-
-  & .vmp-split-pane-resizer {
-    width: 4px;
-    background: var(--vmp-border);
-    cursor: col-resize;
-    flex-shrink: 0;
-    transition: background-color var(--vmp-transition-fast);
-
-    &:hover {
-      background: var(--vmp-border2);
-    }
-
-    &[data-dragging="true"] {
-      background: var(--vmp-border2);
-    }
-  }
-
-  & .vmp-master-detail {
-    display: flex;
-    height: 100%;
-    gap: var(--vmp-space-4);
-  }
-
-  & .vmp-master-detail-master {
-    width: 320px;
-    flex-shrink: 0;
-    border-right: 1px solid var(--vmp-border);
-    overflow-y: auto;
-  }
-
-  & .vmp-master-detail-detail {
-    flex: 1;
-    min-width: 0;
-    overflow-y: auto;
-  }
-
-  & .vmp-dashboard-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: var(--vmp-space-4);
-  }
-
-  & .vmp-collapsible {
-    border-bottom: 1px solid var(--vmp-border);
-  }
-
-  & .vmp-collapsible-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: var(--vmp-space-3) var(--vmp-space-4);
-    cursor: pointer;
-    transition: background-color var(--vmp-transition-fast);
-
-    &:hover {
-      background: hsla(0, 0%, 100%, 0.02);
-    }
-  }
-
-  & .vmp-collapsible-icon {
-    transition: transform var(--vmp-transition-fast);
-    color: var(--vmp-subtle);
-  }
-
-  & .vmp-collapsible[data-open="true"] .vmp-collapsible-icon {
-    transform: rotate(90deg);
-  }
-
-  & .vmp-collapsible-content {
-    max-height: 0;
-    overflow: hidden;
-    transition: max-height var(--vmp-transition-base);
-  }
-
-  & .vmp-collapsible[data-open="true"] .vmp-collapsible-content {
-    max-height: 2000px;
-    padding: var(--vmp-space-4);
-  }
-
-  /* ===== PERFORMANCE OPTIMIZATIONS (ESSENTIAL) ===== */
-  
-  & .vmp-will-change-transform {
-    will-change: transform;
-  }
-
-  & .vmp-will-change-opacity {
-    will-change: opacity;
-  }
-
-  & .vmp-content-visibility-auto {
-    content-visibility: auto;
-    contain-intrinsic-size: auto 500px;
-  }
-
-  & .vmp-lazy-load {
-    content-visibility: auto;
-  }
-
-  /* ===== PRINT STYLES (ESSENTIAL) ===== */
-  
-  @media print {
-    & .vmp-print-hidden {
-      display: none !important;
-    }
-
-    & .vmp-print-only {
-      display: block !important;
-    }
-
-    & .vmp-page-break {
-      page-break-after: always;
-    }
-
-    & .vmp-page-break-avoid {
-      page-break-inside: avoid;
-    }
-
-    & body {
-      background: white !important;
-      color: black !important;
-    }
-
-    & .vmp-sidebar,
-    & .vmp-rail {
-      display: none !important;
-    }
-  }
-
-  /* ===== ADVANCED MODAL PATTERNS (ESSENTIAL) ===== */
-  
-  & .vmp-modal-sm {
-    max-width: 24rem;
-  }
-
-  & .vmp-modal-md {
-    max-width: 32rem;
-  }
-
-  & .vmp-modal-lg {
-    max-width: 48rem;
-  }
-
-  & .vmp-modal-xl {
-    max-width: 64rem;
-  }
-
-  & .vmp-modal-fullscreen {
-    max-width: 100vw;
-    max-height: 100vh;
-    width: 100vw;
-    height: 100vh;
-    border-radius: 0;
-  }
-
-  & .vmp-modal-stacked {
-    z-index: calc(var(--vmp-z-modal) + 10);
-  }
-
-  /* ===== ADVANCED BUTTON PATTERNS (ESSENTIAL) ===== */
-  
-  & .vmp-btn-group {
-    display: inline-flex;
-    gap: 0;
-    border-radius: var(--vmp-radius-sm);
-    overflow: hidden;
-
-    & .vmp-btn {
-      border-radius: 0;
-      border-right-width: 0;
-
-      &:first-child {
-        border-top-left-radius: var(--vmp-radius-sm);
-        border-bottom-left-radius: var(--vmp-radius-sm);
-      }
-
-      &:last-child {
-        border-top-right-radius: var(--vmp-radius-sm);
-        border-bottom-right-radius: var(--vmp-radius-sm);
-        border-right-width: 1px;
-      }
-    }
-  }
-
-  & .vmp-btn-toolbar {
-    display: flex;
-    gap: var(--vmp-space-2);
-    align-items: center;
-    flex-wrap: wrap;
-  }
-
-  & .vmp-btn-icon-only {
-    padding: var(--vmp-space-2);
-    width: auto;
-    height: auto;
-    aspect-ratio: 1;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  & .vmp-btn-split {
-    display: inline-flex;
-    gap: 0;
-
-    & .vmp-btn {
-      border-radius: 0;
-
-      &:first-child {
-        border-top-left-radius: var(--vmp-radius-sm);
-        border-bottom-left-radius: var(--vmp-radius-sm);
-        border-right-width: 0;
-      }
-
-      &:last-child {
-        border-top-right-radius: var(--vmp-radius-sm);
-        border-bottom-right-radius: var(--vmp-radius-sm);
-        padding: var(--vmp-space-2);
-      }
-    }
-  }
-
-  & .vmp-btn-xs {
-    padding: var(--vmp-space-1) var(--vmp-space-2);
-    font-size: var(--vmp-font-xs);
-  }
-
-  & .vmp-btn-sm {
-    padding: var(--vmp-space-2) var(--vmp-space-3);
-    font-size: var(--vmp-font-sm);
-  }
-
-  & .vmp-btn-lg {
-    padding: var(--vmp-space-3) var(--vmp-space-6);
-    font-size: var(--vmp-font-lg);
-  }
-
-  /* ===== FILE UPLOAD DROPZONE ===== */
-  
-  & .vmp-dropzone {
-    position: relative;
-    border: 2px dashed var(--vmp-border);
-    border-radius: var(--vmp-radius-lg);
-    padding: var(--vmp-space-8);
-    text-align: center;
-    background: var(--vmp-panel);
-    transition: border-color var(--vmp-transition-fast), background-color var(--vmp-transition-fast);
-    cursor: pointer;
-
-    &:hover,
-    &.dragover {
-      border-color: var(--vmp-border2);
-      background: hsla(0, 0%, 100%, 0.05);
-    }
-
-    & input[type="file"] {
-      position: absolute;
-      width: 100%;
-      height: 100%;
-      top: 0;
-      left: 0;
-      opacity: 0;
-      cursor: pointer;
-    }
-  }
-
-  & .vmp-dropzone-icon {
-    width: 48px;
-    height: 48px;
-    margin: 0 auto var(--vmp-space-4);
-    color: var(--vmp-subtle);
-    transition: color var(--vmp-transition-fast);
-  }
-
-  & .vmp-dropzone:hover .vmp-dropzone-icon {
-    color: var(--vmp-text);
-  }
-
-  & .vmp-dropzone-text {
-    font-size: var(--vmp-font-sm);
-    color: var(--vmp-text);
-    margin-bottom: var(--vmp-space-2);
-  }
-
-  & .vmp-dropzone-hint {
-    font-size: var(--vmp-font-xs);
-    color: var(--vmp-muted);
-  }
-
-  /* ===== FILE LIST ===== */
-  
-  & .vmp-file-list {
-    margin-top: var(--vmp-space-4);
-    display: flex;
-    flex-direction: column;
-    gap: var(--vmp-space-2);
-  }
-
-  & .vmp-file-item {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: var(--vmp-space-3);
-    background: var(--vmp-panel);
-    border: 1px solid var(--vmp-border);
-    border-radius: var(--vmp-radius-md);
-    transition: background-color var(--vmp-transition-fast);
-  }
-
-  & .vmp-file-item:hover {
-    background: hsla(0, 0%, 100%, 0.05);
-  }
-
-  & .vmp-file-item-info {
-    display: flex;
-    align-items: center;
-    gap: var(--vmp-space-3);
-    flex: 1;
-    min-width: 0;
-  }
-
-  & .vmp-file-item-icon {
-    flex-shrink: 0;
-    width: 20px;
-    height: 20px;
-    color: var(--vmp-subtle);
-  }
-
-  & .vmp-file-item-details {
-    flex: 1;
-    min-width: 0;
-  }
-
-  & .vmp-file-item-name {
-    font-size: var(--vmp-font-sm);
-    color: var(--vmp-text);
-    truncate: true;
-    margin-bottom: var(--vmp-space-1);
-  }
-
-  & .vmp-file-item-size {
-    font-size: var(--vmp-font-xs);
-    color: var(--vmp-muted);
-  }
-
-  & .vmp-file-item-status {
-    display: flex;
-    align-items: center;
-    gap: var(--vmp-space-2);
-  }
-
-  & .vmp-file-item-remove {
-    padding: var(--vmp-space-1);
-    color: var(--vmp-subtle);
-    background: transparent;
-    border: none;
-    cursor: pointer;
-    font-size: var(--vmp-font-lg);
-    line-height: 1;
-    transition: color var(--vmp-transition-fast);
-
-    &:hover {
-      color: var(--vmp-danger);
-    }
-  }
-
-  & .vmp-upload-progress {
-    margin-top: var(--vmp-space-2);
-    height: 4px;
-    background: hsla(0, 0%, 100%, 0.08);
-    border-radius: var(--vmp-radius-sm);
-    overflow: hidden;
-  }
-
-  & .vmp-upload-progress-bar {
-    height: 100%;
-    background: var(--vmp-ok);
-    border-radius: var(--vmp-radius-sm);
-    width: var(--progress-width, 0%);
-    transition: width var(--vmp-transition-base);
-  }
-
-  /* ===== AVATAR UPLOAD ===== */
-  
-  & .vmp-avatar-upload {
-    position: relative;
-    display: inline-block;
-  }
-
-  & .vmp-avatar-upload-overlay {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: rgba(0, 0, 0, 0.60);
-    border-radius: 50%;
-    color: var(--vmp-text);
-    font-size: var(--vmp-font-xs);
-    opacity: 0;
-    transition: opacity var(--vmp-transition-fast);
-    cursor: pointer;
-  }
-
-  & .vmp-avatar-upload:hover .vmp-avatar-upload-overlay {
-    opacity: 1;
-  }
-
-  & .vmp-avatar-md {
-    width: 40px;
-    height: 40px;
-  }
-
-  & .vmp-avatar-2xl {
-    width: 120px;
-    height: 120px;
-    font-size: var(--vmp-font-2xl);
-  }
-
-  & .vmp-avatar-placeholder {
-    width: 100%;
-    height: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: var(--vmp-panel);
-    color: var(--vmp-text);
-    font-weight: 300;
-    border-radius: 50%;
-  }
-
-  /* ===== OAUTH BUTTONS ===== */
-  
-  & .vmp-btn-oauth {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: var(--vmp-space-3);
-    padding: var(--vmp-space-3) var(--vmp-space-5);
-    border-radius: var(--vmp-radius-md);
-    border: 1px solid var(--vmp-border);
-    background: var(--vmp-panel);
-    color: var(--vmp-text);
-    font-size: var(--vmp-font-sm);
-    font-weight: 300;
-    text-decoration: none;
-    transition: background-color var(--vmp-transition-fast), border-color var(--vmp-transition-fast);
-    cursor: pointer;
-
-    &:hover {
-      background: hsla(0, 0%, 100%, 0.08);
-      border-color: var(--vmp-border2);
-    }
-  }
-
-  & .vmp-btn-oauth-icon {
-    width: 20px;
-    height: 20px;
-    flex-shrink: 0;
-  }
-
-  & .vmp-btn-oauth-github {
-    background: hsl(0, 0%, 10%);
-    border-color: hsla(0, 0%, 100%, 0.20);
-
-    &:hover {
-      background: hsl(0, 0%, 12%);
-      border-color: hsla(0, 0%, 100%, 0.30);
-    }
-  }
-
-  /* ===== THEME TOGGLE ===== */
-  
-  & .vmp-theme-toggle {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 100%;
-    min-height: 44px;
-    padding: var(--vmp-space-3);
-    background: var(--vmp-panel);
-    border: 1px solid var(--vmp-border);
-    border-radius: var(--vmp-radius-md);
-    color: var(--vmp-text);
-    cursor: pointer;
-    transition: background-color var(--vmp-transition-fast), border-color var(--vmp-transition-fast);
-    position: relative;
-
-    &:hover {
-      background: hsla(0, 0%, 100%, 0.05);
-      border-color: var(--vmp-border2);
-    }
-
-    &:active {
-      background: hsla(0, 0%, 100%, 0.08);
-    }
-
-    &:focus-visible {
-      outline: 2px solid hsla(0, 0%, 100%, 0.25);
-      outline-offset: 2px;
-    }
-
-    & svg {
-      width: 24px;
-      height: 24px;
-      stroke-width: 2;
-      stroke: currentColor;
-      color: var(--vmp-text);
-      display: block;
-      flex-shrink: 0;
-    }
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
   }
 }
 
 /* ==========================================================================
-   VMP LOGIN — BEASTMODE LUXURY TERMINAL-GLASS RITUAL
-   Integrated using VMP design tokens (SSOT)
+   DESIGN SYSTEM PHILOSOPHY (v2.2.0)
    ========================================================================== */
 
-html[data-surface="vmp"] .vmp-login {
-  min-height: 100svh;
-  position: relative;
-  isolation: isolate;
-  overflow: clip;
-}
-
-/* Background: constellation + scanline + drift (no shadows) */
-html[data-surface="vmp"] .vmp-login__bg {
-  position: absolute;
-  inset: -40vmax;
-  z-index: -1;
-  background:
-    radial-gradient(1200px 900px at 18% 22%, rgba(237,237,237,.10), transparent 55%),
-    radial-gradient(900px 700px at 82% 40%, rgba(237,237,237,.07), transparent 60%),
-    radial-gradient(600px 500px at 65% 90%, rgba(237,237,237,.06), transparent 55%),
-    radial-gradient(circle at 50% 50%, rgba(255,255,255,.04), transparent 62%),
-    radial-gradient(circle at 1px 1px, rgba(255,255,255,.08) 1px, transparent 1.5px);
-  background-size:
-    auto,
-    auto,
-    auto,
-    auto,
-    18px 18px;
-  opacity: .95;
-  transform: translateZ(0);
-  animation: vmp-drift 18s linear infinite;
-}
-
-@keyframes vmp-drift {
-  0%   { transform: translate3d(0,0,0); }
-  50%  { transform: translate3d(0.8rem, -0.6rem, 0); }
-  100% { transform: translate3d(0,0,0); }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  html[data-surface="vmp"] .vmp-login__bg { animation: none; }
-}
-
-html[data-surface="vmp"] .vmp-login__wrap {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: var(--vmp-space-6);
-  padding-top: var(--vmp-space-10);
-  padding-bottom: var(--vmp-space-10);
-  display: grid;
-  gap: var(--vmp-space-6);
-  grid-template-columns: 1.05fr .95fr;
-  align-items: start;
-}
-
-@media (max-width: 980px) {
-  html[data-surface="vmp"] .vmp-login__wrap {
-    grid-template-columns: 1fr;
-    padding-top: var(--vmp-space-6);
-  }
-}
-
-/* HERO */
-html[data-surface="vmp"] .vmp-login__hero {
-  padding: var(--vmp-space-6);
-  border-radius: var(--vmp-radius-3xl);
-  border: 1px solid var(--vmp-border);
-  background:
-    linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.01));
-  backdrop-filter: blur(14px);
-}
-
-html[data-surface="vmp"] .vmp-brand {
-  display: flex;
-  gap: var(--vmp-space-4);
-  align-items: center;
-}
-
-html[data-surface="vmp"] .vmp-brand__mark {
-  width: 44px;
-  height: 44px;
-  border-radius: 999px;
-  border: 1px solid var(--vmp-border2);
-  background:
-    radial-gradient(circle at 30% 30%, rgba(255,255,255,.10), transparent 60%),
-    radial-gradient(circle at 70% 70%, rgba(255,255,255,.06), transparent 62%),
-    linear-gradient(135deg, rgba(255,255,255,.06), rgba(255,255,255,.02));
-}
-
-html[data-surface="vmp"] .vmp-brand__name {
-  font-family: "Liter", ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-  letter-spacing: -0.02em;
-  font-size: var(--vmp-font-xl);
-  font-weight: 300;
-  color: var(--vmp-text);
-}
-
-html[data-surface="vmp"] .vmp-brand__sub {
-  margin-top: 2px;
-  font-size: var(--vmp-font-xs);
-  color: var(--vmp-muted);
-}
-
-html[data-surface="vmp"] .vmp-login__title {
-  margin-top: var(--vmp-space-6);
-  font-family: "Liter", ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-  font-size: var(--vmp-font-4xl);
-  line-height: 1.05;
-  letter-spacing: -0.03em;
-  font-weight: 300;
-}
-
-html[data-surface="vmp"] .vmp-login__lead {
-  margin-top: var(--vmp-space-4);
-  max-width: 56ch;
-  color: var(--vmp-muted);
-  font-size: var(--vmp-font-sm);
-  line-height: 1.75;
-}
-
-html[data-surface="vmp"] .vmp-login__chips {
-  margin-top: var(--vmp-space-5);
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--vmp-space-2);
-}
-
-html[data-surface="vmp"] .vmp-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: .35rem;
-  padding: .35rem .55rem;
-  border-radius: 999px;
-  border: 1px solid var(--vmp-border);
-  background: rgba(255,255,255,.03);
-  font-size: var(--vmp-font-xs);
-  color: var(--vmp-muted);
-}
-
-html[data-surface="vmp"] .vmp-chip--mono {
-  font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
-  letter-spacing: .01em;
-}
-
-html[data-surface="vmp"] .vmp-chip--ok {
-  border-color: rgba(86,255,184,.22);
-  background: rgba(86,255,184,.06);
-  color: rgba(86,255,184,.92);
-}
-
-html[data-surface="vmp"] .vmp-ritual {
-  margin-top: var(--vmp-space-6);
-  border-radius: var(--vmp-radius-2xl);
-  border: 1px solid var(--vmp-border);
-  background: rgba(255,255,255,.02);
-  padding: var(--vmp-space-4);
-}
-
-html[data-surface="vmp"] .vmp-ritual__row {
-  display: grid;
-  grid-template-columns: 120px 1fr;
-  gap: var(--vmp-space-4);
-  padding: var(--vmp-space-2) 0;
-}
-
-@media (max-width: 520px) {
-  html[data-surface="vmp"] .vmp-ritual__row {
-    grid-template-columns: 1fr;
-    gap: var(--vmp-space-2);
-  }
-}
-
-html[data-surface="vmp"] .vmp-ritual__label {
-  font-size: var(--vmp-font-xs);
-  color: var(--vmp-subtle);
-  letter-spacing: .08em;
-  text-transform: uppercase;
-}
-
-html[data-surface="vmp"] .vmp-ritual__value {
-  font-size: var(--vmp-font-sm);
-  color: var(--vmp-text);
-  line-height: 1.6;
-}
-
-html[data-surface="vmp"] .vmp-login__footerline {
-  margin-top: var(--vmp-space-6);
-  font-size: var(--vmp-font-xs);
-}
-
-/* Panel card: gradient border glass (no box-shadow) */
-html[data-surface="vmp"] .vmp-login__panel {
-  display: grid;
-  gap: var(--vmp-space-4);
-}
-
-html[data-surface="vmp"] .vmp-login__card {
-  border-radius: var(--vmp-radius-3xl);
-  border: 1px solid transparent;
-  background:
-    linear-gradient(var(--vmp-bg), var(--vmp-bg)) padding-box,
-    linear-gradient(135deg, rgba(237,237,237,.20), rgba(237,237,237,.06), rgba(237,237,237,.16)) border-box;
-  padding: var(--vmp-space-5);
-  backdrop-filter: blur(16px);
-}
-
-html[data-surface="vmp"] .vmp-login__cardhead {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--vmp-space-4);
-}
-
-html[data-surface="vmp"] .vmp-status {
-  display: inline-flex;
-  align-items: center;
-  gap: .6rem;
-  padding: .45rem .7rem;
-  border-radius: 999px;
-  border: 1px solid var(--vmp-border);
-  background: rgba(255,255,255,.02);
-  font-size: var(--vmp-font-xs);
-  color: var(--vmp-muted);
-}
-
-html[data-surface="vmp"] .vmp-status__dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 999px;
-  background: rgba(86,255,184,.9);
-}
-
-html[data-surface="vmp"] .vmp-steps {
-  list-style: none;
-  display: flex;
-  gap: .4rem;
-  padding: 0;
-  margin: 0;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-}
-
-html[data-surface="vmp"] .vmp-step {
-  font-size: var(--vmp-font-xs);
-  color: var(--vmp-subtle);
-  border: 1px solid var(--vmp-border);
-  background: rgba(255,255,255,.02);
-  padding: .35rem .55rem;
-  border-radius: 999px;
-}
-
-html[data-surface="vmp"] .vmp-step.is-on {
-  color: var(--vmp-text);
-  border-color: var(--vmp-border2);
-  background: rgba(255,255,255,.04);
-}
-
-html[data-surface="vmp"] .vmp-divider {
-  height: 1px;
-  background: var(--vmp-border);
-  margin: var(--vmp-space-4) 0;
-}
-
-html[data-surface="vmp"] .vmp-login__form {
-  display: grid;
-  gap: var(--vmp-space-4);
-}
-
-html[data-surface="vmp"] .vmp-field__top {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--vmp-space-3);
-  margin-bottom: var(--vmp-space-2);
-}
-
-html[data-surface="vmp"] .vmp-label {
-  font-size: var(--vmp-font-xs);
-  color: var(--vmp-muted);
-  letter-spacing: .02em;
-}
-
-html[data-surface="vmp"] .vmp-hint {
-  font-size: var(--vmp-font-xs);
-}
-
-html[data-surface="vmp"] .vmp-inline-actions {
-  display: inline-flex;
-  gap: var(--vmp-space-2);
-  align-items: center;
-}
-
-html[data-surface="vmp"] .vmp-linkbtn {
-  appearance: none;
-  background: transparent;
-  border: 0;
-  padding: 0;
-  font-size: var(--vmp-font-xs);
-  color: var(--vmp-muted);
-  text-decoration: underline;
-  text-decoration-thickness: 1px;
-  text-underline-offset: 2px;
-}
-
-html[data-surface="vmp"] .vmp-linkbtn:hover {
-  color: var(--vmp-text);
-  text-decoration-color: var(--vmp-subtle);
-}
-
-html[data-surface="vmp"] .vmp-grid2 {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--vmp-space-4);
-}
-
-@media (max-width: 720px) {
-  html[data-surface="vmp"] .vmp-grid2 { grid-template-columns: 1fr; }
-}
-
-/* Segmented control */
-html[data-surface="vmp"] .vmp-segment {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 1px;
-  border: 1px solid var(--vmp-border);
-  border-radius: var(--vmp-radius-xl);
-  overflow: hidden;
-  background: rgba(255,255,255,.02);
-}
-
-html[data-surface="vmp"] .vmp-segment__btn {
-  appearance: none;
-  border: 0;
-  padding: .75rem .8rem;
-  background: rgba(255,255,255,.02);
-  color: var(--vmp-muted);
-  font-size: var(--vmp-font-sm);
-  font-weight: 300;
-  cursor: pointer;
-}
-
-html[data-surface="vmp"] .vmp-segment__btn:hover {
-  background: rgba(255,255,255,.05);
-  color: var(--vmp-text);
-}
-
-html[data-surface="vmp"] .vmp-segment__btn.is-selected {
-  background: rgba(255,255,255,.08);
-  color: var(--vmp-text);
-}
-
-/* Check row */
-html[data-surface="vmp"] .vmp-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: var(--vmp-space-4);
-  flex-wrap: wrap;
-}
-
-html[data-surface="vmp"] .vmp-check {
-  display: inline-flex;
-  gap: .6rem;
-  align-items: center;
-  cursor: pointer;
-}
-
-html[data-surface="vmp"] .vmp-check__box {
-  width: 16px;
-  height: 16px;
-  accent-color: rgba(237,237,237,.85);
-}
-
-html[data-surface="vmp"] .vmp-check__text {
-  font-size: var(--vmp-font-xs);
-}
-
-/* Keycaps */
-html[data-surface="vmp"] .vmp-kbd {
-  display: inline-flex;
-  align-items: center;
-  padding: .18rem .45rem;
-  border-radius: .55rem;
-  border: 1px solid var(--vmp-border);
-  background: rgba(255,255,255,.02);
-  font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
-  font-size: .72rem;
-  color: var(--vmp-muted);
-}
-
-/* Result area */
-html[data-surface="vmp"] .vmp-login__result {
-  min-height: 18px;
-}
-
-html[data-surface="vmp"] .vmp-login__legal {
-  margin: 0;
-  font-size: var(--vmp-font-xs);
-  line-height: 1.6;
-}
-
-/* Input focus luxury: border + subtle "frame" without shadow */
-html[data-surface="vmp"] .vmp-field:focus-within .vmp-label {
-  color: var(--vmp-text);
-}
-
-html[data-surface="vmp"] .vmp-field:focus-within .vmp-hint {
-  color: var(--vmp-subtle);
-}
-
-/* ===========================================================
-   VMP LOGIN — VAULT MODE (Finance / Bank-grade / No Shadow)
-   Apply by adding: .vmp-login--vault
-=========================================================== */
-
-html[data-surface="vmp"] .vmp-login--vault {
-  --vault-grid: rgba(237,237,237,.06);
-  --vault-line: rgba(237,237,237,.10);
-  --vault-line2: rgba(237,237,237,.16);
-  --vault-ink: rgba(237,237,237,.92);
-  --vault-ink-dim: rgba(237,237,237,.66);
-  --vault-ink-faint: rgba(237,237,237,.38);
-}
-
-/* Background becomes "vault wall": grid + microprint + spotlight (no dots) */
-html[data-surface="vmp"] .vmp-login--vault .vmp-login__bg {
-  inset: -30vmax;
-  opacity: 1;
-  animation: none;
-  background:
-    radial-gradient(900px 620px at 20% 20%, rgba(255,255,255,.06), transparent 60%),
-    radial-gradient(760px 520px at 85% 40%, rgba(255,255,255,.045), transparent 65%),
-    linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.01)),
-    linear-gradient(90deg, var(--vault-grid) 1px, transparent 1px),
-    linear-gradient(0deg, var(--vault-grid) 1px, transparent 1px),
-    repeating-linear-gradient(
-      0deg,
-      rgba(255,255,255,.00) 0px,
-      rgba(255,255,255,.00) 10px,
-      rgba(255,255,255,.018) 11px,
-      rgba(255,255,255,.00) 12px
-    );
-  background-size:
-    auto,
-    auto,
-    auto,
-    28px 28px,
-    28px 28px,
-    auto;
-}
-
-/* Make the hero feel like a "ledger cover" */
-html[data-surface="vmp"] .vmp-login--vault .vmp-login__hero {
-  border-color: var(--vault-line);
-  background:
-    linear-gradient(180deg, rgba(255,255,255,.025), rgba(255,255,255,.01));
-  backdrop-filter: blur(18px);
-}
-
-/* Brand mark becomes "seal" */
-html[data-surface="vmp"] .vmp-login--vault .vmp-brand__mark {
-  border-color: var(--vault-line2);
-  background:
-    radial-gradient(circle at 35% 35%, rgba(255,255,255,.08), transparent 62%),
-    radial-gradient(circle at 70% 70%, rgba(255,255,255,.05), transparent 64%),
-    linear-gradient(135deg, rgba(255,255,255,.05), rgba(255,255,255,.015));
-}
-
-/* Title/lead: quieter, more boardroom */
-html[data-surface="vmp"] .vmp-login--vault .vmp-login__title {
-  font-size: clamp(2rem, 3.6vw, 3rem);
-  letter-spacing: -0.02em;
-}
-
-html[data-surface="vmp"] .vmp-login--vault .vmp-login__lead {
-  color: var(--vault-ink-dim);
-}
-
-/* Chips: more "stamp" less "badge" */
-html[data-surface="vmp"] .vmp-login--vault .vmp-chip {
-  border-color: var(--vault-line);
-  background: rgba(255,255,255,.02);
-  color: var(--vault-ink-dim);
-}
-
-html[data-surface="vmp"] .vmp-login--vault .vmp-chip--ok {
-  border-color: rgba(86,255,184,.18);
-  background: rgba(86,255,184,.05);
-  color: rgba(86,255,184,.86);
-}
-
-/* Ritual box becomes "case note" */
-html[data-surface="vmp"] .vmp-login--vault .vmp-ritual {
-  border-color: var(--vault-line);
-  background:
-    linear-gradient(180deg, rgba(255,255,255,.02), rgba(255,255,255,.01));
-}
-
-html[data-surface="vmp"] .vmp-login--vault .vmp-ritual__label {
-  color: var(--vault-ink-faint);
-  letter-spacing: .10em;
-}
-
-/* Right card: vault frame using layered borders (no shadow) */
-html[data-surface="vmp"] .vmp-login--vault .vmp-login__card {
-  border-radius: var(--vmp-radius-3xl);
-  border: 1px solid transparent;
-  background:
-    /* inner panel */
-    linear-gradient(var(--vmp-bg), var(--vmp-bg)) padding-box,
-    /* vault frame */
-    linear-gradient(135deg,
-      rgba(237,237,237,.22),
-      rgba(237,237,237,.06),
-      rgba(237,237,237,.18)
-    ) border-box;
-  position: relative;
-}
-
-html[data-surface="vmp"] .vmp-login--vault .vmp-login__card::before {
-  content: "";
-  position: absolute;
-  inset: 10px;
-  border-radius: calc(var(--vmp-radius-3xl) - 10px);
-  border: 1px solid rgba(237,237,237,.08);
-  pointer-events: none;
-}
-
-html[data-surface="vmp"] .vmp-login--vault .vmp-login__card::after {
-  content: "";
-  position: absolute;
-  inset: 18px;
-  border-radius: calc(var(--vmp-radius-3xl) - 18px);
-  border: 1px solid rgba(237,237,237,.05);
-  pointer-events: none;
-}
-
-/* Card head status: feels like a "vault lock indicator" */
-html[data-surface="vmp"] .vmp-login--vault .vmp-status {
-  border-color: var(--vault-line);
-  background: rgba(255,255,255,.018);
-  color: var(--vault-ink-dim);
-}
-
-html[data-surface="vmp"] .vmp-login--vault .vmp-status__dot {
-  background: rgba(86,255,184,.85);
-}
-
-/* Steps: turn into ledger tabs */
-html[data-surface="vmp"] .vmp-login--vault .vmp-step {
-  border-color: rgba(237,237,237,.09);
-  background: rgba(255,255,255,.015);
-  color: var(--vault-ink-faint);
-  font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
-  letter-spacing: .02em;
-}
-
-html[data-surface="vmp"] .vmp-login--vault .vmp-step.is-on {
-  border-color: rgba(237,237,237,.18);
-  background: rgba(255,255,255,.04);
-  color: var(--vault-ink);
-}
-
-/* Vault plaque (optional HTML snippet) */
-html[data-surface="vmp"] .vmp-login--vault .vmp-vault-plaque {
-  display: inline-flex;
-  align-items: baseline;
-  gap: .5rem;
-  padding: .4rem .65rem;
-  border-radius: 999px;
-  border: 1px solid rgba(237,237,237,.10);
-  background: rgba(255,255,255,.015);
-  color: var(--vault-ink-dim);
-}
-
-html[data-surface="vmp"] .vmp-login--vault .vmp-vault-plaque__k {
-  font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
-  font-size: var(--vmp-font-xs);
-  letter-spacing: .12em;
-  text-transform: uppercase;
-  color: var(--vault-ink-faint);
-}
-
-html[data-surface="vmp"] .vmp-login--vault .vmp-vault-plaque__v {
-  font-size: var(--vmp-font-xs);
-  letter-spacing: .02em;
-}
-
-/* Inputs: "engraved frame" focus without glow/shadow */
-html[data-surface="vmp"] .vmp-login--vault .vmp-input {
-  border-color: rgba(237,237,237,.10);
-  background: rgba(255,255,255,.015);
-}
-
-html[data-surface="vmp"] .vmp-login--vault .vmp-input:focus {
-  border-color: rgba(237,237,237,.22);
-  outline: 2px solid rgba(237,237,237,.14);
-  outline-offset: 2px;
-  background: rgba(255,255,255,.02);
-}
-
-/* Explicit success/error (bank-grade, minimal) */
-html[data-surface="vmp"] .vmp-login--vault .vmp-input.vmp-input-success {
-  border-color: rgba(86,255,184,.22);
-  background: rgba(86,255,184,.04);
-}
-
-html[data-surface="vmp"] .vmp-login--vault .vmp-input.vmp-input-error {
-  border-color: rgba(255,100,100,.28);
-  background: rgba(255,100,100,.04);
-}
-
-/* Segmented control: becomes "vault toggle" */
-html[data-surface="vmp"] .vmp-login--vault .vmp-segment {
-  border-color: rgba(237,237,237,.10);
-  background: rgba(255,255,255,.012);
-}
-
-html[data-surface="vmp"] .vmp-login--vault .vmp-segment__btn {
-  background: rgba(255,255,255,.012);
-  color: var(--vault-ink-dim);
-}
-
-html[data-surface="vmp"] .vmp-login--vault .vmp-segment__btn:hover {
-  background: rgba(255,255,255,.03);
-}
-
-html[data-surface="vmp"] .vmp-login--vault .vmp-segment__btn.is-selected {
-  background: rgba(255,255,255,.06);
-  color: var(--vault-ink);
-  /* subtle "engraving" line */
-  border-bottom: 1px solid rgba(237,237,237,.18);
-}
-
-/* Primary CTA: "vault door button" (no glow, no shadow) */
-html[data-surface="vmp"] .vmp-login--vault .vmp-btn-primary {
-  border-color: rgba(237,237,237,.16);
-  background:
-    linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.02));
-  color: var(--vault-ink);
-}
-
-html[data-surface="vmp"] .vmp-login--vault .vmp-btn-primary:hover {
-  background:
-    linear-gradient(180deg, rgba(255,255,255,.09), rgba(255,255,255,.03));
-  border-color: rgba(237,237,237,.22);
-}
-
-html[data-surface="vmp"] .vmp-login--vault .vmp-btn-primary:disabled {
-  opacity: .55;
-  border-color: rgba(237,237,237,.10);
-  background:
-    linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.015));
-}
-
-/* Links: more legal-doc vibe */
-html[data-surface="vmp"] .vmp-login--vault .vmp-linkbtn {
-  color: var(--vault-ink-dim);
-  text-decoration-color: rgba(237,237,237,.18);
-}
-
-html[data-surface="vmp"] .vmp-login--vault .vmp-linkbtn:hover {
-  color: var(--vault-ink);
-  text-decoration-color: rgba(237,237,237,.30);
-}
-
-/* Vault door "latch" animation on successful validation (no shadow, still calm) */
-html[data-surface="vmp"] .vmp-login--vault .vmp-login__card.is-ready {
-  border-color: rgba(237,237,237,.24);
-  transition: border-color 0.4s ease;
-}
-
-html[data-surface="vmp"] .vmp-login--vault .vmp-login__card.is-ready::before {
-  border-color: rgba(237,237,237,.12);
-  transition: border-color 0.4s ease 0.1s;
-}
-
-html[data-surface="vmp"] .vmp-login--vault .vmp-login__card.is-ready::after {
-  border-color: rgba(237,237,237,.08);
-  transition: border-color 0.4s ease 0.2s;
-  animation: vmp-vault-latch 2s ease-in-out infinite;
-}
-
-@keyframes vmp-vault-latch {
-  0%, 100% {
-    border-color: rgba(237,237,237,.08);
-  }
-  50% {
-    border-color: rgba(86,255,184,.12);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  html[data-surface="vmp"] .vmp-login--vault .vmp-login__card.is-ready::after {
-    animation: none;
-  }
-}
-
-/* Status dot pulses subtly when ready */
-html[data-surface="vmp"] .vmp-login--vault .vmp-login__card.is-ready .vmp-status__dot {
-  animation: vmp-vault-status-pulse 2.5s ease-in-out infinite;
-}
-
-@keyframes vmp-vault-status-pulse {
-  0%, 100% {
-    opacity: 0.85;
-    transform: scale(1);
-  }
-  50% {
-    opacity: 1;
-    transform: scale(1.08);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  html[data-surface="vmp"] .vmp-login--vault .vmp-login__card.is-ready .vmp-status__dot {
-    animation: none;
-  }
-}
-
-/* "No bold" clamp for any accidental strong/b tags inside the login */
-html[data-surface="vmp"] .vmp-login--vault strong,
-html[data-surface="vmp"] .vmp-login--vault b {
-  font-weight: 300 !important;
-}
-
-/* ===========================================================
-   VMP LOGIN — NOIR PROTOCOL (The Architect's Gate)
-   Black & White high-contrast experience
-=========================================================== */
-
-/* Hide sidebar for full-screen login */
-html[data-surface="vmp"] .vmp-login--noir {
-  position: fixed;
-  inset: 0;
-  width: 100vw;
-  height: 100vh;
-  z-index: 9999;
-  overflow: auto;
-  background: var(--vmp-bg);
-}
-
-/* Hide sidebar when login is present */
-html[data-surface="vmp"] body:has(.vmp-login--noir) aside {
-  display: none !important;
-}
-
-html[data-surface="vmp"] body:has(.vmp-login--noir) main {
-  width: 100% !important;
-  max-width: 100% !important;
-  padding: 0 !important;
-}
-
-/* Noir grid overlay (masked radial gradient) */
-html[data-surface="vmp"] .noir-grid-overlay {
-  position: absolute;
-  inset: 0;
-  background-image: 
-    linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
-  background-size: 100px 100px;
-  pointer-events: none;
-  z-index: 0;
-  mask-image: radial-gradient(circle at center, black 40%, transparent 100%);
-}
-
-/* Vertical ticker text */
-html[data-surface="vmp"] .vertical-ticker {
-  writing-mode: vertical-rl;
-  text-orientation: mixed;
-  position: absolute;
-  left: var(--vmp-space-4);
-  bottom: var(--vmp-space-8);
-  font-size: var(--vmp-font-xs);
-  color: var(--vmp-subtle);
-  letter-spacing: 0.2em;
-  opacity: 0.5;
-  z-index: 1;
-}
-
-/* Noir wrap layout */
-html[data-surface="vmp"] .vmp-login__wrap--noir {
-  width: 100%;
-  position: relative;
-  z-index: 10;
-  display: grid;
-  grid-template-columns: 1.05fr 0.95fr;
-  gap: var(--vmp-space-6);
-  align-items: start;
-  padding: var(--vmp-space-6);
-  max-width: 1400px;
-  margin: 0 auto;
-  min-height: 100vh;
-  align-content: center;
-}
-
-@media (max-width: 980px) {
-  html[data-surface="vmp"] .vmp-login__wrap--noir {
-    grid-template-columns: 1fr;
-  }
-}
-
-/* Noir hero section */
-html[data-surface="vmp"] .vmp-login__hero--noir {
-  padding: var(--vmp-space-6);
-  border-radius: var(--vmp-radius-3xl);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background: linear-gradient(180deg, rgba(255,255,255,.025), rgba(255,255,255,.01));
-  backdrop-filter: blur(18px);
-  min-height: 500px;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-}
-
-/* Noir brand styling */
-html[data-surface="vmp"] .vmp-brand--noir {
-  display: flex;
-  gap: var(--vmp-space-4);
-  align-items: center;
-}
-
-html[data-surface="vmp"] .vmp-brand__mark--noir {
-  width: 44px;
-  height: 44px;
-  border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  background: linear-gradient(135deg, rgba(255,255,255,.05), rgba(255,255,255,.015));
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: rgba(255, 255, 255, 0.8);
-}
-
-html[data-surface="vmp"] .vmp-brand__name--noir {
-  font-family: "Liter", ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-  letter-spacing: -0.02em;
-  font-size: var(--vmp-font-xl);
-  font-weight: 300;
-  color: rgba(255, 255, 255, 0.92);
-}
-
-html[data-surface="vmp"] .vmp-brand__sub--noir {
-  margin-top: 2px;
-  font-size: var(--vmp-font-xs);
-  color: rgba(255, 255, 255, 0.5);
-}
-
-/* Noir content area */
-html[data-surface="vmp"] .vmp-login__content--noir {
-  margin-top: var(--vmp-space-12);
-  margin-bottom: auto;
-  position: relative;
-  z-index: 10;
-}
-
-html[data-surface="vmp"] .vmp-chip--noir {
-  margin-bottom: var(--vmp-space-6);
-  border-color: rgba(255, 255, 255, 0.1);
-  background: rgba(255, 255, 255, 0.02);
-  color: rgba(255, 255, 255, 0.66);
-}
-
-/* Display shock text */
-html[data-surface="vmp"] .display-shock {
-  font-size: clamp(3rem, 8vw, 6rem);
-  line-height: 0.9;
-  letter-spacing: -0.04em;
-  margin-left: -4px;
-  color: rgba(255, 255, 255, 1);
-  font-weight: 300;
-}
-
-html[data-surface="vmp"] .vmp-title-italic {
-  font-style: italic;
-  color: rgba(255, 255, 255, 0.5);
-}
-
-html[data-surface="vmp"] .vmp-login__lead--noir {
-  margin-top: var(--vmp-space-6);
-  max-width: 56ch;
-  color: rgba(255, 255, 255, 0.66);
-  font-size: var(--vmp-font-sm);
-  line-height: 1.75;
-}
-
-/* Noir ritual box */
-html[data-surface="vmp"] .vmp-ritual--noir {
-  margin-top: var(--vmp-space-8);
-  border-color: rgba(255, 255, 255, 0.1);
-  background: linear-gradient(180deg, rgba(255,255,255,.02), rgba(255,255,255,.01));
-}
-
-html[data-surface="vmp"] .vmp-ritual__row--border {
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
-  padding-top: var(--vmp-space-4);
-}
-
-html[data-surface="vmp"] .vmp-ritual__value--status {
-  display: flex;
-  align-items: center;
-  gap: var(--vmp-space-2);
-}
-
-html[data-surface="vmp"] .vmp-status-indicator {
-  width: 6px;
-  height: 6px;
-  border-radius: 999px;
-  background: rgba(86, 255, 184, 0.9);
-}
-
-/* Noir panel */
-html[data-surface="vmp"] .vmp-login__panel--noir {
-  display: grid;
-  gap: var(--vmp-space-4);
-}
-
-/* Noir card */
-html[data-surface="vmp"] .vmp-login__card--noir {
-  border-color: rgba(255, 255, 255, 0.1);
-  background: linear-gradient(var(--vmp-bg), var(--vmp-bg)) padding-box,
-    linear-gradient(135deg, rgba(255,255,255,.22), rgba(255,255,255,.06), rgba(255,255,255,.18)) border-box;
-}
-
-html[data-surface="vmp"] .vmp-login__cardhead--noir {
-  margin-bottom: var(--vmp-space-8);
-}
-
-html[data-surface="vmp"] .vmp-status--noir {
-  border-color: rgba(255, 255, 255, 0.1);
-  background: rgba(255, 255, 255, 0.018);
-  color: rgba(255, 255, 255, 0.66);
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  font-size: 10px;
-}
-
-html[data-surface="vmp"] .vmp-status__text {
-  font-size: 10px;
-}
-
-html[data-surface="vmp"] .vmp-steps--noir {
-  gap: 0.4rem;
-}
-
-html[data-surface="vmp"] .vmp-steps--noir .vmp-step {
-  border-color: rgba(255, 255, 255, 0.09);
-  background: rgba(255, 255, 255, 0.015);
-  color: rgba(255, 255, 255, 0.38);
-}
-
-html[data-surface="vmp"] .vmp-steps--noir .vmp-step.is-on {
-  border-color: rgba(255, 255, 255, 0.18);
-  background: rgba(255, 255, 255, 0.04);
-  color: rgba(255, 255, 255, 0.92);
-}
-
-/* Noir segment control */
-html[data-surface="vmp"] .vmp-segment--noir {
-  margin-bottom: var(--vmp-space-6);
-  border-color: rgba(255, 255, 255, 0.1);
-  background: rgba(255, 255, 255, 0.012);
-}
-
-html[data-surface="vmp"] .vmp-segment--noir .vmp-segment__btn {
-  background: rgba(255, 255, 255, 0.012);
-  color: rgba(255, 255, 255, 0.66);
-}
-
-html[data-surface="vmp"] .vmp-segment--noir .vmp-segment__btn:hover {
-  background: rgba(255, 255, 255, 0.03);
-}
-
-html[data-surface="vmp"] .vmp-segment--noir .vmp-segment__btn.is-selected {
-  background: rgba(255, 255, 255, 0.06);
-  color: rgba(255, 255, 255, 0.92);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.18);
-}
-
-/* Noir form fields */
-html[data-surface="vmp"] .vmp-form-fields {
-  display: grid;
-  gap: var(--vmp-space-5);
-}
-
-html[data-surface="vmp"] .vmp-field--noir {
-  margin-bottom: 0;
-}
-
-html[data-surface="vmp"] .vmp-input--noir {
-  border-color: rgba(255, 255, 255, 0.1);
-  background: rgba(255, 255, 255, 0.015);
-  color: rgba(255, 255, 255, 0.92);
-  font-size: var(--vmp-font-lg);
-  padding: var(--vmp-space-3) var(--vmp-space-4);
-}
-
-html[data-surface="vmp"] .vmp-input--noir:focus {
-  border-color: rgba(255, 255, 255, 0.22);
-  outline: 2px solid rgba(255, 255, 255, 0.14);
-  outline-offset: 2px;
-  background: rgba(255, 255, 255, 0.02);
-}
-
-html[data-surface="vmp"] .vmp-input--noir::placeholder {
-  color: rgba(255, 255, 255, 0.38);
-}
-
-html[data-surface="vmp"] .vmp-input--password {
-  letter-spacing: 0.1em;
-  font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
-}
-
-/* Noir SSO section */
-html[data-surface="vmp"] .vmp-form-sso {
-  padding: var(--vmp-space-8) 0;
-  text-align: center;
-}
-
-html[data-surface="vmp"] .vmp-btn-oauth--noir {
-  width: 100%;
-  justify-content: center;
-  background: hsl(0, 0%, 10%);
-  border-color: rgba(255, 255, 255, 0.20);
-  color: rgba(255, 255, 255, 0.92);
-}
-
-html[data-surface="vmp"] .vmp-btn-oauth--noir:hover {
-  background: hsl(0, 0%, 12%);
-  border-color: rgba(255, 255, 255, 0.30);
-}
-
-/* Noir form footer */
-html[data-surface="vmp"] .vmp-form-footer--noir {
-  margin-top: var(--vmp-space-8);
-  padding-top: var(--vmp-space-6);
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
-}
-
-html[data-surface="vmp"] .vmp-row--noir {
-  margin-bottom: var(--vmp-space-6);
-}
-
-html[data-surface="vmp"] .vmp-check--noir .vmp-check__text {
-  color: rgba(255, 255, 255, 0.5);
-}
-
-html[data-surface="vmp"] .vmp-check--noir .vmp-check__box {
-  accent-color: rgba(255, 255, 255, 0.85);
-  border-color: rgba(255, 255, 255, 0.20);
-  background: rgba(255, 255, 255, 0.05);
-}
-
-/* Noir button */
-html[data-surface="vmp"] .vmp-btn--noir {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  position: relative;
-  overflow: hidden;
-  background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.02));
-  border-color: rgba(255, 255, 255, 0.16);
-  color: rgba(255, 255, 255, 0.92);
-}
-
-html[data-surface="vmp"] .vmp-btn--noir:hover {
-  background: linear-gradient(180deg, rgba(255,255,255,.09), rgba(255,255,255,.03));
-  border-color: rgba(255, 255, 255, 0.22);
-}
-
-html[data-surface="vmp"] .vmp-btn--noir:disabled {
-  opacity: 0.55;
-  border-color: rgba(255, 255, 255, 0.10);
-  background: linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.015));
-}
-
-html[data-surface="vmp"] .vmp-btn-icon {
-  width: 20px;
-  height: 20px;
-  transition: transform var(--vmp-transition-base);
-}
-
-html[data-surface="vmp"] .vmp-btn--noir:hover .vmp-btn-icon {
-  transform: translateX(4px);
-}
-
-/* Noir footer line */
-html[data-surface="vmp"] .vmp-login__footerline--noir {
-  text-align: center;
-  color: rgba(255, 255, 255, 0.20);
-  font-size: 10px;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  margin-top: var(--vmp-space-4);
-}
-
-/* ==========================================================================
-   LANDING PAGE (Full-Width Layout)
-   ========================================================================== */
-
-/* Hide sidebar for landing page */
-html[data-surface="vmp"] body:has(.vmp-landing) aside {
-  display: none !important;
-}
-
-html[data-surface="vmp"] body:has(.vmp-landing) main {
-  width: 100% !important;
-  max-width: 100% !important;
-  padding: 0 !important;
-}
-
-/* Landing Page Base */
-html[data-surface="vmp"] .vmp-landing {
-  width: 100%;
-  min-height: 100vh;
-  background: var(--vmp-bg);
-}
-
-/* Header */
-html[data-surface="vmp"] .vmp-landing-header {
-  position: sticky;
-  top: 0;
-  z-index: 100;
-  background: var(--vmp-bg);
-  border-bottom: 1px solid var(--vmp-border);
-  padding: var(--vmp-space-4) 0;
-}
-
-html[data-surface="vmp"] .vmp-landing-nav {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--vmp-space-6);
-}
-
-html[data-surface="vmp"] .vmp-landing-logo {
-  display: flex;
-  align-items: center;
-  gap: var(--vmp-space-3);
-}
-
-html[data-surface="vmp"] .vmp-brand-mark--landing {
-  width: 28px;
-  height: 28px;
-  border-radius: var(--vmp-radius-md);
-  background: var(--vmp-panel);
-  display: grid;
-  place-items: center;
-  font-size: var(--vmp-font-lg);
-}
-
-html[data-surface="vmp"] .vmp-landing-nav-links {
-  display: flex;
-  gap: var(--vmp-space-6);
-  flex: 1;
-  justify-content: center;
-}
-
-html[data-surface="vmp"] .vmp-landing-nav-link {
-  color: var(--vmp-text);
-  text-decoration: none;
-  font-size: var(--vmp-font-sm);
-  transition: color var(--vmp-transition-base);
-}
-
-html[data-surface="vmp"] .vmp-landing-nav-link:hover {
-  color: var(--vmp-brand);
-}
-
-/* Status Bar */
-html[data-surface="vmp"] .vmp-landing-status-bar {
-  background: var(--vmp-panel);
-  border-bottom: 1px solid var(--vmp-border);
-  padding: var(--vmp-space-3) 0;
-}
-
-html[data-surface="vmp"] .vmp-landing-status-content {
-  display: flex;
-  align-items: center;
-  gap: var(--vmp-space-4);
-}
-
-html[data-surface="vmp"] .vmp-landing-status-item {
-  display: flex;
-  align-items: center;
-  gap: var(--vmp-space-2);
-}
-
-html[data-surface="vmp"] .vmp-landing-status-divider {
-  width: 1px;
-  height: 12px;
-  background: var(--vmp-border);
-}
-
-html[data-surface="vmp"] .vmp-landing-status-spacer {
-  flex: 1;
-}
-
-html[data-surface="vmp"] .vmp-landing-compliance-badges {
-  display: flex;
-  gap: var(--vmp-space-2);
-}
-
-/* Hero Section */
-html[data-surface="vmp"] .vmp-landing-hero {
-  padding: var(--vmp-space-16) 0;
-}
-
-html[data-surface="vmp"] .vmp-landing-hero-content {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--vmp-space-12);
-  align-items: start;
-}
-
-html[data-surface="vmp"] .vmp-landing-hero-title {
-  margin-bottom: var(--vmp-space-6);
-  line-height: var(--vmp-line-height-tight);
-}
-
-html[data-surface="vmp"] .vmp-landing-hero-subtitle {
-  margin-bottom: var(--vmp-space-8);
-  max-width: 64ch;
-}
-
-html[data-surface="vmp"] .vmp-landing-hero-tagline {
-  display: flex;
-  align-items: center;
-  gap: var(--vmp-space-4);
-}
-
-html[data-surface="vmp"] .vmp-landing-hero-divider {
-  width: 64px;
-  height: 1px;
-  background: var(--vmp-border);
-}
-
-html[data-surface="vmp"] .vmp-landing-features {
-  display: flex;
-  flex-direction: column;
-  gap: var(--vmp-space-4);
-  margin: var(--vmp-space-6) 0;
-}
-
-html[data-surface="vmp"] .vmp-landing-feature-item {
-  display: flex;
-  align-items: start;
-  gap: var(--vmp-space-3);
-}
-
-/* Metrics Section */
-html[data-surface="vmp"] .vmp-landing-metrics {
-  padding: var(--vmp-space-16) 0;
-  background: var(--vmp-panel);
-}
-
-html[data-surface="vmp"] .vmp-landing-metrics-grid {
-  display: grid;
-  grid-template-columns: 1fr 2fr;
-  gap: var(--vmp-space-8);
-}
-
-html[data-surface="vmp"] .vmp-landing-metric-main {
-  padding: var(--vmp-space-8);
-}
-
-html[data-surface="vmp"] .vmp-landing-metric-value {
-  display: flex;
-  align-items: baseline;
-  gap: var(--vmp-space-2);
-  margin: var(--vmp-space-4) 0;
-}
-
-html[data-surface="vmp"] .vmp-landing-metric-unit {
-  font-size: var(--vmp-font-2xl);
-  color: var(--vmp-muted);
-}
-
-html[data-surface="vmp"] .vmp-landing-metric-bar {
-  height: 2px;
-  background: var(--vmp-border);
-  margin: var(--vmp-space-4) 0;
-  overflow: hidden;
-}
-
-html[data-surface="vmp"] .vmp-landing-metric-bar-fill {
-  height: 100%;
-  width: 98.7%;
-  background: var(--vmp-brand);
-}
-
-html[data-surface="vmp"] .vmp-landing-metrics-stats {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: var(--vmp-space-4);
-}
-
-html[data-surface="vmp"] .vmp-landing-stat-header {
-  display: flex;
-  align-items: center;
-  gap: var(--vmp-space-2);
-}
-
-/* Trusted By Section */
-html[data-surface="vmp"] .vmp-landing-trusted {
-  padding: var(--vmp-space-8) 0;
-  border-top: 1px solid var(--vmp-border);
-  border-bottom: 1px solid var(--vmp-border);
-}
-
-html[data-surface="vmp"] .vmp-landing-trusted-content {
-  display: flex;
-  align-items: center;
-  gap: var(--vmp-space-8);
-}
-
-html[data-surface="vmp"] .vmp-landing-trusted-logos {
-  display: flex;
-  gap: var(--vmp-space-8);
-  flex: 1;
-  justify-content: space-around;
-}
-
-html[data-surface="vmp"] .vmp-landing-trusted-logo {
-  font-size: var(--vmp-font-sm);
-  color: var(--vmp-muted);
-  font-weight: 300;
-}
-
-/* Capabilities Section */
-html[data-surface="vmp"] .vmp-landing-capabilities {
-  padding: var(--vmp-space-16) 0;
-}
-
-html[data-surface="vmp"] .vmp-landing-capabilities-header {
-  margin-bottom: var(--vmp-space-12);
-}
-
-html[data-surface="vmp"] .vmp-landing-capabilities-kicker {
-  display: flex;
-  align-items: center;
-  gap: var(--vmp-space-4);
-  margin-bottom: var(--vmp-space-6);
-}
-
-html[data-surface="vmp"] .vmp-landing-capabilities-title {
-  line-height: var(--vmp-line-height-tight);
-}
-
-html[data-surface="vmp"] .vmp-landing-capabilities-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: var(--vmp-space-6);
-}
-
-html[data-surface="vmp"] .vmp-landing-capability-card {
-  padding: var(--vmp-space-8);
-}
-
-html[data-surface="vmp"] .vmp-landing-capability-card-large {
-  grid-column: span 2;
-}
-
-html[data-surface="vmp"] .vmp-landing-capability-icon {
-  width: 40px;
-  height: 40px;
-  display: grid;
-  place-items: center;
-}
-
-html[data-surface="vmp"] .vmp-landing-capability-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--vmp-space-2);
-}
-
-/* CTA Section */
-html[data-surface="vmp"] .vmp-landing-cta {
-  padding: var(--vmp-space-16) 0;
-  background: var(--vmp-panel);
-  text-align: center;
-}
-
-html[data-surface="vmp"] .vmp-landing-cta-content {
-  max-width: 800px;
-  margin: 0 auto;
-}
-
-html[data-surface="vmp"] .vmp-landing-cta-status {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--vmp-space-2);
-  margin-bottom: var(--vmp-space-6);
-}
-
-html[data-surface="vmp"] .vmp-landing-cta-title {
-  margin-bottom: var(--vmp-space-6);
-  line-height: var(--vmp-line-height-tight);
-}
-
-html[data-surface="vmp"] .vmp-landing-cta-subtitle {
-  margin-bottom: var(--vmp-space-8);
-}
-
-html[data-surface="vmp"] .vmp-landing-cta-buttons {
-  display: flex;
-  gap: var(--vmp-space-4);
-  justify-content: center;
-  margin-bottom: var(--vmp-space-8);
-}
-
-html[data-surface="vmp"] .vmp-landing-cta-footer {
-  display: flex;
-  gap: var(--vmp-space-2);
-  justify-content: center;
-  align-items: center;
-}
-
-/* Footer */
-html[data-surface="vmp"] .vmp-landing-footer {
-  padding: var(--vmp-space-16) 0 var(--vmp-space-8);
-  border-top: 1px solid var(--vmp-border);
-}
-
-html[data-surface="vmp"] .vmp-landing-footer-content {
-  display: grid;
-  grid-template-columns: 1fr 2fr;
-  gap: var(--vmp-space-12);
-  margin-bottom: var(--vmp-space-12);
-}
-
-html[data-surface="vmp"] .vmp-landing-footer-links {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: var(--vmp-space-8);
-}
-
-html[data-surface="vmp"] .vmp-landing-footer-column {
-  display: flex;
-  flex-direction: column;
-}
-
-html[data-surface="vmp"] .vmp-landing-footer-nav {
-  display: flex;
-  flex-direction: column;
-  gap: var(--vmp-space-2);
-}
-
-html[data-surface="vmp"] .vmp-landing-footer-link {
-  color: var(--vmp-muted);
-  text-decoration: none;
-  font-size: var(--vmp-font-sm);
-  transition: color var(--vmp-transition-base);
-}
-
-html[data-surface="vmp"] .vmp-landing-footer-link:hover {
-  color: var(--vmp-text);
-}
-
-html[data-surface="vmp"] .vmp-landing-footer-bottom {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding-top: var(--vmp-space-8);
-  border-top: 1px solid var(--vmp-border);
-}
-
-html[data-surface="vmp"] .vmp-landing-footer-bottom-links {
-  display: flex;
-  gap: var(--vmp-space-4);
-}
-
-/* Responsive */
-@media (max-width: 1024px) {
-  html[data-surface="vmp"] .vmp-landing-hero-content {
-    grid-template-columns: 1fr;
-  }
-
-  html[data-surface="vmp"] .vmp-landing-metrics-grid {
-    grid-template-columns: 1fr;
-  }
-
-  html[data-surface="vmp"] .vmp-landing-metrics-stats {
-    grid-template-columns: repeat(2, 1fr);
-  }
-
-  html[data-surface="vmp"] .vmp-landing-capabilities-grid {
-    grid-template-columns: 1fr;
-  }
-
-  html[data-surface="vmp"] .vmp-landing-capability-card-large {
-    grid-column: span 1;
-  }
-
-  html[data-surface="vmp"] .vmp-landing-footer-content {
-    grid-template-columns: 1fr;
-  }
-
-  html[data-surface="vmp"] .vmp-landing-footer-links {
-    grid-template-columns: repeat(2, 1fr);
-  }
-
-  html[data-surface="vmp"] .vmp-landing-nav-links {
-    display: none;
-  }
-}
-
-@media (max-width: 640px) {
-  html[data-surface="vmp"] .vmp-landing-metrics-stats {
-    grid-template-columns: 1fr;
-  }
-
-  html[data-surface="vmp"] .vmp-landing-footer-links {
-    grid-template-columns: 1fr;
-  }
-
-  html[data-surface="vmp"] .vmp-landing-cta-buttons {
-    flex-direction: column;
-  }
-}
+/*
+ * FOUNDATION vs DESIGN SEPARATION:
+ * 
+ * Foundation Layer (Controlled - Data Presentation ONLY):
+ * - Typography hierarchy (.vmp-h*, .vmp-body, .vmp-label)
+ * - Spacing tokens (--vmp-space-*)
+ * - Semantic color tokens (--vmp-text, --vmp-ok, --vmp-danger)
+ * - Data presentation components (.vmp-table, .vmp-list)
+ * 
+ * Design Layer (Free Hand - Marketing & Creative):
+ * - Visual components (buttons, cards, modals, badges) - NO prescriptive templates
+ * - Marketing pages - Full freedom, no Foundation Layer constraints
+ * - Landing pages - Full freedom, no Foundation Layer constraints
+ * - Inline styles and <style> blocks - ALLOWED, no restrictions
+ * - Figma designs - Implement as-is, keep all visual design
+ * 
+ * NO CDS Template Design:
+ * - No component design system templates
+ * - No prescriptive component patterns
+ * - Visual components are free-form
+ * 
+ * NO SaaS Typical Design Model:
+ * - No typical SaaS design patterns enforced
+ * - No typical SaaS templates enforced
+ * - No prescriptive UI models enforced
+ * 
+ * Scope:
+ * - Foundation Layer: ONLY applies to data presentation contexts
+ * - Design Layer: Marketing and others have free hand, without control
+ */
 
 /* ==========================================================================
    END OF VMP DESIGN SYSTEM

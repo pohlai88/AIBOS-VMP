@@ -6,16 +6,19 @@ This directory contains Supabase Edge Functions for the VMP project.
 
 ```
 supabase/functions/
-├── _shared/              # Shared utilities (types, validation, router, schemas)
+├── _shared/              # ✅ Shared utilities (types, validation, router, schemas)
 │   ├── types.ts          # TypeScript type definitions
 │   ├── utils.ts          # Utility functions (validation, errors, auth)
 │   ├── router.ts         # EdgeRouter class for action-based routing
 │   ├── schemas.ts        # Validation schemas
 │   └── README.md         # Shared utilities documentation
-├── documents/            # Domain-based function example
+├── documents/            # ✅ Domain-based function (ACTIVE)
 │   ├── index.ts          # Document operations (create, update, delete, process)
 │   └── README.md         # API documentation
-├── example-with-secrets/ # Example function
+├── integrations/         # ✅ Domain-based function (ACTIVE)
+│   ├── index.ts          # External API integrations (OpenAI, Stripe, etc.)
+│   └── README.md         # API documentation
+├── example-with-secrets/ # 📝 Refactored example (uses new patterns)
 │   └── index.ts
 ├── .env.example          # Example environment variables (safe to commit)
 ├── .env.local            # Local development secrets (DO NOT COMMIT)
@@ -26,17 +29,32 @@ supabase/functions/
 
 This project uses a **domain-based routing** strategy with action-based routing within each function:
 
-- **Domain Functions** - One function per domain (documents, payments, notifications)
+- **Domain Functions** - One function per domain (documents, integrations)
 - **Action-Based Routing** - Multiple operations per function via `action` field
 - **Shared Utilities** - Common code in `_shared/` directory
+- **Standardized Responses** - Consistent format across all functions
+- **Middleware Support** - Authentication, validation, logging
+
+### Available Functions
+
+| Function | Endpoint | Actions |
+|----------|----------|---------|
+| `documents` | `/functions/v1/documents` | create, update, delete, process |
+| `integrations` | `/functions/v1/integrations` | generate-embedding, create-payment, call-external-api, secrets-status |
 
 See [Edge Function Routing Evaluation](../../docs/integrations/EDGE_FUNCTION_ROUTING_EVALUATION.md) for complete architecture details.
 
 ## Current Functions
 
-- **documents** - Domain-based function for document operations (create, update, delete, process) ✅ **NEW**
-- **process-document** - Processes documents and generates embeddings (Active - can migrate to `documents` function)
-- **example-with-secrets** - Example function demonstrating secrets management
+### Production Functions
+
+- **documents** - Domain-based function for document operations (create, update, delete, process) ✅ **ACTIVE**
+- **integrations** - Domain-based function for external API integrations (OpenAI, Stripe, etc.) ✅ **ACTIVE**
+
+### Legacy Functions (Deprecated)
+
+- **process-document** - ⚠️ **DEPRECATED** - Migrate to `documents` function with `action: "process"`
+- **example-with-secrets** - 📝 **REFACTORED** - Now uses shared utilities and EdgeRouter (for reference only)
 
 ## Environment Variables & Secrets
 

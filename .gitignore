@@ -42,3 +42,12 @@ Thumbs.db
 dist/
 build/
 
+# Test artifacts
+playwright-report/
+test-results/
+coverage*.txt
+
+# Archive files
+*.zip
+*.tar
+*.tar.gz

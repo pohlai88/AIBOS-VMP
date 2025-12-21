@@ -1,0 +1,147 @@
+<!-- Invite Form Partial -->
+<div class="vmp-panel p-6 border vmp-border-color">
+    {% if success %}
+    <div class="p-4 mb-4 rounded-lg border vmp-border-ok vmp-bg-ok vmp-opacity-30">
+        <div class="vmp-label vmp-text-ok mb-2">Invite Created Successfully!</div>
+        <div class="vmp-body-small mb-2">
+            <strong>Email:</strong> {{ inviteEmail }}
+        </div>
+        <div class="vmp-body-small mb-3">
+            <strong>Invite URL:</strong> 
+            <a href="{{ inviteUrl }}" target="_blank" class="vmp-link">{{ inviteUrl }}</a>
+        </div>
+        <button onclick="location.reload()" class="vmp-btn-outline text-sm">Create Another Invite</button>
+    </div>
+    {% endif %}
+
+    {% if error %}
+    <div class="p-4 mb-4 rounded-lg border vmp-border-warn vmp-bg-warn vmp-opacity-30">
+        <div class="vmp-label vmp-text-warn">{{ error }}</div>
+    </div>
+    {% endif %}
+
+    <div class="vmp-label-kicker vmp-label-kicker-strong mb-4">SUPPLIER INVITE</div>
+
+    <form hx-post="/ops/invites"
+          hx-target="#invite-result"
+          hx-swap="innerHTML"
+          class="space-y-6">
+        <!-- Vendor Name -->
+        <div>
+            <label class="vmp-label-kicker mb-2 block">Supplier Name</label>
+            <input type="text" 
+                   name="vendor_name" 
+                   required 
+                   class="vmp-form-input w-full"
+                   placeholder="Enter supplier company name">
+        </div>
+
+        <!-- Email -->
+        <div>
+            <label class="vmp-label-kicker mb-2 block">Supplier Email</label>
+            <input type="email" 
+                   name="email" 
+                   required 
+                   class="vmp-form-input w-full"
+                   placeholder="supplier@example.com">
+        </div>
+
+        <!-- Company Selection -->
+        {% if orgTree %}
+        <div>
+            <label class="vmp-label-kicker mb-3 block">Companies to Serve</label>
+            <div class="space-y-4">
+                <!-- Groups -->
+                {% if orgTree.groups and orgTree.groups|length > 0 %}
+                <div class="space-y-2">
+                    <div class="vmp-label-kicker opacity-60 mb-2">GROUPS</div>
+                    {% for group in orgTree.groups %}
+                    <div class="p-3 rounded-lg border vmp-border-color vmp-bg-panel">
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="checkbox" 
+                                   class="group-checkbox"
+                                   data-group-id="{{ group.id }}"
+                                   onchange="toggleGroupCompanies(this, '{{ group.id }}')">
+                            <span class="vmp-body-small font-medium">{{ group.name }}</span>
+                            <span class="vmp-caption vmp-muted">({{ group.companies|length }} companies)</span>
+                        </label>
+                        {% if group.companies and group.companies|length > 0 %}
+                        <div class="ml-6 mt-2 space-y-1">
+                            {% for company in group.companies %}
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input type="checkbox" 
+                                       name="company_ids" 
+                                       value="{{ company.id }}"
+                                       class="company-checkbox"
+                                       data-group-id="{{ group.id }}">
+                                <span class="vmp-body-small">{{ company.name }}</span>
+                                {% if company.legal_name %}
+                                <span class="vmp-caption vmp-muted">({{ company.legal_name }})</span>
+                                {% endif %}
+                            </label>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+
+                <!-- Ungrouped Companies -->
+                {% if orgTree.ungroupedCompanies and orgTree.ungroupedCompanies|length > 0 %}
+                <div class="space-y-2">
+                    <div class="vmp-label-kicker opacity-60 mb-2">COMPANIES</div>
+                    {% for company in orgTree.ungroupedCompanies %}
+                    <label class="flex items-center gap-2 cursor-pointer p-2 rounded border vmp-border-color hover:vmp-bg-panel">
+                        <input type="checkbox" 
+                               name="company_ids" 
+                               value="{{ company.id }}"
+                               class="company-checkbox">
+                        <span class="vmp-body-small">{{ company.name }}</span>
+                        {% if company.legal_name %}
+                        <span class="vmp-caption vmp-muted">({{ company.legal_name }})</span>
+                        {% endif %}
+                    </label>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Submit Button -->
+        <div class="flex justify-end">
+            <button type="submit" class="vmp-btn-primary">Create Invite</button>
+        </div>
+
+        <!-- Result -->
+        <div id="invite-result"></div>
+    </form>
+</div>
+
+<script>
+function toggleGroupCompanies(groupCheckbox, groupId) {
+    const companyCheckboxes = document.querySelectorAll(`.company-checkbox[data-group-id="${groupId}"]`);
+    companyCheckboxes.forEach(checkbox => {
+        checkbox.checked = groupCheckbox.checked;
+    });
+}
+
+// Also handle reverse: if all companies in a group are checked, check the group
+document.addEventListener('change', function(e) {
+    if (e.target.classList.contains('company-checkbox')) {
+        const groupId = e.target.dataset.groupId;
+        if (groupId) {
+            const groupCheckbox = document.querySelector(`.group-checkbox[data-group-id="${groupId}"]`);
+            const companyCheckboxes = Array.from(document.querySelectorAll(`.company-checkbox[data-group-id="${groupId}"]`));
+            const allChecked = companyCheckboxes.every(cb => cb.checked);
+            const someChecked = companyCheckboxes.some(cb => cb.checked);
+            if (groupCheckbox) {
+                groupCheckbox.checked = allChecked;
+                groupCheckbox.indeterminate = someChecked && !allChecked;
+            }
+        }
+    }
+});
+</script>
+

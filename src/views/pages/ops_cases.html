@@ -1,0 +1,49 @@
+{% extends "layout.html" %}
+{% block title %}Case Queue — NexusCanon VMP{% endblock %}
+
+{% block content %}
+<div class="h-full overflow-y-auto">
+    <div class="flex h-full">
+        <!-- Left Sidebar: Org Tree -->
+        <aside class="w-64 border-r vmp-border-color vmp-bg-panel shrink-0 overflow-y-auto">
+            <div id="org-tree-container"
+                 hx-get="/partials/org-tree-sidebar.html?scope_type={{ scopeType }}&scope_id={{ scopeId }}"
+                 hx-trigger="load"
+                 hx-target="this"
+                 hx-swap="innerHTML">
+                <div class="flex items-center justify-center h-64">
+                    <div class="vmp-label-kicker animate-pulse opacity-60">Loading org tree...</div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="flex-1 overflow-y-auto">
+            <div class="vmp-container max-w-7xl mx-auto p-6">
+                <header class="mb-6">
+                    <h1 class="vmp-h1 mb-2">Case Queue</h1>
+                    <p class="vmp-body vmp-muted">
+                        {% if scopeType == 'group' %}
+                        Director View: All cases in group
+                        {% else %}
+                        Manager View: Company-specific cases
+                        {% endif %}
+                    </p>
+                </header>
+
+                <!-- Case Queue Content -->
+                <div id="case-queue-container"
+                     hx-get="/partials/ops-case-queue.html?scope_type={{ scopeType }}&scope_id={{ scopeId }}"
+                     hx-trigger="load"
+                     hx-target="this"
+                     hx-swap="innerHTML">
+                    <div class="flex items-center justify-center h-64">
+                        <div class="vmp-label-kicker animate-pulse opacity-60">Loading case queue...</div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+</div>
+{% endblock %}
+

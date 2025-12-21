@@ -1,0 +1,46 @@
+<!-- Invoice Ingest Form -->
+<div class="vmp-panel p-6 rounded-lg border vmp-border-color">
+    <div class="vmp-label-kicker vmp-label-kicker-strong mb-4">INVOICE CSV UPLOAD</div>
+    
+    <form hx-post="/ops/ingest/invoices"
+          hx-target="#ingest-result"
+          hx-swap="innerHTML"
+          hx-encoding="multipart/form-data"
+          hx-indicator="#ingest-loading"
+          class="space-y-4">
+        
+        <div>
+            <label class="vmp-label-kicker mb-2 block">Company</label>
+            <select name="company_id" required class="vmp-form-input w-full">
+                <option value="">Select Company...</option>
+                <!-- TODO: Populate from vmp_companies (Sprint 6 will add dynamic loading) -->
+            </select>
+            <div class="vmp-caption vmp-muted mt-1">Select the company for these invoices</div>
+        </div>
+
+        <div>
+            <label class="vmp-label-kicker mb-2 block">CSV File</label>
+            <input type="file" 
+                   name="csv_file" 
+                   accept=".csv,text/csv" 
+                   required 
+                   class="vmp-form-input w-full">
+            <div class="vmp-caption vmp-muted mt-1">
+                Expected columns: Invoice #, Date, Amount, PO # (optional), Company Code (optional), Description (optional)
+            </div>
+        </div>
+
+        <div class="flex justify-end gap-3">
+            <button type="submit" class="vmp-btn-primary">
+                Upload & Ingest
+            </button>
+        </div>
+    </form>
+
+    <div id="ingest-loading" class="htmx-indicator mt-4">
+        <div class="vmp-label-kicker animate-pulse opacity-60">Processing CSV...</div>
+    </div>
+
+    <div id="ingest-result" class="mt-4"></div>
+</div>
+

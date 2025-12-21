@@ -1,0 +1,35 @@
+<!-- Ingest Target Selector Partial -->
+<div class="vmp-panel p-4 border vmp-border-color mb-6">
+    <div class="vmp-label-kicker vmp-label-kicker-strong mb-4">TARGET SELECTION</div>
+    
+    <div class="space-y-4">
+        <div>
+            <label class="vmp-label-kicker mb-2 block">Scope Type</label>
+            <select name="scope_type" 
+                    id="scope-type-select"
+                    hx-get="/partials/ingest-target-options.html"
+                    hx-target="#target-options"
+                    hx-swap="innerHTML"
+                    hx-trigger="change"
+                    class="vmp-form-input w-full">
+                <option value="company">Company</option>
+                <option value="group">Group</option>
+            </select>
+        </div>
+
+        <div id="target-options">
+            <!-- Options will be loaded here based on scope type -->
+        </div>
+    </div>
+</div>
+
+<script>
+// Trigger initial load
+document.addEventListener('DOMContentLoaded', function() {
+    const scopeSelect = document.getElementById('scope-type-select');
+    if (scopeSelect) {
+        scopeSelect.dispatchEvent(new Event('change'));
+    }
+});
+</script>
+

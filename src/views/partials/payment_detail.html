@@ -1,0 +1,147 @@
+<!-- Payment Detail Partial -->
+<div class="flex flex-col h-full vmp-bg-veil">
+    {% if error %}
+    <div class="p-4 m-4 vmp-panel border vmp-border-color vmp-signal-danger">
+        <div class="vmp-label vmp-signal-danger">{{ error }}</div>
+    </div>
+    {% endif %}
+
+    <header class="shrink-0 p-6 border-b vmp-border-color vmp-bg-panel">
+        <div class="flex justify-between items-start mb-4">
+            <div>
+                <div class="flex items-center gap-2 mb-2">
+                    <span class="vmp-tag vmp-tag-mono opacity-50">PAY-{{ paymentDetail.payment_ref|string|truncate(8, True, '') if paymentDetail.payment_ref else '—' }}</span>
+                    <span class="vmp-subtle">•</span>
+                    <span class="vmp-label-kicker">payment</span>
+                </div>
+                <h2 class="vmp-h3 max-w-2xl">
+                    {{ paymentDetail.payment_ref if paymentDetail.payment_ref else 'Payment' }}
+                </h2>
+            </div>
+
+            <div class="vmp-panel px-3 py-2 flex items-center gap-3 vmp-bg-veil">
+                <div class="text-right">
+                    <div class="vmp-label-kicker opacity-50 mb-0.5">SOURCE</div>
+                    <div class="vmp-label vmp-muted">
+                        {{ (paymentDetail.source_system or 'manual') | upper }}
+                    </div>
+                </div>
+                <div class="w-1.5 h-8 rounded-full overflow-hidden relative vmp-bg-panel">
+                    <div class="absolute bottom-0 left-0 right-0 vmp-fill-ok h-full">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-4 gap-4 mt-2 pt-4 border-t vmp-border-color">
+            <div>
+                <div class="vmp-label-kicker mb-1">Company</div>
+                <div class="vmp-body-small">{{ paymentDetail.vmp_companies.name if paymentDetail.vmp_companies else '—' }}</div>
+            </div>
+            <div>
+                <div class="vmp-label-kicker mb-1">Payment Date</div>
+                <div class="vmp-body-small">{{ paymentDetail.payment_date | date('%b %d, %Y') if paymentDetail.payment_date else '—' }}</div>
+            </div>
+            <div>
+                <div class="vmp-label-kicker mb-1">Amount</div>
+                <div class="vmp-body-small">
+                    {{ paymentDetail.currency_code or 'USD' }} {{ "%.2f"|format(paymentDetail.amount) if paymentDetail.amount else '0.00' }}
+                </div>
+            </div>
+            <div>
+                <div class="vmp-label-kicker mb-1">Invoice</div>
+                <div class="vmp-body-small">
+                    {% if paymentDetail.invoice_num %}
+                        {{ paymentDetail.invoice_num }}
+                    {% elif paymentDetail.vmp_invoices %}
+                        {{ paymentDetail.vmp_invoices.invoice_num }}
+                    {% else %}
+                        —
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="flex-1 overflow-y-auto p-6 space-y-6">
+        <!-- Payment Information -->
+        <div class="vmp-panel p-6 border vmp-border-color">
+            <div class="vmp-label-kicker vmp-label-kicker-strong mb-4">PAYMENT INFORMATION</div>
+            
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <div class="vmp-label-kicker mb-1">Payment Reference</div>
+                    <div class="vmp-code">{{ paymentDetail.payment_ref or '—' }}</div>
+                </div>
+                <div>
+                    <div class="vmp-label-kicker mb-1">Payment Date</div>
+                    <div class="vmp-body">{{ paymentDetail.payment_date | date('%B %d, %Y') if paymentDetail.payment_date else '—' }}</div>
+                </div>
+                <div>
+                    <div class="vmp-label-kicker mb-1">Amount</div>
+                    <div class="vmp-body">
+                        {{ paymentDetail.currency_code or 'USD' }} {{ "%.2f"|format(paymentDetail.amount) if paymentDetail.amount else '0.00' }}
+                    </div>
+                </div>
+                <div>
+                    <div class="vmp-label-kicker mb-1">Source System</div>
+                    <div class="vmp-body">{{ (paymentDetail.source_system or 'manual') | upper }}</div>
+                </div>
+                {% if paymentDetail.description %}
+                <div class="col-span-2">
+                    <div class="vmp-label-kicker mb-1">Description</div>
+                    <div class="vmp-body">{{ paymentDetail.description }}</div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Linked Invoice -->
+        {% if paymentDetail.vmp_invoices or paymentDetail.invoice_num %}
+        <div class="vmp-panel p-6 border vmp-border-color">
+            <div class="vmp-label-kicker vmp-label-kicker-strong mb-4">LINKED INVOICE</div>
+            
+            {% if paymentDetail.vmp_invoices %}
+            <div class="flex items-center justify-between">
+                <div>
+                    <div class="vmp-code mb-1">{{ paymentDetail.vmp_invoices.invoice_num }}</div>
+                    <div class="vmp-caption vmp-muted">
+                        {{ paymentDetail.vmp_invoices.invoice_date | date('%b %d, %Y') if paymentDetail.vmp_invoices.invoice_date else '—' }}
+                        • {{ paymentDetail.vmp_invoices.currency_code or 'USD' }} {{ "%.2f"|format(paymentDetail.vmp_invoices.amount) if paymentDetail.vmp_invoices.amount else '0.00' }}
+                    </div>
+                </div>
+                <a href="/invoices/{{ paymentDetail.vmp_invoices.id }}" class="vmp-btn-outline text-sm">
+                    View Invoice
+                </a>
+            </div>
+            {% elif paymentDetail.invoice_num %}
+            <div class="vmp-body">{{ paymentDetail.invoice_num }}</div>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        <!-- Remittance Viewer -->
+        {% if paymentDetail.remittance_url %}
+        <div class="vmp-panel p-6 border vmp-border-color">
+            <div class="vmp-label-kicker vmp-label-kicker-strong mb-4">REMITANCE DOCUMENT</div>
+            <div id="remittance-viewer-container"
+                 hx-get="/partials/remittance-viewer.html?payment_id={{ paymentDetail.id }}"
+                 hx-trigger="load"
+                 hx-target="this"
+                 hx-swap="innerHTML">
+                <div class="flex items-center justify-center h-64">
+                    <div class="vmp-label-kicker animate-pulse opacity-60">Loading remittance...</div>
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <div class="vmp-panel p-6 border vmp-border-color">
+            <div class="vmp-label-kicker vmp-label-kicker-strong mb-4">REMITANCE DOCUMENT</div>
+            <div class="vmp-body vmp-muted text-center py-8">
+                No remittance document available for this payment.
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+

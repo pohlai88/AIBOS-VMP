@@ -1,0 +1,52 @@
+<!-- Contract Library Partial -->
+<div class="vmp-panel p-6 border vmp-border-color">
+    <div class="vmp-label-kicker vmp-label-kicker-strong mb-4">CONTRACT LIBRARY</div>
+
+    {% if error %}
+    <div class="p-3 mb-4 rounded-lg border vmp-border-warn vmp-bg-warn vmp-opacity-30">
+        <div class="vmp-caption vmp-text-warn">{{ error }}</div>
+    </div>
+    {% endif %}
+
+    {% if contracts and contracts|length > 0 %}
+    <div class="space-y-3">
+        {% for contract in contracts %}
+        <div class="p-3 rounded-lg border vmp-border-color vmp-bg-panel">
+            <div class="flex items-start justify-between">
+                <div class="flex-1 min-w-0">
+                    <div class="vmp-body-small font-medium mb-1 truncate">
+                        {{ contract.filename }}
+                    </div>
+                    <div class="vmp-caption vmp-muted">
+                        {{ contract.contract_type | upper }}
+                    </div>
+                    <div class="vmp-caption vmp-muted mt-1">
+                        {{ contract.uploaded_at | date('%b %d, %Y') if contract.uploaded_at else '—' }}
+                    </div>
+                </div>
+                <div class="shrink-0 ml-3 flex flex-col gap-2">
+                    <span class="vmp-tag vmp-tag-mono text-xs">
+                        {{ (contract.status or 'submitted') | upper }}
+                    </span>
+                    {% if contract.storage_path %}
+                    <a href="/cases/{{ contract.case_id }}#evidence" 
+                       class="vmp-btn-outline text-xs">
+                        View
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="vmp-body vmp-muted text-center py-8">
+        {% if error %}
+        {{ error }}
+        {% else %}
+        No contracts found. Contracts will appear here after they are uploaded.
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+

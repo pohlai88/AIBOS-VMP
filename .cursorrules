@@ -1,14 +1,18 @@
 # NexusCanon VMP: IDE Rules & Standards
 
-**Version:** 2.0.1 (Patched)
+**Version:** 3.1.0 (Production-Grade - Figma Validated)
 **Context:** Node.js, Express, Nunjucks, HTMX, VMP Design System
 
 ## 1. 🚨 Prime Directives (CRITICAL)
 
 * **Route-First Architecture:** Never create an HTML file without a corresponding route in `server.js`.
 * **No Direct Access:** HTML files are **never** served statically. They must be rendered via `res.render()`.
-* **Foundation vs. Design:** Use VMP semantic classes (`.vmp-h*`, `.vmp-body`, `.vmp-label`) for typography. Inline styles and `<style>` blocks **ALLOWED** for creative visual design.
+* **Foundation vs. Design:** Use VMP semantic classes (`.vmp-h*`, `.vmp-body`, `.vmp-label`) for typography **ONLY in data presentation contexts**. Inline styles and `<style>` blocks **ALLOWED** for creative visual design. Marketing and others have free hand, without control. **NO CDS Template Design** - no prescriptive component templates. **NO SaaS Typical Design Model** - no typical SaaS design patterns or templates.
+* **IDE Creativity Markers:** Use `.vmp-creative`, `.vmp-marketing`, or `.vmp-free-form` classes to signal creative content. IDE will understand: Foundation rules do NOT apply, inline styles ENCOURAGED.
 * **Engine:** Use **Nunjucks** syntax (`{% extends %}`, `{{ var }}`). Do not use EJS or Handlebars.
+* **Production-Grade Only:** All implementations must be complete, functional, and production-ready. No stubs, placeholders, or TODO comments.
+* **Clarity Over Assumptions:** If requirements are unclear, ask for clarification. Never assume or guess implementation details.
+* **Zero Tech Debt:** Every implementation must follow established patterns, use proper error handling, and include necessary validations.
 
 ---
 
@@ -109,15 +113,18 @@ app.get('/partials/case-list.html', async (req, res) => {
 
 ## 4. 🎨 Design System (Contract-001)
 
-**Constraint:** You are strictly bound to `public/globals.css`.
+**Constraint:** You are strictly bound to `public/globals.css` **ONLY for data presentation purposes**.
 
-| Feature | Rule |
-| --- | --- |
-| **Classes** | MUST use `.vmp-*` prefix (e.g., `.vmp-btn-primary`). |
-| **Font Weight** | MUST be `300` (Light). Do not use bold. |
-| **Colors** | MUST use CSS vars (e.g., `var(--vmp-text)`). No hex codes. |
-| **Spacing** | MUST use spacing scale (e.g., `p-4`, `gap-3`). |
-| **New CSS** | **FORBIDDEN.** Do not invent classes. Ask user if a token is missing. |
+| Feature | Rule | Scope |
+| --- | --- | --- |
+| **Foundation Classes** | MUST use `.vmp-*` prefix for typography (`.vmp-h*`, `.vmp-body`, `.vmp-label`) | **Data presentation ONLY** |
+| **Font Weight** | MUST be `300` (Light) for data presentation. Marketing exempt. | **Data presentation ONLY** |
+| **Semantic Colors** | MUST use CSS vars (e.g., `var(--vmp-text)`, `var(--vmp-ok)`) for meaning in data presentation | **Data presentation ONLY** |
+| **Spacing Tokens** | SHOULD use spacing scale (`var(--vmp-space-*)`) for data presentation consistency | **Data presentation ONLY** |
+| **Design Layer** | **FREE HAND:** Inline styles, `<style>` blocks, custom components - **NO restrictions** | **Marketing & Creative** |
+| **CDS Templates** | **FORBIDDEN:** No prescriptive component templates or design system templates | **All contexts** |
+| **SaaS Design Model** | **FORBIDDEN:** No typical SaaS design patterns, templates, or prescriptive UI models | **All contexts** |
+| **New CSS** | **FORBIDDEN** for Foundation Layer. Ask user if a token is missing. Design Layer can use any CSS. | **Foundation vs Design** |
 
 ---
 
@@ -126,22 +133,325 @@ app.get('/partials/case-list.html', async (req, res) => {
 Before generating any code, the AI must verify:
 
 1. [ ] **Route Check:** Does `app.get('/target-route')` exist in `server.js`?
-* *If NO:* Stop. Create the route first.
-
+   * *If NO:* Stop. Create the route first.
 
 2. [ ] **Naming Check:** Is the file `snake_case` and the route `kebab-case`?
 3. [ ] **Location Check:** Is it a Page (`pages/`) or a Partial (`partials/`)?
 4. [ ] **Boilerplate Check:** Did I copy `src/views/templates/partial-boilerplate.html`?
-5. [ ] **VMP Check:** Am I using only `.vmp-*` classes? (No inline styles).
+5. [ ] **Context Check:** Is this data presentation or creative/marketing content?
+   * *If Data Presentation:* Use VMP semantic classes (`.vmp-h*`, `.vmp-body`, `.vmp-label`)
+   * *If Creative/Marketing:* Use `.vmp-creative`, `.vmp-marketing`, or `.vmp-free-form` marker, inline styles ENCOURAGED
+6. [ ] **Production Check:** Is this implementation complete? No stubs, placeholders, or TODOs?
+7. [ ] **Error Handling:** Are all error paths handled with proper error responses?
+8. [ ] **Validation:** Are all inputs validated (required fields, data types, constraints)?
+9. [ ] **Clarity Check:** Are all requirements clear? If not, ask for clarification before implementing.
+10. [ ] **Pattern Compliance:** Does this follow established codebase patterns?
 
 ---
 
 ## 6. 🚫 Strict Anti-Patterns
 
-* ❌ **NEVER** use `style="color: red"` (Use `.vmp-text-danger`).
+* ❌ **NEVER** use `style="color: red"` in data presentation (Use `.vmp-text-danger`). ✅ **ALLOWED** in creative/marketing content with `.vmp-creative` marker.
 * ❌ **NEVER** create files in `src/views/` root (must be in subfolders).
-* ❌ **NEVER** use CDS / Bootstrap / Tailwind classes without VMP wrappers.
+* ❌ **NEVER** use CDS / Bootstrap / Tailwind classes without VMP wrappers in data presentation. ✅ **ALLOWED** in creative/marketing content.
 * ❌ **NEVER** write logic inside the HTML (keep it in `server.js` or adapters).
 * ❌ **NEVER** leave a route returning 404 while creating the View.
+* ❌ **NEVER** create stubs, placeholders, or incomplete implementations.
+* ❌ **NEVER** use `TODO`, `FIXME`, `HACK`, or similar comments in production code.
+* ❌ **NEVER** assume requirements - ask for clarification if unclear.
+* ❌ **NEVER** skip error handling or validation.
+* ❌ **NEVER** create code that requires future refactoring (tech debt).
+* ❌ **NEVER** use Foundation Layer classes in creative/marketing content without creativity marker (`.vmp-creative`, `.vmp-marketing`, `.vmp-free-form`).
 
 ---
+
+## 7. 🏭 Production-Grade Requirements
+
+### 7.1 Complete Implementations
+
+**Rule:** Every implementation must be fully functional and production-ready.
+
+**Forbidden:**
+```javascript
+// ❌ BAD: Stub/placeholder
+app.get('/invoices', (req, res) => {
+  // TODO: Implement invoice list
+  res.json({ message: 'Not implemented yet' });
+});
+
+// ❌ BAD: Incomplete error handling
+app.get('/cases/:id', async (req, res) => {
+  const case = await getCase(req.params.id);
+  res.render('pages/case_detail.html', { case });
+  // Missing: Error handling, validation, auth checks
+});
+```
+
+**Required:**
+```javascript
+// ✅ GOOD: Complete implementation
+app.get('/invoices', async (req, res) => {
+  try {
+    const vendorId = req.user.vendorId;
+    if (!vendorId) {
+      return res.status(401).render('pages/error.html', {
+        error: { status: 401, message: 'Authentication required' }
+      });
+    }
+    
+    const invoices = await vmpAdapter.getInvoices(vendorId);
+    res.render('pages/invoices.html', { invoices, user: req.user });
+  } catch (error) {
+    logError(error, { path: req.path, userId: req.user?.id });
+    res.status(500).render('pages/error.html', {
+      error: { status: 500, message: 'Failed to load invoices' }
+    });
+  }
+});
+```
+
+### 7.2 Error Handling
+
+**Rule:** All routes must handle errors gracefully with proper status codes and user-friendly messages.
+
+**Required Patterns:**
+- Try-catch blocks for async operations
+- Input validation before processing
+- Proper HTTP status codes (400, 401, 403, 404, 500)
+- Error logging with context
+- User-friendly error pages/messages
+
+### 7.3 Input Validation
+
+**Rule:** All user inputs must be validated before processing.
+
+**Required:**
+- Required field checks
+- Data type validation
+- Constraint validation (e.g., email format, UUID format)
+- Sanitization if needed
+- Clear error messages for validation failures
+
+### 7.4 Authentication & Authorization
+
+**Rule:** All protected routes must verify authentication and authorization.
+
+**Required:**
+- Check `req.user` exists (authentication)
+- Verify user has access to requested resource (authorization)
+- RBAC checks for internal-only routes (`req.user.isInternal`)
+- Vendor access checks (vendor can only access their own data)
+
+### 7.5 Database Operations
+
+**Rule:** All database operations must use the adapter layer with proper error handling.
+
+**Required:**
+- Use `vmpAdapter` methods (never direct Supabase calls in routes)
+- Handle database errors gracefully
+- Use transactions for multi-step operations
+- Include timeout protection (adapter handles this)
+
+### 7.6 Code Clarity
+
+**Rule:** If requirements are unclear, ask for clarification before implementing.
+
+**When to Ask:**
+- Business logic is ambiguous
+- Data structure is unclear
+- User flow is not specified
+- Integration requirements are vague
+- Edge cases are not defined
+
+**Never:**
+- Assume implementation details
+- Create placeholder code
+- Guess at requirements
+- Leave unclear code with comments
+
+---
+
+## 8. 🔍 Code Review Checklist
+
+Before submitting any code, verify:
+
+- [ ] **Complete:** No stubs, placeholders, or TODOs
+- [ ] **Error Handling:** All error paths handled
+- [ ] **Validation:** All inputs validated
+- [ ] **Auth:** Authentication and authorization checks present
+- [ ] **Patterns:** Follows established codebase patterns
+- [ ] **Naming:** Correct casing (snake_case files, kebab-case URLs)
+- [ ] **Design System:** Uses only VMP classes
+- [ ] **Testing:** Code is testable and maintainable
+- [ ] **Documentation:** Complex logic is commented
+- [ ] **Performance:** No obvious performance issues
+
+---
+
+## 9. 📋 Implementation Standards
+
+### 9.1 Route Implementation
+
+**Required Structure:**
+```javascript
+app.get('/route-path', async (req, res) => {
+  try {
+    // 1. Authentication check
+    if (!req.user) {
+      return res.status(401).redirect('/login');
+    }
+    
+    // 2. Input validation
+    const { param } = req.params;
+    if (!param || !isValidUUID(param)) {
+      return res.status(400).render('pages/error.html', {
+        error: { status: 400, message: 'Invalid parameter' }
+      });
+    }
+    
+    // 3. Authorization check (if needed)
+    if (req.user.vendorId !== expectedVendorId) {
+      return res.status(403).render('pages/error.html', {
+        error: { status: 403, message: 'Access denied' }
+      });
+    }
+    
+    // 4. Business logic
+    const data = await vmpAdapter.getData(param, req.user.vendorId);
+    
+    // 5. Render response
+    res.render('pages/template.html', { data, user: req.user });
+  } catch (error) {
+    // 6. Error handling
+    logError(error, { path: req.path, userId: req.user?.id });
+    res.status(500).render('pages/error.html', {
+      error: { status: 500, message: 'An error occurred' }
+    });
+  }
+});
+```
+
+### 9.2 Adapter Methods
+
+**Required Structure:**
+```javascript
+async getData(id, vendorId) {
+  const queryPromise = supabase
+    .from('table')
+    .select('*')
+    .eq('id', id)
+    .eq('vendor_id', vendorId)
+    .single();
+  
+  const { data, error } = await withTimeout(
+    queryPromise,
+    10000,
+    `getData(${id})`
+  );
+  
+  if (error) {
+    const handledError = handleSupabaseError(error, 'getData');
+    if (handledError === null) {
+      return null; // Not found
+    }
+    throw handledError;
+  }
+  
+  return data;
+}
+```
+
+### 9.3 HTML Templates
+
+**Required Structure:**
+```html
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="vmp-container">
+  {% if error %}
+    <div class="vmp-panel vmp-text-danger">
+      {{ error.message }}
+    </div>
+  {% else %}
+    <!-- Complete, functional UI -->
+    <div class="vmp-panel">
+      <!-- No placeholders, all data rendered -->
+    </div>
+  {% endif %}
+</div>
+{% endblock %}
+```
+
+---
+
+## 10. 🚫 Forbidden Patterns
+
+### 10.1 Stubs and Placeholders
+
+```javascript
+// ❌ FORBIDDEN
+app.get('/route', (req, res) => {
+  // TODO: Implement this
+  res.json({ status: 'coming soon' });
+});
+
+// ❌ FORBIDDEN
+app.get('/route', (req, res) => {
+  res.render('pages/template.html', { 
+    data: null, // Placeholder
+    message: 'Not implemented'
+  });
+});
+```
+
+### 10.2 Assumptions
+
+```javascript
+// ❌ FORBIDDEN: Assuming data structure
+const invoice = await getInvoice(id);
+res.render('template.html', { 
+  amount: invoice.total // What if invoice.total doesn't exist?
+});
+
+// ✅ REQUIRED: Validate and handle
+const invoice = await getInvoice(id);
+if (!invoice) {
+  return res.status(404).render('pages/error.html', {
+    error: { status: 404, message: 'Invoice not found' }
+  });
+}
+res.render('template.html', { 
+  amount: invoice.total || 0 // Safe default
+});
+```
+
+### 10.3 Incomplete Error Handling
+
+```javascript
+// ❌ FORBIDDEN
+app.get('/route', async (req, res) => {
+  const data = await getData(); // No error handling
+  res.render('template.html', { data });
+});
+
+// ✅ REQUIRED
+app.get('/route', async (req, res) => {
+  try {
+    const data = await getData();
+    res.render('template.html', { data });
+  } catch (error) {
+    logError(error);
+    res.status(500).render('pages/error.html', {
+      error: { status: 500, message: 'Operation failed' }
+    });
+  }
+});
+```
+
+---
+
+**Document Status:** ✅ Production-Grade Standards Enforced  
+**Last Updated:** 2025-12-21  
+**Version:** 3.0.0
+

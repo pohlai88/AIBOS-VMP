@@ -90,3 +90,22 @@ export const notificationSchemas = {
   },
 }
 
+/**
+ * Integration operation schemas (external APIs)
+ */
+export const integrationSchemas = {
+  generateEmbedding: {
+    text: 'required|string|min:1',
+    model: 'optional|string|max:100',
+  },
+  createPayment: {
+    amount: 'required|number',
+    currency: 'required|string|min:3|max:3',
+    description: 'optional|string|max:500',
+  },
+  callExternalApi: {
+    endpoint: 'optional|string|url',
+    method: 'optional|string|max:10',
+  },
+}
+

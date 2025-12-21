@@ -1,0 +1,114 @@
+<!-- Payment List Partial -->
+<div class="flex flex-col h-full">
+    {% if error %}
+    <div class="p-3 m-4 rounded-lg border vmp-border-warn vmp-bg-warn vmp-opacity-30">
+        <div class="vmp-caption vmp-text-warn">{{ error }}</div>
+    </div>
+    {% endif %}
+
+    <!-- Filters -->
+    <div class="sticky top-0 z-10 vmp-component-card-header backdrop-blur-md flex gap-2 overflow-x-auto py-3 mb-4">
+        <form hx-get="/partials/payment-list.html" 
+              hx-target="#payment-list-container" 
+              hx-swap="innerHTML"
+              class="flex gap-2 items-center">
+            <input type="text" 
+                   name="payment_ref" 
+                   placeholder="Search payment ref..." 
+                   class="vmp-form-input text-sm"
+                   value="{{ query.payment_ref or '' }}">
+            <input type="text" 
+                   name="invoice_num" 
+                   placeholder="Search invoice #..." 
+                   class="vmp-form-input text-sm"
+                   value="{{ query.invoice_num or '' }}">
+            <input type="date" 
+                   name="date_from" 
+                   placeholder="From date" 
+                   class="vmp-form-input text-sm"
+                   value="{{ query.date_from or '' }}">
+            <input type="date" 
+                   name="date_to" 
+                   placeholder="To date" 
+                   class="vmp-form-input text-sm"
+                   value="{{ query.date_to or '' }}">
+            <button type="submit" class="vmp-btn-outline text-sm">Filter</button>
+        </form>
+    </div>
+
+    <!-- Payment List -->
+    <div class="divide-y vmp-border-color">
+        {% if payments and payments|length > 0 %}
+        {% for payment in payments %}
+        <a href="/payments/{{ payment.id }}" 
+           class="group block px-4 py-3.5 hover:bg-white/[0.02] active:bg-white/[0.04] transition-all relative overflow-hidden">
+            
+            <div class="absolute left-0 top-0 bottom-0 w-[2px] bg-white opacity-0 group-hover:opacity-100 transition-opacity"></div>
+
+            <div class="flex items-start justify-between gap-3">
+                <div class="flex items-start gap-3 min-w-0 flex-1">
+                    <div class="mt-1.5 relative shrink-0">
+                        {% if payment.remittance_url %}
+                            <div class="w-1.5 h-1.5 rounded-full vmp-fill-ok"></div>
+                        {% else %}
+                            <div class="w-1.5 h-1.5 rounded-full vmp-bg-panel"></div>
+                        {% endif %}
+                    </div>
+
+                    <div class="min-w-0 flex-1">
+                        <div class="flex items-center gap-2 mb-1">
+                            <span class="vmp-code">#{{ payment.payment_ref }}</span>
+                            <span class="vmp-caption vmp-muted">
+                                {{ payment.vmp_companies.name if payment.vmp_companies else 'Unknown Company' }}
+                            </span>
+                        </div>
+                        
+                        <div class="vmp-body-small leading-snug truncate group-hover:text-white transition-colors">
+                            {% if payment.invoice_num %}
+                                Invoice: {{ payment.invoice_num }}
+                            {% elif payment.vmp_invoices %}
+                                Invoice: {{ payment.vmp_invoices.invoice_num }}
+                            {% else %}
+                                Payment record
+                            {% endif %}
+                        </div>
+                        
+                        <div class="mt-2 flex items-center gap-2">
+                            <span class="vmp-caption vmp-muted">
+                                {{ payment.payment_date | date('%b %d, %Y') if payment.payment_date else '—' }}
+                            </span>
+                            <span class="vmp-subtle">•</span>
+                            <span class="vmp-code">
+                                {{ payment.currency_code or 'USD' }} {{ "%.2f"|format(payment.amount) if payment.amount else '0.00' }}
+                            </span>
+                            {% if payment.remittance_url %}
+                            <span class="vmp-subtle">•</span>
+                            <span class="vmp-caption vmp-signal-ok">Remittance Available</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="shrink-0">
+                    <span class="vmp-tag vmp-tag-mono text-xs">
+                        {{ (payment.source_system or 'manual') | upper }}
+                    </span>
+                </div>
+            </div>
+        </a>
+        {% endfor %}
+        {% else %}
+        <!-- Empty State -->
+        <div class="flex items-center justify-center h-64">
+            <div class="text-center">
+                <div class="font-serif text-6xl italic opacity-35 mb-4">N</div>
+                <div class="vmp-h3 mb-2">No Payments</div>
+                <div class="vmp-body vmp-muted">
+                    No payments found. Payments will appear here after they are uploaded.
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+

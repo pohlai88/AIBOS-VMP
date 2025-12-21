@@ -108,10 +108,31 @@
             </div>
         </div>
 
+        <!-- Linked References (Sprint 2: Invoice/PO/GRN/Payment links) -->
+        {% if caseDetail and (caseDetail.linked_invoice_id or caseDetail.linked_po_id or caseDetail.linked_grn_id or caseDetail.linked_payment_id) %}
+        <div class="mt-4 pt-4 border-t vmp-border-color">
+            <div class="vmp-label-kicker mb-2">Linked References</div>
+            <div class="flex flex-wrap gap-2">
+                {% if caseDetail.linked_invoice_id %}
+                <a href="/invoices/{{ caseDetail.linked_invoice_id }}" class="vmp-tag vmp-tag-mono">Invoice {{ caseDetail.linked_invoice_id|string|truncate(8, True, '') }}</a>
+                {% endif %}
+                {% if caseDetail.linked_po_id %}
+                <span class="vmp-tag vmp-tag-mono">PO {{ caseDetail.linked_po_id|string|truncate(8, True, '') }}</span>
+                {% endif %}
+                {% if caseDetail.linked_grn_id %}
+                <span class="vmp-tag vmp-tag-mono">GRN {{ caseDetail.linked_grn_id|string|truncate(8, True, '') }}</span>
+                {% endif %}
+                {% if caseDetail.linked_payment_id %}
+                <a href="/payments/{{ caseDetail.linked_payment_id }}" class="vmp-tag vmp-tag-mono">Payment {{ caseDetail.linked_payment_id|string|truncate(8, True, '') }}</a>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+
         <!-- Internal-only: Case Status Controls -->
         {% if isInternal %}
         <div class="mt-4 pt-4 border-t vmp-border-color">
-            <div class="flex items-center gap-3">
+            <div class="flex items-center gap-3 flex-wrap">
                 <span class="vmp-label-kicker">Case Actions:</span>
                 <form hx-post="/cases/{{ caseId }}/update-status" 
                       hx-target="#case-detail-panel" 
@@ -127,6 +148,20 @@
                         <option value="blocked" {% if caseDetail and caseDetail.status == 'blocked' %}selected{% endif %}>Blocked</option>
                     </select>
                 </form>
+                
+                <!-- Onboarding Approval Button (Sprint 3) -->
+                {% if caseDetail and caseDetail.case_type == 'onboarding' and caseDetail.status != 'resolved' %}
+                <form hx-post="/cases/{{ caseId }}/approve-onboarding" 
+                      hx-target="#case-detail-panel" 
+                      hx-swap="innerHTML"
+                      hx-confirm="Approve onboarding and activate vendor account?"
+                      class="flex gap-2">
+                    <button type="submit" 
+                            class="vmp-btn-primary text-sm">
+                        Approve Onboarding
+                    </button>
+                </form>
+                {% endif %}
             </div>
         </div>
         {% endif %}

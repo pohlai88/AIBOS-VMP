@@ -1,0 +1,60 @@
+<!-- Case Row Partial - Single case row for HTMX refresh -->
+{% if error %}
+<div class="p-3 m-4 rounded-lg border vmp-border-warn vmp-bg-warn vmp-opacity-30">
+    <div class="vmp-caption vmp-text-warn">{{ error }}</div>
+</div>
+{% elif case %}
+<a href="/cases/{{ case.id }}" 
+   class="group block px-4 py-3.5 hover:bg-white/[0.02] active:bg-white/[0.04] transition-all relative overflow-hidden">
+    
+    <div class="absolute left-0 top-0 bottom-0 w-[2px] bg-white opacity-0 transition-opacity"></div>
+
+    <div class="flex items-start justify-between gap-3">
+        
+        <div class="flex items-start gap-3 min-w-0">
+            <div class="mt-1.5 relative shrink-0">
+                {% set st = (case.status or '') | lower %}
+                {% if st == 'waiting_supplier' %}
+                    <div class="w-1.5 h-1.5 rounded-full vmp-fill-danger animate-pulse"></div>
+                    <div class="absolute inset-0 vmp-fill-danger blur-[4px] opacity-40"></div>
+                {% elif st == 'open' %}
+                     <div class="w-1.5 h-1.5 rounded-full vmp-fill-warn"></div>
+                {% elif st == 'resolved' %}
+                     <div class="w-1.5 h-1.5 rounded-full vmp-fill-ok opacity-50"></div>
+                {% else %}
+                     <div class="w-1.5 h-1.5 rounded-full vmp-bg-panel"></div>
+                {% endif %}
+            </div>
+
+            <div class="min-w-0">
+                <div class="flex items-center gap-2 mb-1">
+                    <span class="vmp-code">#{{ case.id|string|truncate(8, True, '') }}</span>
+                    <span class="vmp-caption vmp-muted truncate max-w-[140px]">{{ case.vmp_companies.name if case.vmp_companies else 'Unknown Entity' }}</span>
+                </div>
+                
+                <div class="vmp-body-small leading-snug truncate group-hover:text-white transition-colors">
+                    {{ case.subject }}
+                </div>
+                
+                <div class="mt-2 flex items-center gap-2">
+                     <span class="vmp-caption vmp-muted px-1.5 py-0.5 rounded vmp-bg-panel">{{ (case.case_type or 'General') }}</span>
+                     <span class="vmp-code">
+                        {% if case.updated_at %}
+                            {{ case.updated_at | date('%b %d') }}
+                        {% else %}
+                            2h ago
+                        {% endif %}
+                     </span>
+                </div>
+            </div>
+        </div>
+
+        {% if st == 'waiting_supplier' %}
+            <div class="shrink-0 px-1.5 py-0.5 rounded border vmp-status-badge-danger">
+                <span class="vmp-label vmp-signal-danger">ACT</span>
+            </div>
+        {% endif %}
+    </div>
+</a>
+{% endif %}
+

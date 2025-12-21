@@ -1,0 +1,88 @@
+<!-- Org Tree Sidebar Partial -->
+<div class="p-4">
+    {% if error %}
+    <div class="p-3 mb-4 rounded-lg border vmp-border-warn vmp-bg-warn vmp-opacity-30">
+        <div class="vmp-caption vmp-text-warn">{{ error }}</div>
+    </div>
+    {% endif %}
+
+    <div class="vmp-label-kicker vmp-label-kicker-strong mb-4">ORGANIZATION</div>
+
+    {% if orgTree %}
+    <div class="space-y-2">
+        <!-- Tenant (Super Admin View) -->
+        <div class="mb-4">
+            <div class="vmp-label-kicker mb-2 opacity-60">TENANT</div>
+            <div class="vmp-body-small font-medium">{{ orgTree.tenant.name }}</div>
+        </div>
+
+        <!-- Groups -->
+        {% if orgTree.groups and orgTree.groups|length > 0 %}
+        <div class="space-y-1">
+            <div class="vmp-label-kicker mb-2 opacity-60">GROUPS</div>
+            {% for group in orgTree.groups %}
+            <div class="mb-2">
+                <a href="/ops/dashboard?scope_type=group&scope_id={{ group.id }}"
+                   hx-get="/partials/scoped-dashboard.html?scope_type=group&scope_id={{ group.id }}"
+                   hx-target="#dashboard-content"
+                   hx-swap="innerHTML"
+                   class="block p-2 rounded-lg border vmp-border-color hover:vmp-bg-panel transition-colors
+                          {% if currentScope.type == 'group' and currentScope.id == group.id %}vmp-bg-panel{% endif %}">
+                    <div class="vmp-body-small font-medium">{{ group.name }}</div>
+                    <div class="vmp-caption vmp-muted">{{ group.code }}</div>
+                </a>
+                
+                <!-- Companies in Group -->
+                {% if group.companies and group.companies|length > 0 %}
+                <div class="ml-4 mt-1 space-y-1">
+                    {% for company in group.companies %}
+                    <a href="/ops/dashboard?scope_type=company&scope_id={{ company.id }}"
+                       hx-get="/partials/scoped-dashboard.html?scope_type=company&scope_id={{ company.id }}"
+                       hx-target="#dashboard-content"
+                       hx-swap="innerHTML"
+                       class="block p-1.5 rounded border vmp-border-color hover:vmp-bg-panel transition-colors text-sm
+                              {% if currentScope.type == 'company' and currentScope.id == company.id %}vmp-bg-panel{% endif %}">
+                        <div class="vmp-body-small">{{ company.name }}</div>
+                        {% if company.country_code %}
+                        <div class="vmp-caption vmp-muted text-xs">{{ company.country_code }}</div>
+                        {% endif %}
+                    </a>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <!-- Ungrouped Companies -->
+        {% if orgTree.ungroupedCompanies and orgTree.ungroupedCompanies|length > 0 %}
+        <div class="space-y-1 mt-4">
+            <div class="vmp-label-kicker mb-2 opacity-60">COMPANIES</div>
+            {% for company in orgTree.ungroupedCompanies %}
+            <a href="/ops/dashboard?scope_type=company&scope_id={{ company.id }}"
+               hx-get="/partials/scoped-dashboard.html?scope_type=company&scope_id={{ company.id }}"
+               hx-target="#dashboard-content"
+               hx-swap="innerHTML"
+               class="block p-2 rounded-lg border vmp-border-color hover:vmp-bg-panel transition-colors
+                      {% if currentScope.type == 'company' and currentScope.id == company.id %}vmp-bg-panel{% endif %}">
+                <div class="vmp-body-small font-medium">{{ company.name }}</div>
+                {% if company.country_code %}
+                <div class="vmp-caption vmp-muted">{{ company.country_code }}</div>
+                {% endif %}
+            </a>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+    {% else %}
+    <div class="vmp-body vmp-muted text-center py-8">
+        {% if error %}
+        {{ error }}
+        {% else %}
+        No organization data available.
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+

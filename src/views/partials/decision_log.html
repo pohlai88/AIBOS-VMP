@@ -1,0 +1,50 @@
+<!-- Decision Log Partial -->
+<div class="vmp-panel p-6 border vmp-border-color">
+    <div class="vmp-label-kicker vmp-label-kicker-strong mb-4">DECISION LOG</div>
+
+    {% if error %}
+    <div class="p-3 mb-4 rounded-lg border vmp-border-warn vmp-bg-warn vmp-opacity-30">
+        <div class="vmp-caption vmp-text-warn">{{ error }}</div>
+    </div>
+    {% endif %}
+
+    {% if decisions and decisions|length > 0 %}
+    <div class="space-y-3">
+        {% for decision in decisions %}
+        <div class="p-4 rounded-lg border vmp-border-color vmp-bg-panel">
+            <div class="flex items-start justify-between mb-2">
+                <div class="flex items-center gap-2">
+                    <span class="vmp-code text-xs">{{ decision.decision_type | upper }}</span>
+                    <span class="vmp-caption vmp-muted">
+                        {{ decision.created_at | date('%b %d, %Y %H:%M') if decision.created_at else '—' }}
+                    </span>
+                </div>
+            </div>
+            <div class="vmp-body-small mb-1">
+                <span class="vmp-label-kicker opacity-50">Who:</span>
+                {{ decision.who }}
+            </div>
+            <div class="vmp-body-small mb-1">
+                <span class="vmp-label-kicker opacity-50">What:</span>
+                {{ decision.what }}
+            </div>
+            {% if decision.why %}
+            <div class="vmp-body-small vmp-muted mt-2">
+                <span class="vmp-label-kicker opacity-50">Why:</span>
+                {{ decision.why }}
+            </div>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="vmp-body vmp-muted text-center py-8">
+        {% if error %}
+        {{ error }}
+        {% else %}
+        No decisions logged for this case.
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+

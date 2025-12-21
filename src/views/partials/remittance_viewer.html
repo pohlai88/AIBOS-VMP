@@ -1,0 +1,32 @@
+<!-- Remittance Viewer Partial -->
+<div class="w-full">
+    {% if error %}
+    <div class="p-4 vmp-panel border vmp-border-color vmp-signal-danger mb-4">
+        <div class="vmp-label vmp-signal-danger">{{ error }}</div>
+    </div>
+    {% endif %}
+
+    {% if remittanceUrl %}
+    <div class="border vmp-border-color rounded-lg overflow-hidden">
+        <iframe 
+            src="{{ remittanceUrl }}" 
+            class="w-full h-[600px]"
+            title="Remittance Document">
+        </iframe>
+    </div>
+    <div class="mt-4 flex justify-end">
+        <a href="{{ remittanceUrl }}" target="_blank" class="vmp-btn-outline text-sm">
+            Open in New Tab
+        </a>
+    </div>
+    {% else %}
+    <div class="vmp-body vmp-muted text-center py-8">
+        {% if error %}
+        {{ error }}
+        {% else %}
+        No remittance document available for this payment.
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+

@@ -1,0 +1,86 @@
+<!-- Matching Status Partial -->
+<div class="p-5 border-b vmp-border-color">
+    <div class="vmp-label-kicker vmp-label-kicker-strong mb-4">3-WAY MATCHING STATUS</div>
+
+    {% if error %}
+    <div class="p-3 rounded-lg border vmp-border-warn vmp-bg-warn vmp-opacity-30">
+        <div class="vmp-caption vmp-text-warn">{{ error }}</div>
+    </div>
+    {% elif matchingStatus %}
+    <!-- Match State Badge -->
+    <div class="mb-4">
+        <div class="vmp-panel px-4 py-3 rounded-lg border vmp-border-color flex items-center justify-between
+            {% if matchingStatus.match_state == 'READY' %} vmp-bg-ok vmp-opacity-20 vmp-border-ok
+            {% elif matchingStatus.match_state == 'WARN' %} vmp-bg-warn vmp-opacity-20 vmp-border-warn
+            {% elif matchingStatus.match_state == 'BLOCK' %} vmp-bg-danger vmp-opacity-20 vmp-border-danger
+            {% endif %}">
+            <div>
+                <div class="vmp-label-kicker opacity-50 mb-0.5">MATCH STATE</div>
+                <div class="vmp-label 
+                    {% if matchingStatus.match_state == 'READY' %} vmp-text-ok
+                    {% elif matchingStatus.match_state == 'WARN' %} vmp-text-warn
+                    {% elif matchingStatus.match_state == 'BLOCK' %} vmp-text-danger
+                    {% endif %}">
+                    {{ matchingStatus.match_state }}
+                </div>
+            </div>
+            <div class="w-2 h-12 rounded-full overflow-hidden relative vmp-bg-panel">
+                <div class="absolute bottom-0 left-0 right-0 
+                    {% if matchingStatus.match_state == 'READY' %} vmp-fill-ok h-full
+                    {% elif matchingStatus.match_state == 'WARN' %} vmp-fill-warn h-2/3
+                    {% elif matchingStatus.match_state == 'BLOCK' %} vmp-fill-danger h-full animate-pulse
+                    {% endif %}">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Exceptions List -->
+    {% if matchingStatus.exceptions and matchingStatus.exceptions|length > 0 %}
+    <div class="mb-4">
+        <div class="vmp-label-kicker mb-2">EXCEPTIONS</div>
+        <div class="space-y-2">
+            {% for exception in matchingStatus.exceptions %}
+            <div class="vmp-caption vmp-text-warn flex items-center gap-2">
+                <span>⚠️</span>
+                <span>{{ exception }}</span>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- PO Match Status -->
+    <div class="mb-4">
+        <div class="vmp-label-kicker mb-2">PO MATCH</div>
+        {% if matchingStatus.po_match %}
+        <div class="vmp-panel p-3 rounded-lg border vmp-border-color">
+            <div class="vmp-body-small font-mono mb-1">{{ matchingStatus.po_match.po_number }}</div>
+            <div class="vmp-caption vmp-muted">Status: {{ matchingStatus.po_match.status | upper }}</div>
+        </div>
+        {% elif matchingStatus.invoice_po_ref %}
+        <div class="vmp-caption vmp-text-warn">PO {{ matchingStatus.invoice_po_ref }} not found</div>
+        {% else %}
+        <div class="vmp-caption vmp-muted">No PO reference</div>
+        {% endif %}
+    </div>
+
+    <!-- GRN Match Status -->
+    <div>
+        <div class="vmp-label-kicker mb-2">GRN MATCH</div>
+        {% if matchingStatus.grn_match %}
+        <div class="vmp-panel p-3 rounded-lg border vmp-border-color">
+            <div class="vmp-body-small font-mono mb-1">{{ matchingStatus.grn_match.grn_number }}</div>
+            <div class="vmp-caption vmp-muted">Status: {{ matchingStatus.grn_match.status | upper }}</div>
+        </div>
+        {% elif matchingStatus.invoice_grn_ref %}
+        <div class="vmp-caption vmp-text-warn">GRN {{ matchingStatus.invoice_grn_ref }} not found</div>
+        {% else %}
+        <div class="vmp-caption vmp-muted">No GRN reference</div>
+        {% endif %}
+    </div>
+    {% else %}
+    <div class="vmp-caption vmp-muted">No matching status available</div>
+    {% endif %}
+</div>
+

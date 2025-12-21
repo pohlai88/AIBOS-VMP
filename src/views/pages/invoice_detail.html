@@ -1,0 +1,22 @@
+{% extends "layout.html" %}
+{% block title %}Invoice {{ invoice.invoice_num if invoice else '—' }} — NexusCanon VMP{% endblock %}
+
+{% block content %}
+<div class="h-full overflow-y-auto">
+    <div id="invoice-detail-panel">
+        {% if invoice %}
+        {% include "partials/invoice_detail.html" %}
+        {% else %}
+        <div class="flex items-center justify-center h-full min-h-[600px]">
+            <div class="text-center max-w-md p-8">
+                <div class="vmp-h3 mb-4">Invoice Not Found</div>
+                <div class="vmp-body vmp-muted mb-6">
+                    The invoice you're looking for doesn't exist or you don't have access to it.
+                </div>
+                <a href="/invoices" class="vmp-btn-primary">Return to Invoices</a>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

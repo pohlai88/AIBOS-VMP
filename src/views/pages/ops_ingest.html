@@ -1,0 +1,31 @@
+{% extends "layout.html" %}
+{% block title %}Data Ingest — NexusCanon VMP{% endblock %}
+
+{% block content %}
+<div class="h-full overflow-y-auto">
+    <div class="vmp-container max-w-4xl mx-auto p-6">
+        <header class="mb-6">
+            <h1 class="vmp-h1 mb-2">Data Ingest</h1>
+            <p class="vmp-body vmp-muted">Upload CSV files to populate the Shadow Ledger</p>
+        </header>
+
+        <!-- Target Selector -->
+        <div id="target-selector-container"
+             hx-get="/partials/ingest-target-selector.html"
+             hx-trigger="load"
+             hx-target="this"
+             hx-swap="innerHTML">
+            <div class="flex items-center justify-center h-32">
+                <div class="vmp-label-kicker animate-pulse opacity-60">Loading target selector...</div>
+            </div>
+        </div>
+
+        <div id="ingest-forms-container" class="space-y-6">
+            {% include "partials/invoice_ingest_form.html" %}
+            {% include "partials/payment_ingest_form.html" %}
+            {% include "partials/remittance_drop_form.html" %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
