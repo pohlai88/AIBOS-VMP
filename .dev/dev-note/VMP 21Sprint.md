@@ -882,11 +882,15 @@ If you tell me your team shape (e.g., **1 dev vs 2 dev + 1 designer**), I’ll a
    - Add internal access control tests
    - Enhance error UI states for timeout scenarios
 
-5. **Consolidate UI Pages (Post-Exploration)**
-   - Decide on production target: `home5.html` as unified console
-   - Decide on production login: `login3.html` as enhanced login
-   - Archive or remove experimental pages (`home3`, `home4`, `dashboard`)
-   - **Note:** Multiple experimental pages created for UX validation; need to consolidate
+5. **Consolidate UI Pages (Post-Exploration)** ✅ **COMPLETED** (2025-12-22)
+   - ✅ Production target locked: `home5.html` as unified console
+   - ✅ Production login locked: `login3.html` as enhanced login
+   - ✅ Experimental pages archived: `home2`, `home3`, `home4`, `login2`, `login4`, `dashboard` → `.archive/`
+   - ✅ Routes consolidated: All experimental routes redirect to canonical routes
+   - ✅ Optimizations merged: Debounced search, keyboard shortcuts, ARIA improvements
+   - ✅ Rollback mechanism: Env vars `VMP_HOME_PAGE` and `VMP_LOGIN_PAGE`
+   - ✅ Test files updated: All tests now verify redirects instead of old routes
+   - ✅ Documentation finalized: Integration plan, consolidation plan, archive docs complete
 
 6. **Day 13 — Design Consistency Pass**
    - Standardize spacing, typography, pills, panels

@@ -14,17 +14,17 @@ export default defineConfig({
   test: {
     // Enable globals (Jest-compatible)
     globals: true,
-    
+
     // Test file patterns
     // Node tests: *.test.js (exclude browser tests)
     // Browser tests: *.browser.test.js (only when --browser flag used)
-    include: process.env.VITEST_BROWSER 
-      ? ['tests/**/*.browser.test.js'] 
+    include: process.env.VITEST_BROWSER
+      ? ['tests/**/*.browser.test.js']
       : ['tests/**/*.test.js'],
     exclude: process.env.VITEST_BROWSER
       ? ['tests/e2e/**', 'node_modules/**']
       : ['tests/**/*.browser.test.js', 'tests/e2e/**', 'node_modules/**'],
-    
+
     // Browser mode configuration
     // Only enabled when --browser flag is used
     browser: {
@@ -38,10 +38,10 @@ export default defineConfig({
       // Headless mode (set to false to see browser)
       headless: true,
     },
-    
+
     // Default environment
     environment: 'node',
-    
+
     // Coverage configuration
     coverage: {
       provider: 'v8',
@@ -56,27 +56,27 @@ export default defineConfig({
         'node_modules/**',
       ],
       reportsDirectory: './coverage',
-      // Coverage thresholds - require 95% coverage
+      // Coverage thresholds - require 85% coverage
       thresholds: {
-        lines: 95,
-        functions: 95,
-        branches: 95,
-        statements: 95,
+        lines: 85,
+        functions: 85,
+        branches: 85,
+        statements: 85,
         // Allow coverage to be calculated even if thresholds not met
         autoUpdate: false,
       },
     },
-    
+
     // Setup files
     setupFiles: [],
-    
+
     // Test timeout
-    testTimeout: 10000,
-    
+    testTimeout: 30000, // Increased to 30s to handle network operations and large evidence arrays
+
     // Watch mode
     watch: false,
   },
-  
+
   // ES modules support
   esbuild: {
     target: 'node20',

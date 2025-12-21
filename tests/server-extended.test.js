@@ -58,18 +58,18 @@ describe('Server Extended Routes', () => {
   // ============================================================================
 
   describe('Home Routes with Data', () => {
-    test('GET /home3 should return 200 when authenticated', async () => {
+    test('GET /home3 should redirect to /home (canonical)', async () => {
       if (!testSession) {
         console.warn('Skipping - no test session');
         return;
       }
 
       const response = await authenticatedRequest('get', '/home3');
-      expect(response.statusCode).toBe(200);
-      expect(response.text.toLowerCase()).toContain('<!doctype html>');
+      expect(response.statusCode).toBe(302);
+      expect(response.headers.location).toBe('/home');
     });
 
-    test('GET /home3 should handle adapter errors gracefully', async () => {
+    test('GET /home3 redirects to /home (no adapter errors)', async () => {
       if (!testSession) {
         console.warn('Skipping - no test session');
         return;
@@ -80,66 +80,63 @@ describe('Server Extended Routes', () => {
       vmpAdapter.getInbox = vi.fn().mockRejectedValue(new Error('Database error'));
 
       const response = await authenticatedRequest('get', '/home3');
-      expect(response.statusCode).toBe(200); // Should still render with empty cases
+      expect(response.statusCode).toBe(302);
+      expect(response.headers.location).toBe('/home');
       
       // Restore
       vmpAdapter.getInbox = originalGetInbox;
     });
 
-    test('GET /home4 should return 200 when authenticated', async () => {
+    test('GET /home4 should redirect to /home (canonical)', async () => {
       if (!testSession) {
         console.warn('Skipping - no test session');
         return;
       }
 
       const response = await authenticatedRequest('get', '/home4');
-      expect(response.statusCode).toBe(200);
-      expect(response.text.toLowerCase()).toContain('<!doctype html>');
+      expect(response.statusCode).toBe(302);
+      expect(response.headers.location).toBe('/home');
     });
 
-    test('GET /home4 should calculate metrics correctly', async () => {
+    test('GET /home4 redirects to /home (metrics handled there)', async () => {
       if (!testSession) {
         console.warn('Skipping - no test session');
         return;
       }
 
       const response = await authenticatedRequest('get', '/home4');
-      expect(response.statusCode).toBe(200);
-      // Should render with actionCount and openCount
-      expect(response.text).toBeDefined();
+      expect(response.statusCode).toBe(302);
+      expect(response.headers.location).toBe('/home');
     });
 
-    test('GET /home5 should return 200 when authenticated', async () => {
+    test('GET /home5 should redirect (to /home, then /login if not authenticated)', async () => {
+      const response = await request(app).get('/home5');
+      expect(response.statusCode).toBe(302);
+      // Redirects to /home, which then redirects to /login if not authenticated
+      expect(['/home', '/login']).toContain(response.headers.location);
+    });
+
+    test('GET /home should calculate all metrics', async () => {
       if (!testSession) {
         console.warn('Skipping - no test session');
         return;
       }
 
-      const response = await authenticatedRequest('get', '/home5');
-      expect(response.statusCode).toBe(200);
-      expect(response.text.toLowerCase()).toContain('<!doctype html>');
-    });
-
-    test('GET /home5 should calculate all metrics', async () => {
-      if (!testSession) {
-        console.warn('Skipping - no test session');
-        return;
-      }
-
-      const response = await authenticatedRequest('get', '/home5');
+      const response = await authenticatedRequest('get', '/home');
       expect(response.statusCode).toBe(200);
       // Should render with actionCount, openCount, soaCount, paidCount
       expect(response.text).toBeDefined();
     });
 
-    test('GET /dashboard should return 200 when authenticated', async () => {
+    test('GET /dashboard should redirect to /home (canonical)', async () => {
       if (!testSession) {
         console.warn('Skipping - no test session');
         return;
       }
 
       const response = await authenticatedRequest('get', '/dashboard');
-      expect(response.statusCode).toBe(200);
+      expect(response.statusCode).toBe(302);
+      expect(response.headers.location).toBe('/home');
     });
   });
 
@@ -319,8 +316,8 @@ describe('Server Extended Routes', () => {
       const response = await authenticatedRequest('post', `/cases/${testCaseId}/evidence`)
         .send({ evidence_type: 'invoice_pdf' });
 
-      // Should return 200 and refresh evidence (empty upload is ignored)
-      expect(response.statusCode).toBe(200);
+      // Should return 400 for missing file (required field)
+      expect(response.statusCode).toBe(400);
     });
 
     test('POST /cases/:id/evidence should handle missing evidence_type', async () => {

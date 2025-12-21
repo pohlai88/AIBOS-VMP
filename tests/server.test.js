@@ -77,19 +77,22 @@ describe('Server Routes', () => {
       expect(response.text.toLowerCase()).toContain('<!doctype html>');
     });
 
-    test('GET /login2 should return 200', async () => {
+    test('GET /login2 should redirect to /login', async () => {
       const response = await request(app).get('/login2');
-      expect(response.statusCode).toBe(200);
+      expect(response.statusCode).toBe(302);
+      expect(response.headers.location).toBe('/login');
     });
 
-    test('GET /login3 should return 200', async () => {
+    test('GET /login3 should redirect to /login (canonical)', async () => {
       const response = await request(app).get('/login3');
-      expect(response.statusCode).toBe(200);
+      expect(response.statusCode).toBe(302);
+      expect(response.headers.location).toBe('/login');
     });
 
-    test('GET /login4 should return 200', async () => {
+    test('GET /login4 should redirect to /login (canonical)', async () => {
       const response = await request(app).get('/login4');
-      expect(response.statusCode).toBe(200);
+      expect(response.statusCode).toBe(302);
+      expect(response.headers.location).toBe('/login');
     });
 
     test('GET /examples should return 200, redirect, or handle errors', async () => {
@@ -192,14 +195,11 @@ describe('Server Routes', () => {
       expect(response.statusCode).toBe(302);
     });
 
-    test('GET /home2 should return 200 when authenticated', async () => {
-      if (!testSession) {
-        console.warn('Skipping authenticated route test - no test session');
-        return;
-      }
-
-      const response = await authenticatedRequest('get', '/home2');
-      expect(response.statusCode).toBe(200);
+    test('GET /home2 should redirect (to /home, then /login if not authenticated)', async () => {
+      const response = await request(app).get('/home2');
+      expect(response.statusCode).toBe(302);
+      // Redirects to /home, which then redirects to /login if not authenticated
+      expect(['/home', '/login']).toContain(response.headers.location);
     });
 
     test('GET /dashboard should redirect to /login when not authenticated', async () => {
@@ -207,19 +207,23 @@ describe('Server Routes', () => {
       expect(response.statusCode).toBe(302);
     });
 
-    test('GET /home3 should redirect to /login when not authenticated', async () => {
+    test('GET /home3 should redirect to /home (canonical)', async () => {
       const response = await request(app).get('/home3');
       expect(response.statusCode).toBe(302);
+      expect(response.headers.location).toBe('/home');
     });
 
-    test('GET /home4 should redirect to /login when not authenticated', async () => {
+    test('GET /home4 should redirect to /home (canonical)', async () => {
       const response = await request(app).get('/home4');
       expect(response.statusCode).toBe(302);
+      expect(response.headers.location).toBe('/home');
     });
 
-    test('GET /home5 should redirect to /login when not authenticated', async () => {
+    test('GET /home5 should redirect (to /home, then /login if not authenticated)', async () => {
       const response = await request(app).get('/home5');
       expect(response.statusCode).toBe(302);
+      // Redirects to /home, which then redirects to /login if not authenticated
+      expect(['/home', '/login']).toContain(response.headers.location);
     });
   });
 

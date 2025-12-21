@@ -289,8 +289,8 @@ describe('Days 5-8: Case Detail Functionality', () => {
       const response = await authenticatedRequest('post', `/cases/${mockCaseId}/evidence`)
         .send({ evidence_type: 'invoice_pdf' });
 
-      // Should return refreshed evidence without error (graceful handling)
-      expect(response.statusCode).toBe(200);
+      // Should return 400 for missing file (required field)
+      expect(response.statusCode).toBe(400);
     });
 
     test('POST /cases/:id/evidence should reject request without evidence_type', async () => {

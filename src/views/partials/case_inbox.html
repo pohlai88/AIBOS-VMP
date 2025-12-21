@@ -1,4 +1,9 @@
 <div class="flex flex-col h-full">
+    {% if error %}
+    <div class="p-3 m-4 rounded-lg border vmp-border-warn vmp-bg-warn vmp-opacity-30">
+        <div class="vmp-caption vmp-text-warn">{{ error }}</div>
+    </div>
+    {% endif %}
     <div class="sticky top-0 z-10 vmp-component-card-header backdrop-blur-md flex gap-2 overflow-x-auto py-3">
         <button class="vmp-tag vmp-tag-mono hover:bg-white/5 transition-colors vmp-navigation-link-active">
             ALL ({{ cases|length }})

@@ -71,8 +71,9 @@ describe('Adapter Storage Error Paths - Advanced Mocks', () => {
       // Should not reach here
       expect(true).toBe(false);
     } catch (error) {
-      // Expected - database insert should fail
-      expect(error.message).toContain('Failed to create evidence record');
+      // Expected - database insert should fail with foreign key constraint error
+      // handleSupabaseError converts 23503 to "Referenced resource does not exist"
+      expect(error.message).toMatch(/Failed to create evidence record|Referenced resource does not exist/);
     }
 
     // Restore original method

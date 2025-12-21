@@ -123,7 +123,7 @@ describe('Server Branch Coverage - Target 95%', () => {
   // ============================================================================
 
   describe('Route Error Branches', () => {
-    test('GET /home3 should handle error in outer catch', async () => {
+    test('GET /home3 redirects to /home (no error handling needed)', async () => {
       if (!testSession) {
         console.warn('Skipping - no test session');
         return;
@@ -138,14 +138,14 @@ describe('Server Branch Coverage - Target 95%', () => {
       vmpAdapter.getInbox = vi.fn().mockRejectedValue(new Error('Outer error'));
 
       const response = await authenticatedRequest('get', '/home3');
-      // The route handles errors gracefully and still renders (200 status)
-      // The error is logged but the page is rendered with empty cases
-      expect(response.statusCode).toBe(200);
+      // Route redirects to canonical /home
+      expect(response.statusCode).toBe(302);
+      expect(response.headers.location).toBe('/home');
 
       vmpAdapter.getInbox = originalGetInbox;
     });
 
-    test('GET /home4 should handle error in outer catch', async () => {
+    test('GET /home4 redirects to /home (no error handling needed)', async () => {
       if (!testSession) {
         console.warn('Skipping - no test session');
         return;
@@ -156,13 +156,21 @@ describe('Server Branch Coverage - Target 95%', () => {
       vmpAdapter.getInbox = vi.fn().mockRejectedValue(new Error('Outer error'));
 
       const response = await authenticatedRequest('get', '/home4');
-      // The route handles errors gracefully and still renders (200 status)
-      expect(response.statusCode).toBe(200);
+      // Route redirects to canonical /home
+      expect(response.statusCode).toBe(302);
+      expect(response.headers.location).toBe('/home');
 
       vmpAdapter.getInbox = originalGetInbox;
     });
 
-    test('GET /home5 should handle error in outer catch', async () => {
+    test('GET /home5 should redirect (to /home, then /login if not authenticated)', async () => {
+      const response = await request(app).get('/home5');
+      expect(response.statusCode).toBe(302);
+      // Redirects to /home, which then redirects to /login if not authenticated
+      expect(['/home', '/login']).toContain(response.headers.location);
+    });
+
+    test('GET /home should handle error in outer catch', async () => {
       if (!testSession) {
         console.warn('Skipping - no test session');
         return;
@@ -172,7 +180,7 @@ describe('Server Branch Coverage - Target 95%', () => {
       const originalGetInbox = vmpAdapter.getInbox;
       vmpAdapter.getInbox = vi.fn().mockRejectedValue(new Error('Outer error'));
 
-      const response = await authenticatedRequest('get', '/home5');
+      const response = await authenticatedRequest('get', '/home');
       // The route handles errors gracefully and still renders (200 status)
       expect(response.statusCode).toBe(200);
 
@@ -339,7 +347,12 @@ describe('Server Branch Coverage - Target 95%', () => {
       }
 
       // Mock successful upload but failed refresh
+      const originalUploadEvidence = vmpAdapter.uploadEvidence;
       const originalGetEvidence = vmpAdapter.getEvidence;
+      
+      // Mock upload to succeed quickly
+      vmpAdapter.uploadEvidence = vi.fn().mockResolvedValue(undefined);
+      // Mock refresh to fail
       vmpAdapter.getEvidence = vi.fn().mockRejectedValue(new Error('Refresh failed'));
 
       const testFile = Buffer.from('test file content');
@@ -347,9 +360,10 @@ describe('Server Branch Coverage - Target 95%', () => {
         .attach('file', testFile, 'test.pdf')
         .field('evidence_type', 'invoice_pdf');
 
-      // May succeed or fail depending on when error occurs
-      expect([200, 500]).toContain(response.statusCode);
+      // Should return 500 when refresh fails
+      expect(response.statusCode).toBe(500);
 
+      vmpAdapter.uploadEvidence = originalUploadEvidence;
       vmpAdapter.getEvidence = originalGetEvidence;
     });
   });

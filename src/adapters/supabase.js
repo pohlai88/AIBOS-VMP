@@ -2,6 +2,15 @@ import { createClient } from '@supabase/supabase-js';
 import bcrypt from 'bcrypt';
 import { randomBytes } from 'crypto';
 import dotenv from 'dotenv';
+import { 
+    DatabaseError, 
+    TimeoutError, 
+    StorageError, 
+    NotFoundError,
+    ValidationError,
+    handleSupabaseError,
+    logError 
+} from '../utils/errors.js';
 dotenv.config();
 
 // Validate required environment variables
@@ -30,11 +39,12 @@ const supabase = createClient(supabaseUrl, supabaseKey, {
 });
 
 // Timeout wrapper for async operations
+// Uses structured error handling per Supabase best practices
 const withTimeout = async (promise, timeoutMs = 10000, operationName = 'operation') => {
     let timeoutId;
     const timeoutPromise = new Promise((_, reject) => {
         timeoutId = setTimeout(() => {
-            reject(new Error(`${operationName} timed out after ${timeoutMs}ms`));
+            reject(new TimeoutError(operationName, timeoutMs));
         }, timeoutMs);
     });
 
@@ -44,7 +54,7 @@ const withTimeout = async (promise, timeoutMs = 10000, operationName = 'operatio
         return result;
     } catch (error) {
         clearTimeout(timeoutId); // Clear timeout on error
-        console.error(`Timeout error in ${operationName}:`, error);
+        logError(error, { operation: operationName, timeoutMs });
         throw error;
     }
 };
@@ -65,11 +75,12 @@ export const vmpAdapter = {
         );
 
         if (error) {
-            if (error.code === 'PGRST116') {
-                // No rows returned
+            const handledError = handleSupabaseError(error, 'getUserByEmail');
+            if (handledError === null) {
+                // PGRST116 - No rows returned (not an error)
                 return null;
             }
-            throw error;
+            throw handledError;
         }
         return data;
     },
@@ -123,7 +134,11 @@ export const vmpAdapter = {
             `createSession(${userId})`
         );
 
-        if (error) throw error;
+        if (error) {
+            const handledError = handleSupabaseError(error, 'createSession');
+            if (handledError) throw handledError;
+            throw new DatabaseError('Failed to create session', error);
+        }
         return { sessionId, expiresAt, data };
     },
 
@@ -144,10 +159,12 @@ export const vmpAdapter = {
         );
 
         if (error) {
-            if (error.code === 'PGRST116') {
-                return null; // Session not found
+            const handledError = handleSupabaseError(error, 'getSession');
+            if (handledError === null) {
+                // PGRST116 - Session not found (not an error)
+                return null;
             }
-            throw error;
+            throw handledError;
         }
 
         // Check if session is expired
@@ -176,8 +193,11 @@ export const vmpAdapter = {
         );
 
         if (error) {
-            console.error('Error deleting session:', error);
-            // Don't throw - session might already be deleted
+            const handledError = handleSupabaseError(error, 'deleteSession');
+            // Log but don't throw - session might already be deleted
+            if (handledError && handledError.code !== 'NOT_FOUND') {
+                logError(handledError, { operation: 'deleteSession', sessionId });
+            }
         }
     },
 
@@ -195,13 +215,17 @@ export const vmpAdapter = {
         );
 
         if (error) {
-            console.error('Error cleaning expired sessions:', error);
+            const handledError = handleSupabaseError(error, 'cleanExpiredSessions');
+            if (handledError) {
+                logError(handledError, { operation: 'cleanExpiredSessions' });
+            }
         }
     },
 
     // Phase 1: Context Loading
     async getVendorContext(userId) {
-        const queryPromise = supabase
+        // Try with is_internal first (if migration 012 has been applied)
+        let queryPromise = supabase
             .from('vmp_vendor_users')
             .select(`
                 id, display_name, vendor_id, email, is_active, is_internal,
@@ -210,20 +234,48 @@ export const vmpAdapter = {
             .eq('id', userId)
             .single();
 
-        const { data, error } = await withTimeout(
+        let { data, error } = await withTimeout(
             queryPromise,
             10000,
             `getVendorContext(${userId})`
         );
 
-        if (error) throw error;
+        // If is_internal column doesn't exist, fall back to query without it
+        if (error && error.message && error.message.includes('is_internal')) {
+            queryPromise = supabase
+                .from('vmp_vendor_users')
+                .select(`
+                    id, display_name, vendor_id, email, is_active,
+                    vmp_vendors ( id, name, tenant_id )
+                `)
+                .eq('id', userId)
+                .single();
+
+            const result = await withTimeout(
+                queryPromise,
+                10000,
+                `getVendorContext(${userId})`
+            );
+            data = result.data;
+            error = result.error;
+            // Set default is_internal to false if column doesn't exist
+            if (data) {
+                data.is_internal = false;
+            }
+        }
+
+        if (error) {
+            const handledError = handleSupabaseError(error, 'getVendorContext');
+            if (handledError) throw handledError;
+            throw new DatabaseError('Failed to get vendor context', error, { userId });
+        }
         return data;
     },
 
     // Phase 2: Inbox Cell Data
     async getInbox(vendorId) {
         if (!vendorId) {
-            throw new Error('getInbox requires a vendorId parameter');
+            throw new ValidationError('getInbox requires a vendorId parameter', 'vendorId');
         }
 
         const queryPromise = supabase
@@ -242,8 +294,9 @@ export const vmpAdapter = {
         );
 
         if (error) {
-            console.error('Inbox Error:', error);
-            throw new Error(`Failed to fetch inbox: ${error.message}`);
+            const handledError = handleSupabaseError(error, 'getInbox');
+            if (handledError) throw handledError;
+            throw new DatabaseError('Failed to fetch inbox', error, { vendorId });
         }
         return data || [];
     },
@@ -251,7 +304,7 @@ export const vmpAdapter = {
     // Phase 2: Case Detail Cell Data
     async getCaseDetail(caseId, vendorId) {
         if (!caseId || !vendorId) {
-            throw new Error('getCaseDetail requires both caseId and vendorId parameters');
+            throw new ValidationError('getCaseDetail requires both caseId and vendorId parameters', null, { caseId, vendorId });
         }
 
         // Security check: ensure case belongs to vendor
@@ -269,8 +322,9 @@ export const vmpAdapter = {
         );
 
         if (error) {
-            console.error('Case Detail Error:', error);
-            throw new Error(`Failed to fetch case detail: ${error.message}`);
+            const handledError = handleSupabaseError(error, 'getCaseDetail');
+            if (handledError) throw handledError;
+            throw new DatabaseError('Failed to fetch case detail', error, { caseId, vendorId });
         }
 
         if (!caseData) {
@@ -283,7 +337,7 @@ export const vmpAdapter = {
     // Phase 3: Thread Cell - Get Messages
     async getMessages(caseId) {
         if (!caseId) {
-            throw new Error('getMessages requires a caseId parameter');
+            throw new ValidationError('getMessages requires a caseId parameter', 'caseId');
         }
 
         const queryPromise = supabase
@@ -309,8 +363,9 @@ export const vmpAdapter = {
         );
 
         if (error) {
-            console.error('Messages Error:', error);
-            throw new Error(`Failed to fetch messages: ${error.message}`);
+            const handledError = handleSupabaseError(error, 'getMessages');
+            if (handledError) throw handledError;
+            throw new DatabaseError('Failed to fetch messages', error, { caseId });
         }
 
         // Transform data to match template expectations
@@ -333,19 +388,27 @@ export const vmpAdapter = {
     // Phase 3: Thread Cell - Create Message
     async createMessage(caseId, body, senderType = 'vendor', channelSource = 'portal', senderUserId = null, isInternalNote = false) {
         if (!caseId || !body) {
-            throw new Error('createMessage requires caseId and body parameters');
+            throw new ValidationError('createMessage requires caseId and body parameters', null, { caseId, hasBody: !!body });
         }
 
         // Validate sender_type
         const validSenderTypes = ['vendor', 'internal', 'ai'];
         if (!validSenderTypes.includes(senderType)) {
-            throw new Error(`Invalid sender_type. Must be one of: ${validSenderTypes.join(', ')}`);
+            throw new ValidationError(
+                `Invalid sender_type. Must be one of: ${validSenderTypes.join(', ')}`,
+                'senderType',
+                { value: senderType, validValues: validSenderTypes }
+            );
         }
 
         // Validate channel_source
         const validChannels = ['portal', 'whatsapp', 'email', 'slack'];
         if (!validChannels.includes(channelSource)) {
-            throw new Error(`Invalid channel_source. Must be one of: ${validChannels.join(', ')}`);
+            throw new ValidationError(
+                `Invalid channel_source. Must be one of: ${validChannels.join(', ')}`,
+                'channelSource',
+                { value: channelSource, validValues: validChannels }
+            );
         }
 
         const queryPromise = supabase
@@ -368,8 +431,9 @@ export const vmpAdapter = {
         );
 
         if (error) {
-            console.error('Create Message Error:', error);
-            throw new Error(`Failed to create message: ${error.message}`);
+            const handledError = handleSupabaseError(error, 'createMessage');
+            if (handledError) throw handledError;
+            throw new DatabaseError('Failed to create message', error);
         }
 
         return data;
@@ -378,7 +442,7 @@ export const vmpAdapter = {
     // Phase 4: Checklist Cell - Get Checklist Steps
     async getChecklistSteps(caseId) {
         if (!caseId) {
-            throw new Error('getChecklistSteps requires a caseId parameter');
+            throw new ValidationError('getChecklistSteps requires a caseId parameter', 'caseId');
         }
 
         const queryPromise = supabase
@@ -394,8 +458,9 @@ export const vmpAdapter = {
         );
 
         if (error) {
-            console.error('Checklist Steps Error:', error);
-            throw new Error(`Failed to fetch checklist steps: ${error.message}`);
+            const handledError = handleSupabaseError(error, 'getChecklistSteps');
+            if (handledError) throw handledError;
+            throw new DatabaseError('Failed to fetch checklist steps', error);
         }
 
         return data || [];
@@ -404,7 +469,7 @@ export const vmpAdapter = {
     // Phase 4: Checklist Cell - Create Checklist Step
     async createChecklistStep(caseId, label, requiredEvidenceType = null) {
         if (!caseId || !label) {
-            throw new Error('createChecklistStep requires caseId and label parameters');
+            throw new ValidationError('createChecklistStep requires caseId and label parameters', null, { caseId, hasLabel: !!label });
         }
 
         const queryPromise = supabase
@@ -425,8 +490,9 @@ export const vmpAdapter = {
         );
 
         if (error) {
-            console.error('Create Checklist Step Error:', error);
-            throw new Error(`Failed to create checklist step: ${error.message}`);
+            const handledError = handleSupabaseError(error, 'createChecklistStep');
+            if (handledError) throw handledError;
+            throw new DatabaseError('Failed to create checklist step', error, { caseId, label });
         }
 
         return data;
@@ -435,7 +501,7 @@ export const vmpAdapter = {
     // Phase 4: Checklist Cell - Ensure Checklist Steps Exist
     async ensureChecklistSteps(caseId, caseType) {
         if (!caseId || !caseType) {
-            throw new Error('ensureChecklistSteps requires caseId and caseType parameters');
+            throw new ValidationError('ensureChecklistSteps requires caseId and caseType parameters', null, { caseId, caseType });
         }
 
         // Import rules engine dynamically to avoid circular dependencies
@@ -463,7 +529,10 @@ export const vmpAdapter = {
                 );
                 createdSteps.push(created);
             } catch (error) {
-                console.error(`Error creating checklist step "${step.label}":`, error);
+                const handledError = handleSupabaseError(error, `createChecklistStep(${step.label})`);
+                if (handledError) {
+                    logError(handledError, { operation: 'ensureChecklistSteps', stepLabel: step.label, caseId });
+                }
                 // Continue with other steps
             }
         }
@@ -475,7 +544,7 @@ export const vmpAdapter = {
     // Phase 5: Evidence Cell - Get Evidence
     async getEvidence(caseId) {
         if (!caseId) {
-            throw new Error('getEvidence requires a caseId parameter');
+            throw new ValidationError('getEvidence requires a caseId parameter', 'caseId');
         }
 
         const queryPromise = supabase
@@ -491,8 +560,9 @@ export const vmpAdapter = {
         );
 
         if (error) {
-            console.error('Evidence Error:', error);
-            throw new Error(`Failed to fetch evidence: ${error.message}`);
+            const handledError = handleSupabaseError(error, 'getEvidence');
+            if (handledError) throw handledError;
+            throw new DatabaseError('Failed to fetch evidence', error, { caseId });
         }
 
         return data || [];
@@ -507,7 +577,7 @@ export const vmpAdapter = {
     // Phase 5: Evidence Cell - Get Next Version for Evidence Type
     async getNextEvidenceVersion(caseId, evidenceType) {
         if (!caseId || !evidenceType) {
-            throw new Error('getNextEvidenceVersion requires caseId and evidenceType parameters');
+            throw new ValidationError('getNextEvidenceVersion requires caseId and evidenceType parameters', null, { caseId, evidenceType });
         }
 
         const queryPromise = supabase
@@ -524,9 +594,10 @@ export const vmpAdapter = {
             `getNextEvidenceVersion(${caseId}, ${evidenceType})`
         );
 
-        if (error && error.code !== 'PGRST116') { // PGRST116 = no rows
-            console.error('Get Next Version Error:', error);
-            throw new Error(`Failed to get next version: ${error.message}`);
+        if (error && error.code !== 'PGRST116') { // PGRST116 = no rows (not an error)
+            const handledError = handleSupabaseError(error, 'getNextEvidenceVersion');
+            if (handledError) throw handledError;
+            throw new DatabaseError('Failed to get next version', error, { caseId, evidenceType });
         }
 
         // If no existing evidence, start at version 1
@@ -555,8 +626,10 @@ export const vmpAdapter = {
             });
 
         if (error) {
-            console.error('Storage Upload Error:', error);
-            throw new Error(`Failed to upload to storage: ${error.message}`);
+            throw new StorageError('Failed to upload to storage', error, {
+                storagePath,
+                mimeType
+            });
         }
 
         return data;
@@ -569,8 +642,10 @@ export const vmpAdapter = {
             .createSignedUrl(storagePath, expiresIn);
 
         if (error) {
-            console.error('Signed URL Error:', error);
-            throw new Error(`Failed to create signed URL: ${error.message}`);
+            throw new StorageError('Failed to create signed URL', error, {
+                storagePath,
+                expiresIn
+            });
         }
 
         return data.signedUrl;
@@ -579,7 +654,11 @@ export const vmpAdapter = {
     // Phase 5: Evidence Cell - Upload Evidence (Complete Flow)
     async uploadEvidence(caseId, file, evidenceType, checklistStepId = null, uploaderType = 'vendor', uploaderUserId = null) {
         if (!caseId || !file || !evidenceType) {
-            throw new Error('uploadEvidence requires caseId, file, and evidenceType parameters');
+            throw new ValidationError('uploadEvidence requires caseId, file, and evidenceType parameters', null, { 
+                caseId, 
+                hasFile: !!file, 
+                evidenceType 
+            });
         }
 
         // Get next version for this evidence type
@@ -625,14 +704,19 @@ export const vmpAdapter = {
         );
 
         if (error) {
-            console.error('Create Evidence Record Error:', error);
+            const handledError = handleSupabaseError(error, 'uploadEvidence');
             // Try to clean up uploaded file
             try {
                 await supabase.storage.from('vmp-evidence').remove([storagePath]);
             } catch (cleanupError) {
-                console.error('Failed to cleanup uploaded file:', cleanupError);
+                logError(cleanupError, { 
+                    operation: 'uploadEvidence.cleanup', 
+                    storagePath,
+                    originalError: handledError?.message 
+                });
             }
-            throw new Error(`Failed to create evidence record: ${error.message}`);
+            if (handledError) throw handledError;
+            throw new DatabaseError('Failed to create evidence record', error, { caseId, evidenceType, storagePath });
         }
 
         // Update checklist step status to 'submitted' if linked
@@ -644,7 +728,10 @@ export const vmpAdapter = {
                     .eq('id', checklistStepId)
                     .eq('case_id', caseId);
             } catch (updateError) {
-                console.error('Failed to update checklist step status:', updateError);
+                const handledError = handleSupabaseError(updateError, 'uploadEvidence.updateStepStatus');
+                if (handledError) {
+                    logError(handledError, { operation: 'uploadEvidence.updateStepStatus', checklistStepId, caseId });
+                }
                 // Don't fail the upload if step update fails
             }
         }
@@ -653,7 +740,10 @@ export const vmpAdapter = {
         try {
             await this.updateCaseStatusFromEvidence(caseId);
         } catch (statusError) {
-            console.error('Failed to update case status from evidence:', statusError);
+            const handledError = handleSupabaseError(statusError, 'uploadEvidence.updateCaseStatus');
+            if (handledError) {
+                logError(handledError, { operation: 'uploadEvidence.updateCaseStatus', caseId });
+            }
             // Don't fail the upload if status update fails
         }
 
@@ -663,7 +753,10 @@ export const vmpAdapter = {
     // Day 9: Internal Ops - Verify Evidence
     async verifyEvidence(checklistStepId, verifiedByUserId, reason = null) {
         if (!checklistStepId || !verifiedByUserId) {
-            throw new Error('verifyEvidence requires checklistStepId and verifiedByUserId');
+            throw new ValidationError('verifyEvidence requires checklistStepId and verifiedByUserId', null, { 
+                checklistStepId, 
+                verifiedByUserId 
+            });
         }
 
         // Get checklist step to find case_id
@@ -673,14 +766,17 @@ export const vmpAdapter = {
             .eq('id', checklistStepId)
             .single();
 
-        if (stepQuery.error) throw stepQuery.error;
+        if (stepQuery.error) {
+            const handledError = handleSupabaseError(stepQuery.error, 'verifyEvidence.getStep');
+            if (handledError) throw handledError;
+            throw new DatabaseError('Failed to fetch checklist step', stepQuery.error, { checklistStepId });
+        }
         const caseId = stepQuery.data.case_id;
 
         const queryPromise = supabase
             .from('vmp_checklist_steps')
             .update({
-                status: 'verified',
-                updated_at: new Date().toISOString()
+                status: 'verified'
             })
             .eq('id', checklistStepId)
             .select()
@@ -698,7 +794,10 @@ export const vmpAdapter = {
         try {
             await this.updateCaseStatusFromEvidence(caseId);
         } catch (statusError) {
-            console.error('Failed to update case status after verify:', statusError);
+            const handledError = handleSupabaseError(statusError, 'verifyEvidence.updateCaseStatus');
+            if (handledError) {
+                logError(handledError, { operation: 'verifyEvidence.updateCaseStatus', caseId });
+            }
             // Don't fail verification if status update fails
         }
 
@@ -708,15 +807,18 @@ export const vmpAdapter = {
     // Day 9: Internal Ops - Reject Evidence
     async rejectEvidence(checklistStepId, rejectedByUserId, reason) {
         if (!checklistStepId || !rejectedByUserId || !reason) {
-            throw new Error('rejectEvidence requires checklistStepId, rejectedByUserId, and reason');
+            throw new ValidationError('rejectEvidence requires checklistStepId, rejectedByUserId, and reason', null, { 
+                checklistStepId, 
+                rejectedByUserId, 
+                hasReason: !!reason 
+            });
         }
 
         const queryPromise = supabase
             .from('vmp_checklist_steps')
             .update({
                 status: 'rejected',
-                waived_reason: reason, // Store rejection reason
-                updated_at: new Date().toISOString()
+                waived_reason: reason // Store rejection reason
             })
             .eq('id', checklistStepId)
             .select()
@@ -728,18 +830,26 @@ export const vmpAdapter = {
             `rejectEvidence(${checklistStepId})`
         );
 
-        if (error) throw error;
+        if (error) {
+            const handledError = handleSupabaseError(error, 'rejectEvidence');
+            if (handledError) throw handledError;
+            throw new DatabaseError('Failed to reject evidence', error, { checklistStepId, rejectedByUserId });
+        }
         return data;
     },
 
     // Day 9: Internal Ops - Reassign Case
     async reassignCase(caseId, ownerTeam, assignedToUserId = null) {
         if (!caseId || !ownerTeam) {
-            throw new Error('reassignCase requires caseId and ownerTeam');
+            throw new ValidationError('reassignCase requires caseId and ownerTeam', null, { caseId, ownerTeam });
         }
 
         if (!['procurement', 'ap', 'finance'].includes(ownerTeam)) {
-            throw new Error('ownerTeam must be one of: procurement, ap, finance');
+            throw new ValidationError(
+                'ownerTeam must be one of: procurement, ap, finance',
+                'ownerTeam',
+                { value: ownerTeam, validValues: ['procurement', 'ap', 'finance'] }
+            );
         }
 
         const updateData = {
@@ -763,25 +873,34 @@ export const vmpAdapter = {
             `reassignCase(${caseId})`
         );
 
-        if (error) throw error;
+        if (error) {
+            const handledError = handleSupabaseError(error, 'reassignCase');
+            if (handledError) throw handledError;
+            throw new DatabaseError('Failed to reassign case', error, { caseId, ownerTeam });
+        }
         return data;
     },
 
     // Day 9: Internal Ops - Update Case Status
     async updateCaseStatus(caseId, status, updatedByUserId) {
-        if (!caseId || !status || !updatedByUserId) {
-            throw new Error('updateCaseStatus requires caseId, status, and updatedByUserId');
+        if (!caseId || !status) {
+            throw new ValidationError('updateCaseStatus requires caseId and status', null, { caseId, status });
         }
+        // updatedByUserId can be null for system updates (e.g., from evidence status changes)
 
-        if (!['open', 'waiting_supplier', 'waiting_internal', 'resolved', 'blocked'].includes(status)) {
-            throw new Error('status must be one of: open, waiting_supplier, waiting_internal, resolved, blocked');
+        const validStatuses = ['open', 'waiting_supplier', 'waiting_internal', 'resolved', 'blocked'];
+        if (!validStatuses.includes(status)) {
+            throw new ValidationError(
+                'status must be one of: open, waiting_supplier, waiting_internal, resolved, blocked',
+                'status',
+                { value: status, validValues: validStatuses }
+            );
         }
 
         const queryPromise = supabase
             .from('vmp_cases')
             .update({
-                status: status,
-                updated_at: new Date().toISOString()
+                status: status
             })
             .eq('id', caseId)
             .select()
@@ -793,26 +912,37 @@ export const vmpAdapter = {
             `updateCaseStatus(${caseId})`
         );
 
-        if (error) throw error;
+        if (error) {
+            const handledError = handleSupabaseError(error, 'updateCaseStatus');
+            if (handledError) throw handledError;
+            throw new DatabaseError('Failed to update case status', error, { caseId, status });
+        }
         return data;
     },
 
     // Day 10: Escalation - Escalate Case
     async escalateCase(caseId, escalationLevel, escalatedByUserId, reason = null) {
         if (!caseId || !escalationLevel || !escalatedByUserId) {
-            throw new Error('escalateCase requires caseId, escalationLevel, and escalatedByUserId');
+            throw new ValidationError('escalateCase requires caseId, escalationLevel, and escalatedByUserId', null, { 
+                caseId, 
+                escalationLevel, 
+                escalatedByUserId 
+            });
         }
 
         if (escalationLevel < 1 || escalationLevel > 3) {
-            throw new Error('escalationLevel must be between 1 and 3');
+            throw new ValidationError(
+                'escalationLevel must be between 1 and 3',
+                'escalationLevel',
+                { value: escalationLevel, min: 1, max: 3 }
+            );
         }
 
         // Update case: set escalation_level, assign to AP team, update status
         const updateData = {
             escalation_level: escalationLevel,
             owner_team: 'ap', // Escalated cases go to AP
-            status: escalationLevel >= 3 ? 'blocked' : 'waiting_internal', // Level 3 = blocked
-            updated_at: new Date().toISOString()
+            status: escalationLevel >= 3 ? 'blocked' : 'waiting_internal' // Level 3 = blocked
         };
 
         const queryPromise = supabase
@@ -828,7 +958,11 @@ export const vmpAdapter = {
             `escalateCase(${caseId})`
         );
 
-        if (error) throw error;
+        if (error) {
+            const handledError = handleSupabaseError(error, 'escalateCase');
+            if (handledError) throw handledError;
+            throw new DatabaseError('Failed to escalate case', error, { caseId, escalationLevel });
+        }
 
         // Create escalation message/audit log (store in messages table as internal note)
         if (reason) {
@@ -855,7 +989,12 @@ export const vmpAdapter = {
     // Day 11: Notifications - Create Notification
     async createNotification(caseId, userId, notificationType, title, body = null) {
         if (!caseId || !userId || !notificationType || !title) {
-            throw new Error('createNotification requires caseId, userId, notificationType, and title');
+            throw new ValidationError('createNotification requires caseId, userId, notificationType, and title', null, { 
+                caseId, 
+                userId, 
+                notificationType, 
+                hasTitle: !!title 
+            });
         }
 
         const queryPromise = supabase
@@ -888,7 +1027,11 @@ export const vmpAdapter = {
     // Day 11: Notifications - Notify All Vendor Users for Case
     async notifyVendorUsersForCase(caseId, notificationType, title, body = null) {
         if (!caseId || !notificationType || !title) {
-            throw new Error('notifyVendorUsersForCase requires caseId, notificationType, and title');
+            throw new ValidationError('notifyVendorUsersForCase requires caseId, notificationType, and title', null, { 
+                caseId, 
+                notificationType, 
+                hasTitle: !!title 
+            });
         }
 
         try {
@@ -939,7 +1082,7 @@ export const vmpAdapter = {
     // Day 11: Notifications - Get User Notifications
     async getUserNotifications(userId, limit = 50, unreadOnly = false) {
         if (!userId) {
-            throw new Error('getUserNotifications requires userId');
+            throw new ValidationError('getUserNotifications requires userId', 'userId');
         }
 
         let query = supabase
@@ -959,14 +1102,18 @@ export const vmpAdapter = {
             `getUserNotifications(${userId})`
         );
 
-        if (error) throw error;
+        if (error) {
+            const handledError = handleSupabaseError(error, 'getUserNotifications');
+            if (handledError) throw handledError;
+            throw new DatabaseError('Failed to fetch user notifications', error, { userId });
+        }
         return data || [];
     },
 
     // Day 11: Status Transition Logic - Update Case Status Based on Evidence
     async updateCaseStatusFromEvidence(caseId) {
         if (!caseId) {
-            throw new Error('updateCaseStatusFromEvidence requires caseId');
+            throw new ValidationError('updateCaseStatusFromEvidence requires caseId', 'caseId');
         }
 
         // Get all checklist steps for this case
@@ -983,7 +1130,19 @@ export const vmpAdapter = {
         const hasRejected = steps.some(s => s.status === 'rejected');
 
         // Get current case status
-        const caseDetail = await this.getCaseDetail(caseId, null); // Get case without vendor filter for internal ops
+        // For internal ops, we need to get the case without vendor filter
+        // Use a direct query instead of getCaseDetail which requires vendorId
+        const caseQuery = await supabase
+            .from('vmp_cases')
+            .select('*')
+            .eq('id', caseId)
+            .single();
+        
+        if (caseQuery.error || !caseQuery.data) {
+            return null;
+        }
+        
+        const caseDetail = caseQuery.data;
 
         if (!caseDetail) {
             return null;

@@ -249,10 +249,10 @@ describe('Server Routes - Comprehensive Coverage', () => {
         return;
       }
 
-      const response = await authenticatedRequest('post', `/cases/${testCaseId}/evidence`)
-        .send({ evidence_type: 'invoice_pdf' });
+      const req = authenticatedRequest('post', `/cases/${testCaseId}/evidence`);
+      const response = await req.send({ evidence_type: 'invoice_pdf' });
 
-      expect(response.statusCode).toBe(200);
+      expect(response.statusCode).toBe(400); // Should return 400 for missing file
     });
 
     test('POST /cases/:id/evidence should reject missing evidence_type', async () => {
@@ -305,34 +305,33 @@ describe('Server Routes - Comprehensive Coverage', () => {
   // ============================================================================
 
   describe('Home Routes', () => {
-    test('GET /home3 should return 200 when authenticated', async () => {
+    test('GET /home3 should redirect to /home (canonical)', async () => {
       if (!testSession) {
         console.warn('Skipping - no test session');
         return;
       }
 
       const response = await authenticatedRequest('get', '/home3');
-      expect(response.statusCode).toBe(200);
+      expect(response.statusCode).toBe(302);
+      expect(response.headers.location).toBe('/home');
     });
 
-    test('GET /home4 should return 200 when authenticated', async () => {
+    test('GET /home4 should redirect to /home (canonical)', async () => {
       if (!testSession) {
         console.warn('Skipping - no test session');
         return;
       }
 
       const response = await authenticatedRequest('get', '/home4');
-      expect(response.statusCode).toBe(200);
+      expect(response.statusCode).toBe(302);
+      expect(response.headers.location).toBe('/home');
     });
 
-    test('GET /home5 should return 200 when authenticated', async () => {
-      if (!testSession) {
-        console.warn('Skipping - no test session');
-        return;
-      }
-
-      const response = await authenticatedRequest('get', '/home5');
-      expect(response.statusCode).toBe(200);
+    test('GET /home5 should redirect (to /home, then /login if not authenticated)', async () => {
+      const response = await request(app).get('/home5');
+      expect(response.statusCode).toBe(302);
+      // Redirects to /home, which then redirects to /login if not authenticated
+      expect(['/home', '/login']).toContain(response.headers.location);
     });
   });
 

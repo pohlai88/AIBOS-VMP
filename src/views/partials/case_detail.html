@@ -1,4 +1,9 @@
 <div class="flex flex-col h-full vmp-bg-veil">
+    {% if error %}
+    <div class="p-4 m-4 vmp-panel border vmp-border-color vmp-signal-danger">
+        <div class="vmp-label vmp-signal-danger">{{ error }}</div>
+    </div>
+    {% endif %}
 
     <header class="shrink-0 p-6 border-b vmp-border-color vmp-bg-panel">
         <div class="flex justify-between items-start mb-4">

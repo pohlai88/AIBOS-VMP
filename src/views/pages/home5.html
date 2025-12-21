@@ -11,14 +11,23 @@
   override: false,
   init() {
     // Watch for HUD state changes and refresh inbox
-    this.$watch('q', () => this.refreshInbox());
+    // Note: 'q' is handled by HTMX directly via hx-trigger, but we keep watch for programmatic updates
     this.$watch('posture', () => this.refreshInbox());
     this.$watch('channel', () => this.refreshInbox());
     this.$watch('matchMode', () => this.refreshInbox());
     this.$watch('audit', () => this.refreshInbox());
     this.$watch('override', () => this.refreshInbox());
+    // Initialize keyboard shortcuts
+    this.initKeyboardShortcuts();
+  },
+  handleSearch() {
+    // Debounced search handler - only search if 3+ chars or empty (to reset)
+    if (this.q.length > 2 || this.q.length === 0) {
+      this.refreshInbox();
+    }
   },
   refreshInbox() {
+    // HTMX handles search via debounced handler, but we keep this for programmatic refreshes
     if (window.htmx && document.getElementById('case-inbox')) {
       const params = new URLSearchParams({
         q: this.q || '',
@@ -33,6 +42,28 @@
         swap: 'innerHTML'
       });
     }
+  },
+  initKeyboardShortcuts() {
+    // Cmd/Ctrl+K focuses search input
+    document.addEventListener('keydown', (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        const searchInput = document.getElementById('q');
+        if (searchInput) {
+          searchInput.focus();
+          searchInput.select(); // Select text for easy replacement
+        }
+      }
+      // Esc closes detail panel if open, or blurs active element
+      if (e.key === 'Escape') {
+        const detailPanel = document.getElementById('case-detail-panel');
+        if (detailPanel && detailPanel.innerHTML.trim()) {
+          detailPanel.innerHTML = '';
+        } else if (document.activeElement && document.activeElement !== document.body) {
+          document.activeElement.blur();
+        }
+      }
+    });
   }
 }">
   <div class="relative isolate">
@@ -80,8 +111,15 @@
           <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
             <div class="min-w-[280px]">
               <label class="sr-only" for="q">Search</label>
-              <input id="q" class="vmp-input w-full" type="search" placeholder="Search case / invoice / vendor / PO"
-                x-model="q" autocomplete="off" />
+              <input id="q" class="vmp-input w-full" type="search" placeholder="Search case / invoice / vendor / PO (Cmd+K)"
+                     @input.debounce.300ms="handleSearch"
+                     hx-get="/partials/case-inbox.html"
+                     hx-target="#case-inbox"
+                     hx-include="[name='posture'],[name='channel'],[name='matchMode'],[name='audit'],[name='override']"
+                     name="q"
+                     x-model="q" 
+                     autocomplete="off"
+                     aria-label="Search cases, invoices, vendors, or PO numbers" />
             </div>
 
             <div class="flex items-center gap-2">

@@ -10,6 +10,7 @@ import { cleanEnv, str, url } from 'envalid';
 import 'express-async-errors';
 import multer from 'multer';
 import { vmpAdapter } from './src/adapters/supabase.js';
+import { createErrorResponse, logError, NotFoundError } from './src/utils/errors.js';
 
 // Environment validation
 dotenv.config();
@@ -20,6 +21,9 @@ const env = cleanEnv(process.env, {
   SESSION_SECRET: str({ default: 'dev-secret-change-in-production' }),
   PORT: str({ default: '9000' }),
   NODE_ENV: str({ default: 'development', choices: ['development', 'production', 'test'] }),
+  // Rollback switches for production pages (allows quick rollback without code changes)
+  VMP_HOME_PAGE: str({ default: 'home5' }),
+  VMP_LOGIN_PAGE: str({ default: 'login3' }),
 });
 
 const app = express();
@@ -118,7 +122,7 @@ nunjucksEnv.addFilter('tojson', (obj) => {
 // Date formatting filter (replaces Python's strftime)
 nunjucksEnv.addFilter('date', (date, format) => {
   if (!date) return '';
-  
+
   try {
     // Handle different date input types
     let d;
@@ -131,9 +135,9 @@ nunjucksEnv.addFilter('date', (date, format) => {
     } else {
       return '';
     }
-    
+
     if (isNaN(d.getTime())) return '';
-    
+
     // Format patterns
     const patterns = {
       '%b %d': () => {
@@ -152,11 +156,11 @@ nunjucksEnv.addFilter('date', (date, format) => {
         return `${year}-${month}-${day}`;
       }
     };
-    
+
     if (format && patterns[format]) {
       return patterns[format]();
     }
-    
+
     // Default format
     return d.toLocaleDateString();
   } catch (error) {
@@ -166,6 +170,7 @@ nunjucksEnv.addFilter('date', (date, format) => {
 });
 
 app.use(express.static('public'));
+app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(
   cookieSession({
@@ -181,7 +186,7 @@ app.use(
 // --- MIDDLEWARE: Real Auth (Session Lookup) ---
 app.use(async (req, res, next) => {
   // Skip auth for public routes
-  const publicRoutes = ['/login', '/login2', '/login3', '/login4', '/', '/health'];
+  const publicRoutes = ['/login', '/login4', '/', '/health', '/home3', '/home4'];
   if (publicRoutes.includes(req.path) || req.path.startsWith('/partials/login-')) {
     return next();
   }
@@ -190,13 +195,15 @@ app.use(async (req, res, next) => {
   if (env.NODE_ENV === 'test' && req.headers['x-test-auth'] === 'bypass') {
     const testUserId = req.headers['x-test-user-id'] || 'test-user-id';
     const testVendorId = req.headers['x-test-vendor-id'] || env.DEMO_VENDOR_ID;
-    
+    const isInternal = req.headers['x-test-is-internal'] === 'true';
+
     req.user = {
       id: testUserId,
       email: 'test@example.com',
       displayName: 'Test User',
       vendorId: testVendorId,
-      vendor: { id: testVendorId, name: 'Test Vendor' }
+      vendor: { id: testVendorId, name: 'Test Vendor' },
+      isInternal: isInternal || false
     };
     return next();
   }
@@ -234,7 +241,7 @@ app.use(async (req, res, next) => {
       displayName: userContext.display_name || userContext.email,
       vendorId: userContext.vendor_id,
       vendor: userContext.vmp_vendors,
-      isInternal: userContext.is_internal || false
+      isInternal: userContext.is_internal === true || userContext.is_internal === 'true' || false
     };
 
     next();
@@ -262,130 +269,13 @@ app.get('/', (req, res) => {
   res.render('pages/landing.html');
 });
 
-// 2. Home (Shell)
-app.get('/home', async (req, res) => {
-  // User is authenticated via middleware
-  // Use req.user.vendorId for real data
-  const vendorId = req.user?.vendorId || env.DEMO_VENDOR_ID;
-  res.render('pages/home.html', {
-    user: req.user,
-    posture: 'action_required' // Mock
-  });
-});
+// ==========================================
+// 🔒 LOCKED PRODUCTION ROUTES
+// ==========================================
 
-// 2b. Home2 (Neural Console)
-app.get('/home2', async (req, res) => {
-  res.render('pages/home2.html', {
-    user: req.user
-  });
-});
-
-// 2c. Dashboard (Tactical Governance Surface)
-app.get('/dashboard', async (req, res) => {
-  res.render('pages/dashboard.html', {
-    user: req.user
-  });
-});
-
-// 2d. Home3 (Optimized Console)
-app.get('/home3', async (req, res) => {
-  try {
-    const VENDOR_ID_HARDCODED = env.DEMO_VENDOR_ID;
-
-    let cases = [];
-    if (VENDOR_ID_HARDCODED) {
-      try {
-        const rawCases = await vmpAdapter.getInbox(VENDOR_ID_HARDCODED);
-        // Transform adapter data to match home3.html structure
-        cases = rawCases.map(c => ({
-          id: c.id,
-          type: c.case_type || 'invoice',
-          vendor: c.vmp_companies?.name || 'Unknown Vendor',
-          channel: 'portal', // Default, can be enhanced with actual channel data
-          status: c.status || 'open',
-          owner: 'AP', // Default, can be enhanced with actual owner data
-          sla: c.sla_due_at ? new Date(c.sla_due_at).toLocaleDateString('en-US', {
-            weekday: 'short',
-            month: 'short',
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-          }) : '—',
-          summary: c.subject || 'No subject',
-          detail_url: `/partials/case-detail?case_id=${c.id}`,
-          steps: [], // Will be populated from case detail if needed
-          thread: [], // Will be populated from case detail if needed
-          pay: { outstanding: 'RM 0.00', next_run: '—', eta: '—' } // Default, can be enhanced
-        }));
-      } catch (error) {
-        console.error('Error loading cases for home3:', error);
-        // Continue with empty array
-      }
-    }
-
-    res.render('pages/home3.html', {
-      user: req.user,
-      cases: cases
-    });
-  } catch (error) {
-    console.error('Error rendering home3:', error);
-    res.status(500).render('pages/home3.html', {
-      user: req.user,
-      cases: [],
-      error: error.message
-    });
-  }
-});
-
-// 2e. Home4 (Unified Command Surface)
-app.get('/home4', async (req, res) => {
-  try {
-    const VENDOR_ID_HARDCODED = env.DEMO_VENDOR_ID;
-
-    let cases = [];
-    let actionCount = 0;
-    let openCount = 0;
-
-    if (VENDOR_ID_HARDCODED) {
-      try {
-        const rawCases = await vmpAdapter.getInbox(VENDOR_ID_HARDCODED);
-        cases = rawCases.map(c => ({
-          id: c.id,
-          subject: c.subject || 'No subject',
-          status: c.status || 'open',
-          updated_at: c.updated_at,
-          case_type: c.case_type || 'invoice',
-          detail_url: `/partials/case-detail?case_id=${c.id}`
-        }));
-
-        // Calculate metrics
-        actionCount = cases.filter(c => c.status === 'blocked' || c.status === 'waiting_supplier').length;
-        openCount = cases.filter(c => c.status === 'open').length;
-      } catch (error) {
-        console.error('Error loading cases for home4:', error);
-      }
-    }
-
-    res.render('pages/home4.html', {
-      user: req.user,
-      cases: cases,
-      actionCount: actionCount,
-      openCount: openCount
-    });
-  } catch (error) {
-    console.error('Error rendering home4:', error);
-    res.status(500).render('pages/home4.html', {
-      user: req.user,
-      cases: [],
-      actionCount: 0,
-      openCount: 0,
-      error: error.message
-    });
-  }
-});
-
-// 2f. Home5 (Merged Unified Console v7)
-app.get('/home5', async (req, res) => {
+// 2. Home (Production - Unified Console v7)
+// LOCKED to home5.html - No rollback switches
+async function renderHomePage(req, res) {
   try {
     const VENDOR_ID_HARDCODED = env.DEMO_VENDOR_ID;
 
@@ -404,7 +294,7 @@ app.get('/home5', async (req, res) => {
         soaCount = rawCases.filter(c => c.case_type === 'soa').length;
         paidCount = rawCases.filter(c => c.status === 'resolved' || c.status === 'paid').length;
       } catch (error) {
-        console.error('Error loading metrics for home5:', error);
+        console.error('Error loading metrics for home:', error);
       }
     }
 
@@ -416,7 +306,7 @@ app.get('/home5', async (req, res) => {
       paidCount: paidCount
     });
   } catch (error) {
-    console.error('Error rendering home5:', error);
+    console.error('Error rendering home:', error);
     res.status(500).render('pages/home5.html', {
       user: req.user,
       actionCount: 0,
@@ -426,9 +316,25 @@ app.get('/home5', async (req, res) => {
       error: error.message
     });
   }
+}
+
+app.get('/home', renderHomePage);
+
+// ==========================================
+// 🔄 LEGACY REDIRECTS (Handle Old Traffic)
+// ==========================================
+// Legacy redirects - all experimental routes redirect to canonical /home
+const legacyHomeRoutes = ['/home2', '/home3', '/home4', '/home5', '/dashboard'];
+legacyHomeRoutes.forEach(route => {
+  app.get(route, (req, res) => res.redirect(302, '/home'));
 });
 
-// 2. Partials (HTMX Cells)
+// ==========================================
+// 📦 HTMX PARTIALS (The "Cells")
+// ==========================================
+// Note: All partials are explicitly whitelisted via individual routes below.
+// Future: Consider consolidating into a single handler with ALLOWED_PARTIALS whitelist.
+
 app.get('/partials/case-inbox.html', async (req, res) => {
   try {
     // Fetch REAL data from Supabase
@@ -460,8 +366,8 @@ app.get('/partials/case-detail.html', async (req, res) => {
     const VENDOR_ID_HARDCODED = env.DEMO_VENDOR_ID;
 
     if (!caseId) {
-      return res.render('partials/case_detail.html', { 
-        caseId: null, 
+      return res.render('partials/case_detail.html', {
+        caseId: null,
         caseDetail: null,
         isInternal: req.user?.isInternal || false
       });
@@ -485,8 +391,8 @@ app.get('/partials/case-detail.html', async (req, res) => {
       // Continue with null caseDetail - template handles it gracefully
     }
 
-    res.render('partials/case_detail.html', { 
-      caseId, 
+    res.render('partials/case_detail.html', {
+      caseId,
       caseDetail,
       isInternal: req.user?.isInternal || false
     });
@@ -514,7 +420,12 @@ app.get('/partials/case-thread.html', async (req, res) => {
       messages = await vmpAdapter.getMessages(caseId);
     } catch (adapterError) {
       console.error('Adapter error loading messages:', adapterError);
-      // Continue with empty messages array
+      // Return 200 with error message for graceful degradation
+      return res.status(200).render('partials/case_thread.html', {
+        caseId,
+        messages: [],
+        error: `Failed to load messages: ${adapterError.message}`
+      });
     }
 
     res.render('partials/case_thread.html', { caseId, messages });
@@ -533,8 +444,8 @@ app.get('/partials/case-checklist.html', async (req, res) => {
   try {
     const caseId = req.query.case_id;
     if (!caseId) {
-      return res.render('partials/case_checklist.html', { 
-        caseId: null, 
+      return res.render('partials/case_checklist.html', {
+        caseId: null,
         checklistSteps: [],
         isInternal: req.user?.isInternal || false
       });
@@ -582,8 +493,8 @@ app.get('/partials/case-checklist.html', async (req, res) => {
       // Continue with empty checklistSteps array
     }
 
-    res.render('partials/case_checklist.html', { 
-      caseId, 
+    res.render('partials/case_checklist.html', {
+      caseId,
       checklistSteps,
       isInternal: req.user?.isInternal || false
     });
@@ -611,16 +522,24 @@ app.get('/partials/case-evidence.html', async (req, res) => {
     try {
       evidence = await vmpAdapter.getEvidence(caseId);
 
-      // Generate signed URLs for each evidence file (in parallel for better performance)
+      // Generate signed URLs for each evidence file (in parallel with timeout protection)
+      // Use Promise.allSettled to ensure all promises complete even if some fail
       const urlPromises = evidence.map(async (ev) => {
+        // Add timeout wrapper to prevent hanging
+        const timeoutPromise = new Promise((_, reject) => {
+          setTimeout(() => reject(new Error('Signed URL generation timeout')), 3000); // 3 second timeout per URL
+        });
+
         try {
-          ev.download_url = await vmpAdapter.getEvidenceSignedUrl(ev.storage_path, 3600); // 1 hour expiry
+          const signedUrlPromise = vmpAdapter.getEvidenceSignedUrl(ev.storage_path, 3600); // 1 hour expiry
+          ev.download_url = await Promise.race([signedUrlPromise, timeoutPromise]);
         } catch (urlError) {
           console.error(`Error generating signed URL for ${ev.storage_path}:`, urlError);
           ev.download_url = '#'; // Fallback
         }
       });
-      await Promise.all(urlPromises);
+      // Use allSettled to continue even if some URLs fail to generate
+      await Promise.allSettled(urlPromises);
     } catch (adapterError) {
       console.error('Adapter error loading evidence:', adapterError);
       // Continue with empty evidence array
@@ -654,8 +573,8 @@ app.get('/partials/escalation.html', async (req, res) => {
       }
     }
 
-    res.render('partials/escalation.html', { 
-      caseId, 
+    res.render('partials/escalation.html', {
+      caseId,
       caseDetail,
       isInternal: req.user?.isInternal || false
     });
@@ -709,6 +628,7 @@ app.post('/cases/:id/messages', async (req, res) => {
     }
 
     // Create message
+    let messageCreated = false;
     try {
       await vmpAdapter.createMessage(
         caseId,
@@ -718,9 +638,10 @@ app.post('/cases/:id/messages', async (req, res) => {
         user.id, // sender_user_id
         false // is_internal_note
       );
+      messageCreated = true;
     } catch (createError) {
       console.error('Error creating message:', createError);
-      // Still try to return refreshed thread
+      // Still try to return refreshed thread (graceful degradation)
     }
 
     // Return refreshed thread with new message
@@ -729,10 +650,13 @@ app.post('/cases/:id/messages', async (req, res) => {
       return res.render('partials/case_thread.html', { caseId, messages });
     } catch (error) {
       console.error('Error refreshing thread after message creation:', error);
-      return res.status(500).render('partials/case_thread.html', {
+      // If message was created but refresh fails, return 500 (error path)
+      // If message creation failed, return 200 (graceful degradation)
+      const statusCode = messageCreated ? 500 : 200;
+      return res.status(statusCode).render('partials/case_thread.html', {
         caseId,
         messages: [],
-        error: 'Message created but failed to refresh thread'
+        error: `Failed to refresh thread: ${error.message}`
       });
     }
   } catch (error) {
@@ -752,6 +676,15 @@ app.post('/cases/:id/evidence', upload.single('file'), async (req, res) => {
     const { evidence_type, checklist_step_id } = req.body;
     const file = req.file;
 
+    // Validate file is present
+    if (!file) {
+      return res.status(400).render('partials/case_evidence.html', {
+        caseId,
+        evidence: [],
+        error: 'File is required'
+      });
+    }
+
     if (!caseId) {
       return res.status(400).render('partials/case_evidence.html', {
         caseId: null,
@@ -761,26 +694,12 @@ app.post('/cases/:id/evidence', upload.single('file'), async (req, res) => {
     }
 
     if (!file) {
-      // Return refreshed evidence without error (just ignore empty upload)
-      try {
-        const evidence = await vmpAdapter.getEvidence(caseId);
-        // Generate signed URLs in parallel
-        const urlPromises = evidence.map(async (ev) => {
-          try {
-            ev.download_url = await vmpAdapter.getEvidenceSignedUrl(ev.storage_path, 3600);
-          } catch (urlError) {
-            ev.download_url = '#';
-          }
-        });
-        await Promise.all(urlPromises);
-        return res.render('partials/case_evidence.html', { caseId, evidence });
-      } catch (error) {
-        return res.status(500).render('partials/case_evidence.html', {
-          caseId,
-          evidence: [],
-          error: 'Failed to refresh evidence'
-        });
-      }
+      // File is required for evidence upload
+      return res.status(400).render('partials/case_evidence.html', {
+        caseId,
+        evidence: [],
+        error: 'File is required'
+      });
     }
 
     if (!evidence_type) {
@@ -850,15 +769,22 @@ app.post('/cases/:id/evidence', upload.single('file'), async (req, res) => {
     try {
       // Get updated evidence
       const evidence = await vmpAdapter.getEvidence(caseId);
-      // Generate signed URLs in parallel
+      // Generate signed URLs in parallel with timeout protection
       const urlPromises = evidence.map(async (ev) => {
+        // Add timeout wrapper to prevent hanging
+        const timeoutPromise = new Promise((_, reject) => {
+          setTimeout(() => reject(new Error('Signed URL generation timeout')), 3000); // 3 second timeout per URL
+        });
+
         try {
-          ev.download_url = await vmpAdapter.getEvidenceSignedUrl(ev.storage_path, 3600);
+          const signedUrlPromise = vmpAdapter.getEvidenceSignedUrl(ev.storage_path, 3600);
+          ev.download_url = await Promise.race([signedUrlPromise, timeoutPromise]);
         } catch (urlError) {
           ev.download_url = '#';
         }
       });
-      await Promise.all(urlPromises);
+      // Use allSettled to continue even if some URLs fail to generate
+      await Promise.allSettled(urlPromises);
 
       // Return evidence partial (HTMX will refresh checklist separately)
       return res.render('partials/case_evidence.html', { caseId, evidence });
@@ -914,7 +840,7 @@ app.post('/cases/:id/verify-evidence', async (req, res) => {
 
     // Verify evidence
     try {
-      await vmpAdapter.verifyEvidence(checklist_step_id, user.id);
+      await vmpAdapter.verifyEvidence(checklist_step_id, user.id, null);
     } catch (verifyError) {
       console.error('Error verifying evidence:', verifyError);
       return res.status(500).render('partials/case_checklist.html', {
@@ -1218,13 +1144,22 @@ app.post('/cases/:id/update-status', async (req, res) => {
   }
 });
 
-// 3. Login Pages (GET)
+// 3. Login (Production - NOIR + Enterprise)
+// LOCKED to login3.html - No rollback switches
 app.get('/login', (req, res) => {
   // If already logged in, redirect to home
   if (req.session?.sessionId) {
     return res.redirect('/home');
   }
-  res.render('pages/login.html', { error: null });
+  res.render('pages/login3.html', { error: null });
+});
+
+// Legacy login redirects
+app.get('/login4', (req, res) => {
+  if (req.session?.sessionId) {
+    return res.redirect('/home');
+  }
+  res.redirect(302, '/login');
 });
 
 // 3a. Login POST Handler
@@ -1233,7 +1168,7 @@ app.post('/login', async (req, res) => {
     const { email, password } = req.body;
 
     if (!email || !password) {
-      return res.render('pages/login.html', {
+      return res.render('pages/login3.html', {
         error: 'Email and password are required'
       });
     }
@@ -1242,13 +1177,13 @@ app.post('/login', async (req, res) => {
     const user = await vmpAdapter.getUserByEmail(email);
 
     if (!user) {
-      return res.render('pages/login.html', {
+      return res.render('pages/login3.html', {
         error: 'Invalid email or password'
       });
     }
 
     if (!user.is_active) {
-      return res.render('pages/login.html', {
+      return res.render('pages/login3.html', {
         error: 'Account is inactive. Please contact support.'
       });
     }
@@ -1257,7 +1192,7 @@ app.post('/login', async (req, res) => {
     const isValid = await vmpAdapter.verifyPassword(user.id, password);
 
     if (!isValid) {
-      return res.render('pages/login.html', {
+      return res.render('pages/login3.html', {
         error: 'Invalid email or password'
       });
     }
@@ -1276,7 +1211,7 @@ app.post('/login', async (req, res) => {
     res.redirect('/home');
   } catch (error) {
     console.error('Login error:', error);
-    res.render('pages/login.html', {
+    res.render('pages/login3.html', {
       error: 'An error occurred during login. Please try again.'
     });
   }
@@ -1298,20 +1233,8 @@ app.post('/logout', async (req, res) => {
   res.redirect('/login');
 });
 
-// 3b. Login2 (Unified Command Surface Login)
-app.get('/login2', (req, res) => {
-  res.render('pages/login2.html');
-});
-
-// 3c. Login3 (NOIR + Enterprise + Ops Truth)
-app.get('/login3', (req, res) => {
-  res.render('pages/login3.html');
-});
-
-// 3d. Login4 (Gatekeeper - Role-Aware Entry Ritual)
-app.get('/login4', (req, res) => {
-  res.render('pages/login4.html');
-});
+// 3b. Login3 (Canonical redirect to /login) - handled above
+// 3c. Login2/Login4 (Redirect to canonical) - handled above
 
 // 4. Login Partials (HTMX)
 app.get('/partials/login-help-access.html', (req, res) => {
@@ -1427,21 +1350,37 @@ app.get('/partials/supabase-ui-examples.html', (req, res) => {
 // --- ERROR HANDLING ---
 // 404 handler
 app.use((req, res) => {
+  const notFoundError = new NotFoundError('Page');
   res.status(404).render('pages/error.html', {
     error: {
       status: 404,
-      message: 'Page not found',
+      message: notFoundError.message,
+      code: notFoundError.code,
     },
   });
 });
 
 // Global error handler
+// Uses structured error handling per Supabase best practices
+// @see https://supabase.com/docs/guides/functions/error-handling
 app.use((err, req, res, next) => {
-  console.error('Error:', err);
-  res.status(err.status || 500).render('pages/error.html', {
+  // Log error with context
+  logError(err, {
+    path: req.path,
+    method: req.method,
+    userId: req.user?.id
+  });
+
+  // Create standardized error response
+  const errorResponse = createErrorResponse(err, req);
+  
+  // Render error page with proper status code
+  res.status(errorResponse.status).render('pages/error.html', {
     error: {
-      status: err.status || 500,
-      message: env.NODE_ENV === 'production' ? 'Internal server error' : err.message,
+      status: errorResponse.status,
+      message: errorResponse.body.error.message,
+      code: errorResponse.body.error.code,
+      ...(env.NODE_ENV !== 'production' && { details: errorResponse.body.error.details })
     },
   });
 });

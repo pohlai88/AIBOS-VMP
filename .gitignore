@@ -6,6 +6,11 @@ node_modules/
 .env.local
 .env.*.local
 
+# Supabase Edge Functions secrets
+supabase/functions/.env
+supabase/functions/.env.local
+supabase/functions/.env.*
+
 # Logs
 logs
 *.log

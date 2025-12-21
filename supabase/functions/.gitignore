@@ -1,0 +1,15 @@
+# Supabase Edge Functions - Git Ignore
+# Environment files with secrets
+.env
+.env.local
+.env.*.local
+.env.production
+.env.staging
+
+# Deno cache
+.deno/
+
+# Build outputs
+dist/
+*.tsbuildinfo
+

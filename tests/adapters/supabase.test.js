@@ -756,5 +756,208 @@ describe('VMP Adapter - Supabase', () => {
       ).resolves.not.toThrow();
     });
   });
+
+  // ============================================================================
+  // Internal Ops Methods
+  // ============================================================================
+
+  describe('Internal Ops Methods', () => {
+    let testChecklistStepId = null;
+
+    beforeEach(async () => {
+      if (testCaseId) {
+        const steps = await vmpAdapter.getChecklistSteps(testCaseId);
+        if (steps && steps.length > 0) {
+          testChecklistStepId = steps[0].id;
+        }
+      }
+    });
+
+    test('verifyEvidence should verify a checklist step', async () => {
+      if (!testChecklistStepId || !testUserId) {
+        console.warn('Skipping - no test data available');
+        return;
+      }
+
+      const result = await vmpAdapter.verifyEvidence(testChecklistStepId, testUserId);
+      expect(result).toBeDefined();
+      expect(result).toHaveProperty('id');
+    });
+
+    test('verifyEvidence should throw error for missing parameters', async () => {
+      await expect(
+        vmpAdapter.verifyEvidence(null, testUserId)
+      ).rejects.toThrow('verifyEvidence requires checklistStepId and verifiedByUserId');
+
+      await expect(
+        vmpAdapter.verifyEvidence('step-id', null)
+      ).rejects.toThrow('verifyEvidence requires checklistStepId and verifiedByUserId');
+    });
+
+    test('rejectEvidence should reject a checklist step', async () => {
+      if (!testChecklistStepId || !testUserId) {
+        console.warn('Skipping - no test data available');
+        return;
+      }
+
+      const result = await vmpAdapter.rejectEvidence(testChecklistStepId, testUserId, 'Test rejection reason');
+      expect(result).toBeDefined();
+      expect(result).toHaveProperty('id');
+    });
+
+    test('rejectEvidence should throw error for missing parameters', async () => {
+      await expect(
+        vmpAdapter.rejectEvidence(null, testUserId, 'reason')
+      ).rejects.toThrow('rejectEvidence requires checklistStepId, rejectedByUserId, and reason');
+
+      await expect(
+        vmpAdapter.rejectEvidence('step-id', null, 'reason')
+      ).rejects.toThrow('rejectEvidence requires checklistStepId, rejectedByUserId, and reason');
+
+      await expect(
+        vmpAdapter.rejectEvidence('step-id', testUserId, null)
+      ).rejects.toThrow('rejectEvidence requires checklistStepId, rejectedByUserId, and reason');
+    });
+
+    test('reassignCase should reassign a case', async () => {
+      if (!testCaseId || !testUserId) {
+        console.warn('Skipping - no test data available');
+        return;
+      }
+
+      const result = await vmpAdapter.reassignCase(testCaseId, 'ap', testUserId);
+      expect(result).toBeDefined();
+      expect(result).toHaveProperty('id');
+    });
+
+    test('reassignCase should throw error for missing parameters', async () => {
+      await expect(
+        vmpAdapter.reassignCase(null, 'ap', testUserId)
+      ).rejects.toThrow('reassignCase requires caseId and ownerTeam');
+
+      await expect(
+        vmpAdapter.reassignCase('case-id', null, testUserId)
+      ).rejects.toThrow('reassignCase requires caseId and ownerTeam');
+    });
+
+    test('reassignCase should throw error for invalid ownerTeam', async () => {
+      if (!testCaseId) {
+        console.warn('Skipping - no test data available');
+        return;
+      }
+
+      await expect(
+        vmpAdapter.reassignCase(testCaseId, 'invalid', testUserId)
+      ).rejects.toThrow('ownerTeam must be one of: procurement, ap, finance');
+    });
+
+    test('updateCaseStatus should update case status', async () => {
+      if (!testCaseId || !testUserId) {
+        console.warn('Skipping - no test data available');
+        return;
+      }
+
+      const result = await vmpAdapter.updateCaseStatus(testCaseId, 'waiting_internal', testUserId);
+      expect(result).toBeDefined();
+      expect(result).toHaveProperty('id');
+    });
+
+    test('updateCaseStatus should throw error for missing parameters', async () => {
+      await expect(
+        vmpAdapter.updateCaseStatus(null, 'open', testUserId)
+      ).rejects.toThrow('updateCaseStatus requires caseId and status');
+
+      await expect(
+        vmpAdapter.updateCaseStatus('case-id', null, testUserId)
+      ).rejects.toThrow('updateCaseStatus requires caseId and status');
+
+      // updatedByUserId can be null for system updates
+      // The method should handle null updatedByUserId
+      if (testCaseId) {
+        const result = await vmpAdapter.updateCaseStatus(testCaseId, 'open', null);
+        expect(result).toBeDefined();
+      }
+    });
+
+    test('updateCaseStatus should throw error for invalid status', async () => {
+      if (!testCaseId || !testUserId) {
+        console.warn('Skipping - no test data available');
+        return;
+      }
+
+      await expect(
+        vmpAdapter.updateCaseStatus(testCaseId, 'invalid', testUserId)
+      ).rejects.toThrow('status must be one of: open, waiting_supplier, waiting_internal, resolved, blocked');
+    });
+
+    test('updateCaseStatusFromEvidence should update status based on evidence', async () => {
+      if (!testCaseId) {
+        console.warn('Skipping - no test data available');
+        return;
+      }
+
+      const result = await vmpAdapter.updateCaseStatusFromEvidence(testCaseId);
+      // May return null if no status change needed, or case detail if updated
+      expect(result === null || (result && typeof result.id === 'string')).toBe(true);
+    });
+
+    test('updateCaseStatusFromEvidence should throw error for missing caseId', async () => {
+      await expect(
+        vmpAdapter.updateCaseStatusFromEvidence(null)
+      ).rejects.toThrow('updateCaseStatusFromEvidence requires caseId');
+    });
+
+    test('updateCaseStatusFromEvidence should handle case with no checklist steps', async () => {
+      if (!testCaseId) {
+        console.warn('Skipping - no test data available');
+        return;
+      }
+      
+      // This test verifies the early return path when there are no steps
+      // We'll use a valid case ID but the method should handle gracefully
+      const result = await vmpAdapter.updateCaseStatusFromEvidence(testCaseId);
+      // May return null if no status change needed, or case detail if updated
+      expect(result === null || (result && typeof result.id === 'string')).toBe(true);
+    });
+
+    test('notifyVendorUsersForCase should create notifications', async () => {
+      if (!testCaseId) {
+        console.warn('Skipping - no test data available');
+        return;
+      }
+
+      const result = await vmpAdapter.notifyVendorUsersForCase(
+        testCaseId,
+        'test_notification',
+        'Test Title',
+        'Test Body'
+      );
+      expect(Array.isArray(result)).toBe(true);
+    });
+
+    test('notifyVendorUsersForCase should throw error for missing parameters', async () => {
+      await expect(
+        vmpAdapter.notifyVendorUsersForCase(null, 'type', 'title')
+      ).rejects.toThrow('notifyVendorUsersForCase requires caseId, notificationType, and title');
+
+      await expect(
+        vmpAdapter.notifyVendorUsersForCase('case-id', null, 'title')
+      ).rejects.toThrow('notifyVendorUsersForCase requires caseId, notificationType, and title');
+
+      await expect(
+        vmpAdapter.notifyVendorUsersForCase('case-id', 'type', null)
+      ).rejects.toThrow('notifyVendorUsersForCase requires caseId, notificationType, and title');
+    });
+
+    test('notifyVendorUsersForCase should handle case not found gracefully', async () => {
+      const result = await vmpAdapter.notifyVendorUsersForCase(
+        'non-existent-case-id',
+        'test_notification',
+        'Test Title'
+      );
+      expect(Array.isArray(result)).toBe(true);
+      expect(result.length).toBe(0);
+    });
+  });
 });
 
