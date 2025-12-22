@@ -1,0 +1,944 @@
+/* ==========================================================================
+   NexusCanon VMP: NOIR Login Theme (Design Layer - Marketing/Creative)
+   ==========================================================================
+   
+   Purpose: Login page specific styling (NOIR aesthetic)
+   Scope: Design Layer - Full creative freedom, no Foundation Layer constraints
+   Best Practice: Separate theme file keeps globals.css clean
+   ========================================================================== */
+
+/* ===== NOIR LOGIN CONTAINER ===== */
+.vmp-login {
+  position: relative;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: #0a0a0c;
+  color: #ffffff;
+}
+
+.vmp-login--vault {
+  background: 
+    radial-gradient(1200px 700px at 16% 18%, rgba(255, 255, 255, 0.06), transparent 58%),
+    radial-gradient(900px 500px at 82% 30%, rgba(140, 210, 255, 0.07), transparent 55%),
+    radial-gradient(800px 700px at 68% 88%, rgba(86, 255, 184, 0.04), transparent 62%),
+    linear-gradient(180deg, #070709 0%, #050506 100%);
+}
+
+/* Film grain + vignette (Fortune 500 polish) */
+.vmp-login--vault::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.12;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='260' height='260'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='260' height='260' filter='url(%23n)' opacity='.55'/%3E%3C/svg%3E");
+  mix-blend-mode: overlay;
+  z-index: 1;
+}
+
+.vmp-login--vault::after {
+  content: "";
+  position: fixed;
+  inset: -2px;
+  pointer-events: none;
+  background:
+    radial-gradient(1200px 700px at 50% 10%, transparent 35%, rgba(0, 0, 0, 0.55) 90%),
+    radial-gradient(1200px 700px at 50% 110%, transparent 30%, rgba(0, 0, 0, 0.55) 88%);
+  opacity: 0.72;
+  z-index: 1;
+}
+
+.vmp-login--noir {
+  font-family: 'Liter', 'Inter', ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  font-weight: 300;
+}
+
+/* ===== BACKGROUND LAYERS ===== */
+.vmp-login__bg {
+  position: absolute;
+  inset: 0;
+  background: 
+    radial-gradient(circle at 20% 30%, rgba(255, 255, 255, 0.03) 0%, transparent 50%),
+    radial-gradient(circle at 80% 70%, rgba(255, 255, 255, 0.02) 0%, transparent 50%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.noir-grid-overlay {
+  position: absolute;
+  inset: 0;
+  background-image: 
+    linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
+  z-index: 1;
+  opacity: 0.4;
+}
+
+/* Vertical ticker removed - header no longer used */
+
+/* ===== LOGIN WRAPPER ===== */
+.vmp-login__wrap {
+  position: relative;
+  z-index: 10;
+  width: 100%;
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 48px 22px 44px;
+  display: grid;
+  grid-template-columns: 1.15fr 0.85fr;
+  gap: 48px;
+  align-items: center;
+  min-height: 100vh;
+}
+
+@media (max-width: 980px) {
+  .vmp-login__wrap {
+    grid-template-columns: 1fr;
+    min-height: auto;
+    padding-top: 32px;
+    gap: 32px;
+  }
+}
+
+.vmp-login__wrap--noir {
+  padding-top: var(--vmp-space-8);
+}
+
+/* ===== HERO SECTION ===== */
+.vmp-login__hero {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vmp-space-8);
+}
+
+.vmp-login__hero--noir {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+/* ===== BRAND ===== */
+.vmp-brand {
+  display: flex;
+  align-items: center;
+  gap: var(--vmp-space-3);
+}
+
+.vmp-brand--noir {
+  margin-bottom: var(--vmp-space-2);
+}
+
+.vmp-brand__mark {
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.8);
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.vmp-brand__mark--noir svg {
+  stroke: currentColor;
+  stroke-width: 1.5;
+}
+
+.vmp-brand__stack {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.vmp-brand__name {
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: rgba(255, 255, 255, 0.95);
+  line-height: 1.1;
+}
+
+.vmp-brand__name--noir {
+  font-family: 'Playfair Display', serif;
+  font-style: italic;
+}
+
+.vmp-brand__sub {
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.vmp-brand__sub--noir {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+}
+
+/* ===== LOGIN CONTENT ===== */
+.vmp-login__content--noir {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vmp-space-6);
+}
+
+.vmp-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  border-radius: 999px;
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  background: rgba(255, 255, 255, 0.02);
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.vmp-chip > span:first-child {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(255, 210, 120, 0.45);
+  flex-shrink: 0;
+}
+
+.vmp-chip--mono {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+}
+
+.vmp-chip--noir {
+  border-color: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.vmp-login__title {
+  font-size: clamp(44px, 5vw, 76px);
+  font-weight: 600;
+  line-height: 0.98;
+  letter-spacing: 0.01em;
+  color: rgba(255, 255, 255, 0.95);
+  margin: 18px 0 10px;
+}
+
+.vmp-login__title--noir {
+  font-family: 'Playfair Display', serif;
+}
+
+.display-shock {
+  font-size: 64px;
+}
+
+.vmp-title-italic {
+  font-style: italic;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.vmp-login__lead {
+  font-size: 15px;
+  line-height: 1.68;
+  color: rgba(255, 255, 255, 0.72);
+  max-width: 66ch;
+  margin: 14px 0 0;
+}
+
+.vmp-login__lead--noir {
+  font-weight: 300;
+}
+
+/* ===== RITUAL ROWS ===== */
+.vmp-ritual {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.02);
+  max-width: 660px;
+}
+
+.vmp-ritual--noir {
+  margin-top: var(--vmp-space-4);
+}
+
+.vmp-ritual__row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--vmp-space-2) 0;
+}
+
+.vmp-ritual__row--border {
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  padding-top: var(--vmp-space-3);
+  margin-top: var(--vmp-space-2);
+}
+
+.vmp-ritual__label {
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.5);
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+}
+
+.vmp-ritual__value {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.72);
+  text-align: right;
+  line-height: 1.45;
+}
+
+.vmp-ritual__value .dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(86, 255, 184, 0.55);
+  margin-right: 8px;
+  transform: translateY(-1px);
+}
+
+.vmp-ritual__value--status {
+  display: flex;
+  align-items: center;
+  gap: var(--vmp-space-2);
+}
+
+.vmp-status-indicator {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(86, 255, 184, 0.6);
+  box-shadow: 0 0 8px rgba(86, 255, 184, 0.4);
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* ===== LOGIN PANEL ===== */
+.vmp-login__panel {
+  position: relative;
+  z-index: 10;
+}
+
+.vmp-login__panel--noir {
+  display: flex;
+  flex-direction: column;
+}
+
+/* ===== LOGIN CARD ===== */
+.vmp-login__card {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.02));
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  border-radius: 20px;
+  padding: var(--vmp-space-6);
+  backdrop-filter: blur(20px);
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Scan effect (Fortune 500 polish) */
+.vmp-login__card--noir::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: 20px;
+  background:
+    repeating-linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.00) 0px,
+      rgba(255, 255, 255, 0.00) 12px,
+      rgba(255, 255, 255, 0.015) 13px
+    );
+  opacity: 0.18;
+  mask-image: radial-gradient(120% 110% at 50% 10%, #000 40%, transparent 78%);
+  z-index: 0;
+}
+
+.vmp-login__card--noir.is-ready {
+  border-color: rgba(86, 255, 184, 0.30);
+  box-shadow: 0 0 40px rgba(86, 255, 184, 0.15);
+}
+
+.vmp-login__cardhead {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--vmp-space-6);
+  padding: 6px 6px var(--vmp-space-4);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  position: relative;
+  z-index: 2;
+}
+
+.vmp-login__cardhead--noir {
+  gap: var(--vmp-space-4);
+}
+
+/* ===== STATUS ===== */
+.vmp-status {
+  display: flex;
+  align-items: center;
+  gap: var(--vmp-space-2);
+}
+
+.vmp-status--noir {
+  flex: 1;
+}
+
+.vmp-status__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.18);
+  transition: background 0.3s cubic-bezier(0.2, 0.9, 0.2, 1), box-shadow 0.3s ease;
+}
+
+.vmp-login__card.is-ready .vmp-status__dot {
+  background: rgba(86, 255, 184, 0.70);
+  box-shadow: 0 0 12px rgba(86, 255, 184, 0.4);
+}
+
+/* Status states for validation feedback */
+.vmp-status__dot[data-state="warn"] {
+  background: rgba(255, 210, 120, 0.70);
+  box-shadow: 0 0 8px rgba(255, 210, 120, 0.3);
+}
+
+.vmp-status__dot[data-state="danger"] {
+  background: rgba(255, 100, 100, 0.70);
+  box-shadow: 0 0 8px rgba(255, 100, 100, 0.3);
+}
+
+.vmp-status__text {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.70);
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+/* ===== STEPS ===== */
+.vmp-steps {
+  display: flex;
+  gap: var(--vmp-space-2);
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.vmp-steps--noir {
+  font-size: 11px;
+}
+
+.vmp-step {
+  width: 30px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.02);
+  color: rgba(255, 255, 255, 0.55);
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  transition: all 0.3s cubic-bezier(0.2, 0.9, 0.2, 1);
+}
+
+.vmp-step.is-on {
+  border-color: rgba(86, 255, 184, 0.30);
+  background: rgba(86, 255, 184, 0.06);
+  color: rgba(86, 255, 184, 0.92);
+}
+
+.vmp-step.is-done {
+  border-color: rgba(140, 210, 255, 0.32);
+  background: rgba(140, 210, 255, 0.06);
+  color: rgba(140, 210, 255, 0.90);
+}
+
+/* ===== SEGMENT CONTROL ===== */
+.vmp-segment {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+  padding: 0 6px 10px;
+  position: relative;
+  z-index: 2;
+  margin-bottom: var(--vmp-space-6);
+}
+
+.vmp-segment--noir {
+  font-size: 12px;
+}
+
+.vmp-segment__btn {
+  appearance: none;
+  padding: 10px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 12px;
+  color: rgba(255, 255, 255, 0.70);
+  font-size: 12px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  cursor: pointer;
+  transition: border-color 180ms cubic-bezier(0.2, 0.9, 0.2, 1), 
+              background 180ms cubic-bezier(0.2, 0.9, 0.2, 1), 
+              color 180ms cubic-bezier(0.2, 0.9, 0.2, 1);
+}
+
+.vmp-segment__btn:hover {
+  color: rgba(255, 255, 255, 0.85);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.vmp-segment__btn.is-selected {
+  border-color: rgba(140, 210, 255, 0.32);
+  background: rgba(140, 210, 255, 0.06);
+  color: rgba(255, 255, 255, 0.90);
+}
+
+.vmp-segment__btn:focus-visible {
+  outline: 2px solid rgba(140, 210, 255, 0.50);
+  outline-offset: 2px;
+}
+
+/* ===== LOGIN FORM ===== */
+.vmp-login__form {
+  position: relative;
+  z-index: 2;
+  padding: 6px;
+  display: grid;
+  gap: 12px;
+}
+
+/* ===== FORM FIELDS ===== */
+.vmp-form-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: var(--vmp-space-6);
+  position: relative;
+  z-index: 2;
+}
+
+.vmp-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vmp-space-2);
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  background: rgba(0, 0, 0, 0.12);
+  padding: 12px 12px 10px;
+  transition: border-color 160ms cubic-bezier(0.2, 0.9, 0.2, 1), 
+              background 160ms cubic-bezier(0.2, 0.9, 0.2, 1);
+  position: relative;
+}
+
+.vmp-field--noir {
+  position: relative;
+}
+
+.vmp-field--noir:focus-within {
+  border-color: rgba(140, 210, 255, 0.30);
+  background: rgba(140, 210, 255, 0.03);
+}
+
+.vmp-field--noir[data-state="danger"] {
+  border-color: rgba(255, 100, 100, 0.55);
+  background: rgba(255, 100, 100, 0.03);
+}
+
+.vmp-field--noir[data-state="ok"] {
+  border-color: rgba(86, 255, 184, 0.42);
+  background: rgba(86, 255, 184, 0.03);
+}
+
+.vmp-field__top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.vmp-input {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 14px;
+  font-weight: 300;
+  letter-spacing: 0.02em;
+  outline: none;
+  padding: 2px 0 4px;
+  font-family: inherit;
+}
+
+.vmp-input--noir:focus {
+  outline: none;
+}
+
+.vmp-input--noir::placeholder {
+  color: rgba(255, 255, 255, 0.30);
+}
+
+/* Field hint/status (Fortune 500 validation UX) */
+.vmp-field__hint {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 6px;
+  min-height: 16px;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.46);
+}
+
+.vmp-field__status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.48);
+  white-space: nowrap;
+}
+
+.vmp-field__status .mini {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.vmp-field__status.ok {
+  color: rgba(86, 255, 184, 0.90);
+}
+
+.vmp-field__status.ok .mini {
+  background: rgba(86, 255, 184, 0.70);
+}
+
+.vmp-field__status.bad {
+  color: rgba(255, 100, 100, 0.88);
+}
+
+.vmp-field__status.bad .mini {
+  background: rgba(255, 100, 100, 0.70);
+}
+
+.vmp-field__status.warn {
+  color: rgba(255, 210, 120, 0.90);
+}
+
+.vmp-field__status.warn .mini {
+  background: rgba(255, 210, 120, 0.70);
+}
+
+.vmp-input--password {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  letter-spacing: 0.2em;
+}
+
+.vmp-linkbtn {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  padding: 0;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  transition: color 0.2s ease;
+}
+
+.vmp-linkbtn:hover {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.vmp-link {
+  color: rgba(140, 210, 255, 0.85);
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.vmp-link:hover {
+  color: rgba(140, 210, 255, 1);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* ===== SSO FORM ===== */
+.vmp-form-sso {
+  margin-bottom: var(--vmp-space-6);
+  position: relative;
+  z-index: 2;
+  display: grid;
+  gap: 12px;
+}
+
+.vmp-btn-oauth {
+  width: 100%;
+  height: 48px;
+  padding: 0 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--vmp-space-3);
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  border-radius: 14px;
+  color: rgba(255, 255, 255, 0.86);
+  font-size: 12px;
+  font-weight: 300;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  cursor: pointer;
+  transition: border-color 160ms cubic-bezier(0.2, 0.9, 0.2, 1), 
+              background 160ms cubic-bezier(0.2, 0.9, 0.2, 1), 
+              transform 160ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.vmp-btn-oauth--noir:hover {
+  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(255, 255, 255, 0.18);
+  transform: translateY(-1px);
+}
+
+.vmp-btn-oauth--noir:active {
+  transform: translateY(0px);
+}
+
+.vmp-btn-oauth--noir:focus-visible {
+  outline: 2px solid rgba(140, 210, 255, 0.55);
+  outline-offset: 2px;
+}
+
+.vmp-btn-oauth-icon {
+  width: 16px;
+  height: 16px;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* ===== RECOVER FORM ===== */
+.vmp-form-recover {
+  margin-bottom: var(--vmp-space-6);
+  position: relative;
+  z-index: 2;
+  display: grid;
+  gap: 12px;
+}
+
+/* ===== FORM FOOTER ===== */
+.vmp-form-footer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vmp-space-4);
+  position: relative;
+  z-index: 2;
+  padding: 4px 6px 0;
+}
+
+.vmp-form-footer--noir {
+  margin-top: 4px;
+}
+
+.vmp-row {
+  display: flex;
+  align-items: center;
+}
+
+.vmp-row--noir {
+  justify-content: space-between;
+}
+
+.vmp-check {
+  display: flex;
+  align-items: center;
+  gap: var(--vmp-space-2);
+  cursor: pointer;
+}
+
+.vmp-check--noir {
+  font-size: 12px;
+}
+
+.vmp-check__box {
+  width: 16px;
+  height: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.04);
+  cursor: pointer;
+  appearance: none;
+  position: relative;
+  transition: all 0.2s ease;
+}
+
+.vmp-check__box:checked {
+  background: rgba(86, 255, 184, 0.2);
+  border-color: rgba(86, 255, 184, 0.4);
+}
+
+.vmp-check__box:checked::after {
+  content: '✓';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: rgba(86, 255, 184, 0.9);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.vmp-check__text {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 12px;
+  user-select: none;
+}
+
+/* ===== BUTTONS ===== */
+.vmp-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--vmp-space-2);
+  padding: var(--vmp-space-3) var(--vmp-space-6);
+  border: 1px solid transparent;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 300;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-decoration: none;
+  font-family: inherit;
+}
+
+.vmp-btn-brand {
+  background: rgba(140, 210, 255, 0.18);
+  border-color: rgba(255, 255, 255, 0.10);
+  color: rgba(255, 255, 255, 0.92);
+  height: 48px;
+  border-radius: 14px;
+  transition: transform 160ms cubic-bezier(0.16, 1, 0.3, 1), 
+              background 160ms cubic-bezier(0.2, 0.9, 0.2, 1), 
+              border-color 160ms cubic-bezier(0.2, 0.9, 0.2, 1);
+}
+
+.vmp-btn-brand:hover:not(:disabled) {
+  background: rgba(140, 210, 255, 0.24);
+  border-color: rgba(140, 210, 255, 0.34);
+  transform: translateY(-1px);
+}
+
+.vmp-btn-brand:active:not(:disabled) {
+  transform: translateY(0px);
+}
+
+.vmp-btn-brand:focus-visible {
+  outline: 2px solid rgba(140, 210, 255, 0.55);
+  outline-offset: 2px;
+}
+
+.vmp-btn-wide {
+  width: 100%;
+}
+
+.vmp-btn-lg {
+  padding: var(--vmp-space-4) var(--vmp-space-6);
+  font-size: 15px;
+}
+
+.vmp-btn--noir {
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 12px;
+}
+
+.vmp-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.vmp-btn-icon {
+  width: 16px;
+  height: 16px;
+  stroke: currentColor;
+  stroke-width: 2;
+}
+
+/* ===== FOOTER LINE ===== */
+.vmp-login__footerline {
+  margin-top: var(--vmp-space-8);
+  padding-top: var(--vmp-space-4);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  text-align: center;
+}
+
+.vmp-login__footerline--noir {
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+.vmp-login__footerline--noir p {
+  margin: 0;
+}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 768px) {
+  .vmp-login__wrap {
+    padding: var(--vmp-space-6) var(--vmp-space-4);
+  }
+
+  .vmp-login__title {
+    font-size: clamp(36px, 8vw, 48px);
+  }
+
+  .display-shock {
+    font-size: clamp(36px, 8vw, 48px);
+  }
+
+  .vmp-login__lead {
+    font-size: 14px;
+  }
+}
+
+/* Motion safety */
+@media (prefers-reduced-motion: reduce) {
+  .vmp-login * {
+    transition: none !important;
+    animation: none !important;
+    scroll-behavior: auto !important;
+  }
+}
+

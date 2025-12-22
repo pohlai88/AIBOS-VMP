@@ -1,8 +1,309 @@
 {% extends "layout.html" %}
 {% block title %}NexusCanon VMP — Console{% endblock %}
 
+{% block head %}
+  {{ super() }}
+  <link rel="stylesheet" href="/login-noir-theme.css" />
+  <style>
+    /* ==========================================================================
+       Dashboard Creative Design Layer - Inspired by Login & Landing Pages
+       ========================================================================== */
+    
+    /* Atmospheric Background Layers */
+    .dashboard-bg {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+      background: 
+        radial-gradient(1400px 900px at 15% 20%, rgba(96, 255, 198, 0.08), transparent 65%),
+        radial-gradient(1100px 800px at 85% 35%, rgba(140, 210, 255, 0.06), transparent 60%),
+        radial-gradient(900px 700px at 50% 80%, rgba(255, 255, 255, 0.04), transparent 70%),
+        linear-gradient(180deg, #060607 0%, #050506 100%);
+    }
+    
+    .dashboard-grid {
+      position: fixed;
+      inset: 0;
+      z-index: 1;
+      pointer-events: none;
+      background-image: 
+        linear-gradient(rgba(237, 237, 237, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(237, 237, 237, 0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+      opacity: 0.4;
+    }
+    
+    .dashboard-noise {
+      position: fixed;
+      inset: 0;
+      z-index: 1;
+      pointer-events: none;
+      background: radial-gradient(circle at 1px 1px, rgba(255, 255, 255, 0.025) 1px, transparent 1.6px);
+      background-size: 16px 16px;
+      opacity: 0.18;
+      mix-blend-mode: overlay;
+    }
+    
+    /* Enhanced Card Styling with Glassmorphism */
+    .vmp-card {
+      background: 
+        linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.02) 100%),
+        rgba(255, 255, 255, 0.03);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(237, 237, 237, 0.12);
+      box-shadow: 
+        0 8px 32px rgba(0, 0, 0, 0.12),
+        inset 0 1px 0 rgba(255, 255, 255, 0.08);
+      transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    .vmp-card:hover {
+      background: 
+        linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.04) 100%),
+        rgba(255, 255, 255, 0.05);
+      border-color: rgba(96, 255, 198, 0.25);
+      box-shadow: 
+        0 12px 48px rgba(0, 0, 0, 0.18),
+        0 0 0 1px rgba(96, 255, 198, 0.15),
+        inset 0 1px 0 rgba(255, 255, 255, 0.12);
+      transform: translateY(-2px);
+    }
+    
+    /* Enhanced Panel Styling */
+    .vmp-panel {
+      background: 
+        linear-gradient(135deg, rgba(255, 255, 255, 0.04) 0%, rgba(255, 255, 255, 0.02) 100%);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(237, 237, 237, 0.10);
+      transition: all 0.3s ease;
+    }
+    
+    .vmp-panel:hover {
+      background: 
+        linear-gradient(135deg, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0.03) 100%);
+      border-color: rgba(237, 237, 237, 0.15);
+    }
+    
+    /* Posture Rail Enhancements */
+    .posture-rail-btn {
+      position: relative;
+      overflow: hidden;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    .posture-rail-btn::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(96, 255, 198, 0.1) 0%, transparent 100%);
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+    
+    .posture-rail-btn:hover::before,
+    .posture-rail-btn[class*='bg-white']::before {
+      opacity: 1;
+    }
+    
+    .posture-rail-btn::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, rgba(96, 255, 198, 0.6), transparent);
+      transform: scaleX(0);
+      transition: transform 0.3s ease;
+    }
+    
+    .posture-rail-btn[class*='bg-white']::after {
+      transform: scaleX(1);
+    }
+    
+    /* Enhanced Input Styling */
+    .vmp-input {
+      background: rgba(255, 255, 255, 0.04);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(237, 237, 237, 0.12);
+      transition: all 0.3s ease;
+    }
+    
+    .vmp-input:focus {
+      background: rgba(255, 255, 255, 0.06);
+      border-color: rgba(96, 255, 198, 0.35);
+      box-shadow: 
+        0 0 0 3px rgba(96, 255, 198, 0.1),
+        0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+    
+    /* Protocol Status Pulse Animation */
+    @keyframes protocolPulse {
+      0%, 100% {
+        opacity: 1;
+        transform: scale(1);
+      }
+      50% {
+        opacity: 0.7;
+        transform: scale(1.1);
+      }
+    }
+    
+    .protocol-status-indicator {
+      animation: protocolPulse 2s ease-in-out infinite;
+    }
+    
+    /* Enhanced Button Styling */
+    .vmp-btn-primary {
+      background: linear-gradient(135deg, rgba(96, 255, 198, 0.2) 0%, rgba(96, 255, 198, 0.15) 100%);
+      border: 1px solid rgba(96, 255, 198, 0.3);
+      box-shadow: 
+        0 4px 16px rgba(96, 255, 198, 0.15),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    .vmp-btn-primary:hover {
+      background: linear-gradient(135deg, rgba(96, 255, 198, 0.3) 0%, rgba(96, 255, 198, 0.2) 100%);
+      border-color: rgba(96, 255, 198, 0.45);
+      box-shadow: 
+        0 6px 24px rgba(96, 255, 198, 0.25),
+        inset 0 1px 0 rgba(255, 255, 255, 0.15);
+      transform: translateY(-1px);
+    }
+    
+    /* Segment Button Enhancements */
+    .vmp-segment__btn[aria-pressed='true'] {
+      background: linear-gradient(135deg, rgba(96, 255, 198, 0.15) 0%, rgba(96, 255, 198, 0.1) 100%);
+      border-color: rgba(96, 255, 198, 0.3);
+      box-shadow: 
+        0 2px 8px rgba(96, 255, 198, 0.15),
+        inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    }
+    
+    /* Evidence Stream Animation */
+    @keyframes streamPulse {
+      0%, 100% {
+        opacity: 0.6;
+      }
+      50% {
+        opacity: 1;
+      }
+    }
+    
+    .evidence-stream-item {
+      position: relative;
+      transition: all 0.3s ease;
+    }
+    
+    .evidence-stream-item::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 2px;
+      background: linear-gradient(180deg, rgba(96, 255, 198, 0.6), transparent);
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+    
+    .evidence-stream-item:hover::before {
+      opacity: 1;
+      animation: streamPulse 2s ease-in-out infinite;
+    }
+    
+    .evidence-stream-item:hover {
+      background: rgba(96, 255, 198, 0.05);
+      transform: translateX(4px);
+    }
+    
+    /* Badge Enhancements */
+    .vmp-badge {
+      backdrop-filter: blur(8px);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+    
+    .vmp-badge-ok {
+      background: linear-gradient(135deg, rgba(96, 255, 198, 0.2) 0%, rgba(96, 255, 198, 0.15) 100%);
+      border-color: rgba(96, 255, 198, 0.3);
+    }
+    
+    .vmp-badge-danger {
+      background: linear-gradient(135deg, rgba(255, 100, 100, 0.2) 0%, rgba(255, 100, 100, 0.15) 100%);
+      border-color: rgba(255, 100, 100, 0.3);
+    }
+    
+    .vmp-badge-warn {
+      background: linear-gradient(135deg, rgba(255, 200, 100, 0.2) 0%, rgba(255, 200, 100, 0.15) 100%);
+      border-color: rgba(255, 200, 100, 0.3);
+    }
+    
+    /* Empty State Enhancement */
+    .vmp-empty {
+      background: 
+        radial-gradient(circle at 50% 50%, rgba(96, 255, 198, 0.05) 0%, transparent 70%);
+    }
+    
+    /* Scrollbar Styling */
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+    
+    ::-webkit-scrollbar-track {
+      background: rgba(255, 255, 255, 0.02);
+    }
+    
+    ::-webkit-scrollbar-thumb {
+      background: rgba(237, 237, 237, 0.2);
+      border-radius: 4px;
+      transition: background 0.3s ease;
+    }
+    
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(96, 255, 198, 0.4);
+    }
+    
+    /* Parallax Effect on Scroll */
+    .dashboard-content {
+      position: relative;
+      z-index: 10;
+      will-change: transform;
+    }
+    
+    /* Loading State Enhancement */
+    .htmx-indicator {
+      background: rgba(0, 0, 0, 0.4);
+      backdrop-filter: blur(8px);
+    }
+    
+    /* Responsive Enhancements */
+    @media (max-width: 1280px) {
+      .dashboard-bg {
+        background: 
+          radial-gradient(1000px 700px at 15% 20%, rgba(96, 255, 198, 0.06), transparent 65%),
+          radial-gradient(800px 600px at 85% 35%, rgba(140, 210, 255, 0.04), transparent 60%),
+          linear-gradient(180deg, #060607 0%, #050506 100%);
+      }
+    }
+    
+    /* Reduced Motion Support */
+    @media (prefers-reduced-motion: reduce) {
+      .vmp-card,
+      .posture-rail-btn,
+      .vmp-btn-primary,
+      .evidence-stream-item {
+        transition: none;
+        animation: none;
+      }
+    }
+  </style>
+{% endblock %}
+
 {% block content %}
-<div class="h-full overflow-y-auto" x-data="{
+<div class="h-full overflow-y-auto dashboard-content" x-data="{
   q: '',
   posture: 'action',
   channel: 'all',
@@ -67,9 +368,10 @@
   }
 }">
   <div class="relative isolate">
-    <!-- Atmospheric layers (CSS-native; no inline styles) -->
-    <div class="vmp-login__bg" aria-hidden="true"></div>
-    <div class="noir-grid-overlay" aria-hidden="true"></div>
+    <!-- Enhanced Atmospheric layers -->
+    <div class="dashboard-bg" aria-hidden="true"></div>
+    <div class="dashboard-grid" aria-hidden="true"></div>
+    <div class="dashboard-noise" aria-hidden="true"></div>
 
     <div class="max-w-[1400px] mx-auto p-6 pb-12 relative z-10">
 
@@ -90,7 +392,7 @@
         <div class="vmp-panel px-4 py-3 min-w-[320px]">
           <div class="flex items-center gap-4">
             <div class="relative" aria-hidden="true">
-              <div class="w-2 h-2 rounded-full vmp-fill-ok"></div>
+              <div class="w-2 h-2 rounded-full vmp-fill-ok protocol-status-indicator"></div>
               <div class="absolute inset-0 rounded-full opacity-60 animate-ping vmp-fill-ok"></div>
             </div>
             <div class="min-w-0">
@@ -177,7 +479,7 @@
       <!-- Posture Rail -->
       <div class="grid grid-cols-2 md:grid-cols-4 border-y mb-8 vmp-border-color" role="group" aria-label="Posture rail">
         <button type="button" @click="posture='action'"
-          class="p-6 border-r hover:bg-white/[0.02] transition-colors vmp-border-color text-left"
+          class="posture-rail-btn p-6 border-r hover:bg-white/[0.02] transition-colors vmp-border-color text-left"
           :class="posture==='action' ? 'bg-white/[0.03]' : ''"
           aria-label="Action required">
           <div class="vmp-label-kicker mb-2">action required</div>
@@ -186,7 +488,7 @@
         </button>
 
         <button type="button" @click="posture='open'"
-          class="p-6 border-r hover:bg-white/[0.02] transition-colors vmp-border-color text-left"
+          class="posture-rail-btn p-6 border-r hover:bg-white/[0.02] transition-colors vmp-border-color text-left"
           :class="posture==='open' ? 'bg-white/[0.03]' : ''"
           aria-label="Open cases">
           <div class="vmp-label-kicker mb-2">open cases</div>
@@ -195,7 +497,7 @@
         </button>
 
         <button type="button" @click="posture='soa'"
-          class="p-6 border-r hover:bg-white/[0.02] transition-colors vmp-border-color text-left"
+          class="posture-rail-btn p-6 border-r hover:bg-white/[0.02] transition-colors vmp-border-color text-left"
           :class="posture==='soa' ? 'bg-white/[0.03]' : ''"
           aria-label="Statements">
           <div class="vmp-label-kicker mb-2">statements</div>
@@ -204,7 +506,7 @@
         </button>
 
         <button type="button" @click="posture='paid'"
-          class="p-6 hover:bg-white/[0.02] transition-colors text-left"
+          class="posture-rail-btn p-6 hover:bg-white/[0.02] transition-colors text-left"
           :class="posture==='paid' ? 'bg-white/[0.03]' : ''"
           aria-label="Payments">
           <div class="vmp-label-kicker mb-2">payments</div>
@@ -368,7 +670,7 @@
               </div>
 
               <div class="vmp-list border-t vmp-border-color mt-3">
-                <div class="vmp-list-item hover:bg-white/5 transition-colors cursor-pointer">
+                <div class="vmp-list-item evidence-stream-item hover:bg-white/5 transition-colors cursor-pointer">
                   <div class="flex items-baseline justify-between gap-3">
                     <div class="min-w-0">
                       <div class="flex items-center gap-3">
@@ -381,7 +683,7 @@
                   </div>
                 </div>
 
-                <div class="vmp-list-item hover:bg-white/5 transition-colors cursor-pointer">
+                <div class="vmp-list-item evidence-stream-item hover:bg-white/5 transition-colors cursor-pointer">
                   <div class="flex items-baseline justify-between gap-3">
                     <div class="min-w-0">
                       <div class="flex items-center gap-3">
@@ -394,7 +696,7 @@
                   </div>
                 </div>
 
-                <div class="vmp-list-item hover:bg-white/5 transition-colors cursor-pointer">
+                <div class="vmp-list-item evidence-stream-item hover:bg-white/5 transition-colors cursor-pointer">
                   <div class="flex items-baseline justify-between gap-3">
                     <div class="min-w-0">
                       <div class="flex items-center gap-3">

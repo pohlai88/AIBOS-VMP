@@ -37,7 +37,7 @@
                 </span>
             </div>
             <div class="vmp-caption truncate mb-0.5">{{ ev.original_filename or 'Untitled' }}</div>
-            <div class="flex items-center justify-between">
+            <div class="flex items-center justify-between mb-1">
                 <div class="vmp-caption vmp-subtle">
                     {% if ev.size_bytes %}
                     {% if ev.size_bytes < 1024 %} {{ ev.size_bytes }} B {% elif ev.size_bytes < 1048576 %} {{
@@ -47,6 +47,13 @@
                         <span class="vmp-caption font-mono vmp-subtle">v{{ ev.version }}</span>
                         {% endif %}
                 </div>
+            </div>
+            <!-- Sprint 8.2: Upload Timestamp -->
+            {% if ev.created_at %}
+            <div class="vmp-caption vmp-muted text-xs">
+                Uploaded {{ ev.created_at | date('%b %d, %Y at %I:%M %p') if ev.created_at else '—' }}
+            </div>
+            {% endif %}
         </a>
         {% endfor %}
     </div>

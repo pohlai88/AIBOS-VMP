@@ -71,7 +71,42 @@
             <div class="w-4 h-4 rounded border bg-transparent grid place-items-center vmp-border-warn vmp-opacity-50">
                 <div class="w-1.5 h-1.5 rounded-full vmp-fill-warn animate-pulse"></div>
             </div>
-            <span class="vmp-caption">{{ step.label or 'Evidence required' }}</span>
+            <div class="flex items-center gap-2 flex-1">
+                <span class="vmp-caption">{{ step.label or 'Evidence required' }}</span>
+                <!-- Sprint 8.2: Upload Guidance Tooltip -->
+                {% if step.required_evidence_type %}
+                <div class="relative group">
+                    <svg class="w-3.5 h-3.5 vmp-muted cursor-help" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <div class="hidden group-hover:block absolute left-0 bottom-full mb-2 w-64 p-3 vmp-panel border vmp-border-color rounded-lg shadow-lg z-50">
+                        <div class="vmp-label-kicker mb-1">Upload Guidance</div>
+                        <div class="vmp-body-small vmp-muted mb-2">
+                            {% if step.required_evidence_type == 'po_number' %}
+                            Upload a copy of the Purchase Order document. Ensure it's signed and dated.
+                            {% elif step.required_evidence_type == 'grn' %}
+                            Upload the Goods Receipt Note signed by the receiving party. Must match the invoice.
+                            {% elif step.required_evidence_type == 'invoice_pdf' %}
+                            Upload the original invoice in PDF format. Ensure all details are clearly visible.
+                            {% elif step.required_evidence_type == 'contract' %}
+                            Upload the signed contract document. Include all pages and signatures.
+                            {% elif step.required_evidence_type == 'certificate' %}
+                            Upload the certificate document. Ensure it's current and not expired.
+                            {% else %}
+                            Upload the required document for this step. Ensure it's clear and complete.
+                            {% endif %}
+                        </div>
+                        {% if step.description %}
+                        <div class="vmp-caption vmp-muted italic">{{ step.description }}</div>
+                        {% endif %}
+                        <a href="/templates/{{ step.required_evidence_type }}-template.pdf" 
+                           class="vmp-caption vmp-text-ok hover:underline mt-2 inline-block">
+                            Download Template →
+                        </a>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
             <button
                 class="ml-auto px-2 py-0.5 rounded transition-colors border vmp-action-button vmp-action-button-ghost vmp-bg-panel vmp-border-color hover:vmp-bg-veil"
                 hx-get="/partials/case-evidence.html?case_id={{ caseId }}&step_id={{ step.id }}"

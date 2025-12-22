@@ -1,0 +1,262 @@
+<!-- Command Palette Partial (Sprint 10.1) -->
+<div id="command-palette" 
+     class="vmp-command-palette"
+     x-data="commandPalette()"
+     x-show="isOpen"
+     @keydown.escape.window="close()"
+     @keydown.meta.k.window.prevent="toggle()"
+     @keydown.ctrl.k.window.prevent="toggle()"
+     style="display: none;">
+  <!-- Overlay -->
+  <div class="vmp-command-palette-overlay" @click="close()"></div>
+  
+  <!-- Dialog -->
+  <div class="vmp-command-palette-dialog" @click.stop>
+    <!-- Search Input -->
+    <div class="vmp-command-input-container">
+      <svg class="vmp-command-search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <circle cx="11" cy="11" r="8"></circle>
+        <path d="m21 21-4.35-4.35"></path>
+      </svg>
+      <input 
+        type="text"
+        class="vmp-command-input"
+        placeholder="Search cases, invoices, actions..."
+        x-model="query"
+        @input.debounce.200ms="search()"
+        @keydown.arrow-down.prevent="navigateDown()"
+        @keydown.arrow-up.prevent="navigateUp()"
+        @keydown.enter.prevent="selectItem()"
+        x-ref="input"
+      />
+      <kbd class="vmp-command-shortcut">⌘K</kbd>
+    </div>
+
+    <!-- Results -->
+    <div class="vmp-command-list" x-show="results.length > 0 || isLoading">
+      <template x-if="isLoading">
+        <div class="vmp-command-empty">
+          <div class="vmp-spinner"></div>
+          <span class="vmp-body-small vmp-muted ml-2">Searching...</span>
+        </div>
+      </template>
+
+      <template x-if="!isLoading && results.length > 0">
+        <template x-for="(group, groupIndex) in groupedResults" :key="groupIndex">
+          <div class="vmp-command-group">
+            <div class="vmp-command-group-title" x-text="group.category"></div>
+            <template x-for="(item, itemIndex) in group.items" :key="item.id">
+              <a 
+                :href="item.url"
+                class="vmp-command-item"
+                :class="{ 'vmp-command-item-active': activeIndex === groupIndex + '-' + itemIndex }"
+                @mouseenter="activeIndex = groupIndex + '-' + itemIndex"
+                @click.prevent="executeAction(item)">
+                <div class="vmp-command-item-icon" x-html="item.icon || '📄'"></div>
+                <div class="vmp-command-item-content">
+                  <div class="vmp-command-item-label" x-text="item.label"></div>
+                  <div class="vmp-command-item-hint" x-text="item.hint || ''"></div>
+                </div>
+                <kbd class="vmp-command-shortcut" x-show="item.shortcut" x-text="item.shortcut"></kbd>
+              </a>
+            </template>
+          </div>
+        </template>
+      </template>
+    </div>
+
+    <!-- Empty State -->
+    <div class="vmp-command-empty" x-show="!isLoading && results.length === 0 && query.length > 0">
+      <div class="vmp-body-small vmp-muted">No results found</div>
+    </div>
+
+    <!-- Initial State -->
+    <div class="vmp-command-empty" x-show="!isLoading && results.length === 0 && query.length === 0">
+      <div class="vmp-body-small vmp-muted mb-2">Quick Actions</div>
+      <div class="vmp-command-group">
+        <a href="/cases/new" class="vmp-command-item" @click.prevent="executeAction({ url: '/cases/new', action: 'navigate' })">
+          <div class="vmp-command-item-icon">➕</div>
+          <div class="vmp-command-item-content">
+            <div class="vmp-command-item-label">New Case</div>
+            <div class="vmp-command-item-hint">Create a new case</div>
+          </div>
+          <kbd class="vmp-command-shortcut">⌘N</kbd>
+        </a>
+        <a href="/invoices" class="vmp-command-item" @click.prevent="executeAction({ url: '/invoices', action: 'navigate' })">
+          <div class="vmp-command-item-icon">📋</div>
+          <div class="vmp-command-item-content">
+            <div class="vmp-command-item-label">View Invoices</div>
+            <div class="vmp-command-item-hint">Browse all invoices</div>
+          </div>
+        </a>
+        <a href="/payments/history" class="vmp-command-item" @click.prevent="executeAction({ url: '/payments/history', action: 'navigate' })">
+          <div class="vmp-command-item-icon">💰</div>
+          <div class="vmp-command-item-content">
+            <div class="vmp-command-item-label">Payment History</div>
+            <div class="vmp-command-item-hint">View payment timeline</div>
+          </div>
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function commandPalette() {
+  return {
+    isOpen: false,
+    query: '',
+    results: [],
+    isLoading: false,
+    activeIndex: null,
+
+    init() {
+      // Listen for Cmd/Ctrl+K globally
+      document.addEventListener('keydown', (e) => {
+        if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+          e.preventDefault();
+          this.toggle();
+        }
+      });
+    },
+
+    toggle() {
+      this.isOpen = !this.isOpen;
+      if (this.isOpen) {
+        this.$nextTick(() => {
+          this.$refs.input.focus();
+        });
+      } else {
+        this.query = '';
+        this.results = [];
+        this.activeIndex = null;
+      }
+    },
+
+    close() {
+      this.isOpen = false;
+      this.query = '';
+      this.results = [];
+      this.activeIndex = null;
+    },
+
+    async search() {
+      if (!this.query || this.query.length < 2) {
+        this.results = [];
+        return;
+      }
+
+      this.isLoading = true;
+      try {
+        const response = await fetch(`/api/command-palette/search?q=${encodeURIComponent(this.query)}`);
+        const data = await response.json();
+        this.results = data.results || [];
+        this.activeIndex = this.results.length > 0 ? '0-0' : null;
+      } catch (error) {
+        console.error('Search error:', error);
+        this.results = [];
+      } finally {
+        this.isLoading = false;
+      }
+    },
+
+    get groupedResults() {
+      const groups = {};
+      this.results.forEach(item => {
+        if (!groups[item.category]) {
+          groups[item.category] = [];
+        }
+        groups[item.category].push(item);
+      });
+      return Object.keys(groups).map(category => ({
+        category,
+        items: groups[category]
+      }));
+    },
+
+    navigateDown() {
+      if (this.results.length === 0) return;
+      const groups = this.groupedResults;
+      let currentGroup = 0;
+      let currentItem = 0;
+      
+      if (this.activeIndex) {
+        const [g, i] = this.activeIndex.split('-').map(Number);
+        currentGroup = g;
+        currentItem = i;
+        
+        if (currentItem < groups[currentGroup].items.length - 1) {
+          currentItem++;
+        } else if (currentGroup < groups.length - 1) {
+          currentGroup++;
+          currentItem = 0;
+        } else {
+          currentGroup = 0;
+          currentItem = 0;
+        }
+      }
+      
+      this.activeIndex = `${currentGroup}-${currentItem}`;
+      this.scrollToActive();
+    },
+
+    navigateUp() {
+      if (this.results.length === 0) return;
+      const groups = this.groupedResults;
+      let currentGroup = 0;
+      let currentItem = 0;
+      
+      if (this.activeIndex) {
+        const [g, i] = this.activeIndex.split('-').map(Number);
+        currentGroup = g;
+        currentItem = i;
+        
+        if (currentItem > 0) {
+          currentItem--;
+        } else if (currentGroup > 0) {
+          currentGroup--;
+          currentItem = groups[currentGroup].items.length - 1;
+        } else {
+          currentGroup = groups.length - 1;
+          currentItem = groups[currentGroup].items.length - 1;
+        }
+      } else {
+        currentGroup = groups.length - 1;
+        currentItem = groups[currentGroup].items.length - 1;
+      }
+      
+      this.activeIndex = `${currentGroup}-${currentItem}`;
+      this.scrollToActive();
+    },
+
+    scrollToActive() {
+      this.$nextTick(() => {
+        const activeElement = document.querySelector('.vmp-command-item-active');
+        if (activeElement) {
+          activeElement.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+        }
+      });
+    },
+
+    selectItem() {
+      if (!this.activeIndex || this.results.length === 0) return;
+      const groups = this.groupedResults;
+      const [g, i] = this.activeIndex.split('-').map(Number);
+      const item = groups[g].items[i];
+      this.executeAction(item);
+    },
+
+    executeAction(item) {
+      if (item.action === 'navigate') {
+        window.location.href = item.url;
+      } else if (item.action === 'htmx') {
+        htmx.ajax('GET', item.url, { target: item.target, swap: item.swap || 'innerHTML' });
+        this.close();
+      } else {
+        window.location.href = item.url;
+      }
+    }
+  }
+}
+</script>
+

@@ -1,0 +1,1443 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="color-scheme" content="dark light" />
+  <title>NexusCanon VMP — Settlement Governance (Cinema Landing)</title>
+  <meta name="description" content="Fortune-500-grade settlement governance portal: evidence-gated release, immutable case log, and live posture controls. Single-page cinema landing." />
+
+  <style>
+    :root{
+      /* Core surfaces */
+      --bg:#060607;
+      --bg2:#050506;
+      --panel: rgba(255,255,255,.03);
+      --panel2: rgba(255,255,255,.02);
+      --border: rgba(237,237,237,.10);
+      --border2: rgba(237,237,237,.18);
+
+      /* Text */
+      --text:#ededed;
+      --muted: rgba(237,237,237,.64);
+      --subtle: rgba(237,237,237,.38);
+
+      /* Brand accents */
+      --accent: rgba(96,255,198,.86);
+      --accentSoft: rgba(96,255,198,.10);
+      --accentBorder: rgba(96,255,198,.22);
+
+      /* Risk */
+      --danger: rgba(255,100,100,.86);
+      --dangerSoft: rgba(255,100,100,.10);
+      --dangerBorder: rgba(255,100,100,.28);
+
+      /* Motion */
+      --t-fast: 160ms;
+      --t-med: 320ms;
+
+      /* Radius + spacing */
+      --r-sm: 12px;
+      --r-md: 18px;
+      --r-xl: 32px;
+
+      --s1:.4rem; --s2:.65rem; --s3:.95rem; --s4:1.25rem; --s5:1.65rem; --s6:2.1rem; --s7:2.7rem; --s8:3.4rem;
+
+      --max: 1260px;
+
+      /* Cinema progress (set by JS) */
+      --p: 0;      /* 0..1 scroll */
+      --w0: 1;     /* Scene weights */
+      --w1: 0;
+      --w2: 0;
+
+      /* Parallax */
+      --mx: 0;
+      --my: 0;
+
+      /* Trust / Risk (set by JS) */
+      --trust: .84; /* 0..1 */
+      --risk:  .12; /* 0..1 */
+      --dangerGlow: 0; /* 0..1 */
+    }
+
+    [data-theme="light"]{
+      --bg:#fbfbfc;
+      --bg2:#f6f6f7;
+      --panel: rgba(0,0,0,.03);
+      --panel2: rgba(0,0,0,.02);
+      --border: rgba(10,10,12,.12);
+      --border2: rgba(10,10,12,.20);
+      --text:#0a0a0c;
+      --muted: rgba(10,10,12,.64);
+      --subtle: rgba(10,10,12,.38);
+    }
+
+    *{ box-sizing:border-box; }
+    html,body{ height:100%; }
+    body{
+      margin:0;
+      color:var(--text);
+      background:
+        radial-gradient(1200px 860px at 18% 12%, rgba(255,255,255,.06), transparent 60%),
+        radial-gradient(980px 760px at 86% 44%, rgba(255,255,255,.05), transparent 65%),
+        linear-gradient(180deg, var(--bg), var(--bg2));
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      font-weight: 320;
+      letter-spacing: .01em;
+      overflow-x:hidden;
+    }
+
+    a{ color:inherit; text-decoration:none; }
+    a:hover{ text-decoration:underline; text-underline-offset:2px; text-decoration-thickness:1px; text-decoration-color:var(--subtle); }
+    .mono{ font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; letter-spacing:.02em; }
+    :focus-visible{ outline:2px solid rgba(237,237,237,.22); outline-offset:3px; border-radius:12px; }
+
+    .container{ max-width:var(--max); margin:0 auto; padding: 0 var(--s6); }
+    @media (max-width:720px){ .container{ padding:0 var(--s4); } }
+
+    /* Ambient layers */
+    .bgGrid{
+      position:fixed; inset:0; z-index:-4; pointer-events:none;
+      background:
+        radial-gradient(1000px 720px at 18% 18%, rgba(255,255,255,.06), transparent 62%),
+        radial-gradient(860px 620px at 86% 42%, rgba(255,255,255,.04), transparent 66%),
+        linear-gradient(90deg, rgba(237,237,237,.06) 1px, transparent 1px),
+        linear-gradient(0deg, rgba(237,237,237,.06) 1px, transparent 1px);
+      background-size:auto, auto, 28px 28px, 28px 28px;
+      opacity:.55;
+      mix-blend-mode:overlay;
+      transform: translate3d(calc(var(--mx) * 10px), calc(var(--my) * 10px), 0) rotate(calc(var(--p) * 0.8deg));
+    }
+    .noise{
+      position:fixed; inset:0; z-index:-3; pointer-events:none;
+      background: radial-gradient(circle at 1px 1px, rgba(255,255,255,.028) 1px, transparent 1.6px);
+      background-size:16px 16px;
+      opacity:.22;
+      mix-blend-mode:overlay;
+      transform: translate3d(calc(var(--mx) * -6px), calc(var(--my) * -6px), 0);
+    }
+    .aura{
+      position:fixed; inset:-30vmax; z-index:-2; pointer-events:none;
+      opacity:.58;
+      filter: blur(42px);
+      background:
+        radial-gradient(closest-side at 28% 30%, rgba(96,255,198, calc(.18 + var(--trust) * .08)), transparent 70%),
+        radial-gradient(closest-side at 78% 54%, rgba(96,255,198, calc(.07 + var(--trust) * .06)), transparent 72%),
+        radial-gradient(closest-side at 60% 52%, rgba(255,100,100, calc(var(--dangerGlow) * .34)), transparent 68%),
+        radial-gradient(closest-side at 44% 78%, rgba(255,100,100, calc(var(--dangerGlow) * .22)), transparent 72%),
+        radial-gradient(closest-side at 52% 66%, rgba(255,255,255, calc(.06 + var(--risk) * .12)), transparent 72%);
+      transform: translate3d(calc(var(--mx) * 16px), calc(var(--my) * 12px), 0);
+      mix-blend-mode:overlay;
+    }
+    @media (prefers-reduced-motion: reduce){
+      .bgGrid,.noise,.aura{ transform:none !important; }
+    }
+
+    /* Top HUD */
+    header{
+      position:sticky; top:0; z-index:50;
+      backdrop-filter: blur(16px);
+      background: linear-gradient(180deg, rgba(0,0,0,.24), rgba(0,0,0,.10));
+      border-bottom:1px solid var(--border);
+    }
+    [data-theme="light"] header{
+      background: linear-gradient(180deg, rgba(255,255,255,.76), rgba(255,255,255,.46));
+    }
+
+    .hud{
+      display:flex; align-items:center; justify-content:space-between;
+      gap: var(--s4);
+      padding: var(--s3) 0;
+      flex-wrap:wrap;
+    }
+    .brand{
+      display:flex; align-items:center; gap: var(--s3);
+      min-width: 260px;
+    }
+    .mark{
+      width: 34px; height: 34px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,.02);
+      display:flex; align-items:center; justify-content:center;
+    }
+    .mark svg{ width: 18px; height: 18px; opacity:.9; }
+    .brand h1{
+      margin:0;
+      font-size: 20px;
+      font-weight: 420;
+      letter-spacing: -.02em;
+      line-height: 1.1;
+    }
+    .brand p{
+      margin:.2rem 0 0 0;
+      font-size: 10px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .16em;
+    }
+
+    .hudMid{
+      display:flex; align-items:center; gap: var(--s3);
+      flex-wrap:wrap; justify-content:center;
+    }
+    .pill{
+      display:inline-flex; align-items:center; gap:.55rem;
+      padding:.45rem .7rem;
+      border-radius:999px;
+      border:1px solid var(--border);
+      background: rgba(255,255,255,.02);
+      color: var(--muted);
+      font-size: 12px;
+      user-select:none;
+      white-space:nowrap;
+    }
+    .pill i{ width:8px; height:8px; border-radius:999px; background: var(--accent); display:inline-block; }
+    .prog{
+      width: 160px; height: 10px;
+      border-radius:999px;
+      border:1px solid rgba(237,237,237,.10);
+      background: rgba(255,255,255,.012);
+      overflow:hidden;
+    }
+    .prog b{
+      display:block;
+      height:100%;
+      width: calc(var(--p) * 100%);
+      background: linear-gradient(90deg, var(--accentSoft), rgba(255,255,255,.03));
+      border-right: 1px solid rgba(237,237,237,.18);
+      transition: width var(--t-fast) ease;
+    }
+    .hudRight{
+      display:flex; align-items:center; gap: var(--s2);
+      justify-content:flex-end;
+      min-width: 260px;
+    }
+
+    .btn{
+      appearance:none;
+      border:1px solid var(--border);
+      background: rgba(255,255,255,.02);
+      color: var(--text);
+      font-size: 13px;
+      letter-spacing:.01em;
+      padding:.62rem .9rem;
+      border-radius:999px;
+      cursor:pointer;
+      transition: transform var(--t-fast) ease, border-color var(--t-fast) ease, background var(--t-fast) ease;
+      display:inline-flex; align-items:center; gap:.55rem;
+      user-select:none;
+      white-space:nowrap;
+    }
+    .btn:hover{ border-color: var(--border2); background: rgba(255,255,255,.04); transform: translateY(-1px); }
+    .btn:active{ transform: translateY(0); }
+    .btn.primary{
+      border-color: var(--accentBorder);
+      background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.03));
+    }
+    .btn.danger{
+      border-color: rgba(255,100,100,.32);
+      background: linear-gradient(180deg, rgba(255,100,100,.10), rgba(255,255,255,.02));
+    }
+
+    .iconbtn{
+      width: 38px; height: 38px;
+      border-radius:999px;
+      border:1px solid var(--border);
+      background: transparent;
+      cursor:pointer;
+      display:inline-flex; align-items:center; justify-content:center;
+      transition: background var(--t-fast) ease, border-color var(--t-fast) ease;
+      font-size: 14px;
+    }
+    .iconbtn:hover{ background: rgba(255,255,255,.03); border-color: var(--border2); }
+
+    /* Cinema track */
+    .film{ border-bottom:1px solid var(--border); }
+    .track{ height: 380vh; position:relative; }
+    .stageWrap{
+      position: sticky;
+      top: 64px;
+      height: calc(100dvh - 64px);
+      display:flex;
+      align-items:stretch;
+      justify-content:center;
+      padding: var(--s5) 0;
+    }
+    @media (max-width: 980px){
+      .stageWrap{ top: 92px; height: calc(100dvh - 92px); }
+    }
+
+    .stage{
+      width: min(var(--max), 100%);
+      margin:0 auto;
+      border-radius: var(--r-xl);
+      border: 1px solid transparent;
+      background:
+        linear-gradient(var(--bg), var(--bg)) padding-box,
+        linear-gradient(135deg,
+          rgba(237,237,237,.22),
+          rgba(237,237,237,.06),
+          rgba(237,237,237,.18),
+          rgba(255,100,100, calc(var(--dangerGlow) * .30))
+        ) border-box;
+      overflow:hidden;
+      position:relative;
+      display:grid;
+      grid-template-columns: 1.05fr .95fr;
+      gap: var(--s6);
+      padding: var(--s7);
+      transform: translate3d(calc(var(--mx) * 2px), calc(var(--my) * 2px), 0);
+    }
+    @media (max-width: 980px){
+      .stage{ grid-template-columns:1fr; padding: var(--s5); }
+    }
+    .stage::before{
+      content:"";
+      position:absolute; inset:-40vmax;
+      background:
+        radial-gradient(closest-side at 30% 30%, var(--accentSoft), transparent 72%),
+        radial-gradient(closest-side at 70% 55%, rgba(255,255,255,.05), transparent 74%),
+        radial-gradient(closest-side at 62% 52%, rgba(255,100,100, calc(var(--dangerGlow) * .22)), transparent 68%);
+      opacity:.55;
+      pointer-events:none;
+      transform: translate3d(calc(var(--p) * 14px + var(--mx) * 12px), calc(var(--p) * -10px + var(--my) * 8px), 0);
+    }
+    .stage > *{ position:relative; z-index:1; }
+
+    .left{ display:flex; flex-direction:column; gap: var(--s6); min-width:0; }
+    .right{ display:flex; flex-direction:column; gap: var(--s5); min-width:0; }
+
+    /* Left: copy */
+    .kicker{
+      display:flex; align-items:center; gap:.7rem;
+      color: var(--muted);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: .14em;
+      user-select:none;
+    }
+    .chip{
+      width: 9px; height: 9px;
+      border-radius:999px;
+      background: var(--accent);
+      box-shadow: 0 0 0 6px rgba(96,255,198,.06);
+    }
+
+    .titleStack{ position:relative; min-height: 140px; }
+    .titleGhost{
+      visibility:hidden;
+      margin:0;
+      font-size: clamp(2.2rem, 4.4vw, 3.8rem);
+      line-height:1.02;
+      letter-spacing:-.035em;
+      font-weight: 420;
+      max-width: 18ch;
+    }
+    .title{
+      margin:0;
+      position:absolute; inset:0 auto auto 0;
+      font-size: clamp(2.2rem, 4.4vw, 3.8rem);
+      line-height:1.02;
+      letter-spacing:-.035em;
+      font-weight: 420;
+      max-width: 18ch;
+      opacity:0;
+      transform: translateY(10px);
+      transition: opacity var(--t-med) ease, transform var(--t-med) ease;
+      pointer-events:none;
+    }
+    .title.t0{ opacity: var(--w0); transform: translateY(calc((1 - var(--w0)) * 10px)); }
+    .title.t1{ opacity: var(--w1); transform: translateY(calc((1 - var(--w1)) * 10px)); }
+    .title.t2{ opacity: var(--w2); transform: translateY(calc((1 - var(--w2)) * 10px)); }
+
+    .subStack{ position:relative; margin-top: var(--s3); min-height: 92px; }
+    .subGhost{
+      visibility:hidden;
+      margin:0;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.95;
+      max-width: 74ch;
+    }
+    .sub{
+      margin:0;
+      position:absolute; inset:0;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.95;
+      max-width: 74ch;
+      opacity:0;
+      transform: translateY(10px);
+      transition: opacity var(--t-med) ease, transform var(--t-med) ease;
+      pointer-events:none;
+    }
+    .sub.s0{ opacity: var(--w0); transform: translateY(calc((1 - var(--w0)) * 10px)); }
+    .sub.s1{ opacity: var(--w1); transform: translateY(calc((1 - var(--w1)) * 10px)); }
+    .sub.s2{ opacity: var(--w2); transform: translateY(calc((1 - var(--w2)) * 10px)); }
+
+    .steps{
+      list-style:none;
+      padding:0;
+      margin:0;
+      display:grid;
+      gap: .75rem;
+      max-width: 72ch;
+    }
+    .step{
+      display:flex; align-items:flex-start; gap: .9rem;
+      padding: .85rem 1rem;
+      border-radius: 18px;
+      border: 1px solid rgba(237,237,237,.08);
+      background: rgba(255,255,255,.01);
+    }
+    .step b{
+      width: 34px; height: 34px;
+      border-radius: 999px;
+      border: 1px solid rgba(237,237,237,.12);
+      background: rgba(255,255,255,.02);
+      display:flex; align-items:center; justify-content:center;
+      color: var(--muted);
+      font-size: 12px;
+      flex: 0 0 auto;
+    }
+    .step strong{
+      font-weight: 560;
+      color: rgba(237,237,237,.92);
+    }
+    .step span{
+      display:block;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.75;
+    }
+
+    .lens3{
+      display:grid;
+      grid-template-columns: 1fr;
+      gap: .75rem;
+      max-width: 72ch;
+    }
+    .lensCard{
+      border-radius: 18px;
+      border: 1px solid rgba(237,237,237,.08);
+      background:
+        radial-gradient(520px 220px at 70% 45%, rgba(255,100,100, calc(var(--dangerGlow) * .12)), transparent 62%),
+        rgba(255,255,255,.01);
+      padding: .95rem 1rem;
+      display:flex;
+      gap: .85rem;
+      align-items:flex-start;
+    }
+    .lensCard i{
+      width: 10px; height: 10px; border-radius: 999px;
+      background: var(--accent);
+      margin-top: .35rem;
+      box-shadow: 0 0 0 8px rgba(96,255,198,.05);
+      flex: 0 0 auto;
+    }
+    .lensCard b{
+      font-size: 13px;
+      font-weight: 620;
+      letter-spacing: .01em;
+    }
+    .lensCard p{
+      margin:.25rem 0 0 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.75;
+    }
+
+    /* Policy assurance strip */
+    .policy{
+      border-radius: var(--r-xl);
+      border: 1px solid rgba(237,237,237,.10);
+      background:
+        radial-gradient(620px 260px at 70% 40%, rgba(255,100,100, calc(var(--dangerGlow) * .14)), transparent 62%),
+        rgba(255,255,255,.012);
+      overflow:hidden;
+    }
+    .policyTop{
+      padding: var(--s4);
+      border-bottom:1px solid rgba(237,237,237,.08);
+      display:flex; align-items:center; justify-content:space-between; gap: var(--s3);
+      flex-wrap:wrap;
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .miniPill{
+      display:inline-flex; align-items:center; gap:.45rem;
+      padding:.35rem .62rem;
+      border-radius:999px;
+      border:1px solid rgba(237,237,237,.10);
+      background: rgba(255,255,255,.02);
+    }
+    .miniPill i{ width:8px; height:8px; border-radius:999px; background: var(--accent); display:inline-block; }
+
+    .policyBody{ padding: var(--s4); display:grid; gap: .75rem; }
+    .row{
+      display:flex; align-items:flex-start; justify-content:space-between; gap: var(--s3);
+      flex-wrap:wrap;
+      padding: .75rem .9rem;
+      border-radius: 16px;
+      border: 1px solid rgba(237,237,237,.08);
+      background: rgba(255,255,255,.01);
+    }
+    .row .label{
+      color: var(--subtle);
+      font-size: 12px;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      min-width: 160px;
+    }
+    .row .value{
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.75;
+      max-width: 64ch;
+    }
+    .row .value strong{ font-weight: 620; color: rgba(237,237,237,.92); }
+    .riskline{
+      display:flex; gap: var(--s3); flex-wrap:wrap; align-items:center;
+      color: var(--muted);
+      font-size: 12px;
+      margin-top: .25rem;
+    }
+    .meter{
+      height: 10px; width: 180px;
+      border-radius:999px;
+      border:1px solid rgba(237,237,237,.10);
+      background: rgba(255,255,255,.012);
+      overflow:hidden;
+    }
+    .meter b{
+      display:block; height:100%;
+      width: calc(var(--trust) * 100%);
+      background: linear-gradient(90deg, var(--accentSoft), rgba(255,255,255,.03));
+      border-right: 1px solid rgba(237,237,237,.16);
+      transition: width var(--t-fast) ease;
+    }
+    .riskTxt{
+      color: rgba(255,100,100, calc(.35 + var(--dangerGlow) * .65));
+    }
+
+    /* Right: access console / CTA */
+    .card{
+      border-radius: var(--r-xl);
+      border: 1px solid rgba(237,237,237,.10);
+      background:
+        radial-gradient(520px 260px at 70% 35%, rgba(255,100,100, calc(var(--dangerGlow) * .18)), transparent 62%),
+        rgba(255,255,255,.012);
+      overflow:hidden;
+    }
+    .cardTop{
+      padding: var(--s4);
+      border-bottom: 1px solid rgba(237,237,237,.08);
+      display:flex; align-items:center; justify-content:space-between; gap: var(--s3);
+      color: var(--muted);
+      font-size: 12px;
+      flex-wrap:wrap;
+    }
+    .statusDot{
+      width: 8px; height: 8px; border-radius: 999px;
+      background: rgba(237,237,237,.22);
+      box-shadow: 0 0 0 6px rgba(237,237,237,.04);
+    }
+    .statusDot.ok{ background: var(--accent); box-shadow: 0 0 0 6px rgba(96,255,198,.06); }
+    .statusDot.warn{ background: rgba(255,213,127,.92); box-shadow: 0 0 0 6px rgba(255,213,127,.07); }
+    .statusDot.danger{ background: rgba(255,100,100,.92); box-shadow: 0 0 0 6px rgba(255,100,100,.08); }
+
+    .tabs{
+      margin-top: .6rem;
+      display:flex;
+      border: 1px solid rgba(237,237,237,.10);
+      border-radius: 999px;
+      overflow:hidden;
+      background: rgba(255,255,255,.02);
+    }
+    .tabs button{
+      appearance:none; border:0; background:transparent;
+      color: var(--muted);
+      padding: .55rem .8rem;
+      font-size: 12px;
+      cursor:pointer;
+      transition: background var(--t-fast) ease, color var(--t-fast) ease;
+      flex:1;
+      white-space:nowrap;
+    }
+    .tabs button:hover{ background: rgba(255,255,255,.03); color: var(--text); }
+    .tabs button[aria-selected="true"]{
+      background: rgba(255,255,255,.06);
+      color: var(--text);
+      border-left: 1px solid rgba(237,237,237,.10);
+      border-right: 1px solid rgba(237,237,237,.10);
+    }
+
+    .cardBody{ padding: var(--s4); display:grid; gap: var(--s3); }
+    .field{ display:grid; gap: .45rem; }
+    .field label{
+      font-size: 11px;
+      color: var(--subtle);
+      letter-spacing: .14em;
+      text-transform: uppercase;
+      display:flex; justify-content:space-between; align-items:center;
+    }
+    .field label a{ color: var(--subtle); }
+    .input{
+      width:100%;
+      border-radius: 16px;
+      border: 1px solid rgba(237,237,237,.12);
+      background: rgba(255,255,255,.02);
+      padding: .9rem 1rem;
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 340;
+      transition: border-color var(--t-fast) ease, box-shadow var(--t-fast) ease;
+    }
+    .input::placeholder{ color: rgba(237,237,237,.30); }
+    .input:focus{
+      outline:none;
+      border-color: rgba(237,237,237,.22);
+      box-shadow: 0 0 0 4px rgba(237,237,237,.06);
+    }
+    .input.danger{
+      border-color: rgba(255,100,100,.50);
+      box-shadow: 0 0 0 4px rgba(255,100,100,.08);
+    }
+
+    .checkRow{
+      display:flex; align-items:center; justify-content:space-between;
+      gap: var(--s3); flex-wrap:wrap;
+      color: var(--muted);
+      font-size: 12px;
+      padding-top: .25rem;
+    }
+    .check{
+      display:inline-flex; align-items:center; gap:.55rem;
+      user-select:none;
+    }
+    .check input{ width: 16px; height: 16px; }
+    .primaryCta{
+      width:100%;
+      border-radius: 16px;
+      padding: .95rem 1rem;
+      border: 1px solid rgba(96,255,198,.24);
+      background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.03));
+      cursor:pointer;
+      color: var(--text);
+      font-size: 13px;
+      letter-spacing:.10em;
+      text-transform: uppercase;
+      display:flex; justify-content:center; align-items:center; gap:.7rem;
+      transition: transform var(--t-fast) ease, border-color var(--t-fast) ease, background var(--t-fast) ease;
+    }
+    .primaryCta:hover{
+      transform: translateY(-1px);
+      border-color: rgba(237,237,237,.26);
+      background: linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,.04));
+    }
+    .primaryCta:active{ transform: translateY(0); }
+
+    .fineprint{
+      color: var(--subtle);
+      font-size: 11px;
+      line-height: 1.75;
+      margin: .2rem 0 0 0;
+    }
+
+    /* Controls (right, below card) */
+    .controls{
+      border-radius: var(--r-xl);
+      border: 1px solid rgba(237,237,237,.10);
+      background: rgba(255,255,255,.012);
+      overflow:hidden;
+    }
+    .controlsTop{
+      padding: var(--s4);
+      border-bottom:1px solid rgba(237,237,237,.08);
+      display:flex; align-items:center; justify-content:space-between; gap: var(--s3);
+      color: var(--muted);
+      font-size: 12px;
+      flex-wrap:wrap;
+    }
+    .seg{
+      display:inline-flex;
+      border: 1px solid rgba(237,237,237,.10);
+      border-radius: 999px;
+      overflow:hidden;
+      background: rgba(255,255,255,.02);
+    }
+    .seg button{
+      appearance:none; border:0; background: transparent;
+      color: var(--muted); font-size: 12px;
+      padding: .55rem .78rem; cursor:pointer;
+      transition: background var(--t-fast) ease, color var(--t-fast) ease;
+      white-space:nowrap;
+    }
+    .seg button:hover{ background: rgba(255,255,255,.03); color: var(--text); }
+    .seg button[aria-pressed="true"]{
+      background: rgba(255,255,255,.06);
+      color: var(--text);
+      border-left: 1px solid rgba(237,237,237,.10);
+      border-right: 1px solid rgba(237,237,237,.10);
+    }
+
+    .sw{ display:inline-flex; align-items:center; gap:.6rem; user-select:none; cursor:pointer; }
+    .sw input{ position:absolute; opacity:0; pointer-events:none; }
+    .swTrack{
+      width: 44px; height: 24px;
+      border-radius:999px;
+      border: 1px solid rgba(237,237,237,.12);
+      background: rgba(255,255,255,.02);
+      position:relative;
+      transition: background var(--t-fast) ease, border-color var(--t-fast) ease;
+    }
+    .swKnob{
+      position:absolute; top:3px; left:3px;
+      width: 18px; height: 18px;
+      border-radius:999px;
+      border: 1px solid rgba(237,237,237,.12);
+      background: rgba(255,255,255,.08);
+      transition: transform var(--t-fast) ease, background var(--t-fast) ease;
+    }
+    .sw input:checked + .swTrack{
+      background: var(--accentSoft);
+      border-color: var(--accentBorder);
+    }
+    .sw input:checked + .swTrack .swKnob{
+      transform: translateX(20px);
+      background: rgba(255,255,255,.10);
+    }
+    .sw .txt{ font-size: 12px; color: var(--muted); }
+
+    .controlsBody{
+      padding: var(--s4);
+      display:grid;
+      gap: .75rem;
+    }
+    .controlRow{
+      display:flex; align-items:center; justify-content:space-between;
+      gap: var(--s3);
+      flex-wrap:wrap;
+      padding: .75rem .9rem;
+      border-radius: 16px;
+      border: 1px solid rgba(237,237,237,.08);
+      background: rgba(255,255,255,.01);
+    }
+    .controlRow .lbl{
+      display:flex; flex-direction:column; gap:.25rem;
+      min-width: 220px;
+    }
+    .controlRow .lbl b{ font-size: 13px; font-weight: 620; letter-spacing:.01em; }
+    .controlRow .lbl span{ font-size: 12px; color: var(--muted); line-height: 1.7; }
+
+    /* Scroll hint */
+    .scrollHint{
+      position:absolute;
+      left:50%;
+      bottom: var(--s4);
+      transform: translateX(-50%);
+      display:flex; align-items:center; gap:.6rem;
+      padding:.45rem .75rem;
+      border-radius:999px;
+      border:1px solid rgba(237,237,237,.12);
+      background: rgba(0,0,0,.18);
+      color: var(--muted);
+      font-size: 12px;
+      opacity: calc(1 - min(1, (var(--p) * 1.4)));
+      pointer-events:none;
+    }
+    [data-theme="light"] .scrollHint{ background: rgba(255,255,255,.55); }
+    .scrollHint .bar{
+      width: 86px; height: 10px;
+      border-radius:999px;
+      border:1px solid rgba(237,237,237,.10);
+      background: rgba(255,255,255,.01);
+      overflow:hidden;
+    }
+    .scrollHint .bar b{
+      display:block; height:100%;
+      width: calc(var(--p) * 100%);
+      background: linear-gradient(90deg, var(--accentSoft), rgba(255,255,255,.03));
+      border-right: 1px solid rgba(237,237,237,.16);
+    }
+
+    /* After section */
+    .after{ padding: var(--s8) 0; }
+    .grid2{
+      display:grid;
+      grid-template-columns: 1.05fr .95fr;
+      gap: var(--s6);
+      align-items:start;
+    }
+    @media (max-width: 980px){ .grid2{ grid-template-columns:1fr; } }
+
+    .sectionHead h2{
+      margin:0;
+      font-size: 22px;
+      font-weight: 620;
+      letter-spacing: -.02em;
+    }
+    .sectionHead p{
+      margin: var(--s3) 0 0 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.9;
+      max-width: 72ch;
+    }
+
+    .faq{
+      border-radius: var(--r-xl);
+      border: 1px solid rgba(237,237,237,.10);
+      background: rgba(255,255,255,.012);
+      overflow:hidden;
+    }
+    .faq details{ border-top:1px solid rgba(237,237,237,.08); padding: var(--s4); }
+    .faq details:first-child{ border-top:0; }
+    .faq summary{
+      cursor:pointer;
+      list-style:none;
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 620;
+    }
+    .faq p{ margin:.7rem 0 0 0; color: var(--muted); font-size: 13px; line-height: 1.9; }
+
+    footer{
+      padding: var(--s7) 0 var(--s8) 0;
+      border-top:1px solid var(--border);
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.85;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="bgGrid" aria-hidden="true"></div>
+  <div class="noise" aria-hidden="true"></div>
+  <div class="aura" aria-hidden="true"></div>
+
+  <header>
+    <div class="container">
+      <div class="hud">
+        <div class="brand" aria-label="NexusCanon brand">
+          <div class="mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M12 2.6l8.4 4.5v9.8L12 21.4 3.6 16.9V7.1L12 2.6Z" stroke="rgba(237,237,237,.78)" stroke-width="1.2"/>
+              <path d="M12 6.1l5.3 2.8v6.2L12 17.9 6.7 15.1V8.9L12 6.1Z" stroke="rgba(96,255,198,.62)" stroke-width="1.2"/>
+            </svg>
+          </div>
+          <div>
+            <h1>NexusCanon</h1>
+            <p class="mono" id="stampTop">go-live // vmp_2.0.1 // evidence-first</p>
+          </div>
+        </div>
+
+        <div class="hudMid" aria-label="Status and progress">
+          <span class="pill"><i aria-hidden="true"></i><span id="trustPill">Trust: 84%</span></span>
+          <span class="pill mono"><span id="riskPill" class="riskTxt">Risk: 12%</span></span>
+          <div class="prog" aria-label="Scroll progress"><b aria-hidden="true"></b></div>
+        </div>
+
+        <div class="hudRight">
+          <button class="iconbtn" id="themeBtn" aria-label="Toggle theme" title="Toggle theme">◐</button>
+          <a class="btn" href="#after">Assurance</a>
+          <button class="btn primary" type="button" id="demoBtnTop">Request Briefing</button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section class="film" aria-label="Cinema landing">
+      <div class="container">
+        <div class="track" id="track">
+          <div class="stageWrap">
+            <div class="stage" aria-label="Sticky stage">
+              <div class="scrollHint" aria-hidden="true">
+                <span>Scroll to reveal</span>
+                <span class="bar"><b aria-hidden="true"></b></span>
+                <span class="mono" id="pct">0%</span>
+              </div>
+
+              <!-- LEFT PANEL -->
+              <section class="left" aria-label="Executive copy">
+                <div class="kicker">
+                  <span class="chip" aria-hidden="true"></span>
+                  <span class="mono">Settlement Governance Portal</span>
+                </div>
+
+                <div>
+                  <div class="titleStack" aria-label="Morphing headline">
+                    <h2 class="titleGhost">Secure settlement access.</h2>
+                    <h2 class="title t0">Secure settlement access.</h2>
+                    <h2 class="title t1">Exceptions become owned cases.</h2>
+                    <h2 class="title t2">Proof survives audits and upgrades.</h2>
+                  </div>
+
+                  <div class="subStack" aria-label="Morphing subhead">
+                    <p class="subGhost">A single audited workflow to submit proof, resolve exceptions, and monitor release status—without off-channel drift.</p>
+
+                    <p class="sub s0">
+                      A single audited workflow to submit proof, resolve exceptions, and monitor release status—without off-channel drift.
+                      <span class="mono">Evidence-gated release.</span>
+                    </p>
+
+                    <p class="sub s1">
+                      When a document is missing or a variance appears, the system creates a case—assigned, time-stamped, and reviewable.
+                      <span class="mono">No silent override.</span>
+                    </p>
+
+                    <p class="sub s2">
+                      Every decision produces a readable rationale and an immutable log. Exportable proof packs remain valid across policy changes.
+                      <span class="mono">Audit narrative by default.</span>
+                    </p>
+                  </div>
+                </div>
+
+                <ul class="steps" aria-label="Workflow steps">
+                  <li class="step">
+                    <b>01</b>
+                    <span><strong>Verify identity</strong> (approved mailbox or SSO posture).</span>
+                  </li>
+                  <li class="step">
+                    <b>02</b>
+                    <span><strong>Submit evidence pack</strong> (purchase authorization, receipt confirmation, billing document).</span>
+                  </li>
+                  <li class="step">
+                    <b>03</b>
+                    <span><strong>Track decision</strong> (in review → approved → released).</span>
+                  </li>
+                </ul>
+
+                <div class="lens3" aria-label="Executive lenses">
+                  <div class="lensCard">
+                    <i aria-hidden="true"></i>
+                    <div>
+                      <b>CFO</b>
+                      <p>Controls leakage: evidence gates, segregation posture, and a defensible audit narrative.</p>
+                    </div>
+                  </div>
+                  <div class="lensCard">
+                    <i aria-hidden="true"></i>
+                    <div>
+                      <b>CTO</b>
+                      <p>Operational clarity: SSO-ready access, immutable logs, and clean integration boundaries.</p>
+                    </div>
+                  </div>
+                  <div class="lensCard">
+                    <i aria-hidden="true"></i>
+                    <div>
+                      <b>CEO</b>
+                      <p>Supplier trust without drift: transparent timelines, accountable decisions, fewer escalations.</p>
+                    </div>
+                  </div>
+                </div>
+
+                <section class="policy" aria-label="Controls and assurance">
+                  <div class="policyTop">
+                    <span class="mono">ASSURANCE POSTURE</span>
+                    <span class="miniPill"><i aria-hidden="true"></i><span id="policySummary">matching=3-way · narrative=on · discipline=on</span></span>
+                  </div>
+                  <div class="policyBody">
+                    <div class="row">
+                      <div class="label">Controls</div>
+                      <div class="value">
+                        <strong>Three-way verification</strong> · Evidence-gated release · Exception ownership
+                      </div>
+                    </div>
+                    <div class="row">
+                      <div class="label">Assurance</div>
+                      <div class="value">
+                        Immutable case log · Full audit trail · Exportable proof pack
+                      </div>
+                      <div class="riskline" aria-label="Trust and risk indicators">
+                        <span class="mono" id="trustTxt">TRUST: 84%</span>
+                        <span class="meter" aria-label="Trust meter"><b aria-hidden="true"></b></span>
+                        <span class="mono riskTxt" id="riskTxt">RISK: 12%</span>
+                      </div>
+                    </div>
+                  </div>
+                </section>
+              </section>
+
+              <!-- RIGHT PANEL -->
+              <section class="right" aria-label="Access and posture">
+                <section class="card" aria-label="Access console">
+                  <div class="cardTop">
+                    <div style="display:flex; align-items:center; gap:.7rem;">
+                      <span class="statusDot" id="statusDot" aria-hidden="true"></span>
+                      <span class="mono" id="statusLine">Awaiting identity</span>
+                    </div>
+                    <span class="mono" id="stageTag">ACT I · ACCESS</span>
+                  </div>
+
+                  <div class="cardBody">
+                    <div class="tabs" role="tablist" aria-label="Access method">
+                      <button type="button" role="tab" aria-selected="true" data-tab="email">Email Access</button>
+                      <button type="button" role="tab" aria-selected="false" data-tab="sso">SSO</button>
+                      <button type="button" role="tab" aria-selected="false" data-tab="help">Help</button>
+                    </div>
+
+                    <div id="tab_email" role="tabpanel" aria-label="Email access">
+                      <div class="field">
+                        <label for="identity">Identity <span class="mono" style="color:var(--subtle);">approved mailbox</span></label>
+                        <input class="input" id="identity" type="email" placeholder="name@company.com" autocomplete="username" />
+                      </div>
+
+                      <div class="field">
+                        <label for="passkey">Passkey <a href="#" onclick="return false;">Forgot?</a></label>
+                        <input class="input" id="passkey" type="password" placeholder="••••••••" autocomplete="current-password" />
+                      </div>
+
+                      <div class="checkRow">
+                        <label class="check"><input type="checkbox" /> Remember identity</label>
+                        <span class="mono" id="riskHint">posture: controlled</span>
+                      </div>
+
+                      <button class="primaryCta" type="button" id="initBtn">
+                        Initiate Session <span aria-hidden="true">→</span>
+                      </button>
+
+                      <p class="fineprint">
+                        Protected surface — authorized personnel only. Attempts are logged with immutable stamps.
+                      </p>
+                    </div>
+
+                    <div id="tab_sso" role="tabpanel" aria-label="SSO access" hidden>
+                      <p class="fineprint" style="margin:0 0 .75rem 0;">
+                        Use enterprise SSO for least-privilege access and policy-compliant session control.
+                      </p>
+                      <button class="primaryCta" type="button" id="ssoBtn">
+                        Continue with SSO <span aria-hidden="true">→</span>
+                      </button>
+                      <p class="fineprint">SSO posture inherits MFA, device policy, and conditional access from your IdP.</p>
+                    </div>
+
+                    <div id="tab_help" role="tabpanel" aria-label="Help" hidden>
+                      <p class="fineprint" style="margin:0;">
+                        If you were asked to submit documentation or respond to a settlement exception, your case owner will provide an access link.
+                        For onboarding, request an authorized mailbox or SSO entitlement from your tenant admin.
+                      </p>
+                    </div>
+                  </div>
+                </section>
+
+                <section class="controls" aria-label="Live posture controls">
+                  <div class="controlsTop">
+                    <span class="mono">LIVE POSTURE</span>
+                    <span class="miniPill"><i aria-hidden="true"></i><span class="mono" id="postureStamp">STAMP: —</span></span>
+                  </div>
+
+                  <div class="controlsBody">
+                    <div class="controlRow">
+                      <div class="lbl">
+                        <b>Verification discipline</b>
+                        <span>Set the minimum proof required before release can proceed.</span>
+                      </div>
+                      <div class="seg" role="group" aria-label="Verification selection">
+                        <button type="button" data-match="1" aria-pressed="false">1-way</button>
+                        <button type="button" data-match="2" aria-pressed="false">2-way</button>
+                        <button type="button" data-match="3" aria-pressed="true">3-way</button>
+                      </div>
+                    </div>
+
+                    <div class="controlRow">
+                      <div class="lbl">
+                        <b>Audit narrative</b>
+                        <span>Compile decision rationale and link evidence automatically.</span>
+                      </div>
+                      <label class="sw">
+                        <input id="auditSw" type="checkbox" checked />
+                        <span class="swTrack" aria-hidden="true"><span class="swKnob"></span></span>
+                        <span class="txt" id="auditLbl">On</span>
+                      </label>
+                    </div>
+
+                    <div class="controlRow">
+                      <div class="lbl">
+                        <b>Override discipline</b>
+                        <span>Require owned notes for any exception. No silent bypass.</span>
+                      </div>
+                      <label class="sw">
+                        <input id="overrideSw" type="checkbox" checked />
+                        <span class="swTrack" aria-hidden="true"><span class="swKnob"></span></span>
+                        <span class="txt" id="overrideLbl">On</span>
+                      </label>
+                    </div>
+
+                    <div style="display:flex; gap:.6rem; flex-wrap:wrap; align-items:center; justify-content:space-between;">
+                      <button class="btn" type="button" id="simulateBtn">Simulate high-risk case</button>
+                      <button class="btn danger" type="button" id="resetBtn">Reset posture</button>
+                    </div>
+
+                    <p class="fineprint" style="margin:0;">
+                      Risk heat intensifies only when posture is weakened. This is not “red for decoration” — it’s a signal.
+                    </p>
+                  </div>
+                </section>
+              </section>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="after" id="after" aria-label="Assurance section">
+      <div class="container">
+        <div class="grid2">
+          <div class="sectionHead">
+            <h2>Executive-grade clarity: proof, posture, and accountability</h2>
+            <p>
+              NexusCanon VMP is designed to pass the “boardroom glance test”:
+              clear controls, clear ownership, and clear timelines — without operational drift.
+            </p>
+            <p>
+              What changes outcomes isn’t more dashboards. It’s enforcing a settlement protocol that produces auditable truth.
+            </p>
+
+            <div style="margin-top: var(--s5); display:flex; gap: var(--s3); flex-wrap:wrap;">
+              <button class="btn" type="button" id="copyPitchBtn">Copy current pitch</button>
+              <button class="btn primary" type="button" id="demoBtnBottom">Request Briefing</button>
+            </div>
+
+            <p class="fineprint" id="msg" aria-live="polite"></p>
+          </div>
+
+          <div class="faq" aria-label="FAQ">
+            <details open>
+              <summary>What is an “evidence pack” in enterprise terms?</summary>
+              <p>A structured proof bundle: purchase authorization, receipt confirmation, billing document, and decision rationale — portable to audit, finance leadership, and dispute resolution.</p>
+            </details>
+            <details>
+              <summary>How does this reduce escalation and “WhatsApp drift”?</summary>
+              <p>Every exception becomes an owned case with a status, an SLA, and an immutable log. No side channels can substitute for recorded decisions.</p>
+            </details>
+            <details>
+              <summary>Where should the “danger” color appear?</summary>
+              <p>Only when posture is weakened or evidence is missing. Red is a governance signal, not a theme.</p>
+            </details>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <footer>
+      <div class="container">
+        <div style="display:flex; align-items:center; justify-content:space-between; gap: var(--s4); flex-wrap:wrap;">
+          <div>
+            <div class="mono" style="letter-spacing:.12em;text-transform:uppercase;color: var(--muted);">NexusCanon VMP</div>
+            <div>Inspectability over hype · Calm over noise · Evidence-first settlements</div>
+          </div>
+          <div class="mono" id="footStamp">STAMP: —</div>
+        </div>
+      </div>
+    </footer>
+  </main>
+
+  <script>
+    (function(){
+      const root = document.documentElement;
+
+      // Theme toggle
+      const themeBtn = document.getElementById('themeBtn');
+      const savedTheme = localStorage.getItem('nxc_theme');
+      if(savedTheme) root.setAttribute('data-theme', savedTheme);
+      themeBtn.addEventListener('click', () => {
+        const now = root.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+        root.setAttribute('data-theme', now);
+        localStorage.setItem('nxc_theme', now);
+      });
+
+      // Parallax
+      const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      let mx=0,my=0,tx=0,ty=0;
+      window.addEventListener('pointermove', (e)=>{
+        const w = window.innerWidth || 1;
+        const h = window.innerHeight || 1;
+        tx = ((e.clientX / w) * 2 - 1);
+        ty = ((e.clientY / h) * 2 - 1);
+      }, {passive:true});
+
+      function tickParallax(){
+        if(!reduceMotion){
+          mx += (tx - mx) * 0.06;
+          my += (ty - my) * 0.06;
+          root.style.setProperty('--mx', mx.toFixed(4));
+          root.style.setProperty('--my', my.toFixed(4));
+        }else{
+          root.style.setProperty('--mx', '0');
+          root.style.setProperty('--my', '0');
+        }
+        requestAnimationFrame(tickParallax);
+      }
+      requestAnimationFrame(tickParallax);
+
+      // Stamps
+      const postureStamp = document.getElementById('postureStamp');
+      const stampTop = document.getElementById('stampTop');
+      const footStamp = document.getElementById('footStamp');
+      function fmtStamp(){
+        const d = new Date();
+        const iso = d.toISOString().replace('T',' ').slice(0,19) + 'Z';
+        postureStamp.textContent = 'STAMP: ' + iso;
+        footStamp.textContent = 'STAMP: ' + iso;
+        // keep top line as "go-live..."; append runtime stamp subtly
+        stampTop.textContent = 'go-live // vmp_2.0.1 // evidence-first // ' + iso;
+      }
+      fmtStamp();
+      setInterval(fmtStamp, 10000);
+
+      // Cinema scroll weights
+      const track = document.getElementById('track');
+      const pct = document.getElementById('pct');
+      function clamp(n,a,b){ return Math.max(a, Math.min(b,n)); }
+      function easeInOut(t){ return t < 0.5 ? 4*t*t*t : 1 - Math.pow(-2*t + 2,3)/2; }
+
+      function computeProgress(){
+        const start = track.offsetTop;
+        const end = start + track.offsetHeight - window.innerHeight;
+        const y = window.scrollY;
+        return clamp((y - start) / Math.max(1, (end - start)), 0, 1);
+      }
+
+      function setSceneWeights(p){
+        // 3 scenes: [0..0.34], [0.34..0.67], [0.67..1]
+        let w0=0,w1=0,w2=0;
+        if(p < 0.34){
+          w0 = 1;
+        } else if(p < 0.67){
+          const u = easeInOut((p - 0.34) / 0.33);
+          w0 = 1 - u;
+          w1 = u;
+        } else {
+          const u = easeInOut((p - 0.67) / 0.33);
+          w1 = 1 - u;
+          w2 = u;
+        }
+        root.style.setProperty('--w0', w0.toFixed(4));
+        root.style.setProperty('--w1', w1.toFixed(4));
+        root.style.setProperty('--w2', w2.toFixed(4));
+      }
+
+      // Tabs
+      const tabBtns = Array.from(document.querySelectorAll('.tabs button'));
+      const panels = {
+        email: document.getElementById('tab_email'),
+        sso: document.getElementById('tab_sso'),
+        help: document.getElementById('tab_help'),
+      };
+      function setTab(name){
+        tabBtns.forEach(b => b.setAttribute('aria-selected', String(b.dataset.tab === name)));
+        Object.entries(panels).forEach(([k,el]) => el.hidden = (k !== name));
+      }
+      tabBtns.forEach(b => b.addEventListener('click', ()=> setTab(b.dataset.tab)));
+
+      // Posture model
+      const segBtns = Array.from(document.querySelectorAll('.seg button[data-match]'));
+      const auditSw = document.getElementById('auditSw');
+      const overrideSw = document.getElementById('overrideSw');
+      const auditLbl = document.getElementById('auditLbl');
+      const overrideLbl = document.getElementById('overrideLbl');
+
+      const trustTxt = document.getElementById('trustTxt');
+      const riskTxt  = document.getElementById('riskTxt');
+      const trustPill = document.getElementById('trustPill');
+      const riskPill = document.getElementById('riskPill');
+      const policySummary = document.getElementById('policySummary');
+
+      const statusDot = document.getElementById('statusDot');
+      const statusLine = document.getElementById('statusLine');
+      const riskHint = document.getElementById('riskHint');
+
+      const identity = document.getElementById('identity');
+      const passkey  = document.getElementById('passkey');
+
+      const state = {
+        matching: 3,
+        audit: true,
+        override: true,
+        simulatedHighRisk: false
+      };
+
+      function computeTrustRisk(){
+        // baseline: skeptical
+        let trust = 0.18;
+        let risk  = 0.82;
+
+        // matching: BIG delta
+        if(state.matching === 1){ trust += 0.03; risk += 0.12; }
+        if(state.matching === 2){ trust += 0.16; risk -= 0.18; }
+        if(state.matching === 3){ trust += 0.34; risk -= 0.46; }
+
+        // audit narrative
+        if(state.audit){ trust += 0.20; risk -= 0.26; }
+        else { trust -= 0.08; risk += 0.18; }
+
+        // override discipline
+        if(state.override){ trust += 0.14; risk -= 0.18; }
+        else { trust -= 0.10; risk += 0.24; }
+
+        // simulated missing evidence / dispute heat
+        if(state.simulatedHighRisk){
+          trust -= 0.10;
+          risk  += 0.22;
+        }
+
+        trust = clamp(trust, 0.06, 0.94);
+        risk  = clamp(risk, 0.06, 0.96);
+
+        // danger glow: mostly off unless risk climbs
+        const dangerGlow = clamp((risk - 0.22) / 0.55, 0, 1);
+
+        return { trust, risk, dangerGlow };
+      }
+
+      function summaryText(){
+        const m = state.matching + '-way';
+        const a = state.audit ? 'narrative=on' : 'narrative=off';
+        const o = state.override ? 'discipline=on' : 'discipline=off';
+        return `matching=${m} · ${a} · ${o}`;
+      }
+
+      function render(){
+        const { trust, risk, dangerGlow } = computeTrustRisk();
+
+        root.style.setProperty('--trust', trust.toFixed(4));
+        root.style.setProperty('--risk', risk.toFixed(4));
+        root.style.setProperty('--dangerGlow', dangerGlow.toFixed(4));
+
+        const tp = Math.round(trust * 100);
+        const rp = Math.round(risk * 100);
+
+        trustTxt.textContent = 'TRUST: ' + tp + '%';
+        riskTxt.textContent  = 'RISK: ' + rp + '%';
+        trustPill.textContent = 'Trust: ' + tp + '%';
+        riskPill.textContent  = 'Risk: ' + rp + '%';
+        policySummary.textContent = summaryText();
+
+        auditLbl.textContent = state.audit ? 'On' : 'Off';
+        overrideLbl.textContent = state.override ? 'On' : 'Off';
+
+        // Status dot + line
+        statusDot.className = 'statusDot';
+        let postureWord = 'controlled';
+
+        if(rp >= 55){
+          statusDot.classList.add('danger');
+          statusLine.textContent = 'High-risk posture';
+          postureWord = 'high-risk';
+        }else if(rp >= 30){
+          statusDot.classList.add('warn');
+          statusLine.textContent = 'Elevated risk';
+          postureWord = 'elevated';
+        }else{
+          statusDot.classList.add('ok');
+          statusLine.textContent = 'Ready for authenticated access';
+          postureWord = 'controlled';
+        }
+
+        riskHint.textContent = 'posture: ' + postureWord;
+
+        // Danger highlighting on inputs only when risk is high OR simulated
+        const dangerInput = (rp >= 55);
+        identity.classList.toggle('danger', dangerInput);
+        passkey.classList.toggle('danger', dangerInput);
+      }
+
+      function setMatching(n){
+        state.matching = n;
+        segBtns.forEach(b => b.setAttribute('aria-pressed', String(Number(b.dataset.match) === n)));
+        render();
+      }
+
+      segBtns.forEach(b => b.addEventListener('click', ()=> setMatching(Number(b.dataset.match))));
+      auditSw.addEventListener('change', ()=> { state.audit = auditSw.checked; render(); });
+      overrideSw.addEventListener('change', ()=> { state.override = overrideSw.checked; render(); });
+
+      // Buttons
+      const simulateBtn = document.getElementById('simulateBtn');
+      const resetBtn = document.getElementById('resetBtn');
+      simulateBtn.addEventListener('click', ()=>{
+        state.simulatedHighRisk = !state.simulatedHighRisk;
+        simulateBtn.textContent = state.simulatedHighRisk ? 'Clear simulated case heat' : 'Simulate high-risk case';
+        render();
+      });
+      resetBtn.addEventListener('click', ()=>{
+        state.matching = 3;
+        state.audit = true;
+        state.override = true;
+        state.simulatedHighRisk = false;
+        auditSw.checked = true;
+        overrideSw.checked = true;
+        setMatching(3);
+        simulateBtn.textContent = 'Simulate high-risk case';
+        render();
+      });
+
+      // Copy pitch / briefing
+      const msg = document.getElementById('msg');
+      const copyPitchBtn = document.getElementById('copyPitchBtn');
+      const demoBtnBottom = document.getElementById('demoBtnBottom');
+      const demoBtnTop = document.getElementById('demoBtnTop');
+
+      function currentPitch(){
+        return [
+          'NexusCanon VMP — Settlement Governance Portal',
+          'Secure settlement access with evidence-gated release.',
+          'Exceptions become owned cases: assigned, time-stamped, reviewable.',
+          'Controls: ' + summaryText(),
+          'Outputs: immutable case log, audit narrative, exportable proof pack.'
+        ].join('\n');
+      }
+
+      async function copyPitch(){
+        try{
+          await navigator.clipboard.writeText(currentPitch());
+          msg.textContent = 'Copied current pitch to clipboard.';
+        }catch(e){
+          msg.textContent = 'Clipboard unavailable. Select and copy manually:\n' + currentPitch();
+        }
+      }
+
+      copyPitchBtn.addEventListener('click', copyPitch);
+      demoBtnBottom.addEventListener('click', copyPitch);
+      demoBtnTop.addEventListener('click', copyPitch);
+
+      // Cinema scroll tick
+      function tick(){
+        const p = computeProgress();
+        root.style.setProperty('--p', p.toFixed(4));
+        setSceneWeights(p);
+
+        pct.textContent = Math.round(p * 100) + '%';
+
+        // Update stage tag subtly by scene
+        const stageTag = document.getElementById('stageTag');
+        if(p < 0.34) stageTag.textContent = 'ACT I · ACCESS';
+        else if(p < 0.67) stageTag.textContent = 'ACT II · CASE OWNERSHIP';
+        else stageTag.textContent = 'ACT III · PROOF EXPORT';
+
+        requestAnimationFrame(tick);
+      }
+      requestAnimationFrame(tick);
+
+      // Basic "init" actions (no real auth)
+      document.getElementById('initBtn').addEventListener('click', ()=>{
+        msg.textContent = 'Prototype action: wire this button to your /login handler. Keep posture signals identical.';
+        location.hash = '#after';
+      });
+      document.getElementById('ssoBtn').addEventListener('click', ()=>{
+        msg.textContent = 'Prototype action: wire this to your IdP redirect. Preserve audit stamp and posture summary.';
+        location.hash = '#after';
+      });
+
+      // Initial render
+      render();
+      setMatching(3);
+    })();
+  </script>
+</body>
+</html>

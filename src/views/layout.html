@@ -1,5 +1,6 @@
 <!doctype html>
-<html lang="en" data-surface="vmp" class="h-full" x-data="{ theme: localStorage.getItem('vmp-theme') || 'dark' }"
+<html lang="en" data-surface="vmp" class="h-full transition-colors duration-300" 
+  x-data="{ theme: localStorage.getItem('vmp-theme') || 'dark' }"
   x-init="
     const initialTheme = localStorage.getItem('vmp-theme') || 'dark';
     document.documentElement.setAttribute('data-theme', initialTheme);
@@ -7,7 +8,9 @@
     $watch('theme', val => { 
       document.documentElement.setAttribute('data-theme', val); 
       document.documentElement.setAttribute('data-color-scheme', val);
-      localStorage.setItem('vmp-theme', val); 
+      localStorage.setItem('vmp-theme', val);
+      // Smooth transition
+      document.documentElement.style.transition = 'background-color 0.3s ease, color 0.3s ease';
     });
   ">
 
@@ -15,7 +18,33 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <meta name="color-scheme" content="dark light" />
+  <meta name="theme-color" content="#00D9FF" />
+  <meta name="description" content="Vendor Management Portal - Streamline your AP operations" />
+  {% if vapid_public_key %}
+  <meta name="vapid-public-key" content="{{ vapid_public_key }}" />
+  {% endif %}
   <title>{% block title %}NexusCanon VMP{% endblock %}</title>
+
+  <!-- PWA Manifest (Sprint 12.2) -->
+  <link rel="manifest" href="/manifest.json" />
+  <link rel="apple-touch-icon" href="/icon-192.png" />
+
+  {% block head %}{% endblock %}
+  
+  <!-- Command Palette (Sprint 10.1) -->
+  {% if user %}
+  {% include "partials/command_palette.html" %}
+  {% endif %}
+  
+  <!-- Keyboard Shortcuts Modal (Sprint 10.2) -->
+  {% if user %}
+  {% include "partials/keyboard_shortcuts_modal.html" %}
+  {% endif %}
+  
+  <!-- Export Modal (Sprint 11.2) -->
+  {% if user %}
+  {% include "partials/export_modal.html" %}
+  {% endif %}
 
   <!-- Theme Initialization (Prevents FOUC) -->
   <script>
@@ -55,12 +84,35 @@
 
       <!-- Brand -->
       <div class="flex items-center gap-3 p-3 vmp-panel">
-        <div class="w-9 h-9 rounded-lg vmp-brand-mark grid place-items-center font-serif text-lg italic">
-          N
+        <div class="w-9 h-9 rounded-lg border border-opacity-10 grid place-items-center" style="background: rgba(255, 255, 255, 0.02); border-color: rgba(237, 237, 237, 0.10);">
+          <svg width="18" height="18" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <defs>
+              <pattern id="gridPatternLayout" x="0" y="0" width="4" height="4" patternUnits="userSpaceOnUse">
+                <path d="M 4 0 L 0 0 0 4" fill="none" stroke="rgba(237,237,237,0.04)" stroke-width="0.5"/>
+              </pattern>
+              <linearGradient id="bgGradLayout" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="rgba(255,255,255,0.03)" />
+                <stop offset="100%" stop-color="rgba(255,255,255,0.01)" />
+              </linearGradient>
+            </defs>
+            <rect width="24" height="24" fill="url(#bgGradLayout)" />
+            <rect width="24" height="24" fill="url(#gridPatternLayout)" />
+            <path d="M 12 20 L 4 4 L 20 4 Z" fill="none" stroke="rgba(237,237,237,0.25)" stroke-width="1" stroke-linejoin="miter"/>
+            <path d="M 12 16 L 6.5 6 L 17.5 6 Z" fill="none" stroke="rgba(237,237,237,0.45)" stroke-width="1.2" stroke-linejoin="miter"/>
+            <path d="M 12 12 L 8 6 L 16 6 Z" fill="rgba(237,237,237,0.85)" stroke="rgba(237,237,237,1)" stroke-width="1.2" stroke-linejoin="miter"/>
+            <line x1="12" y1="12" x2="12" y2="20" stroke="rgba(237,237,237,0.35)" stroke-width="0.8" stroke-linecap="round"/>
+            <line x1="8" y1="6" x2="4" y2="4" stroke="rgba(237,237,237,0.25)" stroke-width="0.6" stroke-linecap="round"/>
+            <line x1="16" y1="6" x2="20" y2="4" stroke="rgba(237,237,237,0.25)" stroke-width="0.6" stroke-linecap="round"/>
+            <circle cx="12" cy="12" r="1" fill="rgba(237,237,237,1)"/>
+            <circle cx="12" cy="16" r="0.6" fill="rgba(237,237,237,0.65)"/>
+            <circle cx="12" cy="20" r="0.6" fill="rgba(237,237,237,0.45)"/>
+            <circle cx="8" cy="6" r="0.5" fill="rgba(237,237,237,0.75)"/>
+            <circle cx="16" cy="6" r="0.5" fill="rgba(237,237,237,0.75)"/>
+          </svg>
         </div>
         <div class="min-w-0">
-          <div class="vmp-label-kicker vmp-label-kicker-strong truncate">NEXUSCANON</div>
-          <div class="vmp-caption truncate">Vendor Management Portal</div>
+          <div class="vmp-label-kicker vmp-label-kicker-strong truncate" style="font-family: 'Playfair Display', serif; font-weight: 600; font-size: 18px; letter-spacing: 0.02em;">NexusCanon</div>
+          <div class="vmp-caption truncate" style="font-size: 11px; letter-spacing: 0.22em; text-transform: uppercase; color: rgba(237, 237, 237, 0.60); font-family: 'JetBrains Mono', monospace;">GOVERNANCE SYSTEMS</div>
         </div>
       </div>
 
@@ -111,22 +163,38 @@
         </p>
       </div>
 
-      <!-- Theme Toggle -->
+      {% if user %}
+      <!-- Theme Toggle (User Menu) -->
       <div class="pt-4 mt-4 border-t vmp-border-color">
-        <button type="button" class="vmp-theme-toggle w-full" @click="theme = (theme === 'dark') ? 'light' : 'dark'"
-          :aria-label="theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'" title="Toggle theme">
-          <svg x-show="theme === 'dark'" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
-            stroke="currentColor" x-cloak>
+        <button type="button" 
+                class="vmp-theme-toggle w-full flex items-center justify-center gap-2 px-3 py-2 rounded-md border vmp-border-color hover:vmp-bg-veil transition-all duration-200"
+                @click="theme = (theme === 'dark') ? 'light' : 'dark'"
+                :aria-label="theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'" 
+                title="Toggle theme (⌘T)">
+          <svg x-show="theme === 'dark'" 
+               xmlns="http://www.w3.org/2000/svg" 
+               fill="none" 
+               viewBox="0 0 24 24"
+               stroke="currentColor" 
+               class="w-5 h-5"
+               x-cloak>
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
               d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
           </svg>
-          <svg x-show="theme === 'light'" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
-            stroke="currentColor" x-cloak>
+          <svg x-show="theme === 'light'" 
+               xmlns="http://www.w3.org/2000/svg" 
+               fill="none" 
+               viewBox="0 0 24 24"
+               stroke="currentColor" 
+               class="w-5 h-5"
+               x-cloak>
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
               d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
           </svg>
+          <span class="vmp-body-small" x-text="theme === 'dark' ? 'Light Mode' : 'Dark Mode'"></span>
         </button>
       </div>
+      {% endif %}
 
       {% if user %}
       <!-- User Info & Logout -->
@@ -135,6 +203,16 @@
           <div class="vmp-caption vmp-muted mb-1">Logged in as</div>
           <div class="vmp-body-small font-medium truncate">{{ user.displayName or user.email }}</div>
         </div>
+        
+        <!-- Notification Badge (Sprint 7.4) -->
+        <div id="notification-badge-container" 
+             hx-get="/partials/notification-badge.html" 
+             hx-trigger="load, every 30s"
+             hx-target="this" 
+             hx-swap="innerHTML"
+             class="mb-3">
+        </div>
+        
         <form method="POST" action="/logout">
           <button type="submit" class="vmp-btn vmp-btn-outline w-full">
             Sign Out
@@ -146,10 +224,71 @@
     </div>
   </aside>
 
+  <!-- Mobile Navigation Drawer (Sprint 12.3) -->
+  {% if user %}
+  {% include "partials/mobile_nav_drawer.html" %}
+  {% endif %}
+
   <!-- Main Content -->
-  <main class="flex-1 min-w-0 relative z-10">
+  <main class="flex-1 min-w-0 relative z-10 md:ml-0" style="padding-top: env(safe-area-inset-top);">
     {% block content %}{% endblock %}
   </main>
+
+  <!-- Service Worker Registration (Sprint 12.2: PWA) -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js')
+          .then((registration) => {
+            console.log('[PWA] Service Worker registered:', registration.scope);
+            
+            // Check for updates
+            registration.addEventListener('updatefound', () => {
+              const newWorker = registration.installing;
+              newWorker.addEventListener('statechange', () => {
+                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                  // New service worker available
+                  console.log('[PWA] New service worker available');
+                  // Optionally show update notification to user
+                }
+              });
+            });
+          })
+          .catch((error) => {
+            console.error('[PWA] Service Worker registration failed:', error);
+          });
+
+        // Listen for service worker messages
+        navigator.serviceWorker.addEventListener('message', (event) => {
+          console.log('[PWA] Message from service worker:', event.data);
+        });
+
+        // Handle service worker updates
+        let refreshing = false;
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+          if (!refreshing) {
+            refreshing = true;
+            window.location.reload();
+          }
+        });
+      });
+    }
+
+    // Push Notification Registration (Sprint 12.3)
+    if ('serviceWorker' in navigator && 'PushManager' in window) {
+      // Request permission after user interaction
+      document.addEventListener('click', async () => {
+        if (Notification.permission === 'default') {
+          // Only request on first user interaction
+          const permission = await Notification.requestPermission();
+          if (permission === 'granted') {
+            console.log('[Push] Permission granted');
+            // Subscription will be handled by push-notifications.js
+          }
+        }
+      }, { once: true });
+    }
+  </script>
 </body>
 
 </html>

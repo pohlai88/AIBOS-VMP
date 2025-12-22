@@ -5,7 +5,7 @@
 <div class="h-full overflow-y-auto">
     <div id="payment-detail-panel">
         {% if paymentDetail %}
-        {% include "partials/payment_detail.html" %}
+        {% include "partials/payment_detail.html" with { paymentStatusInfo: paymentStatusInfo } %}
         {% else %}
         <div class="flex items-center justify-center h-full min-h-[600px]">
             <div class="text-center max-w-md p-8">

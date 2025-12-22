@@ -35,15 +35,22 @@
 ## 🔒 Production Routes (Active)
 
 ### Main Routes
-- `/` → `landing.html` (Public landing page)
+- `/` → `landing.html` (Public landing page) **🔒 LOCKED** - Production-ready with radar scan logo
 - `/home` → `home5.html` (Production console - Unified v7)
 - `/login` → `login3.html` (Production login - NOIR + Enterprise)
 - `/error` → `error.html` (Error handling)
 
+### Landing Page Lock Status
+**Date Locked:** 2025-01-XX  
+**Status:** 🔒 **LOCKED** - Production-ready  
+**Features:** Radar scan logo animation, governance engine branding, Inter/Consolas typography  
+**Route:** `GET /` → `pages/landing.html`  
+**Note:** Any experimental landing pages must be archived before making changes to production.
+
 ### Legacy Redirects
 All legacy routes redirect to canonical production routes:
 - `/home2`, `/home3`, `/home4`, `/home5`, `/dashboard` → `/home`
-- `/login4` → `/login`
+- `/login2`, `/login4` → `/login` (backward compatibility)
 
 ---
 
@@ -67,5 +74,6 @@ All legacy routes redirect to canonical production routes:
 - [x] Tests updated and passing
 - [x] Optimizations merged into production
 
-**Consolidation Complete:** 2025-12-22
+**Consolidation Complete:** 2025-12-22  
+**Landing Page Locked:** 2025-01-XX
 

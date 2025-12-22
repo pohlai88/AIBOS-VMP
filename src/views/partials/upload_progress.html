@@ -1,0 +1,114 @@
+<!-- Upload Progress Indicator Component (Sprint 8.2) -->
+<div id="upload-progress-container" class="hidden fixed inset-0 z-50 flex items-center justify-center vmp-bg-veil bg-black/50">
+    <div class="vmp-panel p-6 rounded-lg border vmp-border-color max-w-md w-full mx-4">
+        <div class="mb-4">
+            <div class="vmp-h4 mb-2">Uploading Evidence</div>
+            <div class="vmp-body-small vmp-muted" id="upload-filename">Preparing upload...</div>
+        </div>
+        
+        <!-- Progress Bar -->
+        <div class="w-full h-2 vmp-bg-panel rounded-full overflow-hidden mb-4">
+            <div id="upload-progress-bar" 
+                 class="h-full vmp-bg-ok transition-all duration-300"
+                 style="width: 0%">
+            </div>
+        </div>
+        
+        <!-- Progress Text -->
+        <div class="flex items-center justify-between mb-4">
+            <div class="vmp-caption vmp-muted" id="upload-status">Initializing...</div>
+            <div class="vmp-caption font-mono vmp-muted" id="upload-percentage">0%</div>
+        </div>
+        
+        <!-- Cancel Button -->
+        <button type="button" 
+                id="upload-cancel-btn"
+                class="vmp-btn vmp-btn-ghost w-full text-sm"
+                onclick="cancelUpload()">
+            Cancel Upload
+        </button>
+    </div>
+</div>
+
+<script>
+    let uploadAbortController = null;
+    
+    function showUploadProgress(filename) {
+        const container = document.getElementById('upload-progress-container');
+        const filenameEl = document.getElementById('upload-filename');
+        if (container && filenameEl) {
+            filenameEl.textContent = filename || 'Uploading file...';
+            container.classList.remove('hidden');
+        }
+    }
+    
+    function updateUploadProgress(percentage, status) {
+        const progressBar = document.getElementById('upload-progress-bar');
+        const percentageEl = document.getElementById('upload-percentage');
+        const statusEl = document.getElementById('upload-status');
+        
+        if (progressBar) {
+            progressBar.style.width = percentage + '%';
+        }
+        if (percentageEl) {
+            percentageEl.textContent = Math.round(percentage) + '%';
+        }
+        if (statusEl) {
+            statusEl.textContent = status || 'Uploading...';
+        }
+    }
+    
+    function hideUploadProgress() {
+        const container = document.getElementById('upload-progress-container');
+        if (container) {
+            container.classList.add('hidden');
+        }
+        // Reset progress
+        updateUploadProgress(0, '');
+    }
+    
+    function cancelUpload() {
+        if (uploadAbortController) {
+            uploadAbortController.abort();
+        }
+        hideUploadProgress();
+    }
+    
+    // Listen for HTMX upload events
+    document.body.addEventListener('htmx:configRequest', function(event) {
+        if (event.detail.path.includes('/evidence')) {
+            const fileInput = event.detail.elt.querySelector('input[type="file"]');
+            if (fileInput && fileInput.files.length > 0) {
+                const filename = fileInput.files[0].name;
+                showUploadProgress(filename);
+                
+                // Create abort controller for cancellation
+                uploadAbortController = new AbortController();
+                event.detail.signal = uploadAbortController.signal;
+            }
+        }
+    });
+    
+    // Listen for HTMX upload progress
+    document.body.addEventListener('htmx:xhr:progress', function(event) {
+        if (event.detail.lengthComputable) {
+            const percentage = (event.detail.loaded / event.detail.total) * 100;
+            updateUploadProgress(percentage, 'Uploading...');
+        }
+    });
+    
+    // Hide progress on completion
+    document.body.addEventListener('htmx:afterRequest', function(event) {
+        if (event.detail.path.includes('/evidence')) {
+            setTimeout(hideUploadProgress, 500);
+        }
+    });
+    
+    // Hide progress on error
+    document.body.addEventListener('htmx:responseError', function(event) {
+        if (event.detail.path.includes('/evidence')) {
+            hideUploadProgress();
+        }
+    });
+</script>
+

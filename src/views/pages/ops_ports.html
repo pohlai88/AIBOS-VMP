@@ -1,0 +1,64 @@
+{% extends "layout.html" %}
+{% block title %}Port Configuration — NexusCanon VMP{% endblock %}
+
+{% block content %}
+<div class="h-full overflow-y-auto">
+    <div class="vmp-container max-w-6xl mx-auto p-6">
+        <header class="mb-6">
+            <h1 class="vmp-h1 mb-2">Port Configuration</h1>
+            <p class="vmp-body vmp-muted">Configure email and WhatsApp webhook ports for omnichannel communication</p>
+        </header>
+
+        <!-- Port Configuration -->
+        <div id="port-configuration-container"
+             hx-get="/partials/port-configuration.html"
+             hx-trigger="load"
+             hx-target="this"
+             hx-swap="innerHTML">
+            <div class="flex items-center justify-center h-32">
+                <div class="vmp-label-kicker animate-pulse opacity-60">Loading port configuration...</div>
+            </div>
+        </div>
+
+        <!-- Activity Log -->
+        <div class="mt-8">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="vmp-h3">Activity Log</h2>
+                <div class="flex gap-2">
+                    <button onclick="filterActivityLog('email')" 
+                            class="px-3 py-1.5 rounded border vmp-action-button vmp-action-button-ghost text-sm">
+                        Email
+                    </button>
+                    <button onclick="filterActivityLog('whatsapp')" 
+                            class="px-3 py-1.5 rounded border vmp-action-button vmp-action-button-ghost text-sm">
+                        WhatsApp
+                    </button>
+                    <button onclick="filterActivityLog(null)" 
+                            class="px-3 py-1.5 rounded border vmp-action-button vmp-action-button-ghost text-sm">
+                        All
+                    </button>
+                </div>
+            </div>
+            <div id="port-activity-log-container"
+                 hx-get="/partials/port-activity-log.html"
+                 hx-trigger="load"
+                 hx-target="this"
+                 hx-swap="innerHTML">
+                <div class="flex items-center justify-center h-32">
+                    <div class="vmp-label-kicker animate-pulse opacity-60">Loading activity log...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function filterActivityLog(portType) {
+        const url = portType 
+            ? `/partials/port-activity-log.html?port_type=${portType}`
+            : '/partials/port-activity-log.html';
+        htmx.ajax('GET', url, { target: '#port-activity-log-container', swap: 'innerHTML' });
+    }
+</script>
+{% endblock %}
+

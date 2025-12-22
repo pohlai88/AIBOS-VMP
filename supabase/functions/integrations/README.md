@@ -23,6 +23,7 @@ Configure these secrets in Supabase Dashboard or via CLI:
 - `OPENAI_API_KEY` - For embedding generation (optional)
 - `STRIPE_SECRET_KEY` - For payment processing (optional)
 - `EXTERNAL_API_KEY` - For external API calls (optional)
+- `OLLAMA_URL` - For Ollama AI features (optional, defaults to http://localhost:11434)
 
 ## Actions
 
@@ -116,7 +117,91 @@ Call an external API with configured API key.
 }
 ```
 
-### 4. Get Secrets Status
+### 4. Ollama Chat
+
+Chat completion using Ollama.
+
+**Request:**
+```json
+{
+  "action": "ollama-chat",
+  "messages": [
+    {"role": "user", "content": "Hello!"}
+  ],
+  "model": "llama3",
+  "stream": false
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "message": {
+      "role": "assistant",
+      "content": "Hello! How can I help you?"
+    },
+    "model": "llama3",
+    "done": true
+  }
+}
+```
+
+### 5. Ollama Embedding
+
+Generate embeddings using Ollama.
+
+**Request:**
+```json
+{
+  "action": "ollama-embedding",
+  "text": "Text to embed",
+  "model": "nomic-embed-text"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "embedding": [0.1, 0.2, ...],
+    "model": "nomic-embed-text"
+  }
+}
+```
+
+### 6. Ollama Classify
+
+Classify text using Ollama (intent, sentiment, etc.).
+
+**Request:**
+```json
+{
+  "action": "ollama-classify",
+  "text": "I need to check my payment status",
+  "systemPrompt": "You are a classification assistant...",
+  "prompt": "Classify this text",
+  "model": "llama3"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "classification": {
+      "intent": "payment_inquiry",
+      "confidence": 0.95
+    },
+    "model": "llama3"
+  }
+}
+```
+
+### 7. Get Secrets Status
 
 Check which secrets are configured (without exposing values).
 
@@ -139,7 +224,8 @@ Check which secrets are configured (without exposing values).
     "custom": {
       "openai": true,
       "stripe": false,
-      "externalApi": true
+      "externalApi": true,
+      "ollama": true
     }
   },
   "message": "Secrets status retrieved...",

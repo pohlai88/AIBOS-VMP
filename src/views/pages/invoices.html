@@ -2,15 +2,57 @@
 {% block title %}Invoices — NexusCanon VMP{% endblock %}
 
 {% block content %}
-<div class="h-full overflow-y-auto">
+<div class="h-full overflow-y-auto" x-data="invoicePage()">
     <div class="vmp-container max-w-7xl mx-auto p-6">
-        <header class="mb-6">
-            <h1 class="vmp-h1 mb-2">Invoices</h1>
-            <p class="vmp-body vmp-muted">View and manage invoice records</p>
+        <header class="mb-6 flex items-center justify-between">
+            <div>
+                <h1 class="vmp-h1 mb-2">Invoices</h1>
+                <p class="vmp-body vmp-muted">View and manage invoice records</p>
+            </div>
+            
+            <!-- View Mode Toggle (Sprint 12.1) -->
+            <div class="flex items-center gap-2 border vmp-border-color rounded-lg p-1">
+                <button 
+                    @click="viewMode = 'table'"
+                    :class="viewMode === 'table' ? 'vmp-btn-primary' : 'vmp-btn-ghost'"
+                    class="px-3 py-1.5 text-sm flex items-center gap-2">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M3 3h18v18H3zM3 9h18M3 15h18M9 3v18M15 3v18"></path>
+                    </svg>
+                    Table
+                </button>
+                <button 
+                    @click="viewMode = 'cards'"
+                    :class="viewMode === 'cards' ? 'vmp-btn-primary' : 'vmp-btn-ghost'"
+                    class="px-3 py-1.5 text-sm flex items-center gap-2">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="3" width="7" height="7"></rect>
+                        <rect x="14" y="3" width="7" height="7"></rect>
+                        <rect x="3" y="14" width="7" height="7"></rect>
+                        <rect x="14" y="14" width="7" height="7"></rect>
+                    </svg>
+                    Cards
+                </button>
+            </div>
         </header>
 
+        <!-- Table View Container -->
         <div id="invoice-list-container" 
+             x-show="viewMode === 'table'"
              hx-get="/partials/invoice-list.html" 
+             hx-trigger="load" 
+             hx-target="this" 
+             hx-swap="innerHTML">
+            <div class="flex items-center justify-center h-64">
+                <div class="vmp-label-kicker animate-pulse opacity-60">Loading invoices...</div>
+            </div>
+        </div>
+
+        <!-- Card Feed View Container (Sprint 12.1) -->
+        <div id="invoice-card-feed-container"
+             x-show="viewMode === 'cards'"
+             style="display: none;"
+             hx-get="/partials/invoice-card-feed.html?page=1" 
              hx-trigger="load" 
              hx-target="this" 
              hx-swap="innerHTML">
@@ -20,5 +62,45 @@
         </div>
     </div>
 </div>
+
+<script>
+// Initialize view mode on Alpine ready
+document.addEventListener('alpine:init', () => {
+    Alpine.data('invoicePage', () => ({
+        viewMode: localStorage.getItem('invoice-view-mode') || 'table',
+        
+        init() {
+            // Load the appropriate view based on saved preference
+            this.$watch('viewMode', (value) => {
+                localStorage.setItem('invoice-view-mode', value);
+                this.loadView(value);
+            });
+            
+            // Load initial view
+            this.loadView(this.viewMode);
+        },
+        
+        loadView(mode) {
+            if (mode === 'table') {
+                const container = document.getElementById('invoice-list-container');
+                if (container && container.innerHTML.trim().includes('Loading')) {
+                    htmx.ajax('GET', '/partials/invoice-list.html', { 
+                        target: '#invoice-list-container', 
+                        swap: 'innerHTML' 
+                    });
+                }
+            } else if (mode === 'cards') {
+                const container = document.getElementById('invoice-card-feed-container');
+                if (container && (container.innerHTML.trim().includes('Loading') || !container.innerHTML.trim())) {
+                    htmx.ajax('GET', '/partials/invoice-card-feed.html?page=1', { 
+                        target: '#invoice-card-feed-container', 
+                        swap: 'innerHTML' 
+                    });
+                }
+            }
+        }
+    }));
+});
+</script>
 {% endblock %}
 

@@ -1,288 +1,455 @@
 <!doctype html>
-<html lang="en" data-theme="dark" data-persona="finance">
+<html lang="en" data-theme="dark">
+
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <meta name="color-scheme" content="dark light" />
-  <title>NexusCanon — 2026 Landing (v6 · Risk Heat)</title>
-  <meta name="description" content="2026 proof-surface landing: sticky product film + live policy toggles + in-hero case lifecycle simulator + evidence export. Pure HTML/CSS/JS." />
+  <title>NexusCanon VMP — Settlement Governance (Cinema Landing)</title>
+  <meta name="description"
+    content="Fortune-500-grade settlement governance portal: evidence-gated release, immutable case log, and live posture controls. Single-page cinema landing." />
 
   <style>
-    :root{
-      --bg:#07070a;
-      --bg2:#050506;
+    :root {
+      /* Core surfaces */
+      --bg: #060607;
+      --bg2: #050506;
+      --panel: rgba(255, 255, 255, .03);
+      --panel2: rgba(255, 255, 255, .02);
+      --border: rgba(237, 237, 237, .10);
+      --border2: rgba(237, 237, 237, .18);
 
-      --panel: rgba(255,255,255,.03);
-      --panel2: rgba(255,255,255,.02);
+      /* Text */
+      --text: #ededed;
+      --muted: rgba(237, 237, 237, .64);
+      --subtle: rgba(237, 237, 237, .38);
 
-      --border: rgba(237,237,237,.10);
-      --border2: rgba(237,237,237,.18);
+      /* Brand accents */
+      --accent: rgba(96, 255, 198, .86);
+      --accentSoft: rgba(96, 255, 198, .10);
+      --accentBorder: rgba(96, 255, 198, .22);
 
-      --text:#ededed;
-      --muted: rgba(237,237,237,.64);
-      --subtle: rgba(237,237,237,.38);
+      /* Risk */
+      --danger: rgba(255, 100, 100, .86);
+      --dangerSoft: rgba(255, 100, 100, .10);
+      --dangerBorder: rgba(255, 100, 100, .28);
 
-      --r-sm: 12px;
-      --r-md: 18px;
-      --r-lg: 26px;
-      --r-xl: 34px;
-
-      --s1:.4rem; --s2:.65rem; --s3:.95rem; --s4:1.25rem; --s5:1.65rem; --s6:2.1rem; --s7:2.7rem; --s8:3.4rem; --s9:4.2rem;
-
+      /* Motion */
       --t-fast: 160ms;
       --t-med: 320ms;
-      --t-slow: 900ms;
+
+      /* Radius + spacing */
+      --r-sm: 12px;
+      --r-md: 18px;
+      --r-xl: 32px;
+
+      --s1: .4rem;
+      --s2: .65rem;
+      --s3: .95rem;
+      --s4: 1.25rem;
+      --s5: 1.65rem;
+      --s6: 2.1rem;
+      --s7: 2.7rem;
+      --s8: 3.4rem;
 
       --max: 1260px;
 
-      /* Film progress (set by JS) */
+      /* Cinema progress (set by JS) */
       --p: 0;
-      --u: 0;
+      /* 0..1 scroll */
       --w0: 1;
+      /* Scene weights */
       --w1: 0;
       --w2: 0;
 
-      /* Mouse parallax (-1..1) */
+      /* Parallax */
       --mx: 0;
       --my: 0;
 
-      /* Accent per persona */
-      --accent: rgba(96,255,198,.86);
-      --accentSoft: rgba(96,255,198,.10);
-      --accentBorder: rgba(96,255,198,.22);
-      --matchHue: 160;
-
-      /* Proof aura */
-      --risk: .12;   /* 0..1 */
-      --trust: .82;  /* 0..1 */
-
-      /* Risk heat (driven by JS: 0..1) */
+      /* Trust / Risk (set by JS) */
+      --trust: .84;
+      /* 0..1 */
+      --risk: .12;
+      /* 0..1 */
       --dangerGlow: 0;
-      --riskTint: rgba(255,100,100, 0);
-      --riskEdge: rgba(255,100,100, 0);
+      /* 0..1 */
     }
 
-    [data-theme="light"]{
-      --bg:#fbfbfc;
-      --bg2:#f6f6f7;
-
-      --panel: rgba(0,0,0,.03);
-      --panel2: rgba(0,0,0,.02);
-
-      --border: rgba(10,10,12,.12);
-      --border2: rgba(10,10,12,.20);
-
-      --text:#0a0a0c;
-      --muted: rgba(10,10,12,.64);
-      --subtle: rgba(10,10,12,.38);
+    [data-theme="light"] {
+      --bg: #fbfbfc;
+      --bg2: #f6f6f7;
+      --panel: rgba(0, 0, 0, .03);
+      --panel2: rgba(0, 0, 0, .02);
+      --border: rgba(10, 10, 12, .12);
+      --border2: rgba(10, 10, 12, .20);
+      --text: #0a0a0c;
+      --muted: rgba(10, 10, 12, .64);
+      --subtle: rgba(10, 10, 12, .38);
     }
 
-    [data-persona="finance"]{ --accent: rgba(96,255,198,.86); --accentSoft: rgba(96,255,198,.10); --accentBorder: rgba(96,255,198,.22); --matchHue: 160; }
-    [data-persona="ops"]   { --accent: rgba(255,213,127,.88); --accentSoft: rgba(255,213,127,.10); --accentBorder: rgba(255,213,127,.22); --matchHue: 42; }
-    [data-persona="builder"]{ --accent: rgba(173,198,255,.86); --accentSoft: rgba(173,198,255,.10); --accentBorder: rgba(173,198,255,.22); --matchHue: 220; }
+    * {
+      box-sizing: border-box;
+    }
 
-    *{ box-sizing:border-box; }
-    html,body{ height:100%; }
-    body{
-      margin:0;
+    html {
+      height: 100%;
+      overflow-y: auto;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
       color: var(--text);
       background:
-        radial-gradient(1200px 820px at 18% 12%, rgba(255,255,255,.06), transparent 60%),
-        radial-gradient(980px 760px at 86% 44%, rgba(255,255,255,.05), transparent 65%),
+        radial-gradient(1200px 860px at 18% 12%, rgba(255, 255, 255, .06), transparent 60%),
+        radial-gradient(980px 760px at 86% 44%, rgba(255, 255, 255, .05), transparent 65%),
         linear-gradient(180deg, var(--bg), var(--bg2));
       font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
       font-weight: 320;
       letter-spacing: .01em;
-      overflow-x:hidden;
+      overflow-x: hidden;
+      overflow-y: visible;
     }
-    a{ color: inherit; text-decoration: none; }
-    a:hover{ text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 2px; text-decoration-color: var(--subtle); }
-    .mono{ font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; letter-spacing: .02em; }
-    :focus-visible{ outline: 2px solid rgba(237,237,237,.22); outline-offset: 3px; border-radius: 10px; }
 
-    .container{ max-width: var(--max); margin:0 auto; padding: 0 var(--s6); }
-    @media (max-width: 720px){ .container{ padding: 0 var(--s4); } }
+    main {
+      position: relative;
+      min-height: 100vh;
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    a:hover {
+      text-decoration: underline;
+      text-underline-offset: 2px;
+      text-decoration-thickness: 1px;
+      text-decoration-color: var(--subtle);
+    }
+
+    .mono {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      letter-spacing: .02em;
+    }
+
+    :focus-visible {
+      outline: 2px solid rgba(237, 237, 237, .22);
+      outline-offset: 3px;
+      border-radius: 12px;
+    }
+
+    .container {
+      max-width: var(--max);
+      margin: 0 auto;
+      padding: 0 var(--s6);
+    }
+
+    @media (max-width:720px) {
+      .container {
+        padding: 0 var(--s4);
+      }
+    }
 
     /* Ambient layers */
-    .bgGrid{
-      position:fixed; inset:0; z-index:-4; pointer-events:none;
+    .bgGrid {
+      position: fixed;
+      inset: 0;
+      z-index: -4;
+      pointer-events: none;
       background:
-        radial-gradient(1000px 720px at 18% 18%, rgba(255,255,255,.06), transparent 62%),
-        radial-gradient(860px 620px at 86% 42%, rgba(255,255,255,.04), transparent 66%),
-        linear-gradient(90deg, rgba(237,237,237,.06) 1px, transparent 1px),
-        linear-gradient(0deg, rgba(237,237,237,.06) 1px, transparent 1px);
+        radial-gradient(1000px 720px at 18% 18%, rgba(255, 255, 255, .06), transparent 62%),
+        radial-gradient(860px 620px at 86% 42%, rgba(255, 255, 255, .04), transparent 66%),
+        linear-gradient(90deg, rgba(237, 237, 237, .06) 1px, transparent 1px),
+        linear-gradient(0deg, rgba(237, 237, 237, .06) 1px, transparent 1px);
       background-size: auto, auto, 28px 28px, 28px 28px;
-      opacity:.55;
+      opacity: .55;
       mix-blend-mode: overlay;
       transform: translate3d(calc(var(--mx) * 10px), calc(var(--my) * 10px), 0) rotate(calc(var(--p) * 0.8deg));
     }
-    .noise{
-      position:fixed; inset:0; z-index:-3; pointer-events:none;
-      background: radial-gradient(circle at 1px 1px, rgba(255,255,255,.028) 1px, transparent 1.6px);
+
+    .noise {
+      position: fixed;
+      inset: 0;
+      z-index: -3;
+      pointer-events: none;
+      background: radial-gradient(circle at 1px 1px, rgba(255, 255, 255, .028) 1px, transparent 1.6px);
       background-size: 16px 16px;
-      opacity:.22;
+      opacity: .22;
       mix-blend-mode: overlay;
       transform: translate3d(calc(var(--mx) * -6px), calc(var(--my) * -6px), 0);
     }
-    .aura{
-      position:fixed; inset:-30vmax; z-index:-1; pointer-events:none;
-      opacity: .55;
-      filter: blur(40px);
+
+    .aura {
+      position: fixed;
+      inset: -30vmax;
+      z-index: -2;
+      pointer-events: none;
+      opacity: .58;
+      filter: blur(42px);
       background:
-        radial-gradient(closest-side at 35% 35%, hsla(var(--matchHue), 95%, 70%, calc(.22 + var(--trust) * .08)), transparent 70%),
-        radial-gradient(closest-side at 75% 55%, hsla(var(--matchHue), 92%, 62%, calc(.08 + var(--trust) * .06)), transparent 70%),
-
-        /* NEW: red heat bloom that grows with risk */
-        radial-gradient(closest-side at 62% 52%, rgba(255,100,100, calc(var(--dangerGlow) * .32)), transparent 68%),
-        radial-gradient(closest-side at 45% 78%, rgba(255,100,100, calc(var(--dangerGlow) * .22)), transparent 72%),
-
-        radial-gradient(closest-side at 50% 70%, rgba(255,255,255, calc(.06 + var(--risk) * .12)), transparent 72%);
+        radial-gradient(closest-side at 28% 30%, rgba(96, 255, 198, calc(.18 + var(--trust) * .08)), transparent 70%),
+        radial-gradient(closest-side at 78% 54%, rgba(96, 255, 198, calc(.07 + var(--trust) * .06)), transparent 72%),
+        radial-gradient(closest-side at 60% 52%, rgba(255, 100, 100, calc(var(--dangerGlow) * .34)), transparent 68%),
+        radial-gradient(closest-side at 44% 78%, rgba(255, 100, 100, calc(var(--dangerGlow) * .22)), transparent 72%),
+        radial-gradient(closest-side at 52% 66%, rgba(255, 255, 255, calc(.06 + var(--risk) * .12)), transparent 72%);
       transform: translate3d(calc(var(--mx) * 16px), calc(var(--my) * 12px), 0);
       mix-blend-mode: overlay;
     }
 
-    @media (prefers-reduced-motion: reduce){
-      .bgGrid,.noise,.aura{ transform:none; }
+    @media (prefers-reduced-motion: reduce) {
+
+      .bgGrid,
+      .noise,
+      .aura {
+        transform: none !important;
+      }
     }
 
-    /* Header HUD */
-    header{
-      position:sticky; top:0; z-index:50;
+    /* Top HUD */
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 50;
       backdrop-filter: blur(16px);
-      background: linear-gradient(180deg, rgba(0,0,0,.24), rgba(0,0,0,.10));
+      background: linear-gradient(180deg, rgba(0, 0, 0, .24), rgba(0, 0, 0, .10));
       border-bottom: 1px solid var(--border);
     }
-    [data-theme="light"] header{
-      background: linear-gradient(180deg, rgba(255,255,255,.76), rgba(255,255,255,.46));
+
+    [data-theme="light"] header {
+      background: linear-gradient(180deg, rgba(255, 255, 255, .76), rgba(255, 255, 255, .46));
     }
 
-    .hudRow{
-      display:flex;
-      align-items:center;
+    .hud {
+      display: flex;
+      align-items: center;
       justify-content: space-between;
       gap: var(--s4);
       padding: var(--s3) 0;
-      flex-wrap:wrap;
+      flex-wrap: wrap;
     }
-    .brand{ display:flex; align-items:center; gap: var(--s3); min-width: 240px; }
-    .mark{
-      width: 36px; height: 36px; border-radius: 999px;
-      border: 1px solid var(--border2);
-      background:
-        radial-gradient(circle at 35% 35%, rgba(255,255,255,.10), transparent 62%),
-        linear-gradient(135deg, rgba(255,255,255,.06), rgba(255,255,255,.02));
-      position:relative;
-      flex:0 0 auto;
-    }
-    .mark::after{
-      content:""; position:absolute; inset: 8px; border-radius: 999px;
-      border: 1px solid rgba(237,237,237,.10);
-      background: conic-gradient(from 180deg,
-        rgba(255,255,255,0),
-        rgba(255,255,255,.07),
-        rgba(255,255,255,0),
-        rgba(255,255,255,.05),
-        rgba(255,255,255,0)
-      );
-    }
-    .brand h1{ margin:0; font-size: 13px; letter-spacing: .10em; text-transform: uppercase; font-weight: 420; }
-    .brand p{ margin:.25rem 0 0 0; font-size: 12px; color: var(--muted); }
 
-    .hudMid{
-      display:flex; align-items:center; gap: var(--s3);
-      flex-wrap:wrap; justify-content:center;
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: var(--s3);
+      min-width: 260px;
     }
-    .pill{
-      display:inline-flex; align-items:center; gap:.55rem;
-      padding: .45rem .65rem; border-radius: 999px;
+
+    .mark {
+      width: 34px;
+      height: 34px;
+      border-radius: 12px;
       border: 1px solid var(--border);
-      background: rgba(255,255,255,.02);
+      background: rgba(255, 255, 255, .02);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .mark svg {
+      width: 100%;
+      height: 100%;
+    }
+
+    /* Premium B&W monographic icon styling - Next.js inspired elegance */
+    .brand-icon {
+      color: var(--text);
+      opacity: 0.95;
+      transition: opacity var(--t-fast) ease, transform var(--t-fast) ease;
+    }
+
+    .brand-icon .icon-main {
+      opacity: 1;
+    }
+
+    .brand-icon .icon-nexus {
+      opacity: 0.92;
+    }
+
+    .brand-icon .icon-line {
+      opacity: 0.55;
+    }
+
+    .brand-icon .icon-center {
+      opacity: 1;
+    }
+
+    .mark:hover .brand-icon {
+      opacity: 1;
+      transform: scale(1.02);
+    }
+
+    [data-theme="light"] .brand-icon {
+      color: var(--text);
+      opacity: 0.98;
+    }
+
+    [data-theme="light"] .brand-icon .icon-line {
+      opacity: 0.45;
+    }
+
+    .brand h1 {
+      margin: 0;
+      font-size: 20px;
+      font-weight: 420;
+      letter-spacing: -.02em;
+      line-height: 1.1;
+    }
+
+    .brand p {
+      margin: .2rem 0 0 0;
+      font-size: 10px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .16em;
+    }
+
+    .hudMid {
+      display: flex;
+      align-items: center;
+      gap: var(--s3);
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: .55rem;
+      padding: .45rem .7rem;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: rgba(255, 255, 255, .02);
       color: var(--muted);
       font-size: 12px;
-      user-select:none;
+      user-select: none;
+      white-space: nowrap;
     }
-    .pill i{ width: 8px; height: 8px; border-radius: 999px; background: var(--accent); display:inline-block; }
 
-    .actNav{
-      display:inline-flex;
-      border: 1px solid var(--border);
+    .pill i {
+      width: 8px;
+      height: 8px;
       border-radius: 999px;
-      overflow:hidden;
-      background: rgba(255,255,255,.02);
-    }
-    .actNav button{
-      appearance:none; border:0; background: transparent;
-      color: var(--muted); font-size: 12px;
-      padding: .55rem .8rem; cursor:pointer;
-      transition: background var(--t-fast) ease, color var(--t-fast) ease;
-      display:inline-flex; align-items:center; gap:.45rem; white-space:nowrap;
-    }
-    .actNav button:hover{ background: rgba(255,255,255,.03); color: var(--text); }
-    .actNav button[aria-current="true"]{
-      background: rgba(255,255,255,.06);
-      color: var(--text);
-      border-left: 1px solid rgba(237,237,237,.10);
-      border-right: 1px solid rgba(237,237,237,.10);
+      background: var(--accent);
+      display: inline-block;
     }
 
-    .hudRight{ display:flex; align-items:center; gap: var(--s2); justify-content:flex-end; min-width: 280px; }
-
-    .iconbtn{
-      width: 38px; height: 38px;
-      display:inline-flex; align-items:center; justify-content:center;
+    .prog {
+      width: 160px;
+      height: 10px;
       border-radius: 999px;
-      border: 1px solid var(--border);
-      background: transparent;
-      cursor:pointer;
-      transition: background var(--t-fast) ease, border-color var(--t-fast) ease;
+      border: 1px solid rgba(237, 237, 237, .10);
+      background: rgba(255, 255, 255, .012);
+      overflow: hidden;
     }
-    .iconbtn:hover{ background: rgba(255,255,255,.03); border-color: var(--border2); }
 
-    .btn{
-      appearance:none;
-      border: 1px solid var(--border);
-      background: rgba(255,255,255,.02);
-      color: var(--text);
-      font-size: 13px;
-      letter-spacing: .02em;
-      padding: .65rem .9rem;
-      border-radius: 999px;
-      cursor:pointer;
-      transition: transform var(--t-fast) ease, border-color var(--t-fast) ease, background var(--t-fast) ease;
-      display:inline-flex;
-      align-items:center;
-      gap:.55rem;
-      user-select:none;
-      white-space:nowrap;
-    }
-    .btn:hover{ border-color: var(--border2); background: rgba(255,255,255,.04); transform: translateY(-1px); }
-    .btn:active{ transform: translateY(0); }
-    .btn.primary{ border-color: var(--accentBorder); background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.03)); }
-    .btn.primary:hover{ border-color: rgba(237,237,237,.26); }
-
-    .prog{
-      width: 160px; height: 10px; border-radius: 999px;
-      border: 1px solid rgba(237,237,237,.10);
-      background: rgba(255,255,255,.012);
-      overflow:hidden;
-      position:relative;
-    }
-    .prog i{
-      display:block;
-      height:100%;
+    .prog b {
+      display: block;
+      height: 100%;
       width: calc(var(--p) * 100%);
-      background: linear-gradient(90deg, var(--accentSoft), rgba(255,255,255,.03));
-      border-right: 1px solid rgba(237,237,237,.18);
+      background: linear-gradient(90deg, var(--accentSoft), rgba(255, 255, 255, .03));
+      border-right: 1px solid rgba(237, 237, 237, .18);
       transition: width var(--t-fast) ease;
     }
 
-    /* Film track + sticky stage */
-    .film{ border-bottom: 1px solid var(--border); }
-    .track{ height: 420vh; position:relative; }
-    .stageWrap{ position: sticky; top: 64px; height: calc(100dvh - 64px); display:flex; align-items:stretch; justify-content:center; padding: var(--s5) 0; }
-    @media (max-width: 980px){ .stageWrap{ top: 84px; height: calc(100dvh - 84px); } }
+    .hudRight {
+      display: flex;
+      align-items: center;
+      gap: var(--s2);
+      justify-content: flex-end;
+      min-width: 260px;
+    }
 
-    .stage{
+    .btn {
+      appearance: none;
+      border: 1px solid var(--border);
+      background: rgba(255, 255, 255, .02);
+      color: var(--text);
+      font-size: 13px;
+      letter-spacing: .01em;
+      padding: .62rem .9rem;
+      border-radius: 999px;
+      cursor: pointer;
+      transition: transform var(--t-fast) ease, border-color var(--t-fast) ease, background var(--t-fast) ease;
+      display: inline-flex;
+      align-items: center;
+      gap: .55rem;
+      user-select: none;
+      white-space: nowrap;
+    }
+
+    .btn:hover {
+      border-color: var(--border2);
+      background: rgba(255, 255, 255, .04);
+      transform: translateY(-1px);
+    }
+
+    .btn:active {
+      transform: translateY(0);
+    }
+
+    .btn.primary {
+      border-color: var(--accentBorder);
+      background: linear-gradient(180deg, rgba(255, 255, 255, .08), rgba(255, 255, 255, .03));
+    }
+
+    .btn.danger {
+      border-color: rgba(255, 100, 100, .32);
+      background: linear-gradient(180deg, rgba(255, 100, 100, .10), rgba(255, 255, 255, .02));
+    }
+
+    .iconbtn {
+      width: 38px;
+      height: 38px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: transparent;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: background var(--t-fast) ease, border-color var(--t-fast) ease;
+      font-size: 14px;
+    }
+
+    .iconbtn:hover {
+      background: rgba(255, 255, 255, .03);
+      border-color: var(--border2);
+    }
+
+    /* Cinema track */
+    .film {
+      border-bottom: 1px solid var(--border);
+      position: relative;
+    }
+
+    .track {
+      height: 380vh;
+      min-height: 380vh;
+      position: relative;
+      display: block;
+    }
+
+    .stageWrap {
+      position: sticky;
+      top: 64px;
+      height: calc(100dvh - 64px);
+      min-height: calc(100dvh - 64px);
+      display: flex;
+      align-items: stretch;
+      justify-content: center;
+      padding: var(--s5) 0;
+    }
+
+    @media (max-width: 980px) {
+      .stageWrap {
+        top: 92px;
+        height: calc(100dvh - 92px);
+      }
+    }
+
+    .stage {
       width: min(var(--max), 100%);
       margin: 0 auto;
       border-radius: var(--r-xl);
@@ -290,498 +457,897 @@
       background:
         linear-gradient(var(--bg), var(--bg)) padding-box,
         linear-gradient(135deg,
-          rgba(237,237,237,.22),
-          rgba(237,237,237,.06),
-          rgba(237,237,237,.18),
-          var(--riskEdge) /* NEW: risk edge */
-        ) border-box;
-      position:relative;
-      overflow:hidden;
-      display:grid;
+          rgba(237, 237, 237, .22),
+          rgba(237, 237, 237, .06),
+          rgba(237, 237, 237, .18),
+          rgba(255, 100, 100, calc(var(--dangerGlow) * .30))) border-box;
+      overflow: hidden;
+      position: relative;
+      display: grid;
       grid-template-columns: 1.05fr .95fr;
-      gap: var(--s5);
-      padding: var(--s6);
-      transform: translate3d(calc(var(--mx) * 2px), calc(var(--my) * 2px), 0);
+      gap: var(--s6);
+      padding: var(--s7);
+      transform: translate3d(calc(var(--mx) * 2px), calc(var(--my) * 2px), 0) scale(calc(0.98 + var(--p) * 0.02));
+      will-change: transform;
+      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+        box-shadow 0.3s ease;
+      box-shadow: 0 0 0 rgba(96, 255, 198, 0),
+        0 20px 60px rgba(0, 0, 0, calc(0.3 + var(--p) * 0.2));
     }
-    @media (max-width: 980px){ .stage{ grid-template-columns: 1fr; padding: var(--s5); } }
 
-    .stage::before{
-      content:"";
-      position:absolute; inset:-40vmax;
+    .stage:hover {
+      box-shadow: 0 0 40px rgba(96, 255, 198, calc(0.15 + var(--p) * 0.1)),
+        0 20px 60px rgba(0, 0, 0, calc(0.4 + var(--p) * 0.2));
+    }
+
+    @media (max-width: 980px) {
+      .stage {
+        grid-template-columns: 1fr;
+        padding: var(--s5);
+      }
+    }
+
+    .stage::before {
+      content: "";
+      position: absolute;
+      inset: -40vmax;
       background:
-        radial-gradient(closest-side at 30% 30%, var(--accentSoft), transparent 70%),
-        radial-gradient(closest-side at 80% 60%, rgba(255,255,255,.05), transparent 72%);
+        radial-gradient(closest-side at 30% 30%, var(--accentSoft), transparent 72%),
+        radial-gradient(closest-side at 70% 55%, rgba(255, 255, 255, .05), transparent 74%),
+        radial-gradient(closest-side at 62% 52%, rgba(255, 100, 100, calc(var(--dangerGlow) * .22)), transparent 68%);
       opacity: .55;
-      pointer-events:none;
-      transform: translate3d(calc(var(--p) * 16px + var(--mx) * 12px), calc(var(--p) * -10px + var(--my) * 8px), 0);
+      pointer-events: none;
+      transform: translate3d(calc(var(--p) * 14px + var(--mx) * 12px), calc(var(--p) * -10px + var(--my) * 8px), 0);
+      will-change: transform;
     }
-    .stage > *{ position:relative; z-index:1; }
 
-    .left{ display:flex; flex-direction:column; gap: var(--s5); min-width: 0; }
-    .right{ display:flex; flex-direction:column; gap: var(--s5); min-width: 0; }
-
-    .eyebrow{
-      display:flex; align-items:center; gap:.6rem;
-      color: var(--muted); font-size: 12px; letter-spacing: .12em;
-      text-transform: uppercase; user-select:none;
+    .stage>* {
+      position: relative;
+      z-index: 1;
     }
-    .dot{ width: 7px; height: 7px; border-radius: 999px; background: var(--accent); }
 
-    .titleStack{ position:relative; padding-right: var(--s4); }
-    .title{
+    .left {
+      display: flex;
+      flex-direction: column;
+      gap: var(--s6);
+      min-width: 0;
+    }
+
+    .right {
+      display: flex;
+      flex-direction: column;
+      gap: var(--s5);
+      min-width: 0;
+    }
+
+    /* Left: copy */
+    .kicker {
+      display: flex;
+      align-items: center;
+      gap: .7rem;
+      color: var(--muted);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: .14em;
+      user-select: none;
+    }
+
+    .chip {
+      width: 9px;
+      height: 9px;
+      border-radius: 999px;
+      background: var(--accent);
+      box-shadow: 0 0 0 6px rgba(96, 255, 198, .06);
+    }
+
+    .titleStack {
+      position: relative;
+      min-height: 140px;
+    }
+
+    .titleGhost {
+      visibility: hidden;
       margin: 0;
-      font-size: clamp(2.05rem, 4.25vw, 3.65rem);
+      font-size: clamp(2.2rem, 4.4vw, 3.8rem);
       line-height: 1.02;
-      letter-spacing: -0.03em;
-      font-weight: 380;
-      position:absolute;
-      inset:0 auto auto 0;
+      letter-spacing: -.035em;
+      font-weight: 420;
+      max-width: 18ch;
+    }
+
+    .title {
+      margin: 0;
+      position: absolute;
+      inset: 0 auto auto 0;
+      font-size: clamp(2.2rem, 4.4vw, 3.8rem);
+      line-height: 1.02;
+      letter-spacing: -.035em;
+      font-weight: 420;
+      max-width: 18ch;
       opacity: 0;
-      transform: translateY(10px);
-      transition: opacity var(--t-med) ease, transform var(--t-med) ease;
-      pointer-events:none;
-      max-width: 18ch;
-    }
-    .title.t0{ opacity: var(--w0); transform: translateY(calc((1 - var(--w0)) * 10px)); }
-    .title.t1{ opacity: var(--w1); transform: translateY(calc((1 - var(--w1)) * 10px)); }
-    .title.t2{ opacity: var(--w2); transform: translateY(calc((1 - var(--w2)) * 10px)); }
-    .titleGhost{
-      visibility:hidden;
-      margin: 0;
-      font-size: clamp(2.05rem, 4.25vw, 3.65rem);
-      line-height: 1.02;
-      letter-spacing: -0.03em;
-      font-weight: 380;
-      max-width: 18ch;
+      transform: translateY(20px) scale(0.96);
+      filter: blur(4px);
+      transition: opacity 0.6s cubic-bezier(0.4, 0, 0.2, 1),
+        transform 0.6s cubic-bezier(0.4, 0, 0.2, 1),
+        filter 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+      pointer-events: none;
     }
 
-    .subStack{ position:relative; margin-top: calc(var(--s7) + .2rem); }
-    .sub{
+    .title.t0 {
+      opacity: var(--w0);
+      transform: translateY(calc((1 - var(--w0)) * 20px)) scale(calc(0.96 + var(--w0) * 0.04));
+      filter: blur(calc((1 - var(--w0)) * 4px));
+    }
+
+    .title.t1 {
+      opacity: var(--w1);
+      transform: translateY(calc((1 - var(--w1)) * 20px)) scale(calc(0.96 + var(--w1) * 0.04));
+      filter: blur(calc((1 - var(--w1)) * 4px));
+    }
+
+    .title.t2 {
+      opacity: var(--w2);
+      transform: translateY(calc((1 - var(--w2)) * 20px)) scale(calc(0.96 + var(--w2) * 0.04));
+      filter: blur(calc((1 - var(--w2)) * 4px));
+    }
+
+    .subStack {
+      position: relative;
+      margin-top: var(--s3);
+      min-height: 92px;
+    }
+
+    .subGhost {
+      visibility: hidden;
       margin: 0;
       color: var(--muted);
       font-size: 14px;
       line-height: 1.95;
-      max-width: 72ch;
-      position:absolute;
-      inset:0;
-      opacity: 0;
-      transform: translateY(10px);
-      transition: opacity var(--t-med) ease, transform var(--t-med) ease;
-      pointer-events:none;
+      max-width: 74ch;
     }
-    .sub.s0{ opacity: var(--w0); transform: translateY(calc((1 - var(--w0)) * 10px)); }
-    .sub.s1{ opacity: var(--w1); transform: translateY(calc((1 - var(--w1)) * 10px)); }
-    .sub.s2{ opacity: var(--w2); transform: translateY(calc((1 - var(--w2)) * 10px)); }
-    .subGhost{ visibility:hidden; margin:0; color: var(--muted); font-size: 14px; line-height: 1.95; max-width: 72ch; }
 
-    /* Panels */
-    .panel{
-      border-radius: var(--r-xl);
-      border: 1px solid rgba(237,237,237,.10);
-      background:
-        radial-gradient(600px 260px at 70% 40%, var(--riskTint), transparent 62%),
-        rgba(255,255,255,.012);
-      overflow:hidden;
-    }
-    .panelTop{
-      display:flex; align-items:center; justify-content: space-between; gap: var(--s3);
-      padding: var(--s4) var(--s4);
-      border-bottom: 1px solid rgba(237,237,237,.08);
+    .sub {
+      margin: 0;
+      position: absolute;
+      inset: 0;
       color: var(--muted);
-      font-size: 12px;
-      flex-wrap:wrap;
+      font-size: 14px;
+      line-height: 1.95;
+      max-width: 74ch;
+      opacity: 0;
+      transform: translateY(16px);
+      filter: blur(3px);
+      transition: opacity 0.5s cubic-bezier(0.4, 0, 0.2, 1),
+        transform 0.5s cubic-bezier(0.4, 0, 0.2, 1),
+        filter 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+      pointer-events: none;
     }
-    .miniPill{
-      display:inline-flex; align-items:center; gap:.45rem;
-      padding:.35rem .62rem;
+
+    .sub.s0 {
+      opacity: var(--w0);
+      transform: translateY(calc((1 - var(--w0)) * 16px));
+      filter: blur(calc((1 - var(--w0)) * 3px));
+    }
+
+    .sub.s1 {
+      opacity: var(--w1);
+      transform: translateY(calc((1 - var(--w1)) * 16px));
+      filter: blur(calc((1 - var(--w1)) * 3px));
+    }
+
+    .sub.s2 {
+      opacity: var(--w2);
+      transform: translateY(calc((1 - var(--w2)) * 16px));
+      filter: blur(calc((1 - var(--w2)) * 3px));
+    }
+
+    .steps {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      display: grid;
+      gap: .75rem;
+      max-width: 72ch;
+    }
+
+    .step {
+      display: flex;
+      align-items: flex-start;
+      gap: .9rem;
+      padding: .85rem 1rem;
+      border-radius: 18px;
+      border: 1px solid rgba(237, 237, 237, .08);
+      background: rgba(255, 255, 255, .01);
+      transform: translateX(-8px);
+      opacity: 0.7;
+      transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+        opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+        border-color 0.3s ease,
+        background 0.3s ease;
+    }
+
+    .step:nth-child(1) {
+      transition-delay: 0.1s;
+    }
+
+    .step:nth-child(2) {
+      transition-delay: 0.2s;
+    }
+
+    .step:nth-child(3) {
+      transition-delay: 0.3s;
+    }
+
+    .step:hover,
+    .step:focus-within {
+      transform: translateX(0);
+      opacity: 1;
+      border-color: rgba(96, 255, 198, .25);
+      background: rgba(96, 255, 198, .04);
+    }
+
+    .step b {
+      width: 34px;
+      height: 34px;
       border-radius: 999px;
-      border: 1px solid rgba(237,237,237,.10);
-      background: rgba(255,255,255,.02);
-    }
-    .miniPill i{ width: 8px; height: 8px; border-radius: 999px; background: var(--accent); display:inline-block; }
-    .panelBody{ padding: var(--s4); display:grid; gap: var(--s3); }
-
-    /* Segmented control */
-    .seg{
-      display:inline-flex;
-      border: 1px solid rgba(237,237,237,.10);
-      border-radius: 999px;
-      overflow:hidden;
-      background: rgba(255,255,255,.02);
-    }
-    .seg button{
-      appearance:none; border:0; background: transparent;
-      color: var(--muted); font-size: 12px;
-      padding: .55rem .75rem; cursor:pointer;
-      transition: background var(--t-fast) ease, color var(--t-fast) ease;
-      display:inline-flex; align-items:center; gap:.45rem; white-space:nowrap;
-    }
-    .seg button:hover{ background: rgba(255,255,255,.03); color: var(--text); }
-    .seg button[aria-pressed="true"]{
-      background: rgba(255,255,255,.06);
-      color: var(--text);
-      border-left: 1px solid rgba(237,237,237,.10);
-      border-right: 1px solid rgba(237,237,237,.10);
-    }
-
-    /* Switch */
-    .sw{ display:inline-flex; align-items:center; gap:.6rem; user-select:none; cursor:pointer; }
-    .sw input{ position:absolute; opacity:0; pointer-events:none; }
-    .trackSw{
-      width: 44px; height: 24px; border-radius: 999px;
-      border: 1px solid rgba(237,237,237,.12);
-      background: rgba(255,255,255,.02);
-      position:relative;
-      transition: background var(--t-fast) ease, border-color var(--t-fast) ease;
-    }
-    .knob{
-      position:absolute; top: 3px; left: 3px;
-      width: 18px; height: 18px; border-radius: 999px;
-      border: 1px solid rgba(237,237,237,.12);
-      background: rgba(255,255,255,.08);
-      transition: transform var(--t-fast) ease, background var(--t-fast) ease;
-    }
-    .sw input:checked + .trackSw{ background: var(--accentSoft); border-color: var(--accentBorder); }
-    .sw input:checked + .trackSw .knob{ transform: translateX(20px); background: rgba(255,255,255,.10); }
-    .sw .txt{ font-size: 12px; color: var(--muted); }
-
-    .policyRow{
-      display:flex; align-items:center; justify-content: space-between;
-      gap: var(--s3); flex-wrap:wrap;
-      padding: .75rem .9rem;
-      border-radius: 16px;
-      border: 1px solid rgba(237,237,237,.08);
-      background: rgba(255,255,255,.01);
-    }
-    .lbl{ display:flex; flex-direction:column; gap:.25rem; min-width: 220px; }
-    .lbl b{ font-size: 13px; font-weight: 520; letter-spacing: .01em; }
-    .lbl span{ font-size: 12px; color: var(--muted); line-height: 1.7; }
-
-    .policyMeta{
-      display:flex; gap: var(--s3); flex-wrap:wrap; align-items:center;
-      color: var(--muted); font-size: 12px;
-      margin-top: .2rem;
-    }
-    .meter{
-      height: 10px; width: 140px;
-      border-radius: 999px;
-      border: 1px solid rgba(237,237,237,.10);
-      background: rgba(255,255,255,.012);
-      overflow:hidden;
-    }
-    .meter i{
-      display:block; height:100%;
-      width: calc(var(--trust) * 100%);
-      background: linear-gradient(90deg, var(--accentSoft), rgba(255,255,255,.03));
-      border-right: 1px solid rgba(237,237,237,.16);
-      transition: width var(--t-fast) ease;
-    }
-    #riskTxt{
-      color: rgba(255,100,100, calc(.35 + var(--dangerGlow) * .65));
-    }
-
-    /* ======= v5 NEW: Case Simulator ======= */
-    .simGrid{
-      display:grid;
-      grid-template-columns: 1.05fr .95fr;
-      gap: var(--s4);
-      align-items: start;
-    }
-    @media (max-width: 980px){
-      .simGrid{ grid-template-columns: 1fr; }
-    }
-
-    .stepper{
-      display:grid;
-      gap: .65rem;
-    }
-    .step{
-      display:flex; align-items:flex-start; gap: .75rem;
-      padding: .75rem .9rem;
-      border-radius: 16px;
-      border: 1px solid rgba(237,237,237,.08);
-      background: rgba(255,255,255,.01);
-      transition: border-color var(--t-fast) ease, background var(--t-fast) ease;
-    }
-    .step[aria-current="true"]{
-      border-color: rgba(237,237,237,.22);
-      background: rgba(255,255,255,.03);
-    }
-    .step .n{
-      width: 26px; height: 26px; border-radius: 999px;
-      border: 1px solid rgba(237,237,237,.12);
-      background: rgba(255,255,255,.02);
-      display:flex; align-items:center; justify-content:center;
+      border: 1px solid rgba(237, 237, 237, .12);
+      background: rgba(255, 255, 255, .02);
+      display: flex;
+      align-items: center;
+      justify-content: center;
       color: var(--muted);
       font-size: 12px;
       flex: 0 0 auto;
     }
-    .step[aria-current="true"] .n{
-      border-color: var(--accentBorder);
-      background: var(--accentSoft);
+
+    .step strong {
+      font-weight: 560;
+      color: rgba(237, 237, 237, .92);
+    }
+
+    .step span {
+      display: block;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.75;
+    }
+
+    .lens3 {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: .75rem;
+      max-width: 72ch;
+    }
+
+    .lensCard {
+      border-radius: 18px;
+      border: 1px solid rgba(237, 237, 237, .08);
+      background:
+        radial-gradient(520px 220px at 70% 45%, rgba(255, 100, 100, calc(var(--dangerGlow) * .12)), transparent 62%),
+        rgba(255, 255, 255, .01);
+      padding: .95rem 1rem;
+      display: flex;
+      gap: .85rem;
+      align-items: flex-start;
+    }
+
+    .lensCard i {
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      background: var(--accent);
+      margin-top: .35rem;
+      box-shadow: 0 0 0 8px rgba(96, 255, 198, .05);
+      flex: 0 0 auto;
+    }
+
+    .lensCard b {
+      font-size: 13px;
+      font-weight: 620;
+      letter-spacing: .01em;
+    }
+
+    .lensCard p {
+      margin: .25rem 0 0 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.75;
+    }
+
+    /* Policy assurance strip */
+    .policy {
+      border-radius: var(--r-xl);
+      border: 1px solid rgba(237, 237, 237, .10);
+      background:
+        radial-gradient(620px 260px at 70% 40%, rgba(255, 100, 100, calc(var(--dangerGlow) * .14)), transparent 62%),
+        rgba(255, 255, 255, .012);
+      overflow: hidden;
+    }
+
+    .policyTop {
+      padding: var(--s4);
+      border-bottom: 1px solid rgba(237, 237, 237, .08);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--s3);
+      flex-wrap: wrap;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .miniPill {
+      display: inline-flex;
+      align-items: center;
+      gap: .45rem;
+      padding: .35rem .62rem;
+      border-radius: 999px;
+      border: 1px solid rgba(237, 237, 237, .10);
+      background: rgba(255, 255, 255, .02);
+    }
+
+    .miniPill i {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: var(--accent);
+      display: inline-block;
+    }
+
+    .policyBody {
+      padding: var(--s4);
+      display: grid;
+      gap: .75rem;
+    }
+
+    .row {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: var(--s3);
+      flex-wrap: wrap;
+      padding: .75rem .9rem;
+      border-radius: 16px;
+      border: 1px solid rgba(237, 237, 237, .08);
+      background: rgba(255, 255, 255, .01);
+    }
+
+    .row .label {
+      color: var(--subtle);
+      font-size: 12px;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      min-width: 160px;
+    }
+
+    .row .value {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.75;
+      max-width: 64ch;
+    }
+
+    .row .value strong {
+      font-weight: 620;
+      color: rgba(237, 237, 237, .92);
+    }
+
+    .riskline {
+      display: flex;
+      gap: var(--s3);
+      flex-wrap: wrap;
+      align-items: center;
+      color: var(--muted);
+      font-size: 12px;
+      margin-top: .25rem;
+    }
+
+    .meter {
+      height: 10px;
+      width: 180px;
+      border-radius: 999px;
+      border: 1px solid rgba(237, 237, 237, .10);
+      background: rgba(255, 255, 255, .012);
+      overflow: hidden;
+    }
+
+    .meter b {
+      display: block;
+      height: 100%;
+      width: calc(var(--trust) * 100%);
+      background: linear-gradient(90deg, var(--accentSoft), rgba(255, 255, 255, .03));
+      border-right: 1px solid rgba(237, 237, 237, .16);
+      transition: width var(--t-fast) ease;
+    }
+
+    .riskTxt {
+      color: rgba(255, 100, 100, calc(.35 + var(--dangerGlow) * .65));
+    }
+
+    /* Right: access console / CTA */
+    .card {
+      border-radius: var(--r-xl);
+      border: 1px solid rgba(237, 237, 237, .10);
+      background:
+        radial-gradient(520px 260px at 70% 35%, rgba(255, 100, 100, calc(var(--dangerGlow) * .18)), transparent 62%),
+        rgba(255, 255, 255, .012);
+      overflow: hidden;
+    }
+
+    .cardTop {
+      padding: var(--s4);
+      border-bottom: 1px solid rgba(237, 237, 237, .08);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--s3);
+      color: var(--muted);
+      font-size: 12px;
+      flex-wrap: wrap;
+    }
+
+    .statusDot {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: rgba(237, 237, 237, .22);
+      box-shadow: 0 0 0 6px rgba(237, 237, 237, .04);
+    }
+
+    .statusDot.ok {
+      background: var(--accent);
+      box-shadow: 0 0 0 6px rgba(96, 255, 198, .06);
+    }
+
+    .statusDot.warn {
+      background: rgba(255, 213, 127, .92);
+      box-shadow: 0 0 0 6px rgba(255, 213, 127, .07);
+    }
+
+    .statusDot.danger {
+      background: rgba(255, 100, 100, .92);
+      box-shadow: 0 0 0 6px rgba(255, 100, 100, .08);
+    }
+
+    .tabs {
+      margin-top: .6rem;
+      display: flex;
+      border: 1px solid rgba(237, 237, 237, .10);
+      border-radius: 999px;
+      overflow: hidden;
+      background: rgba(255, 255, 255, .02);
+    }
+
+    .tabs button {
+      appearance: none;
+      border: 0;
+      background: transparent;
+      color: var(--muted);
+      padding: .55rem .8rem;
+      font-size: 12px;
+      cursor: pointer;
+      transition: background var(--t-fast) ease, color var(--t-fast) ease;
+      flex: 1;
+      white-space: nowrap;
+    }
+
+    .tabs button:hover {
+      background: rgba(255, 255, 255, .03);
       color: var(--text);
     }
-    .step .t{
-      display:flex; flex-direction:column; gap:.25rem;
-      min-width: 0;
-    }
-    .step .t b{
-      font-size: 13px; font-weight: 520;
-    }
-    .step .t span{
-      font-size: 12px; color: var(--muted); line-height: 1.7;
+
+    .tabs button[aria-selected="true"] {
+      background: rgba(255, 255, 255, .06);
+      color: var(--text);
+      border-left: 1px solid rgba(237, 237, 237, .10);
+      border-right: 1px solid rgba(237, 237, 237, .10);
     }
 
-    .simControls{
-      display:grid;
+    .cardBody {
+      padding: var(--s4);
+      display: grid;
       gap: var(--s3);
     }
-    .simControls .rowBtns{
-      display:flex;
-      flex-wrap:wrap;
-      gap: .6rem;
-      align-items:center;
+
+    .field {
+      display: grid;
+      gap: .45rem;
     }
 
-    .simKpi{
-      display:grid;
-      gap: .65rem;
-      border-top: 1px solid rgba(237,237,237,.08);
-      padding-top: var(--s3);
-      color: var(--muted);
-      font-size: 12px;
-      line-height: 1.75;
+    .field label {
+      font-size: 11px;
+      color: var(--subtle);
+      letter-spacing: .14em;
+      text-transform: uppercase;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
     }
-    .kv{
-      display:grid;
-      grid-template-columns: 120px 1fr;
-      gap: .55rem .9rem;
-    }
-    .k{ color: var(--subtle); }
-    .vv{ color: var(--text); opacity:.86; }
 
-    /* Console */
-    .console{
-      border-radius: var(--r-xl);
-      border: 1px solid rgba(237,237,237,.10);
-      background: rgba(255,255,255,.012);
-      overflow:hidden;
-      display:flex;
-      flex-direction:column;
-      min-height: 260px;
+    .field label a {
+      color: var(--subtle);
     }
-    .consoleTop{
-      display:flex; align-items:center; justify-content: space-between; gap: var(--s3);
-      padding: var(--s4) var(--s4);
-      border-bottom: 1px solid rgba(237,237,237,.08);
-      color: var(--muted);
-      font-size: 12px;
-      flex-wrap:wrap;
-    }
-    .stamp{
-      display:inline-flex; align-items:center; gap:.5rem;
-      padding:.35rem .62rem;
-      border-radius: 999px;
-      border: 1px solid rgba(237,237,237,.10);
-      background: rgba(255,255,255,.02);
-    }
-    .stamp i{ width: 8px; height: 8px; border-radius: 999px; background: var(--accent); display:inline-block; }
 
-    pre{
-      margin:0; padding: var(--s4);
-      white-space: pre-wrap;
-      word-break: break-word;
-      font-size: 12px;
-      line-height: 1.75;
-      color: rgba(237,237,237,.72);
-      flex:1;
-    }
-    [data-theme="light"] pre{ color: rgba(10,10,12,.70); }
-
-    /* CTA */
-    .ctaBox{
-      border-radius: var(--r-xl);
-      border: 1px solid transparent;
-      background:
-        linear-gradient(var(--bg), var(--bg)) padding-box,
-        linear-gradient(135deg, rgba(237,237,237,.22), rgba(237,237,237,.06), rgba(237,237,237,.18)) border-box;
-      padding: var(--s5);
-      overflow:hidden;
-      position:relative;
-    }
-    .ctaBox::before{
-      content:"";
-      position:absolute; inset:-40vmax;
-      background:
-        radial-gradient(closest-side at 30% 30%, var(--accentSoft), transparent 72%),
-        radial-gradient(closest-side at 70% 60%, rgba(255,255,255,.05), transparent 72%);
-      opacity:.35;
-      pointer-events:none;
-      transform: translate3d(calc(var(--mx) * 12px), calc(var(--my) * 10px), 0);
-    }
-    .ctaBox > *{ position:relative; z-index:1; }
-    .ctaBox h3{ margin:0; font-size: 15px; font-weight: 520; letter-spacing: -.01em; }
-    .ctaBox p{ margin: .7rem 0 0 0; color: var(--muted); font-size: 13px; line-height: 1.9; }
-    .row{
-      margin-top: var(--s4);
-      display:flex;
-      gap: var(--s3);
-      flex-wrap:wrap;
-      align-items:center;
-    }
-    .input{
-      flex: 1 1 220px;
-      min-width: 220px;
-      border-radius: 999px;
-      border: 1px solid rgba(237,237,237,.12);
-      background: rgba(255,255,255,.02);
-      padding: .8rem 1rem;
+    .input {
+      width: 100%;
+      border-radius: 16px;
+      border: 1px solid rgba(237, 237, 237, .12);
+      background: rgba(255, 255, 255, .02);
+      padding: .9rem 1rem;
       color: var(--text);
       font-size: 13px;
-      font-weight: 320;
+      font-weight: 340;
+      transition: border-color var(--t-fast) ease, box-shadow var(--t-fast) ease;
     }
-    .input::placeholder{ color: rgba(237,237,237,.32); }
-    .input:focus{ outline: 2px solid rgba(237,237,237,.14); outline-offset: 2px; border-color: rgba(237,237,237,.22); }
 
-    /* Scroll hint */
-    .scrollHint{
-      position:absolute;
-      left: 50%;
-      bottom: var(--s4);
-      transform: translateX(-50%);
-      display:flex;
-      align-items:center;
-      gap: .6rem;
-      padding: .45rem .75rem;
-      border-radius: 999px;
-      border: 1px solid rgba(237,237,237,.12);
-      background: rgba(0,0,0,.18);
+    .input::placeholder {
+      color: rgba(237, 237, 237, .30);
+    }
+
+    .input:focus {
+      outline: none;
+      border-color: rgba(237, 237, 237, .22);
+      box-shadow: 0 0 0 4px rgba(237, 237, 237, .06);
+    }
+
+    .input.danger {
+      border-color: rgba(255, 100, 100, .50);
+      box-shadow: 0 0 0 4px rgba(255, 100, 100, .08);
+    }
+
+    .checkRow {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--s3);
+      flex-wrap: wrap;
       color: var(--muted);
       font-size: 12px;
-      opacity: calc(1 - min(1, (var(--p) * 1.4)));
-      pointer-events:none;
+      padding-top: .25rem;
     }
-    [data-theme="light"] .scrollHint{ background: rgba(255,255,255,.55); }
-    .scrollHint .bar{
-      width: 86px; height: 10px; border-radius: 999px;
-      border: 1px solid rgba(237,237,237,.10);
-      background: rgba(255,255,255,.01);
-      overflow:hidden;
+
+    .check {
+      display: inline-flex;
+      align-items: center;
+      gap: .55rem;
+      user-select: none;
     }
-    .scrollHint .bar i{
-      display:block; height:100%;
+
+    .check input {
+      width: 16px;
+      height: 16px;
+    }
+
+    .primaryCta {
+      width: 100%;
+      border-radius: 16px;
+      padding: .95rem 1rem;
+      border: 1px solid rgba(96, 255, 198, .24);
+      background: linear-gradient(180deg, rgba(255, 255, 255, .08), rgba(255, 255, 255, .03));
+      cursor: pointer;
+      color: var(--text);
+      font-size: 13px;
+      letter-spacing: .10em;
+      text-transform: uppercase;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: .7rem;
+      transition: transform var(--t-fast) ease, border-color var(--t-fast) ease, background var(--t-fast) ease;
+    }
+
+    .primaryCta:hover {
+      transform: translateY(-1px);
+      border-color: rgba(237, 237, 237, .26);
+      background: linear-gradient(180deg, rgba(255, 255, 255, .10), rgba(255, 255, 255, .04));
+    }
+
+    .primaryCta:active {
+      transform: translateY(0);
+    }
+
+    .fineprint {
+      color: var(--subtle);
+      font-size: 11px;
+      line-height: 1.75;
+      margin: .2rem 0 0 0;
+    }
+
+    /* Controls (right, below card) */
+    .controls {
+      border-radius: var(--r-xl);
+      border: 1px solid rgba(237, 237, 237, .10);
+      background: rgba(255, 255, 255, .012);
+      overflow: hidden;
+    }
+
+    .controlsTop {
+      padding: var(--s4);
+      border-bottom: 1px solid rgba(237, 237, 237, .08);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--s3);
+      color: var(--muted);
+      font-size: 12px;
+      flex-wrap: wrap;
+    }
+
+    .seg {
+      display: inline-flex;
+      border: 1px solid rgba(237, 237, 237, .10);
+      border-radius: 999px;
+      overflow: hidden;
+      background: rgba(255, 255, 255, .02);
+    }
+
+    .seg button {
+      appearance: none;
+      border: 0;
+      background: transparent;
+      color: var(--muted);
+      font-size: 12px;
+      padding: .55rem .78rem;
+      cursor: pointer;
+      transition: background var(--t-fast) ease, color var(--t-fast) ease;
+      white-space: nowrap;
+    }
+
+    .seg button:hover {
+      background: rgba(255, 255, 255, .03);
+      color: var(--text);
+    }
+
+    .seg button[aria-pressed="true"] {
+      background: rgba(255, 255, 255, .06);
+      color: var(--text);
+      border-left: 1px solid rgba(237, 237, 237, .10);
+      border-right: 1px solid rgba(237, 237, 237, .10);
+    }
+
+    .sw {
+      display: inline-flex;
+      align-items: center;
+      gap: .6rem;
+      user-select: none;
+      cursor: pointer;
+    }
+
+    .sw input {
+      position: absolute;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .swTrack {
+      width: 44px;
+      height: 24px;
+      border-radius: 999px;
+      border: 1px solid rgba(237, 237, 237, .12);
+      background: rgba(255, 255, 255, .02);
+      position: relative;
+      transition: background var(--t-fast) ease, border-color var(--t-fast) ease;
+    }
+
+    .swKnob {
+      position: absolute;
+      top: 3px;
+      left: 3px;
+      width: 18px;
+      height: 18px;
+      border-radius: 999px;
+      border: 1px solid rgba(237, 237, 237, .12);
+      background: rgba(255, 255, 255, .08);
+      transition: transform var(--t-fast) ease, background var(--t-fast) ease;
+    }
+
+    .sw input:checked+.swTrack {
+      background: var(--accentSoft);
+      border-color: var(--accentBorder);
+    }
+
+    .sw input:checked+.swTrack .swKnob {
+      transform: translateX(20px);
+      background: rgba(255, 255, 255, .10);
+    }
+
+    .sw .txt {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .controlsBody {
+      padding: var(--s4);
+      display: grid;
+      gap: .75rem;
+    }
+
+    .controlRow {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--s3);
+      flex-wrap: wrap;
+      padding: .75rem .9rem;
+      border-radius: 16px;
+      border: 1px solid rgba(237, 237, 237, .08);
+      background: rgba(255, 255, 255, .01);
+    }
+
+    .controlRow .lbl {
+      display: flex;
+      flex-direction: column;
+      gap: .25rem;
+      min-width: 220px;
+    }
+
+    .controlRow .lbl b {
+      font-size: 13px;
+      font-weight: 620;
+      letter-spacing: .01em;
+    }
+
+    .controlRow .lbl span {
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    /* Scroll hint - TOP POSITION with enhanced marketing colors */
+    .scrollHint {
+      position: absolute;
+      left: 50%;
+      top: var(--s4);
+      transform: translateX(-50%);
+      display: flex;
+      align-items: center;
+      gap: .6rem;
+      padding: .65rem 1.1rem;
+      border-radius: 999px;
+      border: 1px solid rgba(96, 255, 198, .25);
+      background: linear-gradient(135deg, rgba(96, 255, 198, .12), rgba(96, 255, 198, .06));
+      backdrop-filter: blur(16px);
+      color: rgba(96, 255, 198, .95);
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      opacity: calc(1 - min(1, (var(--p) * 1.2)));
+      pointer-events: auto;
+      z-index: 10;
+      box-shadow: 0 4px 20px rgba(96, 255, 198, .15),
+        0 0 0 1px rgba(96, 255, 198, .15),
+        0 0 20px rgba(96, 255, 198, .08);
+      transition: opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+        transform 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+        box-shadow 0.4s ease,
+        border-color 0.3s ease,
+        background 0.3s ease;
+      animation: pulseGlow 2s ease-in-out infinite;
+    }
+
+    @keyframes pulseGlow {
+
+      0%,
+      100% {
+        box-shadow: 0 4px 20px rgba(96, 255, 198, .15),
+          0 0 0 1px rgba(96, 255, 198, .15),
+          0 0 20px rgba(96, 255, 198, .08);
+      }
+
+      50% {
+        box-shadow: 0 6px 30px rgba(96, 255, 198, .25),
+          0 0 0 1px rgba(96, 255, 198, .3),
+          0 0 30px rgba(96, 255, 198, .15);
+      }
+    }
+
+    .scrollHint:hover {
+      opacity: 1;
+      transform: translateX(-50%) translateY(-3px) scale(1.05);
+      box-shadow: 0 8px 32px rgba(96, 255, 198, .3),
+        0 0 0 1px rgba(96, 255, 198, .4),
+        0 0 40px rgba(96, 255, 198, .2);
+      border-color: rgba(96, 255, 198, .5);
+      background: linear-gradient(135deg, rgba(96, 255, 198, .2), rgba(96, 255, 198, .12));
+      animation: none;
+    }
+
+    .scrollHint:active {
+      transform: translateX(-50%) translateY(-1px) scale(1.02);
+    }
+
+    [data-theme="light"] .scrollHint {
+      background: rgba(255, 255, 255, .55);
+    }
+
+    .scrollHint .bar {
+      width: 86px;
+      height: 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(237, 237, 237, .10);
+      background: rgba(255, 255, 255, .01);
+      overflow: hidden;
+    }
+
+    .scrollHint .bar b {
+      display: block;
+      height: 100%;
       width: calc(var(--p) * 100%);
-      background: linear-gradient(90deg, var(--accentSoft), rgba(255,255,255,.03));
-      border-right: 1px solid rgba(237,237,237,.16);
+      background: linear-gradient(90deg, var(--accentSoft), rgba(255, 255, 255, .03));
+      border-right: 1px solid rgba(237, 237, 237, .16);
     }
 
     /* After section */
-    .after{ padding: var(--s9) 0; }
-    .grid2{ display:grid; grid-template-columns: 1.05fr .95fr; gap: var(--s6); align-items:start; }
-    @media (max-width: 980px){ .grid2{ grid-template-columns: 1fr; } }
-
-    .sectionHead h2{ margin:0; font-size: 22px; font-weight: 520; letter-spacing: -0.02em; }
-    .sectionHead p{ margin: var(--s3) 0 0 0; color: var(--muted); font-size: 13px; line-height: 1.9; max-width: 72ch; }
-
-    .faq{
-      border-radius: var(--r-xl);
-      border: 1px solid rgba(237,237,237,.10);
-      background: rgba(255,255,255,.012);
-      overflow:hidden;
+    .after {
+      padding: var(--s8) 0;
     }
-    .faq details{ border-top: 1px solid rgba(237,237,237,.08); padding: var(--s4); }
-    .faq details:first-child{ border-top:0; }
-    .faq summary{ cursor:pointer; list-style:none; color: var(--text); font-size: 13px; font-weight: 520; }
-    .faq p{ margin: .7rem 0 0 0; color: var(--muted); font-size: 13px; line-height: 1.9; }
 
-    footer{
-      padding: var(--s8) 0 var(--s9) 0;
+    .grid2 {
+      display: grid;
+      grid-template-columns: 1.05fr .95fr;
+      gap: var(--s6);
+      align-items: start;
+    }
+
+    @media (max-width: 980px) {
+      .grid2 {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .sectionHead h2 {
+      margin: 0;
+      font-size: 22px;
+      font-weight: 620;
+      letter-spacing: -.02em;
+    }
+
+    .sectionHead p {
+      margin: var(--s3) 0 0 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.9;
+      max-width: 72ch;
+    }
+
+    .faq {
+      border-radius: var(--r-xl);
+      border: 1px solid rgba(237, 237, 237, .10);
+      background: rgba(255, 255, 255, .012);
+      overflow: hidden;
+    }
+
+    .faq details {
+      border-top: 1px solid rgba(237, 237, 237, .08);
+      padding: var(--s4);
+    }
+
+    .faq details:first-child {
+      border-top: 0;
+    }
+
+    .faq summary {
+      cursor: pointer;
+      list-style: none;
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 620;
+    }
+
+    .faq p {
+      margin: .7rem 0 0 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.9;
+    }
+
+    footer {
+      padding: var(--s7) 0 var(--s8) 0;
       border-top: 1px solid var(--border);
       color: var(--muted);
       font-size: 12px;
       line-height: 1.85;
-    }
-
-    /* Evidence Drawer */
-    .drawerScrim{
-      position:fixed; inset:0;
-      background: rgba(0,0,0,.44);
-      backdrop-filter: blur(8px);
-      opacity:0;
-      pointer-events:none;
-      transition: opacity var(--t-med) ease;
-      z-index:80;
-    }
-    [data-theme="light"] .drawerScrim{ background: rgba(10,10,12,.25); }
-    .drawer{
-      position:fixed;
-      top: 0; right: 0;
-      height: 100%;
-      width: min(560px, calc(100% - 2rem));
-      transform: translate3d(110%,0,0);
-      transition: transform var(--t-med) ease;
-      z-index:90;
-      border-left: 1px solid rgba(237,237,237,.12);
-      background:
-        radial-gradient(900px 520px at 20% 10%, rgba(255,255,255,.06), transparent 60%),
-        linear-gradient(180deg, rgba(8,8,10,.92), rgba(8,8,10,.86));
-      backdrop-filter: blur(18px);
-    }
-    [data-theme="light"] .drawer{
-      background:
-        radial-gradient(900px 520px at 20% 10%, rgba(0,0,0,.06), transparent 60%),
-        linear-gradient(180deg, rgba(255,255,255,.92), rgba(255,255,255,.84));
-    }
-    .drawerInner{ height:100%; display:flex; flex-direction:column; }
-    .drawerTop{
-      padding: var(--s4);
-      border-bottom: 1px solid rgba(237,237,237,.10);
-      display:flex; align-items:flex-start; justify-content: space-between; gap: var(--s3);
-    }
-    .drawerTop h3{ margin:0; font-size: 14px; font-weight: 520; letter-spacing: -.01em; }
-    .drawerTop p{ margin: .55rem 0 0 0; color: var(--muted); font-size: 12px; line-height: 1.85; }
-    .drawerBody{ padding: var(--s4); overflow:auto; }
-    .evCard{
-      border-radius: 18px;
-      border: 1px solid rgba(237,237,237,.10);
-      background: rgba(255,255,255,.02);
-      padding: var(--s4);
-      margin-bottom: var(--s3);
-    }
-    .evCard h4{
-      margin:0;
-      font-size: 12px;
-      letter-spacing: .10em;
-      text-transform: uppercase;
-      color: var(--muted);
-      font-weight: 520;
-    }
-    .evCard .kv{
-      margin-top: .85rem;
-      display:grid;
-      grid-template-columns: 120px 1fr;
-      gap: .55rem .9rem;
-      font-size: 12px;
-      line-height: 1.75;
-      color: var(--muted);
-    }
-    .evCard .chips{ margin-top: .9rem; display:flex; flex-wrap:wrap; gap: .5rem; }
-    .chip{
-      display:inline-flex; align-items:center; gap:.45rem;
-      padding:.35rem .62rem; border-radius: 999px;
-      border: 1px solid rgba(237,237,237,.10);
-      background: rgba(255,255,255,.02);
-      color: var(--muted);
-      font-size: 12px;
-    }
-    .chip i{ width: 8px; height: 8px; border-radius: 999px; background: var(--accent); display:inline-block; }
-
-    .drawerOpen .drawerScrim{ opacity:1; pointer-events:auto; }
-    .drawerOpen .drawer{ transform: translate3d(0,0,0); }
-
-    @media (prefers-reduced-motion: reduce){
-      .drawer, .drawerScrim{ transition:none; }
-      .btn:hover{ transform:none; }
     }
   </style>
 </head>
@@ -791,301 +1357,345 @@
   <div class="noise" aria-hidden="true"></div>
   <div class="aura" aria-hidden="true"></div>
 
-  <!-- Evidence Drawer -->
-  <div class="drawerScrim" id="scrim" aria-hidden="true"></div>
-  <aside class="drawer" id="drawer" aria-label="Evidence pack drawer" aria-hidden="true">
-    <div class="drawerInner">
-      <div class="drawerTop">
-        <div>
-          <h3 id="evTitle">Evidence Pack</h3>
-          <p id="evSub">Generated from policies + the case lifecycle state you simulate.</p>
-        </div>
-        <div style="display:flex; gap: .6rem; flex-wrap:wrap;">
-          <button class="btn" type="button" id="exportBtn">Export JSON</button>
-          <button class="btn" type="button" id="drawerClose">Close</button>
-        </div>
-      </div>
-      <div class="drawerBody" id="evBody"></div>
-    </div>
-  </aside>
-
   <header>
     <div class="container">
-      <div class="hudRow">
+      <div class="hud">
         <div class="brand" aria-label="NexusCanon brand">
-          <div class="mark" aria-hidden="true"></div>
+          <div class="mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" class="brand-icon">
+              <!-- Main hexagon structure (Canon foundation) - Next.js inspired geometric elegance -->
+              <path d="M 12 2 L 18 5.5 L 18 10.5 L 12 14 L 6 10.5 L 6 5.5 Z" fill="none" stroke="currentColor"
+                stroke-width="1.5" stroke-linejoin="miter" stroke-linecap="square" class="icon-main" />
+
+              <!-- Inner nexus hexagon (connection point) -->
+              <path d="M 12 6 L 15.5 8 L 15.5 10 L 12 12 L 8.5 10 L 8.5 8 Z" fill="currentColor" stroke="currentColor"
+                stroke-width="1" stroke-linejoin="miter" class="icon-nexus" />
+
+              <!-- Precision connection lines (monographic elegance) -->
+              <line x1="12" y1="2" x2="12" y2="6" stroke="currentColor" stroke-width="1.2" stroke-linecap="square"
+                class="icon-line" />
+              <line x1="18" y1="5.5" x2="15.5" y2="8" stroke="currentColor" stroke-width="1" stroke-linecap="square"
+                class="icon-line" />
+              <line x1="18" y1="10.5" x2="15.5" y2="10" stroke="currentColor" stroke-width="1" stroke-linecap="square"
+                class="icon-line" />
+              <line x1="12" y1="14" x2="12" y2="12" stroke="currentColor" stroke-width="1.2" stroke-linecap="square"
+                class="icon-line" />
+              <line x1="6" y1="10.5" x2="8.5" y2="10" stroke="currentColor" stroke-width="1" stroke-linecap="square"
+                class="icon-line" />
+              <line x1="6" y1="5.5" x2="8.5" y2="8" stroke="currentColor" stroke-width="1" stroke-linecap="square"
+                class="icon-line" />
+
+              <!-- Center nexus point (premium accent) -->
+              <circle cx="12" cy="9" r="1.2" fill="currentColor" class="icon-center" />
+            </svg>
+          </div>
           <div>
             <h1>NexusCanon</h1>
-            <p id="brandLine">v6: policy film + risk heat visualization</p>
+            <p class="mono">governance engine</p>
           </div>
         </div>
 
-        <div class="hudMid" aria-label="Film controls">
-          <span class="pill"><i aria-hidden="true"></i><span id="lensLabel">Lens: Finance</span></span>
-
-          <div class="actNav" role="navigation" aria-label="Acts">
-            <button type="button" data-jump="0" aria-current="true">Act I · Finance</button>
-            <button type="button" data-jump="1" aria-current="false">Act II · Ops</button>
-            <button type="button" data-jump="2" aria-current="false">Act III · Builder</button>
-          </div>
-
-          <span class="pill mono" id="stampPill">STAMP: —</span>
+        <div class="hudMid" aria-label="Status and progress">
+          <span class="pill"><i aria-hidden="true"></i><span id="trustPill">Trust: 84%</span></span>
+          <span class="pill mono"><span id="riskPill" class="riskTxt">Risk: 12%</span></span>
+          <div class="prog" aria-label="Scroll progress"><b aria-hidden="true"></b></div>
         </div>
 
         <div class="hudRight">
-          <div class="prog" aria-label="Scroll progress"><i></i></div>
           <button class="iconbtn" id="themeBtn" aria-label="Toggle theme" title="Toggle theme">◐</button>
-          <button class="btn" id="evidenceBtn" type="button" aria-label="Open evidence pack">Evidence</button>
-          <a class="btn primary" href="#after">Finish</a>
+          <a class="btn" href="#after">Assurance</a>
+          <button class="btn primary" type="button" id="demoBtnTop">Request Briefing</button>
         </div>
       </div>
     </div>
   </header>
 
   <main>
-    <section class="film">
+    <section class="film" aria-label="Cinema landing">
       <div class="container">
-        <div class="track" id="track" aria-label="2026 Product Film Track">
+        <div class="track" id="track">
           <div class="stageWrap">
-            <div class="stage" aria-label="Sticky film stage">
-              <div class="scrollHint" aria-hidden="true">
-                <span>Scroll to morph</span>
-                <span class="bar"><i></i></span>
+            <div class="stage" aria-label="Sticky stage">
+              <div class="scrollHint">
+                <span>Scroll to reveal</span>
+                <span class="bar"><b aria-hidden="true"></b></span>
                 <span class="mono" id="pct">0%</span>
               </div>
 
-              <!-- LEFT -->
-              <div class="left">
-                <div class="eyebrow">
-                  <span class="dot" aria-hidden="true"></span>
-                  <span class="mono">proof surface · v6 · no tracking</span>
+              <!-- LEFT PANEL -->
+              <section class="left" aria-label="Executive copy">
+                <div class="kicker">
+                  <span class="chip" aria-hidden="true"></span>
+                  <span class="mono">Settlement Governance Portal</span>
                 </div>
 
-                <div class="titleStack" aria-label="Morphing titles">
-                  <h2 class="titleGhost">Finance-grade clarity.</h2>
-                  <h2 class="title t0">Finance-grade clarity.</h2>
-                  <h2 class="title t1">Operations calm at scale.</h2>
-                  <h2 class="title t2">Composable, inspectable modules.</h2>
+                <div>
+                  <div class="titleStack" aria-label="Morphing headline">
+                    <h2 class="titleGhost">Secure settlement access.</h2>
+                    <h2 class="title t0">Secure settlement access.</h2>
+                    <h2 class="title t1">Exceptions become owned cases.</h2>
+                    <h2 class="title t2">Proof survives audits and upgrades.</h2>
+                  </div>
 
-                  <div class="subStack" aria-label="Morphing subtitles">
-                    <p class="subGhost">A landing that behaves like a product: change policies, simulate cases, export proof.</p>
-                    <p class="sub s0">A landing that behaves like a product: change policies, simulate cases, export proof. <span class="mono">Audit-ready.</span></p>
-                    <p class="sub s1">Flow stays calm because exceptions are owned cases, not chat messages. <span class="mono">Ops-ready.</span></p>
-                    <p class="sub s2">Contracts stay stable while modules evolve. Proof exports survive upgrades. <span class="mono">Builder-ready.</span></p>
+                  <div class="subStack" aria-label="Morphing subhead">
+                    <p class="subGhost">A single audited workflow to submit proof, resolve exceptions, and monitor
+                      release status—without off-channel drift.</p>
+
+                    <p class="sub s0">
+                      A single audited workflow to submit proof, resolve exceptions, and monitor release status—without
+                      off-channel drift.
+                      <span class="mono">Evidence-gated release.</span>
+                    </p>
+
+                    <p class="sub s1">
+                      When a document is missing or a variance appears, the system creates a case—assigned,
+                      time-stamped, and reviewable.
+                      <span class="mono">No silent override.</span>
+                    </p>
+
+                    <p class="sub s2">
+                      Every decision produces a readable rationale and an immutable log. Exportable proof packs remain
+                      valid across policy changes.
+                      <span class="mono">Audit narrative by default.</span>
+                    </p>
                   </div>
                 </div>
 
-                <!-- POLICY PANEL -->
-                <section class="panel" aria-label="Live policy panel">
-                  <div class="panelTop">
-                    <span class="mono" id="policyMode">POLICY: FINANCE POSTURE</span>
-                    <span class="miniPill"><i aria-hidden="true"></i><span id="policyState">matching=3-way · audit=on</span></span>
-                  </div>
+                <ul class="steps" aria-label="Workflow steps">
+                  <li class="step">
+                    <b>01</b>
+                    <span><strong>Verify identity</strong> (approved mailbox or SSO posture).</span>
+                  </li>
+                  <li class="step">
+                    <b>02</b>
+                    <span><strong>Submit evidence pack</strong> (purchase authorization, receipt confirmation, billing
+                      document).</span>
+                  </li>
+                  <li class="step">
+                    <b>03</b>
+                    <span><strong>Track decision</strong> (in review → approved → released).</span>
+                  </li>
+                </ul>
 
-                  <div class="panelBody">
-                    <div class="policyRow">
-                      <div class="lbl">
-                        <b>Matching discipline</b>
-                        <span>Change the system’s stance. Watch risk/trust and proof outputs update.</span>
+                <div class="lens3" aria-label="Executive lenses">
+                  <div class="lensCard">
+                    <i aria-hidden="true"></i>
+                    <div>
+                      <b>CFO</b>
+                      <p>Controls leakage: evidence gates, segregation posture, and a defensible audit narrative.</p>
+                    </div>
+                  </div>
+                  <div class="lensCard">
+                    <i aria-hidden="true"></i>
+                    <div>
+                      <b>CTO</b>
+                      <p>Operational clarity: SSO-ready access, immutable logs, and clean integration boundaries.</p>
+                    </div>
+                  </div>
+                  <div class="lensCard">
+                    <i aria-hidden="true"></i>
+                    <div>
+                      <b>CEO</b>
+                      <p>Supplier trust without drift: transparent timelines, accountable decisions, fewer escalations.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <section class="policy" aria-label="Controls and assurance">
+                  <div class="policyTop">
+                    <span class="mono">ASSURANCE POSTURE</span>
+                    <span class="miniPill"><i aria-hidden="true"></i><span id="policySummary">matching=3-way ·
+                        narrative=on · discipline=on</span></span>
+                  </div>
+                  <div class="policyBody">
+                    <div class="row">
+                      <div class="label">Controls</div>
+                      <div class="value">
+                        <strong>Three-way verification</strong> · Evidence-gated release · Exception ownership
                       </div>
-                      <div class="seg" role="group" aria-label="Matching selection">
+                    </div>
+                    <div class="row">
+                      <div class="label">Assurance</div>
+                      <div class="value">
+                        Immutable case log · Full audit trail · Exportable proof pack
+                      </div>
+                      <div class="riskline" aria-label="Trust and risk indicators">
+                        <span class="mono" id="trustTxt">TRUST: 84%</span>
+                        <span class="meter" aria-label="Trust meter"><b aria-hidden="true"></b></span>
+                        <span class="mono riskTxt" id="riskTxt">RISK: 12%</span>
+                      </div>
+                    </div>
+                  </div>
+                </section>
+              </section>
+
+              <!-- RIGHT PANEL -->
+              <section class="right" aria-label="Access and posture">
+                <section class="card" aria-label="Access console">
+                  <div class="cardTop">
+                    <div style="display:flex; align-items:center; gap:.7rem;">
+                      <span class="statusDot" id="statusDot" aria-hidden="true"></span>
+                      <span class="mono" id="statusLine">Awaiting identity</span>
+                    </div>
+                    <span class="mono" id="stageTag">ACT I · ACCESS</span>
+                  </div>
+
+                  <div class="cardBody">
+                    <div class="tabs" role="tablist" aria-label="Access method">
+                      <button type="button" role="tab" aria-selected="true" data-tab="email">Email Access</button>
+                      <button type="button" role="tab" aria-selected="false" data-tab="sso">SSO</button>
+                      <button type="button" role="tab" aria-selected="false" data-tab="help">Help</button>
+                    </div>
+
+                    <div id="tab_email" role="tabpanel" aria-label="Email access">
+                      <div class="field">
+                        <label for="identity">Identity <span class="mono" style="color:var(--subtle);">approved
+                            mailbox</span></label>
+                        <input class="input" id="identity" type="email" placeholder="name@company.com"
+                          autocomplete="username" />
+                      </div>
+
+                      <div class="field">
+                        <label for="passkey">Passkey <a href="#" onclick="return false;">Forgot?</a></label>
+                        <input class="input" id="passkey" type="password" placeholder="••••••••"
+                          autocomplete="current-password" />
+                      </div>
+
+                      <div class="checkRow">
+                        <label class="check"><input type="checkbox" /> Remember identity</label>
+                        <span class="mono" id="riskHint">posture: controlled</span>
+                      </div>
+
+                      <button class="primaryCta" type="button" id="initBtn">
+                        Initiate Session <span aria-hidden="true">→</span>
+                      </button>
+
+                      <p class="fineprint">
+                        Protected surface — authorized personnel only. Attempts are logged with immutable stamps.
+                      </p>
+                    </div>
+
+                    <div id="tab_sso" role="tabpanel" aria-label="SSO access" hidden>
+                      <p class="fineprint" style="margin:0 0 .75rem 0;">
+                        Use enterprise SSO for least-privilege access and policy-compliant session control.
+                      </p>
+                      <button class="primaryCta" type="button" id="ssoBtn">
+                        Continue with SSO <span aria-hidden="true">→</span>
+                      </button>
+                      <p class="fineprint">SSO posture inherits MFA, device policy, and conditional access from your
+                        IdP.</p>
+                    </div>
+
+                    <div id="tab_help" role="tabpanel" aria-label="Help" hidden>
+                      <p class="fineprint" style="margin:0;">
+                        If you were asked to submit documentation or respond to a settlement exception, your case owner
+                        will provide an access link.
+                        For onboarding, request an authorized mailbox or SSO entitlement from your tenant admin.
+                      </p>
+                    </div>
+                  </div>
+                </section>
+
+                <section class="controls" aria-label="Live posture controls">
+                  <div class="controlsTop">
+                    <span class="mono">LIVE POSTURE</span>
+                    <span class="miniPill"><i aria-hidden="true"></i><span class="mono" id="postureStamp">STAMP:
+                        —</span></span>
+                  </div>
+
+                  <div class="controlsBody">
+                    <div class="controlRow">
+                      <div class="lbl">
+                        <b>Verification discipline</b>
+                        <span>Set the minimum proof required before release can proceed.</span>
+                      </div>
+                      <div class="seg" role="group" aria-label="Verification selection">
                         <button type="button" data-match="1" aria-pressed="false">1-way</button>
                         <button type="button" data-match="2" aria-pressed="false">2-way</button>
                         <button type="button" data-match="3" aria-pressed="true">3-way</button>
                       </div>
                     </div>
 
-                    <div class="policyRow">
+                    <div class="controlRow">
                       <div class="lbl">
                         <b>Audit narrative</b>
-                        <span>When ON, the system compiles readable reasons + links automatically.</span>
+                        <span>Compile decision rationale and link evidence automatically.</span>
                       </div>
                       <label class="sw">
                         <input id="auditSw" type="checkbox" checked />
-                        <span class="trackSw" aria-hidden="true"><span class="knob"></span></span>
+                        <span class="swTrack" aria-hidden="true"><span class="swKnob"></span></span>
                         <span class="txt" id="auditLbl">On</span>
                       </label>
                     </div>
 
-                    <div class="policyRow">
+                    <div class="controlRow">
                       <div class="lbl">
                         <b>Override discipline</b>
-                        <span>When ON, exceptions require owned case notes (no silent override).</span>
+                        <span>Require owned notes for any exception. No silent bypass.</span>
                       </div>
                       <label class="sw">
                         <input id="overrideSw" type="checkbox" checked />
-                        <span class="trackSw" aria-hidden="true"><span class="knob"></span></span>
+                        <span class="swTrack" aria-hidden="true"><span class="swKnob"></span></span>
                         <span class="txt" id="overrideLbl">On</span>
                       </label>
                     </div>
 
-                    <div class="policyMeta" aria-label="Trust indicator">
-                      <span class="mono" id="trustTxt">TRUST: 82%</span>
-                      <span class="meter" aria-label="Trust meter"><i></i></span>
-                      <span class="mono" id="riskTxt">RISK: 12%</span>
-                      <button class="btn" type="button" id="previewBtn">Preview Evidence Pack</button>
+                    <div
+                      style="display:flex; gap:.6rem; flex-wrap:wrap; align-items:center; justify-content:space-between;">
+                      <button class="btn" type="button" id="simulateBtn">Simulate high-risk case</button>
+                      <button class="btn danger" type="button" id="resetBtn">Reset posture</button>
                     </div>
+
+                    <p class="fineprint" style="margin:0;">
+                      Risk heat intensifies only when posture is weakened. This is not “red for decoration” — it’s a
+                      signal.
+                    </p>
                   </div>
                 </section>
-              </div>
-
-              <!-- RIGHT -->
-              <div class="right">
-                <!-- v5 CASE SIMULATOR -->
-                <section class="panel" aria-label="Case lifecycle simulator">
-                  <div class="panelTop">
-                    <span class="mono" id="simMode">SIMULATOR: CASE LIFECYCLE</span>
-                    <span class="miniPill"><i aria-hidden="true"></i><span id="caseStatePill">case=none</span></span>
-                  </div>
-
-                  <div class="panelBody">
-                    <div class="simGrid">
-                      <div class="stepper" aria-label="Case steps">
-                        <div class="step" data-step="0" aria-current="true">
-                          <div class="n">1</div>
-                          <div class="t">
-                            <b>Detect exception</b>
-                            <span>Select the exception type and generate a case.</span>
-                          </div>
-                        </div>
-                        <div class="step" data-step="1" aria-current="false">
-                          <div class="n">2</div>
-                          <div class="t">
-                            <b>Attach evidence</b>
-                            <span>Attach PO/GRN/Invoice & notes based on matching stance.</span>
-                          </div>
-                        </div>
-                        <div class="step" data-step="2" aria-current="false">
-                          <div class="n">3</div>
-                          <div class="t">
-                            <b>Request approval</b>
-                            <span>Route to owner; lock override discipline if enabled.</span>
-                          </div>
-                        </div>
-                        <div class="step" data-step="3" aria-current="false">
-                          <div class="n">4</div>
-                          <div class="t">
-                            <b>Approve / Reject</b>
-                            <span>Decision produces narrative + audit event automatically.</span>
-                          </div>
-                        </div>
-                        <div class="step" data-step="4" aria-current="false">
-                          <div class="n">5</div>
-                          <div class="t">
-                            <b>Settle + Export</b>
-                            <span>Close the case and export the proof pack.</span>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div class="simControls" aria-label="Simulator controls">
-                        <div class="lbl">
-                          <b>Exception type</b>
-                          <span>Pick a reality. The pack changes immediately.</span>
-                        </div>
-                        <div class="seg" role="group" aria-label="Exception type">
-                          <button type="button" data-ex="missing_grn" aria-pressed="true">Missing GRN</button>
-                          <button type="button" data-ex="price_variance" aria-pressed="false">Price variance</button>
-                          <button type="button" data-ex="duplicate_invoice" aria-pressed="false">Duplicate invoice</button>
-                        </div>
-
-                        <div class="rowBtns">
-                          <button class="btn primary" type="button" id="genCaseBtn">Generate Case</button>
-                          <button class="btn" type="button" id="attachBtn">Attach Evidence</button>
-                          <button class="btn" type="button" id="routeBtn">Request Approval</button>
-                          <button class="btn" type="button" id="approveBtn">Approve</button>
-                          <button class="btn" type="button" id="rejectBtn">Reject</button>
-                          <button class="btn" type="button" id="settleBtn">Settle</button>
-                        </div>
-
-                        <div class="simKpi" aria-label="Case KPI">
-                          <div class="kv">
-                            <div class="k">Case ID</div><div class="vv mono" id="caseId">—</div>
-                            <div class="k">Status</div><div class="vv" id="caseStatus">None</div>
-                            <div class="k">Owner</div><div class="vv" id="caseOwner">—</div>
-                            <div class="k">Evidence</div><div class="vv" id="caseEvidence">—</div>
-                            <div class="k">Outcome</div><div class="vv" id="caseOutcome">—</div>
-                          </div>
-                          <div style="display:flex; gap:.6rem; flex-wrap:wrap;">
-                            <button class="btn" type="button" id="openEvidenceInline">Open Evidence</button>
-                            <button class="btn" type="button" id="exportInline">Export JSON</button>
-                          </div>
-                        </div>
-
-                      </div>
-                    </div>
-                  </div>
-                </section>
-
-                <!-- CONSOLE -->
-                <div class="console" aria-label="Live console">
-                  <div class="consoleTop">
-                    <span class="mono" id="consoleMode">CONSOLE: FINANCE</span>
-                    <span class="stamp mono"><i aria-hidden="true"></i><span id="consoleStamp">STAMP: —</span></span>
-                  </div>
-                  <pre class="mono" id="consoleText">
-$ surface.init --tenant example-hq --lens finance
-> matching: 3-way
-> audit_narrative: on
-> override_discipline: on
-> simulator: ready (generate a case)
-                  </pre>
-                </div>
-
-                <!-- CTA -->
-                <div class="ctaBox" aria-label="CTA">
-                  <h3 id="ctaTitle">Request a demo that behaves like an OS</h3>
-                  <p id="ctaBody">Not a poster. A proof surface: policy → case → exportable evidence.</p>
-
-                  <div class="row">
-                    <input class="input" id="email" type="email" placeholder="Work email" aria-label="Work email" />
-                    <button class="btn primary" type="button" id="demoBtn">Request demo</button>
-                    <button class="btn" type="button" id="copyBtn">Copy current pitch</button>
-                    <span class="mono" id="msg" style="display:block; width:100%; color: var(--muted); font-size: 12px;"></span>
-                  </div>
-                </div>
-
-              </div>
+              </section>
             </div>
           </div>
         </div>
       </div>
     </section>
 
-    <section class="after" id="after">
+    <section class="after" id="after" aria-label="Assurance section">
       <div class="container">
         <div class="grid2">
           <div class="sectionHead">
-            <h2>v6 is different because it ships "product truth"</h2>
+            <h2>Executive-grade clarity: proof, posture, and accountability</h2>
             <p>
-              The visible leap: you can now run a tiny reality — exception → evidence → approval → outcome → export —
-              without leaving the hero stage.
+              NexusCanon VMP is designed to pass the "boardroom glance test":
+              clear controls, clear ownership, and clear timelines — without operational drift.
             </p>
             <p>
-              Keyboard shortcuts:
-              <span class="mono">1/2/3</span> matching · <span class="mono">A</span> audit · <span class="mono">O</span> override ·
-              <span class="mono">G</span> generate case · <span class="mono">E</span> evidence drawer.
+              What changes outcomes isn’t more dashboards. It’s enforcing a settlement protocol that produces auditable
+              truth.
             </p>
 
             <div style="margin-top: var(--s5); display:flex; gap: var(--s3); flex-wrap:wrap;">
-              <button class="btn" type="button" id="rewindBtn">Rewind</button>
-              <button class="btn" type="button" id="jumpOpsBtn">Jump to Ops act</button>
-              <button class="btn primary" type="button" id="openEvidence2">Open Evidence</button>
+              <button class="btn" type="button" id="copyPitchBtn">Copy current pitch</button>
+              <button class="btn primary" type="button" id="demoBtnBottom">Request Briefing</button>
             </div>
+
+            <p class="fineprint" id="msg" aria-live="polite"></p>
           </div>
 
           <div class="faq" aria-label="FAQ">
             <details open>
-              <summary>Why does the evidence pack matter?</summary>
-              <p>Because investors, auditors, and controllers buy proof — not slogans. A pack is a portable trust object.</p>
+              <summary>What is an “evidence pack” in enterprise terms?</summary>
+              <p>A structured proof bundle: purchase authorization, receipt confirmation, billing document, and decision
+                rationale — portable to audit, finance leadership, and dispute resolution.</p>
             </details>
             <details>
-              <summary>Can this become the login page?</summary>
-              <p>Yes. Swap the simulator for “security posture + session handshake” and keep the proof philosophy.</p>
+              <summary>How does this reduce escalation and “WhatsApp drift”?</summary>
+              <p>Every exception becomes an owned case with a status, an SLA, and an immutable log. No side channels can
+                substitute for recorded decisions.</p>
             </details>
             <details>
-              <summary>How do I make this even more 2026?</summary>
-              <p>Add a “Role Lens” (CFO/Ops/Builder), a tiny “export preview” (print layout), and a one-click replay.</p>
+              <summary>Where should the “danger” color appear?</summary>
+              <p>Only when posture is weakened or evidence is missing. Red is a governance signal, not a theme.</p>
             </details>
           </div>
         </div>
@@ -1095,12 +1705,10 @@ $ surface.init --tenant example-hq --lens finance
     <footer>
       <div class="container">
         <div style="display:flex; align-items:center; justify-content:space-between; gap: var(--s4); flex-wrap:wrap;">
-          <div style="display:flex; align-items:center; gap: var(--s3);">
-            <div class="mark" aria-hidden="true" style="width:30px;height:30px;"></div>
-            <div>
-              <div class="mono" style="letter-spacing:.10em;text-transform:uppercase;color: var(--muted);">NexusCanon</div>
-              <div id="footLine">Inspectability over hype · Calm over noise</div>
+          <div>
+            <div class="mono" style="letter-spacing:.12em;text-transform:uppercase;color: var(--muted);">nexuscanon vmp
             </div>
+            <div>Inspectability over hype · Calm over noise · Evidence-first settlements</div>
           </div>
           <div class="mono" id="footStamp">STAMP: —</div>
         </div>
@@ -1109,50 +1717,36 @@ $ surface.init --tenant example-hq --lens finance
   </main>
 
   <script>
-    (function(){
+    (function () {
       const root = document.documentElement;
 
-      // Theme
+      // Theme toggle
       const themeBtn = document.getElementById('themeBtn');
-      const savedTheme = localStorage.getItem('theme');
-      if(savedTheme) root.setAttribute('data-theme', savedTheme);
+      const savedTheme = localStorage.getItem('nxc_theme');
+      if (savedTheme) root.setAttribute('data-theme', savedTheme);
       themeBtn.addEventListener('click', () => {
         const now = root.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
         root.setAttribute('data-theme', now);
-        localStorage.setItem('theme', now);
+        localStorage.setItem('nxc_theme', now);
       });
 
-      // Stamps
-      const stampPill = document.getElementById('stampPill');
-      const consoleStamp = document.getElementById('consoleStamp');
-      const footStamp = document.getElementById('footStamp');
-      function fmtStamp(){
-        const d = new Date();
-        const iso = d.toISOString().replace('T',' ').slice(0,19) + 'Z';
-        stampPill.textContent = 'STAMP: ' + iso;
-        consoleStamp.textContent = 'STAMP: ' + iso;
-        footStamp.textContent = 'STAMP: ' + iso;
-      }
-      fmtStamp();
-      setInterval(fmtStamp, 10000);
-
-      // Mouse parallax
-      let mx = 0, my = 0, tx = 0, ty = 0;
+      // Parallax
       const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-      function onMove(e){
+      let mx = 0, my = 0, tx = 0, ty = 0;
+      window.addEventListener('pointermove', (e) => {
         const w = window.innerWidth || 1;
         const h = window.innerHeight || 1;
         tx = ((e.clientX / w) * 2 - 1);
         ty = ((e.clientY / h) * 2 - 1);
-      }
-      window.addEventListener('pointermove', onMove, {passive:true});
-      function tickParallax(){
-        if(!reduceMotion){
+      }, { passive: true });
+
+      function tickParallax() {
+        if (!reduceMotion) {
           mx += (tx - mx) * 0.06;
           my += (ty - my) * 0.06;
           root.style.setProperty('--mx', mx.toFixed(4));
           root.style.setProperty('--my', my.toFixed(4));
-        }else{
+        } else {
           root.style.setProperty('--mx', '0');
           root.style.setProperty('--my', '0');
         }
@@ -1160,643 +1754,421 @@ $ surface.init --tenant example-hq --lens finance
       }
       requestAnimationFrame(tickParallax);
 
-      // Film logic
+      // Stamps
+      const postureStamp = document.getElementById('postureStamp');
+      const footStamp = document.getElementById('footStamp');
+      function fmtStamp() {
+        const d = new Date();
+        const iso = d.toISOString().replace('T', ' ').slice(0, 19) + 'Z';
+        if (postureStamp) postureStamp.textContent = 'STAMP: ' + iso;
+        if (footStamp) footStamp.textContent = 'STAMP: ' + iso;
+      }
+      fmtStamp();
+      setInterval(fmtStamp, 10000);
+
+      // Cinema scroll weights
       const track = document.getElementById('track');
       const pct = document.getElementById('pct');
+      function clamp(n, a, b) { return Math.max(a, Math.min(b, n)); }
+      function easeInOut(t) { return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2; }
 
-      const lensLabel = document.getElementById('lensLabel');
-      const brandLine = document.getElementById('brandLine');
-      const ctaTitle = document.getElementById('ctaTitle');
-      const ctaBody = document.getElementById('ctaBody');
-      const footLine = document.getElementById('footLine');
-
-      const policyMode = document.getElementById('policyMode');
-      const policyState = document.getElementById('policyState');
-      const consoleMode = document.getElementById('consoleMode');
-      const consoleText = document.getElementById('consoleText');
-
-      const actButtons = Array.from(document.querySelectorAll('.actNav button'));
-
-      function clamp(n,a,b){ return Math.max(a, Math.min(b,n)); }
-      function lerp(a,b,t){ return a + (b-a)*t; }
-      function easeInOut(t){ return t < 0.5 ? 4*t*t*t : 1 - Math.pow(-2*t + 2,3)/2; }
-
-      function computeProgress(){
-        const start = track.offsetTop;
-        const end = start + track.offsetHeight - window.innerHeight;
-        const y = window.scrollY;
-        return clamp((y - start) / Math.max(1,(end - start)), 0, 1);
-      }
-
-      function actAndWeights(p){
-        let act=0, from=0, to=0, u=0;
-        if(p < 0.33){ act=0; from=0; to=0; u=p/0.33; }
-        else if(p < 0.66){ act=1; from=0; to=1; u=(p-0.33)/0.33; }
-        else { act=2; from=1; to=2; u=(p-0.66)/0.34; }
-        const e = easeInOut(clamp(u,0,1));
-        let w0=0,w1=0,w2=0;
-        if(from===to){
-          w0 = act===0 ? 1:0;
-          w1 = act===1 ? 1:0;
-          w2 = act===2 ? 1:0;
-        }else if(from===0 && to===1){
-          w0 = 1-e; w1 = e; w2 = 0;
-        }else{
-          w0 = 0; w1 = 1-e; w2 = e;
+      function computeProgress() {
+        if (!track) {
+          console.warn('Track element not found');
+          return 0;
         }
-        return {act,from,to,u:e,w0,w1,w2};
+
+        const start = track.offsetTop;
+        const trackHeight = track.offsetHeight;
+        const viewportHeight = window.innerHeight;
+        const documentHeight = document.documentElement.scrollHeight;
+        const end = start + trackHeight - viewportHeight;
+        const y = window.scrollY || window.pageYOffset || document.documentElement.scrollTop;
+
+        // Debug logging (remove in production)
+        if (y === 0 || y < 10) {
+          console.log('Scroll Debug:', {
+            trackHeight,
+            viewportHeight,
+            documentHeight,
+            trackOffsetTop: start,
+            scrollY: y,
+            canScroll: documentHeight > viewportHeight
+          });
+        }
+
+        // Ensure we have valid scroll range
+        if (end <= start || trackHeight <= viewportHeight) {
+          if (documentHeight <= viewportHeight) {
+            console.warn('Document height is not greater than viewport - scrolling may not work');
+          }
+          return 0;
+        }
+
+        return clamp((y - start) / Math.max(1, (end - start)), 0, 1);
       }
 
-      function copyFor(act){
-        if(act===0) return {lens:'Finance',persona:'finance',brand:'Audit clarity · Policy control',policy:'POLICY: FINANCE POSTURE',ctaT:'Request a finance-grade demo',ctaB:'Policy → case → exportable evidence packs. Calm, inspectable, audit-proof.',foot:'Inspectability over hype · Calm over noise'};
-        if(act===1) return {lens:'Ops',persona:'ops',brand:'Operational calm · Controlled exceptions',policy:'POLICY: OPS POSTURE',ctaT:'Request an ops-grade demo',ctaB:'Exceptions become owned cases with routing + outcomes. Throughput stays predictable.',foot:'Predictability beats dashboards · Calm over chaos'};
-        return {lens:'Builder',persona:'builder',brand:'Composable architecture · Stable contracts',policy:'POLICY: BUILDER POSTURE',ctaT:'Request a builder-grade demo',ctaB:'Stable contracts, policy-as-config, portable proof exports that survive upgrades.',foot:'Stable contracts · Inspectable systems'};
+      function setSceneWeights(p) {
+        // 3 scenes: [0..0.34], [0.34..0.67], [0.67..1]
+        // Enhanced easing for more dramatic transitions
+        let w0 = 0, w1 = 0, w2 = 0;
+        if (p < 0.34) {
+          w0 = 1;
+        } else if (p < 0.67) {
+          // More dramatic transition with cubic easing
+          const u = easeInOut((p - 0.34) / 0.33);
+          const eased = u * u * (3 - 2 * u); // Smoothstep for smoother transitions
+          w0 = 1 - eased;
+          w1 = eased;
+        } else {
+          const u = easeInOut((p - 0.67) / 0.33);
+          const eased = u * u * (3 - 2 * u);
+          w1 = 1 - eased;
+          w2 = eased;
+        }
+        root.style.setProperty('--w0', w0.toFixed(4));
+        root.style.setProperty('--w1', w1.toFixed(4));
+        root.style.setProperty('--w2', w2.toFixed(4));
+
+        // Add dramatic scale effect during transitions
+        const transitionIntensity = Math.abs(w0 - w1) + Math.abs(w1 - w2);
+        root.style.setProperty('--transitionIntensity', transitionIntensity.toFixed(4));
       }
 
-      // ========= Policy State =========
+      // Tabs
+      const tabBtns = Array.from(document.querySelectorAll('.tabs button'));
+      const panels = {
+        email: document.getElementById('tab_email'),
+        sso: document.getElementById('tab_sso'),
+        help: document.getElementById('tab_help'),
+      };
+      function setTab(name) {
+        tabBtns.forEach(b => b.setAttribute('aria-selected', String(b.dataset.tab === name)));
+        Object.entries(panels).forEach(([k, el]) => el.hidden = (k !== name));
+      }
+      tabBtns.forEach(b => b.addEventListener('click', () => setTab(b.dataset.tab)));
+
+      // Posture model
       const segBtns = Array.from(document.querySelectorAll('.seg button[data-match]'));
       const auditSw = document.getElementById('auditSw');
       const overrideSw = document.getElementById('overrideSw');
       const auditLbl = document.getElementById('auditLbl');
       const overrideLbl = document.getElementById('overrideLbl');
+
       const trustTxt = document.getElementById('trustTxt');
       const riskTxt = document.getElementById('riskTxt');
-      const previewBtn = document.getElementById('previewBtn');
+      const trustPill = document.getElementById('trustPill');
+      const riskPill = document.getElementById('riskPill');
+      const policySummary = document.getElementById('policySummary');
+
+      const statusDot = document.getElementById('statusDot');
+      const statusLine = document.getElementById('statusLine');
+      const riskHint = document.getElementById('riskHint');
+
+      const identity = document.getElementById('identity');
+      const passkey = document.getElementById('passkey');
 
       const state = {
         matching: 3,
         audit: true,
         override: true,
-
-        // v5 case sim
-        exception: 'missing_grn',
-        caseId: null,
-        caseStatus: 'None',
-        owner: null,
-        evidence: [],
-        outcome: null,
-        step: 0
+        simulatedHighRisk: false
       };
 
-      function computeTrustRisk(){
-        // Start with a "skeptical by default" posture
+      function computeTrustRisk() {
+        // baseline: skeptical
         let trust = 0.18;
-        let risk  = 0.82;
+        let risk = 0.82;
 
-        // Matching has to feel MASSIVE
-        if(state.matching === 1){ trust += 0.04; risk += 0.10; }
-        if(state.matching === 2){ trust += 0.18; risk -= 0.18; }
-        if(state.matching === 3){ trust += 0.34; risk -= 0.45; }
+        // matching: BIG delta
+        if (state.matching === 1) { trust += 0.03; risk += 0.12; }
+        if (state.matching === 2) { trust += 0.16; risk -= 0.18; }
+        if (state.matching === 3) { trust += 0.34; risk -= 0.46; }
 
-        // Audit narrative: huge risk reducer, huge trust builder
-        if(state.audit){
-          trust += 0.20;
-          risk  -= 0.26;
-        }else{
-          trust -= 0.08;
-          risk  += 0.18;
-        }
+        // audit narrative
+        if (state.audit) { trust += 0.20; risk -= 0.26; }
+        else { trust -= 0.08; risk += 0.18; }
 
-        // Override discipline: if OFF, risk spikes
-        if(state.override){
-          trust += 0.14;
-          risk  -= 0.18;
-        }else{
+        // override discipline
+        if (state.override) { trust += 0.14; risk -= 0.18; }
+        else { trust -= 0.10; risk += 0.24; }
+
+        // simulated missing evidence / dispute heat
+        if (state.simulatedHighRisk) {
           trust -= 0.10;
-          risk  += 0.22;
-        }
-
-        // Case lifecycle: owning the exception reduces risk (unless pending / rejected)
-        if(state.caseId){
-          trust += 0.06;
-          risk  -= 0.04;
-
-          if(state.evidence.length >= 2){
-            trust += 0.08;
-            risk  -= 0.06;
-          }
-
-          if(state.caseStatus === 'Awaiting approval') risk += 0.08;
-          if(state.caseStatus === 'Approved'){ trust += 0.08; risk -= 0.06; }
-          if(state.caseStatus === 'Rejected'){ trust -= 0.06; risk += 0.14; }
-          if(state.caseStatus === 'Settled'){ trust += 0.10; risk -= 0.08; }
-        }else{
-          // No case generated = "unknown unknowns"
-          risk += 0.06;
+          risk += 0.22;
         }
 
         trust = clamp(trust, 0.06, 0.94);
-        risk  = clamp(risk, 0.06, 0.96);
+        risk = clamp(risk, 0.06, 0.96);
 
-        return { trust, risk };
+        // danger glow: mostly off unless risk climbs
+        const dangerGlow = clamp((risk - 0.22) / 0.55, 0, 1);
+
+        return { trust, risk, dangerGlow };
       }
 
-      function policySummary(){
-        const a = state.audit ? 'audit=on' : 'audit=off';
-        const o = state.override ? 'override=disciplined' : 'override=free';
-        return `matching=${state.matching}-way · ${a} · ${o}`;
+      function summaryText() {
+        const m = state.matching + '-way';
+        const a = state.audit ? 'narrative=on' : 'narrative=off';
+        const o = state.override ? 'discipline=on' : 'discipline=off';
+        return `matching=${m} · ${a} · ${o}`;
       }
 
-      function matchText(){
-        return state.matching===3 ? '3-way (PO+GRN+INV)' :
-               state.matching===2 ? '2-way (PO+INV)' : '1-way (INV only)';
-      }
+      function render() {
+        const { trust, risk, dangerGlow } = computeTrustRisk();
 
-      // ========= Case Simulator =========
-      const simMode = document.getElementById('simMode');
-      const caseStatePill = document.getElementById('caseStatePill');
-      const steps = Array.from(document.querySelectorAll('.step'));
-      const exBtns = Array.from(document.querySelectorAll('.seg button[data-ex]'));
+        root.style.setProperty('--trust', trust.toFixed(4));
+        root.style.setProperty('--risk', risk.toFixed(4));
+        root.style.setProperty('--dangerGlow', dangerGlow.toFixed(4));
 
-      const genCaseBtn = document.getElementById('genCaseBtn');
-      const attachBtn = document.getElementById('attachBtn');
-      const routeBtn = document.getElementById('routeBtn');
-      const approveBtn = document.getElementById('approveBtn');
-      const rejectBtn = document.getElementById('rejectBtn');
-      const settleBtn = document.getElementById('settleBtn');
+        const tp = Math.round(trust * 100);
+        const rp = Math.round(risk * 100);
 
-      const caseIdEl = document.getElementById('caseId');
-      const caseStatusEl = document.getElementById('caseStatus');
-      const caseOwnerEl = document.getElementById('caseOwner');
-      const caseEvidenceEl = document.getElementById('caseEvidence');
-      const caseOutcomeEl = document.getElementById('caseOutcome');
+        trustTxt.textContent = 'TRUST: ' + tp + '%';
+        riskTxt.textContent = 'RISK: ' + rp + '%';
+        trustPill.textContent = 'Trust: ' + tp + '%';
+        riskPill.textContent = 'Risk: ' + rp + '%';
+        policySummary.textContent = summaryText();
 
-      function setStep(n){
-        state.step = clamp(n,0,4);
-        steps.forEach((s,i)=> s.setAttribute('aria-current', String(i===state.step)));
-      }
-
-      function setException(ex){
-        state.exception = ex;
-        exBtns.forEach(b=>{
-          const v = b.getAttribute('data-ex');
-          b.setAttribute('aria-pressed', String(v===ex));
-        });
-        // soft reset outcome hints but keep case if exists
-        requestRender();
-      }
-
-      exBtns.forEach(b=> b.addEventListener('click', ()=> setException(b.getAttribute('data-ex'))));
-
-      function mkId(){
-        const a = Math.random().toString(16).slice(2,6).toUpperCase();
-        const b = Math.random().toString(16).slice(2,6).toUpperCase();
-        return `CASE-${a}-${b}`;
-      }
-
-      function exceptionHuman(){
-        if(state.exception==='missing_grn') return 'Missing GRN';
-        if(state.exception==='price_variance') return 'Price variance';
-        return 'Duplicate invoice';
-      }
-
-      function generateCase(){
-        if(state.caseId) return; // keep simple
-        state.caseId = mkId();
-        state.caseStatus = 'Open';
-        state.owner = (root.getAttribute('data-persona') === 'ops') ? 'Ops Lead' :
-                      (root.getAttribute('data-persona') === 'builder') ? 'Platform Owner' : 'Finance Controller';
-        state.evidence = [];
-        state.outcome = null;
-        setStep(1);
-        requestRender();
-      }
-
-      function attachEvidence(){
-        if(!state.caseId) return;
-        // Evidence depends on matching stance and exception
-        const ev = [];
-        ev.push('Invoice link');
-
-        if(state.matching >= 2) ev.push('PO link');
-        if(state.matching >= 3){
-          if(state.exception === 'missing_grn'){
-            // missing by definition, attach a “warehouse note” instead
-            ev.push('Warehouse note (GRN missing)');
-          }else{
-            ev.push('GRN link');
-          }
-        }
-
-        if(state.exception === 'price_variance') ev.push('Price variance calc');
-        if(state.exception === 'duplicate_invoice') ev.push('Duplicate detection snapshot');
-        if(state.override) ev.push('Owned case note');
-
-        // de-dup
-        state.evidence = Array.from(new Set(ev));
-        setStep(2);
-        requestRender();
-      }
-
-      function requestApproval(){
-        if(!state.caseId) return;
-        state.caseStatus = 'Awaiting approval';
-        setStep(3);
-        requestRender();
-      }
-
-      function approve(){
-        if(!state.caseId) return;
-        state.caseStatus = 'Approved';
-        state.outcome = 'Override permitted with narrative';
-        setStep(4);
-        requestRender();
-      }
-
-      function reject(){
-        if(!state.caseId) return;
-        state.caseStatus = 'Rejected';
-        state.outcome = 'Hold payment · request missing docs';
-        setStep(4);
-        requestRender();
-      }
-
-      function settle(){
-        if(!state.caseId) return;
-        state.caseStatus = 'Settled';
-        if(!state.outcome) state.outcome = 'Settled with policy default';
-        setStep(4);
-        requestRender();
-      }
-
-      genCaseBtn.addEventListener('click', generateCase);
-      attachBtn.addEventListener('click', attachEvidence);
-      routeBtn.addEventListener('click', requestApproval);
-      approveBtn.addEventListener('click', approve);
-      rejectBtn.addEventListener('click', reject);
-      settleBtn.addEventListener('click', settle);
-
-      // ========= Matching / toggles =========
-      function setMatching(n){
-        state.matching = n;
-        segBtns.forEach(btn=>{
-          const v = parseInt(btn.getAttribute('data-match'), 10);
-          btn.setAttribute('aria-pressed', String(v === n));
-        });
-        requestRender();
-      }
-      segBtns.forEach(btn=> btn.addEventListener('click', ()=> setMatching(parseInt(btn.getAttribute('data-match'),10)) ));
-      auditSw.addEventListener('change', ()=>{ state.audit = !!auditSw.checked; requestRender(); });
-      overrideSw.addEventListener('change', ()=>{ state.override = !!overrideSw.checked; requestRender(); });
-
-      // ========= Evidence Drawer =========
-      const scrim = document.getElementById('scrim');
-      const drawer = document.getElementById('drawer');
-      const drawerClose = document.getElementById('drawerClose');
-      const evidenceBtn = document.getElementById('evidenceBtn');
-      const openEvidence2 = document.getElementById('openEvidence2');
-      const openEvidenceInline = document.getElementById('openEvidenceInline');
-      const previewBtn2 = previewBtn;
-      const exportBtn = document.getElementById('exportBtn');
-      const exportInline = document.getElementById('exportInline');
-
-      const evTitle = document.getElementById('evTitle');
-      const evSub = document.getElementById('evSub');
-      const evBody = document.getElementById('evBody');
-
-      function setDrawer(open){
-        document.body.classList.toggle('drawerOpen', !!open);
-        drawer.setAttribute('aria-hidden', open ? 'false' : 'true');
-        scrim.setAttribute('aria-hidden', open ? 'false' : 'true');
-      }
-
-      function currentPack(act){
-        const meta = copyFor(act);
-        const tr = computeTrustRisk();
-        const trustPct = Math.round(tr.trust * 100);
-        const riskPct = Math.round(tr.risk * 100);
-
-        const matchLong =
-          state.matching===3 ? '3-way match (PO + GRN + Invoice)' :
-          state.matching===2 ? '2-way match (PO + Invoice)' :
-                               '1-way match (Invoice only)';
-
-        const packId = 'EV-' + (state.caseId ? state.caseId.slice(-4) : Math.random().toString(16).slice(2,6).toUpperCase());
-
-        const now = new Date().toISOString();
-
-        const pack = {
-          stamp: now,
-          pack_id: packId,
-          lens: meta.lens,
-          posture: meta.brand,
-          policy: {
-            matching: state.matching,
-            audit_narrative: state.audit,
-            override_discipline: state.override
-          },
-          trust_risk: { trust_pct: trustPct, risk_pct: riskPct },
-          case: state.caseId ? {
-            case_id: state.caseId,
-            exception: state.exception,
-            exception_label: exceptionHuman(),
-            status: state.caseStatus,
-            owner: state.owner,
-            evidence: state.evidence,
-            outcome: state.outcome
-          } : null,
-          evidence_expectations: {
-            purchase_order: state.matching >= 2,
-            goods_receipt: state.matching >= 3 && state.exception !== 'missing_grn',
-            invoice: true,
-            case_note_required: state.override
-          },
-          outputs: {
-            narrative_log: state.audit ? 'compiled' : 'limited',
-            audit_events: true,
-            export_schema: 'stable/v1'
-          }
-        };
-
-        const cards = [
-          {
-            title: 'Scenario',
-            kv: [
-              ['Lens', meta.lens],
-              ['Posture', meta.brand],
-              ['Policy', matchLong],
-              ['Audit narrative', state.audit ? 'On (auto-compiled)' : 'Off (manual)'],
-              ['Override discipline', state.override ? 'On (case required)' : 'Off (optional)'],
-              ['Trust / Risk', `${trustPct}% / ${riskPct}%`],
-              ['Pack ID', packId],
-            ],
-            chips: ['No tracking', 'Deterministic', 'Portable proof']
-          },
-          {
-            title: 'Case (simulated)',
-            kv: state.caseId ? [
-              ['Case ID', state.caseId],
-              ['Exception', exceptionHuman()],
-              ['Status', state.caseStatus],
-              ['Owner', state.owner],
-              ['Evidence', state.evidence.length ? state.evidence.join(', ') : '—'],
-              ['Outcome', state.outcome || '—']
-            ] : [
-              ['Case', 'None generated yet'],
-              ['Tip', 'Click “Generate Case” in the simulator'],
-              ['Shortcut', 'Press G to generate']
-            ],
-            chips: state.caseId ? ['Case lifecycle', 'Owned exception', 'Auditable'] : ['Ready', 'Awaiting input']
-          },
-          {
-            title: 'Exports',
-            kv: [
-              ['Narrative log', state.audit ? 'Yes (who/why/what)' : 'Limited'],
-              ['Audit events', 'Yes (append-only)'],
-              ['Schema', 'stable/v1'],
-              ['File export', 'JSON (download)'],
-              ['Use', 'Auditor pack, investor proof, integration payload']
-            ],
-            chips: ['Export JSON', 'Case stream', 'Stable contract']
-          }
-        ];
-
-        return {pack, cards};
-      }
-
-      function makeEvidencePack(act){
-        const meta = copyFor(act);
-        const {pack, cards} = currentPack(act);
-
-        evTitle.textContent = `Evidence Pack · ${meta.lens}`;
-        evSub.textContent = `Generated from policy + simulator state. (matching=${state.matching}-way, audit=${state.audit?'on':'off'}, override=${state.override?'on':'off'})`;
-
-        evBody.innerHTML = cards.map(s => `
-          <section class="evCard">
-            <h4>${s.title}</h4>
-            <div class="kv">
-              ${(s.kv || []).map(([k,v]) => `
-                <div class="k">${k}</div>
-                <div class="vv">${String(v)}</div>
-              `).join('')}
-            </div>
-            <div class="chips">
-              ${(s.chips || []).map(c => `<span class="chip"><i aria-hidden="true"></i><span>${c}</span></span>`).join('')}
-            </div>
-          </section>
-        `).join('');
-
-        return pack;
-      }
-
-      function openEvidence(){
-        const p = computeProgress();
-        const {act} = actAndWeights(p);
-        makeEvidencePack(act);
-        setDrawer(true);
-      }
-
-      function exportEvidence(){
-        const p = computeProgress();
-        const {act} = actAndWeights(p);
-        const pack = makeEvidencePack(act);
-
-        const json = JSON.stringify(pack, null, 2);
-        const blob = new Blob([json], {type: 'application/json'});
-        const url = URL.createObjectURL(blob);
-
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = (pack.pack_id || 'evidence-pack') + '.json';
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-
-        setTimeout(()=>URL.revokeObjectURL(url), 1000);
-      }
-
-      evidenceBtn.addEventListener('click', openEvidence);
-      previewBtn2.addEventListener('click', openEvidence);
-      openEvidence2.addEventListener('click', openEvidence);
-      openEvidenceInline.addEventListener('click', openEvidence);
-
-      exportBtn.addEventListener('click', exportEvidence);
-      exportInline.addEventListener('click', exportEvidence);
-
-      drawerClose.addEventListener('click', ()=>setDrawer(false));
-      scrim.addEventListener('click', ()=>setDrawer(false));
-      window.addEventListener('keydown', (e)=>{
-        if(e.key === 'Escape' && document.body.classList.contains('drawerOpen')) setDrawer(false);
-      });
-
-      // Act jumps
-      function jumpToAct(n){
-        const targets = [0.10, 0.50, 0.86];
-        const pp = targets[clamp(n,0,2)];
-        const start = track.offsetTop;
-        const end = start + track.offsetHeight - window.innerHeight;
-        const y = start + pp * (end - start);
-        window.scrollTo({top: y, behavior: 'smooth'});
-      }
-      actButtons.forEach((b)=>{
-        b.addEventListener('click', ()=>{
-          const n = parseInt(b.getAttribute('data-jump') || '0', 10);
-          jumpToAct(n);
-        });
-      });
-      document.getElementById('rewindBtn').addEventListener('click', ()=>jumpToAct(0));
-      document.getElementById('jumpOpsBtn').addEventListener('click', ()=>jumpToAct(1));
-
-      // Keyboard shortcuts
-      window.addEventListener('keydown', (e)=>{
-        const k = e.key.toLowerCase();
-        const t = e.target;
-        if(t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA')) return;
-
-        if(k === '1') setMatching(1);
-        if(k === '2') setMatching(2);
-        if(k === '3') setMatching(3);
-
-        if(k === 'a'){ auditSw.checked = !auditSw.checked; state.audit = auditSw.checked; requestRender(); }
-        if(k === 'o'){ overrideSw.checked = !overrideSw.checked; state.override = overrideSw.checked; requestRender(); }
-
-        if(k === 'g') generateCase();
-        if(k === 'e') openEvidence();
-      });
-
-      // Demo interactions
-      const demoBtn = document.getElementById('demoBtn');
-      const email = document.getElementById('email');
-      const msg = document.getElementById('msg');
-      const copyBtn = document.getElementById('copyBtn');
-
-      demoBtn.addEventListener('click', ()=>{
-        const v = (email.value || '').trim();
-        if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)){
-          msg.textContent = 'Please enter a valid work email.';
-          return;
-        }
-        msg.textContent = 'Request received. We’ll reply with a calm, inspectable walkthrough.';
-        setTimeout(()=>msg.textContent='', 2600);
-        email.value = '';
-      });
-
-      copyBtn.addEventListener('click', async ()=>{
-        const p = computeProgress();
-        const {act} = actAndWeights(p);
-        const meta = copyFor(act);
-        const pitch = `NexusCanon — ${meta.brand}\nPolicy: matching=${state.matching}-way, audit=${state.audit?'on':'off'}, override=${state.override?'on':'off'}\nSimulator: ${state.caseId ? `${state.caseId} (${exceptionHuman()} → ${state.caseStatus})` : 'no case generated'}\n${meta.ctaB}`;
-        try{ await navigator.clipboard.writeText(pitch); msg.textContent = 'Copied current pitch.'; }
-        catch{ msg.textContent = 'Copy unavailable in this browser.'; }
-        setTimeout(()=>msg.textContent='', 1800);
-      });
-
-      // ======= Render =======
-      let raf = null;
-      function requestRender(){
-        if(raf) return;
-        raf = requestAnimationFrame(render);
-      }
-
-      function applyPolicyUI(act){
-        const tr = computeTrustRisk();
-
-        // base vars
-        root.style.setProperty('--trust', tr.trust.toFixed(4));
-        root.style.setProperty('--risk', tr.risk.toFixed(4));
-
-        // NEW: risk heat binds to visuals
-        root.style.setProperty('--dangerGlow', tr.risk.toFixed(4));
-        root.style.setProperty('--riskTint', `rgba(255,100,100, ${(tr.risk * 0.18).toFixed(3)})`);
-        root.style.setProperty('--riskEdge', `rgba(255,100,100, ${(tr.risk * 0.55).toFixed(3)})`);
-
-        const trustPct = Math.round(tr.trust * 100);
-        const riskPct  = Math.round(tr.risk * 100);
-
-        trustTxt.textContent = `TRUST: ${trustPct}%`;
-        riskTxt.textContent  = `RISK: ${riskPct}%`;
         auditLbl.textContent = state.audit ? 'On' : 'Off';
         overrideLbl.textContent = state.override ? 'On' : 'Off';
-        policyState.textContent = policySummary();
 
-        // simulator state pill
-        caseStatePill.textContent = state.caseId ? `case=${state.caseStatus.toLowerCase()}` : 'case=none';
+        // Status dot + line
+        statusDot.className = 'statusDot';
+        let postureWord = 'controlled';
 
-        // simulator fields
-        caseIdEl.textContent = state.caseId || '—';
-        caseStatusEl.textContent = state.caseStatus || 'None';
-        caseOwnerEl.textContent = state.owner || '—';
-        caseEvidenceEl.textContent = state.evidence.length ? state.evidence.join(', ') : '—';
-        caseOutcomeEl.textContent = state.outcome || '—';
-
-        // console
-        consoleText.textContent = consoleFor(act);
-      }
-
-      function consoleFor(act){
-        const ex = exceptionHuman();
-        const base =
-`$ surface.init --tenant example-hq --lens ${copyFor(act).lens.toLowerCase()}
-> matching: ${matchText()}
-> audit_narrative: ${state.audit ? 'on' : 'off'}
-> override_discipline: ${state.override ? 'on' : 'off'}
-> exception_type: ${ex}`;
-
-        if(!state.caseId){
-          return base + `
-> case: none
-> simulator: ready (press G or click “Generate Case”)
-> hint: exportable proof appears after a case exists`;
+        if (rp >= 55) {
+          statusDot.classList.add('danger');
+          statusLine.textContent = 'High-risk posture';
+          postureWord = 'high-risk';
+        } else if (rp >= 30) {
+          statusDot.classList.add('warn');
+          statusLine.textContent = 'Elevated risk';
+          postureWord = 'elevated';
+        } else {
+          statusDot.classList.add('ok');
+          statusLine.textContent = 'Ready for authenticated access';
+          postureWord = 'controlled';
         }
 
-        return base + `
-> case_id: ${state.caseId}
-> status: ${state.caseStatus}
-> owner: ${state.owner}
-> evidence: ${state.evidence.length ? state.evidence.join(' | ') : '—'}
-> outcome: ${state.outcome || '—'}
-> export: ${state.caseStatus === 'Settled' ? 'pack ready (JSON)' : 'pack available (draft)'}
-> next: open evidence drawer (E) · export JSON`;
+        riskHint.textContent = 'posture: ' + postureWord;
+
+        // Danger highlighting on inputs only when risk is high OR simulated
+        const dangerInput = (rp >= 55);
+        identity.classList.toggle('danger', dangerInput);
+        passkey.classList.toggle('danger', dangerInput);
       }
 
-      function render(){
+      function setMatching(n) {
+        state.matching = n;
+        segBtns.forEach(b => b.setAttribute('aria-pressed', String(Number(b.dataset.match) === n)));
+        render();
+      }
+
+      segBtns.forEach(b => b.addEventListener('click', () => setMatching(Number(b.dataset.match))));
+      auditSw.addEventListener('change', () => { state.audit = auditSw.checked; render(); });
+      overrideSw.addEventListener('change', () => { state.override = overrideSw.checked; render(); });
+
+      // Buttons
+      const simulateBtn = document.getElementById('simulateBtn');
+      const resetBtn = document.getElementById('resetBtn');
+      simulateBtn.addEventListener('click', () => {
+        state.simulatedHighRisk = !state.simulatedHighRisk;
+        simulateBtn.textContent = state.simulatedHighRisk ? 'Clear simulated case heat' : 'Simulate high-risk case';
+        render();
+      });
+      resetBtn.addEventListener('click', () => {
+        state.matching = 3;
+        state.audit = true;
+        state.override = true;
+        state.simulatedHighRisk = false;
+        auditSw.checked = true;
+        overrideSw.checked = true;
+        setMatching(3);
+        simulateBtn.textContent = 'Simulate high-risk case';
+        render();
+      });
+
+      // Copy pitch / briefing
+      const msg = document.getElementById('msg');
+      const copyPitchBtn = document.getElementById('copyPitchBtn');
+      const demoBtnBottom = document.getElementById('demoBtnBottom');
+      const demoBtnTop = document.getElementById('demoBtnTop');
+
+      function currentPitch() {
+        return [
+          'NexusCanon VMP — Settlement Governance Portal',
+          'Secure settlement access with evidence-gated release.',
+          'Exceptions become owned cases: assigned, time-stamped, reviewable.',
+          'Controls: ' + summaryText(),
+          'Outputs: immutable case log, audit narrative, exportable proof pack.'
+        ].join('\n');
+      }
+
+      async function copyPitch() {
+        try {
+          await navigator.clipboard.writeText(currentPitch());
+          msg.textContent = 'Copied current pitch to clipboard.';
+        } catch (e) {
+          msg.textContent = 'Clipboard unavailable. Select and copy manually:\n' + currentPitch();
+        }
+      }
+
+      copyPitchBtn.addEventListener('click', copyPitch);
+      demoBtnBottom.addEventListener('click', copyPitch);
+      demoBtnTop.addEventListener('click', copyPitch);
+
+      // Cinema scroll tick with enhanced cinematic effects
+      let autoScrollEnabled = false;
+      let autoScrollProgress = 0;
+      let autoScrollSpeed = 0.00015; // Speed of auto-scroll (0-1 per ms)
+      let lastTime = performance.now();
+      let userInteracting = false;
+      let interactionTimeout;
+
+      function tick(currentTime = performance.now()) {
         const p = computeProgress();
-        const {act, u, w0, w1, w2} = actAndWeights(p);
+
+        // Auto-scroll if enabled and user not interacting
+        if (autoScrollEnabled && !userInteracting) {
+          const deltaTime = currentTime - lastTime;
+          autoScrollProgress = Math.min(1, autoScrollProgress + (autoScrollSpeed * deltaTime));
+
+          // Smooth scroll to auto position
+          const start = track.offsetTop;
+          const end = start + track.offsetHeight - window.innerHeight;
+          const targetY = start + (autoScrollProgress * (end - start));
+          const currentY = window.scrollY;
+          const diff = targetY - currentY;
+
+          if (Math.abs(diff) > 1) {
+            window.scrollTo({
+              top: currentY + (diff * 0.08), // Smooth easing
+              behavior: 'auto'
+            });
+          }
+        } else {
+          // Update auto-scroll progress to match current scroll
+          autoScrollProgress = p;
+        }
+
+        lastTime = currentTime;
 
         root.style.setProperty('--p', p.toFixed(4));
-        root.style.setProperty('--u', u.toFixed(4));
-        root.style.setProperty('--w0', w0.toFixed(4));
-        root.style.setProperty('--w1', w1.toFixed(4));
-        root.style.setProperty('--w2', w2.toFixed(4));
+        setSceneWeights(p);
 
-        const meta = copyFor(act);
-        root.setAttribute('data-persona', meta.persona);
+        pct.textContent = Math.round(p * 100) + '%';
 
-        lensLabel.textContent = 'Lens: ' + meta.lens;
-        brandLine.textContent = meta.brand;
-        ctaTitle.textContent = meta.ctaT;
-        ctaBody.textContent = meta.ctaB;
-        footLine.textContent = meta.foot;
-        policyMode.textContent = meta.policy;
-        consoleMode.textContent = 'CONSOLE: ' + meta.lens.toUpperCase();
+        // Update stage tag subtly by scene
+        const stageTag = document.getElementById('stageTag');
+        if (p < 0.34) stageTag.textContent = 'ACT I · ACCESS';
+        else if (p < 0.67) stageTag.textContent = 'ACT II · CASE OWNERSHIP';
+        else stageTag.textContent = 'ACT III · PROOF EXPORT';
 
-        actButtons.forEach((b, i)=> b.setAttribute('aria-current', String(i === act)));
-
-        const per = Math.round(p * 100);
-        pct.textContent = per + '%';
-
-        // keep simulator label aware of persona
-        simMode.textContent = `SIMULATOR: CASE LIFECYCLE (${meta.lens.toUpperCase()})`;
-
-        applyPolicyUI(act);
-
-        raf = null;
+        requestAnimationFrame(tick);
       }
 
-      // Init
-      setMatching(state.matching);
-      auditSw.checked = state.audit;
-      overrideSw.checked = state.override;
-      setException(state.exception);
-      setStep(0);
+      // Enhanced scroll detection with user interaction tracking
+      let scrollTimeout;
+      function onScroll() {
+        userInteracting = true;
+        clearTimeout(interactionTimeout);
+        interactionTimeout = setTimeout(() => {
+          userInteracting = false;
+        }, 2000); // Resume auto-scroll after 2s of no interaction
 
-      // Render on scroll/resize
-      window.addEventListener('scroll', requestRender, {passive:true});
-      window.addEventListener('resize', requestRender);
+        if (scrollTimeout) return;
+        scrollTimeout = requestAnimationFrame(() => {
+          tick();
+          scrollTimeout = null;
+        });
+      }
+
+      function onWheel() {
+        userInteracting = true;
+        clearTimeout(interactionTimeout);
+        interactionTimeout = setTimeout(() => {
+          userInteracting = false;
+        }, 2000);
+        onScroll();
+      }
+
+      // Ensure scroll events are attached to the correct element
+      // Use both window and document for maximum compatibility
+      window.addEventListener('scroll', onScroll, { passive: true });
+      document.addEventListener('scroll', onScroll, { passive: true });
+      window.addEventListener('wheel', onWheel, { passive: true });
+      window.addEventListener('touchstart', () => { userInteracting = true; }, { passive: true });
+      window.addEventListener('touchmove', () => { userInteracting = true; }, { passive: true });
+
+      // Force initial tick to set up scroll progress
+      requestAnimationFrame(() => {
+        tick();
+      });
+
+      // Auto-scroll toggle button (add to scroll hint)
+      const scrollHint = document.querySelector('.scrollHint');
+      if (scrollHint) {
+        scrollHint.style.cursor = 'pointer';
+        scrollHint.addEventListener('click', () => {
+          autoScrollEnabled = !autoScrollEnabled;
+          if (autoScrollEnabled) {
+            scrollHint.querySelector('span').textContent = 'Auto-playing... Click to pause';
+            scrollHint.style.borderColor = 'rgba(96, 255, 198, .6)';
+            scrollHint.style.background = 'linear-gradient(135deg, rgba(96, 255, 198, .2), rgba(96, 255, 198, .1))';
+          } else {
+            scrollHint.querySelector('span').textContent = 'Scroll to reveal';
+            scrollHint.style.borderColor = 'rgba(96, 255, 198, .25)';
+            scrollHint.style.background = 'linear-gradient(135deg, rgba(96, 255, 198, .12), rgba(96, 255, 198, .06))';
+          }
+        });
+      }
+
+      requestAnimationFrame(tick);
+
+      // Basic "init" actions (no real auth)
+      document.getElementById('initBtn').addEventListener('click', () => {
+        msg.textContent = 'Prototype action: wire this button to your /login handler. Keep posture signals identical.';
+        location.hash = '#after';
+      });
+      document.getElementById('ssoBtn').addEventListener('click', () => {
+        msg.textContent = 'Prototype action: wire this to your IdP redirect. Preserve audit stamp and posture summary.';
+        location.hash = '#after';
+      });
 
       // Initial render
-      requestRender();
+      render();
+      setMatching(3);
+
+      // Diagnostic: Check scroll setup on load
+      window.addEventListener('load', () => {
+        setTimeout(() => {
+          const track = document.getElementById('track');
+          const docHeight = document.documentElement.scrollHeight;
+          const viewportHeight = window.innerHeight;
+          const trackHeight = track ? track.offsetHeight : 0;
+
+          console.log('=== Scroll Diagnostic ===');
+          console.log('Document height:', docHeight);
+          console.log('Viewport height:', viewportHeight);
+          console.log('Track height:', trackHeight);
+          console.log('Can scroll:', docHeight > viewportHeight);
+          console.log('Track offsetTop:', track ? track.offsetTop : 'N/A');
+          console.log('Body overflow-y:', getComputedStyle(document.body).overflowY);
+          console.log('HTML overflow-y:', getComputedStyle(document.documentElement).overflowY);
+          console.log('========================');
+
+          if (docHeight <= viewportHeight) {
+            console.error('❌ SCROLLING ISSUE: Document height is not greater than viewport!');
+            console.log('This means the page cannot scroll. Check CSS constraints.');
+          } else {
+            console.log('✅ Scrolling should work - document is taller than viewport');
+          }
+        }, 500);
+      });
     })();
   </script>
 </body>
+
 </html>

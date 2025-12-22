@@ -193,6 +193,19 @@ This document provides:
 </button>
 ```
 
+#### Concept 6: **The "Mode Switch" (Persona Toggle)**
+**Purpose:** Adapts the interface for the user's current intent (Deep Work vs. Fast Action).
+
+**Visual:**
+```
+[ Toggle: 📊 Reconciliation Mode (Desktop Default) | ⚡ Action Mode (Mobile Default) ]
+```
+
+**Implementation:**
+- **Reconciliation Mode:** Dense tables, bulk actions, filters (Finance Persona)
+- **Action Mode:** Card feeds, big buttons, chat-style thread (Sales Persona)
+- **Logic:** Auto-detects by device, but allows manual toggle.
+
 ---
 
 ## 🎨 Design System Governance (IDE Auto-Enrichment)
@@ -283,6 +296,9 @@ This document provides:
 **Overlays:**
 - `.vmp-modal` - Modal dialog
 - `.vmp-dropdown` - Dropdown menu
+
+**Governance Rule:**
+- **Mobile Parity Rule:** "Action Mode" (Mobile) must support **Status Checking** and **Evidence Upload** for every transaction type. It does *not* need to support Bulk Actions or CSV Exports.
 
 **IDE Auto-Enrichment:**
 ```html
@@ -551,7 +567,7 @@ This document provides:
 - App manifest for install prompt
 - Push notifications for case updates
 
-**Sprint:** Sprint 12 (Mobile Excellence)
+**Sprint:** Sprint 12 (The Sales Rep Experience - Action Mode)
 
 #### 6. **AI-Powered Search**
 **Feature:** Natural language search ("Show me unpaid invoices from last month").
@@ -714,31 +730,31 @@ This document provides:
 
 ---
 
-### **Sprint 12: Mobile Excellence (2 weeks)**
-**Goal:** PWA and mobile optimization
+### **Sprint 12: The Sales Rep Experience (Action Mode) (2 weeks)**
+**Goal:** Dedicated mobile interface for Sales Rep persona
 
-#### Task 12.1: PWA Setup
+#### Task 12.1: Action Mode UI (The Card Feed)
+- [ ] **Split View Implementation:** Separate HTML structures for Table vs. Card Feed (not just CSS hiding).
+- [ ] **Invoice Cards:** "Instagram-style" feed for invoices (Status + Amount + Big Actions).
+- [ ] **Quick Actions:** One-tap "Snap Evidence" and "Chat" buttons on cards.
+- [ ] **Infinite Scroll:** Replace pagination with scroll-to-load for feeds.
+
+#### Task 12.2: PWA Setup
 - [ ] Service worker for offline support
 - [ ] App manifest for install prompt
 - [ ] Offline fallback pages
 - [ ] Cache strategy implementation
 
-#### Task 12.2: Push Notifications
+#### Task 12.3: Mobile Push & Polish
 - [ ] Push notification registration
-- [ ] Case update notifications
-- [ ] Payment received notifications
-- [ ] Notification preferences
-
-#### Task 12.3: Mobile UX Polish
 - [ ] Touch target size optimization (≥44px)
 - [ ] Mobile navigation drawer
 - [ ] Swipe gestures for actions
-- [ ] Mobile-specific layouts
 
 **Deliverables:**
+- Dedicated Action Mode UI
 - Installable PWA
 - Push notifications
-- Mobile-optimized UX
 
 ---
 

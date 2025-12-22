@@ -1,0 +1,297 @@
+<!-- Invoice Card Feed (Sprint 12.1: Action Mode) -->
+<div class="invoice-card-feed" 
+     data-list-type="invoices"
+     x-data="invoiceCardFeed()"
+     x-init="init()">
+    
+    {% if error %}
+    <div class="p-3 m-4 rounded-lg border vmp-border-warn vmp-bg-warn vmp-opacity-30">
+        <div class="vmp-caption vmp-text-warn">{{ error }}</div>
+    </div>
+    {% endif %}
+
+    <!-- Filters & Export (Mobile-Optimized) -->
+    <div class="sticky top-0 z-10 vmp-component-card-header backdrop-blur-md mb-4">
+        <div class="flex gap-2 items-center flex-wrap">
+            <form hx-get="/partials/invoice-card-feed.html" 
+                  hx-target="#invoice-card-feed-container" 
+                  hx-swap="innerHTML"
+                  hx-push-url="true"
+                  class="flex gap-2 items-center flex-1 min-w-0">
+                <input type="text" 
+                       name="search" 
+                       placeholder="Search..." 
+                       class="vmp-form-input text-sm flex-1 min-w-0"
+                       value="{{ request.query.search or '' }}">
+                <select name="status" class="vmp-form-input text-sm">
+                    <option value="">All</option>
+                    <option value="pending" {% if request.query.status=='pending' %}selected{% endif %}>Pending</option>
+                    <option value="matched" {% if request.query.status=='matched' %}selected{% endif %}>Matched</option>
+                    <option value="paid" {% if request.query.status=='paid' %}selected{% endif %}>Paid</option>
+                    <option value="disputed" {% if request.query.status=='disputed' %}selected{% endif %}>Disputed</option>
+                </select>
+                <button type="submit" class="vmp-btn-outline text-sm shrink-0">Filter</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Card Feed Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pb-8" id="invoice-cards-grid">
+        {% if invoices and invoices|length > 0 %}
+        {% for invoice in invoices %}
+        <div class="invoice-card swipeable" 
+             data-invoice-id="{{ invoice.id }}"
+             data-page="{{ current_page or 1 }}"
+             x-data="swipeableCard('{{ invoice.id }}')"
+             x-init="initSwipe()">
+            <div class="vmp-panel border vmp-border-color rounded-lg p-4 hover:border-vmp-brand transition-all">
+                <!-- Card Header -->
+                <div class="flex items-start justify-between mb-3">
+                    <div class="flex-1 min-w-0">
+                        <div class="vmp-body-small font-medium truncate mb-1">
+                            {{ invoice.invoice_num or 'Invoice #' + invoice.id|string|truncate(8, True, '') }}
+                        </div>
+                        <div class="vmp-caption vmp-muted">
+                            {{ invoice.vmp_companies.name if invoice.vmp_companies else 'N/A' }}
+                        </div>
+                    </div>
+                    {% set st = (invoice.status or 'pending') | lower %}
+                    {% if st == 'paid' %}
+                    <span class="vmp-badge vmp-badge-ok shrink-0">PAID</span>
+                    {% elif st == 'pending' %}
+                    <span class="vmp-badge vmp-badge-warn shrink-0">PENDING</span>
+                    {% elif st == 'matched' %}
+                    <span class="vmp-badge shrink-0">MATCHED</span>
+                    {% elif st == 'disputed' or st == 'blocked' %}
+                    <span class="vmp-badge vmp-badge-danger shrink-0">{{ st | upper }}</span>
+                    {% else %}
+                    <span class="vmp-badge shrink-0">{{ st | upper }}</span>
+                    {% endif %}
+                </div>
+
+                <!-- Amount (Large, Prominent) -->
+                <div class="mb-4">
+                    <div class="vmp-h3 mb-1" style="font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace;">
+                        {{ "%.2f"|format(invoice.amount if invoice.amount else 0) }}
+                    </div>
+                    <div class="vmp-caption vmp-muted">
+                        {{ invoice.currency_code or 'USD' }}
+                        {% if invoice.invoice_date %}
+                        • {{ invoice.invoice_date | date('%b %d, %Y') }}
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Quick Actions (One-Tap Buttons) -->
+                <div class="flex gap-2">
+                    <button 
+                        @click="snapEvidence('{{ invoice.id }}')"
+                        class="vmp-btn-primary flex-1 flex items-center justify-center gap-2 py-3"
+                        style="min-height: 44px;">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                            <circle cx="12" cy="13" r="4"></circle>
+                        </svg>
+                        <span class="vmp-body-small">Snap Evidence</span>
+                    </button>
+                    <button 
+                        @click="openChat('{{ invoice.id }}')"
+                        class="vmp-btn vmp-btn-ghost flex-1 flex items-center justify-center gap-2 py-3"
+                        style="min-height: 44px;">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                        </svg>
+                        <span class="vmp-body-small">Chat</span>
+                    </button>
+                </div>
+
+                <!-- View Details Link -->
+                <div class="mt-3 pt-3 border-t vmp-border-color">
+                    <a href="/invoices/{{ invoice.id }}" 
+                       class="vmp-body-small vmp-link text-center block">
+                        View Details →
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+        {% else %}
+        <div class="col-span-full">
+            <div class="vmp-empty text-center py-12">
+                <div class="vmp-caption vmp-muted">No invoices found matching your criteria.</div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Infinite Scroll Trigger -->
+    {% if has_more %}
+    <div id="infinite-scroll-trigger"
+         hx-get="/partials/invoice-card-feed.html?page={{ next_page }}&search={{ request.query.search or '' }}&status={{ request.query.status or '' }}"
+         hx-trigger="intersect once"
+         hx-target="#invoice-cards-grid"
+         hx-swap="beforeend"
+         class="h-20 flex items-center justify-center">
+        <div class="vmp-spinner"></div>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+function invoiceCardFeed() {
+  return {
+    init() {
+      // Initialize infinite scroll observer
+      this.setupInfiniteScroll();
+    },
+
+    setupInfiniteScroll() {
+      // HTMX handles intersection observer via hx-trigger="intersect"
+      // This is just for any additional setup if needed
+    },
+
+    snapEvidence(invoiceId) {
+      // Navigate to invoice detail with evidence upload focused
+      // First check if there's a case, if not create one
+      fetch(`/invoices/${invoiceId}/open-case`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.case_id) {
+          // Navigate to case with evidence upload
+          window.location.href = `/cases/${data.case_id}?action=upload-evidence`;
+        } else {
+          // Navigate to invoice detail
+          window.location.href = `/invoices/${invoiceId}?action=upload-evidence`;
+        }
+      })
+      .catch(error => {
+        console.error('Error opening evidence upload:', error);
+        // Fallback to invoice detail
+        window.location.href = `/invoices/${invoiceId}?action=upload-evidence`;
+      });
+    },
+
+    openChat(invoiceId) {
+      // Check if invoice has a case, if not create one
+      fetch(`/invoices/${invoiceId}/open-case`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.case_id) {
+          // Navigate to case thread
+          window.location.href = `/cases/${data.case_id}`;
+        } else {
+          // Show error
+          alert('Failed to open chat. Please try again.');
+        }
+      })
+      .catch(error => {
+        console.error('Error opening chat:', error);
+        alert('Failed to open chat. Please try again.');
+      });
+    }
+  }
+}
+
+// Swipeable card component
+function swipeableCard(invoiceId) {
+  return {
+    touchStartX: 0,
+    touchStartY: 0,
+    touchEndX: 0,
+    touchEndY: 0,
+    minSwipeDistance: 50,
+
+    initSwipe() {
+      // Initialize swipe gestures for this card
+      const cardElement = this.$el;
+      if (!cardElement) return;
+
+      cardElement.addEventListener('touchstart', (e) => {
+        this.touchStartX = e.changedTouches[0].screenX;
+        this.touchStartY = e.changedTouches[0].screenY;
+      }, { passive: true });
+
+      cardElement.addEventListener('touchend', (e) => {
+        this.touchEndX = e.changedTouches[0].screenX;
+        this.touchEndY = e.changedTouches[0].screenY;
+        this.handleSwipe(invoiceId);
+      }, { passive: true });
+    },
+
+    handleSwipe(invoiceId) {
+      const deltaX = this.touchEndX - this.touchStartX;
+      const deltaY = this.touchEndY - this.touchStartY;
+      const absDeltaX = Math.abs(deltaX);
+      const absDeltaY = Math.abs(deltaY);
+
+      // Determine if horizontal or vertical swipe
+      if (absDeltaX > absDeltaY) {
+        // Horizontal swipe
+        if (absDeltaX > this.minSwipeDistance) {
+          if (deltaX > 0) {
+            // Swipe right to snap evidence
+            this.snapEvidence(invoiceId);
+          } else {
+            // Swipe left to open chat
+            this.openChat(invoiceId);
+          }
+        }
+      }
+    },
+
+    snapEvidence(invoiceId) {
+      // Navigate to invoice detail with evidence upload focused
+      fetch(`/invoices/${invoiceId}/open-case`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.case_id) {
+          window.location.href = `/cases/${data.case_id}?action=upload-evidence`;
+        } else {
+          window.location.href = `/invoices/${invoiceId}?action=upload-evidence`;
+        }
+      })
+      .catch(error => {
+        console.error('Error opening evidence upload:', error);
+        window.location.href = `/invoices/${invoiceId}?action=upload-evidence`;
+      });
+    },
+
+    openChat(invoiceId) {
+      fetch(`/invoices/${invoiceId}/open-case`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.case_id) {
+          window.location.href = `/cases/${data.case_id}`;
+        } else {
+          alert('Failed to open chat. Please try again.');
+        }
+      })
+      .catch(error => {
+        console.error('Error opening chat:', error);
+        alert('Failed to open chat. Please try again.');
+      });
+    }
+  }
+}
+</script>
+

@@ -1,0 +1,13 @@
+<!-- Notification Badge Partial (Sprint 7.4) -->
+{% if unreadCount and unreadCount > 0 %}
+<a href="/notifications" 
+   class="vmp-btn vmp-btn-ghost w-full relative">
+    <span>Notifications</span>
+    <span class="vmp-badge vmp-badge-danger ml-2">{{ unreadCount }}</span>
+</a>
+{% else %}
+<div class="vmp-caption vmp-muted text-center py-2">
+    No new notifications
+</div>
+{% endif %}
+

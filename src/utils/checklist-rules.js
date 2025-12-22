@@ -6,11 +6,106 @@
  */
 
 /**
+ * Get checklist steps for exception types
+ * @param {string} exceptionType - Exception type: 'missing_grn', 'amount_mismatch', 'date_mismatch', 'missing_po', 'po_status', 'grn_status'
+ * @returns {Array} Array of checklist step definitions specific to the exception
+ */
+export function getChecklistStepsForException(exceptionType) {
+    const exceptionRules = {
+        missing_grn: [
+            {
+                label: 'Upload Signed GRN',
+                required_evidence_type: 'grn',
+                description: 'Goods receipt note signed by receiving party (Required for 3-way match)'
+            },
+            {
+                label: 'Upload Invoice PDF',
+                required_evidence_type: 'invoice_pdf',
+                description: 'Original invoice document in PDF format'
+            }
+        ],
+        amount_mismatch: [
+            {
+                label: 'Upload Corrected Invoice',
+                required_evidence_type: 'invoice_pdf',
+                description: 'Corrected invoice document with accurate amount'
+            },
+            {
+                label: 'Upload PO Confirmation',
+                required_evidence_type: 'po_number',
+                description: 'Purchase order document confirming the correct amount'
+            },
+            {
+                label: 'Upload GRN with Correct Amount',
+                required_evidence_type: 'grn',
+                description: 'Goods receipt note showing the correct received amount'
+            },
+            {
+                label: 'Dispute Explanation',
+                required_evidence_type: 'misc',
+                description: 'Document explaining the amount discrepancy'
+            }
+        ],
+        date_mismatch: [
+            {
+                label: 'Upload Invoice PDF',
+                required_evidence_type: 'invoice_pdf',
+                description: 'Original invoice document in PDF format'
+            },
+            {
+                label: 'Date Discrepancy Explanation',
+                required_evidence_type: 'misc',
+                description: 'Document explaining the date difference between invoice and PO/GRN'
+            }
+        ],
+        missing_po: [
+            {
+                label: 'Upload PO Document',
+                required_evidence_type: 'po_number',
+                description: 'Purchase order document matching the invoice'
+            },
+            {
+                label: 'Upload Invoice PDF',
+                required_evidence_type: 'invoice_pdf',
+                description: 'Original invoice document in PDF format'
+            }
+        ],
+        po_status: [
+            {
+                label: 'Upload Updated PO',
+                required_evidence_type: 'po_number',
+                description: 'Updated purchase order document with correct status'
+            },
+            {
+                label: 'PO Status Explanation',
+                required_evidence_type: 'misc',
+                description: 'Document explaining why PO status needs to be updated'
+            }
+        ],
+        grn_status: [
+            {
+                label: 'Upload Verified GRN',
+                required_evidence_type: 'grn',
+                description: 'Goods receipt note with verified status'
+            },
+            {
+                label: 'GRN Verification Explanation',
+                required_evidence_type: 'misc',
+                description: 'Document explaining GRN verification requirements'
+            }
+        ]
+    };
+
+    return exceptionRules[exceptionType] || [];
+}
+
+/**
  * Get checklist steps for a case type
  * @param {string} caseType - Case type: 'invoice', 'payment', 'onboarding', 'soa', 'general'
+ * @param {string} exceptionType - Optional exception type to add exception-specific steps
  * @returns {Array} Array of checklist step definitions
  */
-export function getChecklistStepsForCaseType(caseType) {
+export function getChecklistStepsForCaseType(caseType, exceptionType = null) {
     const rules = {
         invoice: [
             {
@@ -79,7 +174,16 @@ export function getChecklistStepsForCaseType(caseType) {
         ]
     };
 
-    return rules[caseType] || rules.general;
+    const baseSteps = rules[caseType] || rules.general;
+    
+    // If exception type is provided, merge exception-specific steps
+    if (exceptionType) {
+        const exceptionSteps = getChecklistStepsForException(exceptionType);
+        // Merge steps, prioritizing exception steps (they come first)
+        return [...exceptionSteps, ...baseSteps];
+    }
+    
+    return baseSteps;
 }
 
 /**

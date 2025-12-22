@@ -4,6 +4,9 @@
         <div class="vmp-label vmp-signal-danger">{{ error }}</div>
     </div>
     {% endif %}
+    
+    <!-- Sprint 8.2: Upload Progress Indicator -->
+    {% include "partials/upload_progress.html" %}
 
     <header class="shrink-0 p-6 border-b vmp-border-color vmp-bg-panel">
         <div class="flex justify-between items-start mb-4">
@@ -34,6 +37,22 @@
                         {% else %} vmp-muted {% endif %}">
                         {{ st | replace('_', ' ') | upper }}
                     </div>
+                    <!-- Sprint 8.1: Enhanced Status Message -->
+                    {% if caseDetail %}
+                    <div class="vmp-caption vmp-muted mt-0.5 text-xs">
+                        {% if st == 'waiting_supplier' %}
+                            Action required: Please submit required evidence
+                        {% elif st == 'waiting_internal' %}
+                            Under review: Internal team is verifying evidence
+                        {% elif st == 'resolved' %}
+                            Complete: All requirements satisfied
+                        {% elif st == 'blocked' %}
+                            Blocked: Additional information needed
+                        {% else %}
+                            Open: Case is being processed
+                        {% endif %}
+                    </div>
+                    {% endif %}
                 </div>
                 <div class="w-1.5 h-8 rounded-full overflow-hidden relative vmp-bg-panel">
                     <div class="absolute bottom-0 left-0 right-0 
@@ -64,8 +83,25 @@
                     </select>
                 </form>
                 {% else %}
-                <div class="vmp-body-small">{{ caseDetail.owner_team if caseDetail and caseDetail.owner_team else
-                    'Unassigned' }}</div>
+                <div class="vmp-body-small">
+                    {% if caseDetail and caseDetail.owner_team %}
+                        {{ caseDetail.owner_team | upper }} Team
+                        <!-- Sprint 8.4: AP Manager Contact Display -->
+                        {% if caseDetail.assigned_user %}
+                            <div class="vmp-caption vmp-muted mt-0.5">
+                                <div>Assigned to: {{ caseDetail.assigned_user.display_name or caseDetail.assigned_user.email }}</div>
+                                {% if caseDetail.assigned_user.email %}
+                                <a href="mailto:{{ caseDetail.assigned_user.email }}?subject=Case {{ caseId|string|truncate(8, True, '') }} - {{ caseDetail.subject if caseDetail else 'Inquiry' }}" 
+                                   class="vmp-link text-xs mt-0.5 inline-block">
+                                    Contact →
+                                </a>
+                                {% endif %}
+                            </div>
+                        {% endif %}
+                    {% else %}
+                        Unassigned
+                    {% endif %}
+                </div>
                 {% endif %}
             </div>
             <div>
@@ -181,6 +217,11 @@
 
         <!-- Right Column: Checklist + Evidence + Escalation -->
         <div class="flex flex-col h-full overflow-y-auto vmp-bg-panel">
+            <!-- AI Validation Panel (Sprint 13.2) -->
+            {% if validationResult %}
+            {% include "partials/case_validation.html" %}
+            {% endif %}
+
             <!-- Checklist Cell -->
             <div id="case-checklist-container" hx-get="/partials/case-checklist.html?case_id={{ caseId }}"
                 hx-trigger="load" hx-target="this" hx-swap="innerHTML" class="shrink-0">
@@ -199,6 +240,15 @@
                 </div>
             </div>
 
+            <!-- Activity Feed (Sprint 8.1) -->
+            <div id="case-activity-container" hx-get="/partials/case-activity.html?case_id={{ caseId }}"
+                hx-trigger="load" hx-target="this" hx-swap="innerHTML" class="shrink-0">
+                <!-- HTMX will load case_activity.html here -->
+                <div class="p-5 border-t vmp-border-color">
+                    <div class="vmp-label-kicker animate-pulse opacity-60">Loading activity...</div>
+                </div>
+            </div>
+
             <!-- Escalation Cell -->
             <div id="case-escalation-container" hx-get="/partials/escalation.html?case_id={{ caseId }}"
                 hx-trigger="load" hx-target="this" hx-swap="innerHTML" class="shrink-0">
@@ -207,6 +257,17 @@
                     <div class="vmp-label-kicker animate-pulse opacity-60">Loading escalation...</div>
                 </div>
             </div>
+
+            <!-- Decision Log (Internal Only) -->
+            {% if isInternal %}
+            <div id="case-decision-log-container" hx-get="/partials/decision-log.html?case_id={{ caseId }}"
+                hx-trigger="load" hx-target="this" hx-swap="innerHTML" class="shrink-0">
+                <!-- HTMX will load decision_log.html here -->
+                <div class="p-5 border-t vmp-border-color">
+                    <div class="vmp-label-kicker animate-pulse opacity-60">Loading decision log...</div>
+                </div>
+            </div>
+            {% endif %}
         </div>
     </div>
 </div>

@@ -1,0 +1,109 @@
+<!-- Port Configuration Partial (Sprint 9.3) -->
+<div class="space-y-6">
+    {% if ports and ports|length > 0 %}
+        {% for port in ports %}
+        <div class="vmp-panel p-6 border vmp-border-color">
+            <div class="flex items-center justify-between mb-4">
+                <div>
+                    <div class="vmp-label-kicker vmp-label-kicker-strong mb-1">{{ port.port_type | upper }} PORT</div>
+                    <div class="vmp-caption vmp-muted">
+                        {% if port.provider %}
+                            Provider: {{ port.provider | upper }}
+                        {% else %}
+                            Not configured
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="flex items-center gap-3">
+                    <span class="vmp-badge {% if port.is_enabled %}vmp-badge-ok{% else %}vmp-badge-muted{% endif %} text-xs">
+                        {% if port.is_enabled %}ENABLED{% else %}DISABLED{% endif %}
+                    </span>
+                </div>
+            </div>
+
+            <form hx-post="/ops/ports/{{ port.port_type }}" 
+                  hx-target="#port-configuration-container" 
+                  hx-swap="innerHTML"
+                  hx-indicator="#port-{{ port.port_type }}-loading"
+                  hx-trigger="submit"
+                  hx-on::after-swap="htmx.trigger('body', 'portConfigUpdated')"
+                  class="space-y-4">
+                <!-- Enable/Disable Toggle -->
+                <div class="flex items-center gap-3">
+                    <label class="vmp-label-kicker">Enable Port</label>
+                    <input type="hidden" name="is_enabled" value="false">
+                    <input type="checkbox" 
+                           name="is_enabled" 
+                           value="true"
+                           {% if port.is_enabled %}checked{% endif %}
+                           class="vmp-form-input"
+                           onchange="this.form.requestSubmit()">
+                </div>
+
+                <!-- Webhook URL -->
+                <div>
+                    <label class="vmp-label-kicker mb-2 block">Webhook URL</label>
+                    <input type="url" 
+                           name="webhook_url" 
+                           value="{{ port.webhook_url or '' }}"
+                           placeholder="https://your-domain.com/ports/{{ port.port_type }}"
+                           class="vmp-form-input w-full">
+                    <div class="vmp-caption vmp-muted mt-1">
+                        Configure this URL in your email/WhatsApp provider's webhook settings
+                    </div>
+                </div>
+
+                <!-- Provider -->
+                <div>
+                    <label class="vmp-label-kicker mb-2 block">Provider</label>
+                    <select name="provider" class="vmp-form-input w-full">
+                        <option value="">Select Provider...</option>
+                        {% if port.port_type == 'email' %}
+                            <option value="sendgrid" {% if port.provider == 'sendgrid' %}selected{% endif %}>SendGrid</option>
+                            <option value="mailgun" {% if port.provider == 'mailgun' %}selected{% endif %}>Mailgun</option>
+                            <option value="generic" {% if port.provider == 'generic' %}selected{% endif %}>Generic</option>
+                        {% elif port.port_type == 'whatsapp' %}
+                            <option value="whatsapp" {% if port.provider == 'whatsapp' %}selected{% endif %}>WhatsApp Business API</option>
+                            <option value="twilio" {% if port.provider == 'twilio' %}selected{% endif %}>Twilio</option>
+                        {% endif %}
+                    </select>
+                </div>
+
+                <!-- Configuration (JSON) -->
+                <div>
+                    <label class="vmp-label-kicker mb-2 block">Configuration (JSON)</label>
+                    <textarea name="configuration" 
+                              rows="4"
+                              class="vmp-form-input w-full font-mono text-sm"
+                              placeholder='{"api_key": "...", "secret": "..."}'>{{ port.configuration | tojson(indent=2) if port.configuration else '{}' }}</textarea>
+                    <div class="vmp-caption vmp-muted mt-1">
+                        Provider-specific configuration (API keys, secrets, etc.)
+                    </div>
+                </div>
+
+                <!-- Save Button -->
+                <div class="flex justify-end">
+                    <button type="submit" 
+                            class="vmp-btn-primary">
+                        Save Configuration
+                    </button>
+                </div>
+
+                <!-- Loading Indicator -->
+                <div id="port-{{ port.port_type }}-loading" class="htmx-indicator">
+                    <div class="vmp-label-kicker animate-pulse opacity-60">Saving...</div>
+                </div>
+            </form>
+        </div>
+        {% endfor %}
+    {% else %}
+        <!-- Empty State -->
+        <div class="vmp-panel p-8 border vmp-border-color text-center">
+            <div class="vmp-empty-title mb-2">No Ports Configured</div>
+            <div class="vmp-empty-description">
+                Port configurations will appear here once the database migration is applied.
+            </div>
+        </div>
+    {% endif %}
+</div>
+

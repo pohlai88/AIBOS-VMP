@@ -107,5 +107,22 @@ export const integrationSchemas = {
     endpoint: 'optional|string|url',
     method: 'optional|string|max:10',
   },
+  ollamaChat: {
+    messages: 'required|array',
+    model: 'optional|string|max:100',
+    stream: 'optional|boolean',
+    options: 'optional|object',
+  },
+  ollamaEmbedding: {
+    text: 'required|string|min:1',
+    model: 'optional|string|max:100',
+  },
+  ollamaClassify: {
+    text: 'required|string|min:1',
+    model: 'optional|string|max:100',
+    systemPrompt: 'optional|string',
+    prompt: 'optional|string',
+    confidence: 'optional|number',
+  },
 }
 

@@ -1,0 +1,182 @@
+<!-- Keyboard Shortcuts Modal (Sprint 10.2) -->
+<div id="keyboard-shortcuts-modal"
+     class="vmp-modal-overlay"
+     x-data="{ isOpen: false }"
+     x-show="isOpen"
+     @keydown.escape.window="isOpen = false"
+     style="display: none;">
+  <!-- Dialog -->
+  <div class="vmp-modal" @click.stop>
+    <div class="vmp-modal-header">
+      <h2 class="vmp-h3">Keyboard Shortcuts</h2>
+      <button @click="isOpen = false" class="vmp-modal-close" aria-label="Close">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M18 6L6 18M6 6l12 12"></path>
+        </svg>
+      </button>
+    </div>
+
+    <div class="vmp-modal-body">
+      <div class="space-y-6">
+        <!-- Navigation -->
+        <div class="vmp-command-group">
+          <div class="vmp-command-group-title">Navigation</div>
+          <div class="space-y-2">
+            <div class="flex items-center justify-between py-2 border-b vmp-border-color">
+              <div>
+                <div class="vmp-body-small">Open Command Palette</div>
+                <div class="vmp-caption vmp-muted">Search cases, invoices, and actions</div>
+              </div>
+              <kbd class="vmp-command-shortcut">⌘K</kbd>
+            </div>
+            <div class="flex items-center justify-between py-2 border-b vmp-border-color">
+              <div>
+                <div class="vmp-body-small">New Case</div>
+                <div class="vmp-caption vmp-muted">Create a new case</div>
+              </div>
+              <kbd class="vmp-command-shortcut">⌘N</kbd>
+            </div>
+            <div class="flex items-center justify-between py-2 border-b vmp-border-color">
+              <div>
+                <div class="vmp-body-small">Go to Home</div>
+                <div class="vmp-caption vmp-muted">Return to console</div>
+              </div>
+              <kbd class="vmp-command-shortcut">⌘H</kbd>
+            </div>
+            <div class="flex items-center justify-between py-2 border-b vmp-border-color">
+              <div>
+                <div class="vmp-body-small">Toggle Theme</div>
+                <div class="vmp-caption vmp-muted">Switch between dark and light mode</div>
+              </div>
+              <kbd class="vmp-command-shortcut">⌘T</kbd>
+            </div>
+          </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="vmp-command-group">
+          <div class="vmp-command-group-title">Actions</div>
+          <div class="space-y-2">
+            <div class="flex items-center justify-between py-2 border-b vmp-border-color">
+              <div>
+                <div class="vmp-body-small">Close Modal / Clear Focus</div>
+                <div class="vmp-caption vmp-muted">Close any open modal or clear input focus</div>
+              </div>
+              <kbd class="vmp-command-shortcut">Esc</kbd>
+            </div>
+            <div class="flex items-center justify-between py-2 border-b vmp-border-color">
+              <div>
+                <div class="vmp-body-small">Show Shortcuts</div>
+                <div class="vmp-caption vmp-muted">Open this help modal</div>
+              </div>
+              <kbd class="vmp-command-shortcut">⌘/</kbd>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tips -->
+        <div class="vmp-panel p-4 border vmp-border-color">
+          <div class="vmp-label-kicker vmp-label-kicker-strong mb-2">💡 Tips</div>
+          <ul class="vmp-body-small vmp-muted space-y-1 list-disc list-inside">
+            <li>Use <kbd class="vmp-command-shortcut text-xs">⌘K</kbd> to quickly search and navigate</li>
+            <li>Press <kbd class="vmp-command-shortcut text-xs">Esc</kbd> to close any overlay or clear focus</li>
+            <li>All shortcuts work with <kbd class="vmp-command-shortcut text-xs">Ctrl</kbd> on Windows/Linux</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// Global keyboard shortcuts handler
+(function() {
+  'use strict';
+  
+  // Wait for Alpine to be ready
+  document.addEventListener('alpine:init', () => {
+    // Cmd/Ctrl+N - New Case
+    document.addEventListener('keydown', (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'n' && !e.shiftKey) {
+        // Only trigger if not in an input/textarea/contenteditable
+        const target = e.target;
+        if (target.tagName !== 'INPUT' && 
+            target.tagName !== 'TEXTAREA' && 
+            !target.isContentEditable) {
+          e.preventDefault();
+          window.location.href = '/cases/new';
+        }
+      }
+
+      // Cmd/Ctrl+/ - Show shortcuts
+      if ((e.metaKey || e.ctrlKey) && e.key === '/') {
+        e.preventDefault();
+        const shortcutsModal = document.getElementById('keyboard-shortcuts-modal');
+        if (shortcutsModal) {
+          const modalData = Alpine.$data(shortcutsModal);
+          if (modalData) {
+            modalData.isOpen = !modalData.isOpen;
+          }
+        }
+      }
+
+      // Cmd/Ctrl+H - Go to Home
+      if ((e.metaKey || e.ctrlKey) && e.key === 'h' && !e.shiftKey) {
+        const target = e.target;
+        if (target.tagName !== 'INPUT' && 
+            target.tagName !== 'TEXTAREA' && 
+            !target.isContentEditable) {
+          e.preventDefault();
+          window.location.href = '/home';
+        }
+      }
+
+      // Cmd/Ctrl+T - Toggle Theme
+      if ((e.metaKey || e.ctrlKey) && e.key === 't' && !e.shiftKey) {
+        const target = e.target;
+        if (target.tagName !== 'INPUT' && 
+            target.tagName !== 'TEXTAREA' && 
+            !target.isContentEditable) {
+          e.preventDefault();
+          const htmlElement = document.documentElement;
+          const currentTheme = htmlElement.getAttribute('data-theme') || 'dark';
+          const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+          htmlElement.setAttribute('data-theme', newTheme);
+          htmlElement.setAttribute('data-color-scheme', newTheme);
+          localStorage.setItem('vmp-theme', newTheme);
+          
+          // Update Alpine.js theme state if available
+          const layoutData = Alpine.$data(document.querySelector('html'));
+          if (layoutData && layoutData.theme !== undefined) {
+            layoutData.theme = newTheme;
+          }
+        }
+      }
+    });
+
+    // Esc - Close modals (handled by Alpine directives, but adding fallback)
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        // Close command palette if open
+        const commandPalette = document.getElementById('command-palette');
+        if (commandPalette) {
+          const paletteData = Alpine.$data(commandPalette);
+          if (paletteData && paletteData.isOpen) {
+            paletteData.close();
+          }
+        }
+
+        // Blur active element if it's an input
+        const activeElement = document.activeElement;
+        if (activeElement && 
+            (activeElement.tagName === 'INPUT' || 
+             activeElement.tagName === 'TEXTAREA' ||
+             activeElement.isContentEditable)) {
+          activeElement.blur();
+        }
+      }
+    });
+  });
+})();
+</script>
+

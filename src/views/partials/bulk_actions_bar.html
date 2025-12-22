@@ -1,0 +1,261 @@
+<!-- Bulk Actions Bar (Sprint 11.1) -->
+<div id="bulk-actions-bar" 
+     class="vmp-panel p-4 border-b vmp-border-color sticky top-0 z-20 backdrop-blur-md"
+     x-data="bulkActions()"
+     x-show="selectedCount > 0"
+     style="display: none;">
+  <div class="flex items-center justify-between">
+    <div class="flex items-center gap-4">
+      <div class="vmp-body-small">
+        <span x-text="selectedCount"></span> item<span x-show="selectedCount !== 1">s</span> selected
+      </div>
+      <button @click="selectAll()" class="vmp-body-small vmp-link">
+        Select all
+      </button>
+      <button @click="clearSelection()" class="vmp-body-small vmp-link">
+        Clear
+      </button>
+    </div>
+    
+    <div class="flex items-center gap-2">
+      <!-- Bulk Actions Menu -->
+      <div class="relative" x-data="{ open: false }">
+        <button 
+          @click="open = !open"
+          class="vmp-btn-primary px-4 py-2 flex items-center gap-2">
+          <span>Actions</span>
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+          </svg>
+        </button>
+        
+        <div 
+          x-show="open"
+          @click.away="open = false"
+          class="absolute right-0 mt-2 w-48 vmp-panel border vmp-border-color rounded-lg shadow-lg z-30"
+          style="display: none;">
+          <div class="py-1">
+            <button 
+              @click="executeBulkAction('approve'); open = false"
+              class="w-full text-left px-4 py-2 vmp-body-small hover:vmp-bg-veil transition-colors">
+              Approve Selected
+            </button>
+            <button 
+              @click="executeBulkAction('reject'); open = false"
+              class="w-full text-left px-4 py-2 vmp-body-small hover:vmp-bg-veil transition-colors">
+              Reject Selected
+            </button>
+            <button 
+              @click="executeBulkAction('export'); open = false"
+              class="w-full text-left px-4 py-2 vmp-body-small hover:vmp-bg-veil transition-colors">
+              Export Selected
+            </button>
+            <div class="border-t vmp-border-color my-1"></div>
+            <button 
+              @click="executeBulkAction('close'); open = false"
+              class="w-full text-left px-4 py-2 vmp-body-small hover:vmp-bg-veil transition-colors">
+              Close Selected
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Bulk Action Progress Modal -->
+<div id="bulk-action-progress-modal"
+     class="vmp-modal-overlay"
+     x-data="{ isOpen: false, progress: 0, total: 0, current: 0, action: '' }"
+     x-show="isOpen"
+     style="display: none;">
+  <div class="vmp-modal" @click.stop>
+    <div class="vmp-modal-header">
+      <h2 class="vmp-h3">Processing Bulk Action</h2>
+    </div>
+    <div class="vmp-modal-body">
+      <div class="space-y-4">
+        <div class="vmp-body-small vmp-muted">
+          <span x-text="action"></span> items...
+        </div>
+        <div class="w-full bg-vmp-veil rounded-full h-2">
+          <div 
+            class="vmp-bg-ok h-2 rounded-full transition-all duration-300"
+            :style="`width: ${(current / total) * 100}%`"></div>
+        </div>
+        <div class="vmp-caption vmp-muted text-center">
+          <span x-text="current"></span> of <span x-text="total"></span> completed
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Bulk Action Confirmation Modal -->
+<div id="bulk-action-confirm-modal"
+     class="vmp-modal-overlay"
+     x-data="{ isOpen: false, action: '', selectedCount: 0, confirmAction: null }"
+     x-show="isOpen"
+     style="display: none;">
+  <div class="vmp-modal" @click.stop>
+    <div class="vmp-modal-header">
+      <h2 class="vmp-h3">Confirm Bulk Action</h2>
+    </div>
+    <div class="vmp-modal-body">
+      <div class="space-y-4">
+        <div class="vmp-body">
+          Are you sure you want to <span x-text="action" class="font-medium"></span> 
+          <span x-text="selectedCount"></span> selected item<span x-show="selectedCount !== 1">s</span>?
+        </div>
+        <div class="vmp-caption vmp-muted">
+          This action cannot be undone.
+        </div>
+      </div>
+    </div>
+    <div class="vmp-modal-footer">
+      <button 
+        @click="isOpen = false"
+        class="vmp-btn vmp-btn-ghost">
+        Cancel
+      </button>
+      <button 
+        @click="if(confirmAction) confirmAction(); isOpen = false"
+        class="vmp-btn-primary">
+        Confirm
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+function bulkActions() {
+  return {
+    selectedItems: new Set(),
+    selectedCount: 0,
+    listType: 'cases', // 'cases', 'invoices', 'payments'
+
+    init() {
+      // Detect list type from parent context
+      const listContainer = this.$el.closest('[data-list-type]');
+      if (listContainer) {
+        this.listType = listContainer.getAttribute('data-list-type') || 'cases';
+      }
+
+      // Listen for bulk toggle events from checkboxes
+      document.addEventListener('bulk-toggle', (e) => {
+        this.toggleSelection(e.detail.id);
+      });
+
+      // Listen for select all events
+      document.addEventListener('bulk-select-all', () => {
+        this.selectAll();
+      });
+    },
+
+    toggleSelection(itemId) {
+      if (this.selectedItems.has(itemId)) {
+        this.selectedItems.delete(itemId);
+      } else {
+        this.selectedItems.add(itemId);
+      }
+      this.selectedCount = this.selectedItems.size;
+      this.updateCheckboxes();
+    },
+
+    selectAll() {
+      const checkboxes = document.querySelectorAll('[data-bulk-item-id]');
+      checkboxes.forEach(cb => {
+        const itemId = cb.getAttribute('data-bulk-item-id');
+        this.selectedItems.add(itemId);
+      });
+      this.selectedCount = this.selectedItems.size;
+      this.updateCheckboxes();
+    },
+
+    clearSelection() {
+      this.selectedItems.clear();
+      this.selectedCount = 0;
+      this.updateCheckboxes();
+    },
+
+    updateCheckboxes() {
+      const checkboxes = document.querySelectorAll('[data-bulk-item-id]');
+      checkboxes.forEach(cb => {
+        const itemId = cb.getAttribute('data-bulk-item-id');
+        cb.checked = this.selectedItems.has(itemId);
+      });
+    },
+
+    async executeBulkAction(action) {
+      const selectedIds = Array.from(this.selectedItems);
+      if (selectedIds.length === 0) return;
+
+      // Show confirmation modal
+      const confirmModal = document.getElementById('bulk-action-confirm-modal');
+      const confirmData = Alpine.$data(confirmModal);
+      
+      const actionLabels = {
+        approve: 'approve',
+        reject: 'reject',
+        export: 'export',
+        close: 'close'
+      };
+
+      confirmData.action = actionLabels[action] || action;
+      confirmData.selectedCount = selectedIds.length;
+      confirmData.isOpen = true;
+
+      confirmData.confirmAction = async () => {
+        // Show progress modal
+        const progressModal = document.getElementById('bulk-action-progress-modal');
+        const progressData = Alpine.$data(progressModal);
+        progressData.isOpen = true;
+        progressData.total = selectedIds.length;
+        progressData.current = 0;
+        progressData.action = actionLabels[action] || action;
+
+        try {
+          // Execute bulk action
+          const response = await fetch(`/api/bulk-actions/${this.listType}/${action}`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ ids: selectedIds })
+          });
+
+          if (!response.ok) {
+            throw new Error('Bulk action failed');
+          }
+
+          const result = await response.json();
+          
+          // Update progress
+          progressData.current = selectedIds.length;
+          
+          // Close progress modal after a short delay
+          setTimeout(() => {
+            progressData.isOpen = false;
+            this.clearSelection();
+            
+            // Reload the list
+            if (window.location.pathname.includes('/cases')) {
+              htmx.ajax('GET', '/partials/case-inbox.html', { target: '#case-inbox', swap: 'innerHTML' });
+            } else if (window.location.pathname.includes('/invoices')) {
+              htmx.ajax('GET', '/partials/invoice-list.html', { target: '#invoice-list', swap: 'innerHTML' });
+            } else if (window.location.pathname.includes('/payments')) {
+              htmx.ajax('GET', '/partials/payment-list.html', { target: '#payment-list', swap: 'innerHTML' });
+            }
+          }, 500);
+
+        } catch (error) {
+          console.error('Bulk action error:', error);
+          progressData.isOpen = false;
+          alert('Failed to execute bulk action. Please try again.');
+        }
+      };
+    }
+  }
+}
+</script>
+

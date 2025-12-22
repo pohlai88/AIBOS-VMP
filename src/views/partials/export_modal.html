@@ -1,0 +1,187 @@
+<!-- Export Modal (Sprint 11.2) -->
+<div id="export-modal"
+     class="vmp-modal-overlay"
+     x-data="exportModal()"
+     x-show="isOpen"
+     @click.away="isOpen = false"
+     style="display: none;">
+  <div class="vmp-modal" @click.stop style="max-width: 600px;">
+    <div class="vmp-modal-header">
+      <h2 class="vmp-h3">Custom Export</h2>
+      <button @click="isOpen = false" class="vmp-modal-close" aria-label="Close">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M18 6L6 18M6 6l12 12"></path>
+        </svg>
+      </button>
+    </div>
+
+    <div class="vmp-modal-body">
+      <div class="space-y-6">
+        <!-- Format Selection -->
+        <div>
+          <label class="vmp-label-kicker mb-2 block">Export Format</label>
+          <div class="flex gap-3">
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input type="radio" name="export-format" value="excel" x-model="format" class="vmp-radio">
+              <span class="vmp-body-small">Excel (.xlsx)</span>
+            </label>
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input type="radio" name="export-format" value="pdf" x-model="format" class="vmp-radio">
+              <span class="vmp-body-small">PDF (.pdf)</span>
+            </label>
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input type="radio" name="export-format" value="csv" x-model="format" class="vmp-radio">
+              <span class="vmp-body-small">CSV (.csv)</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Field Selection -->
+        <div>
+          <div class="flex items-center justify-between mb-2">
+            <label class="vmp-label-kicker">Select Fields</label>
+            <div class="flex gap-2">
+              <button 
+                @click="selectAllFields()"
+                class="vmp-body-small vmp-link text-xs">
+                Select All
+              </button>
+              <button 
+                @click="selectDefaultFields()"
+                class="vmp-body-small vmp-link text-xs">
+                Default
+              </button>
+              <button 
+                @click="clearFields()"
+                class="vmp-body-small vmp-link text-xs">
+                Clear
+              </button>
+            </div>
+          </div>
+          
+          <div class="max-h-64 overflow-y-auto border vmp-border-color rounded-lg p-3 space-y-2">
+            <template x-for="field in availableFields" :key="field.key">
+              <label class="flex items-center gap-2 cursor-pointer hover:vmp-bg-veil p-2 rounded transition-colors">
+                <input 
+                  type="checkbox" 
+                  :value="field.key"
+                  x-model="selectedFields"
+                  class="vmp-checkbox">
+                <span class="vmp-body-small" x-text="field.label"></span>
+                <span x-show="field.default" class="vmp-caption vmp-muted text-xs">(default)</span>
+              </label>
+            </template>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="vmp-modal-footer">
+      <button 
+        @click="isOpen = false"
+        class="vmp-btn vmp-btn-ghost">
+        Cancel
+      </button>
+      <button 
+        @click="exportData()"
+        :disabled="selectedFields.length === 0 || loading"
+        class="vmp-btn-primary">
+        <span x-show="!loading">Export</span>
+        <span x-show="loading" class="flex items-center gap-2">
+          <div class="vmp-spinner"></div>
+          Exporting...
+        </span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+function exportModal() {
+  return {
+    isOpen: false,
+    listType: 'cases',
+    format: 'excel',
+    selectedFields: [],
+    availableFields: [],
+    loading: false,
+
+    init() {
+      // Listen for open event
+      window.addEventListener('open-export-modal', (e) => {
+        this.listType = e.detail.listType || 'cases';
+        this.isOpen = true;
+        this.loading = false;
+        this.selectedFields = [];
+        this.loadFields();
+      });
+    },
+
+    async loadFields() {
+      try {
+        const response = await fetch(`/api/export/${this.listType}/fields`);
+        const data = await response.json();
+        this.availableFields = data.fields || [];
+        this.selectDefaultFields();
+      } catch (error) {
+        console.error('Failed to load export fields:', error);
+        this.availableFields = [];
+      }
+    },
+
+    selectAllFields() {
+      this.selectedFields = this.availableFields.map(f => f.key);
+    },
+    
+    selectDefaultFields() {
+      this.selectedFields = this.availableFields
+        .filter(f => f.default)
+        .map(f => f.key);
+    },
+    
+    clearFields() {
+      this.selectedFields = [];
+    },
+    
+    async exportData() {
+      if (this.selectedFields.length === 0) {
+        alert('Please select at least one field to export');
+        return;
+      }
+      
+      this.loading = true;
+      
+      try {
+        const fieldsParam = encodeURIComponent(JSON.stringify(this.selectedFields));
+        const url = `/api/export/${this.listType}?format=${this.format}&fields=${fieldsParam}`;
+        
+        // Trigger download
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = '';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        // Close modal after a short delay
+        setTimeout(() => {
+          this.isOpen = false;
+          this.loading = false;
+        }, 500);
+        
+      } catch (error) {
+        console.error('Export error:', error);
+        alert('Failed to export data. Please try again.');
+        this.loading = false;
+      }
+    }
+  }
+}
+
+// Global function to open export modal
+window.openCustomExportModal = function(listType) {
+  const event = new CustomEvent('open-export-modal', { detail: { listType } });
+  window.dispatchEvent(event);
+};
+</script>
+

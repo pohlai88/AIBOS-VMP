@@ -1,0 +1,61 @@
+<!-- Port Activity Log Partial (Sprint 9.3) -->
+<div class="vmp-panel border vmp-border-color">
+    <div class="p-4 border-b vmp-border-color">
+        <div class="vmp-label-kicker vmp-label-kicker-strong">
+            ACTIVITY LOG
+            {% if portType and portType != 'all' %}
+                <span class="vmp-caption vmp-muted">({{ portType | upper }})</span>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if activities and activities|length > 0 %}
+    <div class="divide-y vmp-border-color max-h-96 overflow-y-auto">
+        {% for activity in activities %}
+        <div class="p-4 hover:vmp-bg-veil transition-colors">
+            <div class="flex items-start justify-between mb-2">
+                <div class="flex items-center gap-2">
+                    <span class="vmp-badge 
+                        {% if activity.status == 'success' %}vmp-badge-ok
+                        {% elif activity.status == 'error' %}vmp-badge-danger
+                        {% else %}vmp-badge-muted{% endif %} text-xs">
+                        {{ activity.status | upper }}
+                    </span>
+                    <span class="vmp-caption font-mono vmp-muted">{{ activity.port_type | upper }}</span>
+                    <span class="vmp-caption vmp-muted">{{ activity.activity_type | replace('_', ' ') | upper }}</span>
+                </div>
+                <div class="vmp-caption vmp-muted">
+                    {{ activity.created_at | date('%b %d, %Y %I:%M %p') if activity.created_at else '—' }}
+                </div>
+            </div>
+            
+            {% if activity.message_id %}
+            <div class="vmp-caption font-mono vmp-muted mb-1">
+                Message ID: {{ activity.message_id | truncate(40) }}
+            </div>
+            {% endif %}
+            
+            {% if activity.case_id %}
+            <div class="vmp-caption mb-1">
+                <a href="/cases/{{ activity.case_id }}" class="vmp-link">
+                    Case: {{ activity.case_id | string | truncate(8, True, '') }}
+                </a>
+            </div>
+            {% endif %}
+            
+            {% if activity.error_message %}
+            <div class="vmp-caption vmp-text-danger mt-2">
+                Error: {{ activity.error_message }}
+            </div>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <!-- Empty State -->
+    <div class="p-8 text-center">
+        <div class="vmp-body-small vmp-muted">No activity logged yet</div>
+    </div>
+    {% endif %}
+</div>
+

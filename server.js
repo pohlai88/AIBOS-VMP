@@ -12,9 +12,21 @@ import { cleanEnv, str, url } from 'envalid';
 import 'express-async-errors';
 import multer from 'multer';
 import bcrypt from 'bcrypt';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 import { vmpAdapter } from './src/adapters/supabase.js';
 import { createErrorResponse, logError, NotFoundError, ValidationError } from './src/utils/errors.js';
 import { requireAuth, requireInternal, validateUUIDParam, validateRequired, validateRequiredQuery, handleRouteError, handlePartialError } from './src/utils/route-helpers.js';
+import { parseEmailWebhook, extractCaseReference, extractVendorIdentifier } from './src/utils/email-parser.js';
+import { parseWhatsAppWebhook, extractCaseReferenceFromWhatsApp, extractVendorIdentifierFromWhatsApp } from './src/utils/whatsapp-parser.js';
+import { classifyMessageIntent, extractStructuredData, findBestMatchingCase } from './src/utils/ai-message-parser.js';
+import { validateCaseData, generateValidationResponse } from './src/utils/ai-data-validation.js';
+import { performAISearch, parseSearchIntent, generateSearchSuggestions } from './src/utils/ai-search.js';
+import { checkAndSendSLAReminders, getSLAReminderStats } from './src/utils/sla-reminders.js';
+import { generatePDF, generateExcel, getExportFields } from './src/utils/export-utils.js';
 
 // Environment validation
 dotenv.config();
@@ -25,9 +37,17 @@ const env = cleanEnv(process.env, {
   SESSION_SECRET: str({ default: 'dev-secret-change-in-production' }),
   PORT: str({ default: '9000' }),
   NODE_ENV: str({ default: 'development', choices: ['development', 'production', 'test'] }),
-  // Rollback switches for production pages (allows quick rollback without code changes)
+  // Rollback switch for home page (allows quick rollback without code changes)
+  // Note: Login route is LOCKED to login3.html (no rollback switch)
   VMP_HOME_PAGE: str({ default: 'home5' }),
-  VMP_LOGIN_PAGE: str({ default: 'login3' }),
+  // VAPID keys for push notifications (optional)
+  VAPID_PUBLIC_KEY: str({ default: '' }),
+  VAPID_PRIVATE_KEY: str({ default: '' }),
+});
+
+// Create Supabase client for direct queries (used in notification routes)
+const supabase = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, {
+  db: { schema: 'public' }
 });
 
 const app = express();
@@ -114,6 +134,9 @@ const nunjucksEnv = nunjucks.configure('src/views', {
   watch: env.NODE_ENV === 'development',
 });
 
+// Add global variables for templates
+nunjucksEnv.addGlobal('vapid_public_key', env.VAPID_PUBLIC_KEY || '');
+
 // Add custom filters
 nunjucksEnv.addFilter('upper', (str) => {
   return str ? String(str).toUpperCase() : '';
@@ -177,6 +200,22 @@ app.use(express.static('public'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// PWA Manifest and Service Worker (Sprint 12.2)
+app.get('/manifest.json', (req, res) => {
+  res.setHeader('Content-Type', 'application/manifest+json');
+  res.sendFile(path.join(__dirname, 'public', 'manifest.json'));
+});
+
+app.get('/sw.js', (req, res) => {
+  res.setHeader('Content-Type', 'application/javascript');
+  res.setHeader('Service-Worker-Allowed', '/');
+  res.sendFile(path.join(__dirname, 'public', 'sw.js'));
+});
+
+app.get('/offline.html', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'offline.html'));
+});
+
 // PostgreSQL Session Store (Production-Ready)
 // Uses Supabase PostgreSQL connection via connect-pg-simple
 const PgSession = connectPgSimple(session);
@@ -223,7 +262,7 @@ app.use(
 // --- MIDDLEWARE: Real Auth (Session Lookup) ---
 app.use(async (req, res, next) => {
   // Skip auth for public routes
-  const publicRoutes = ['/login', '/login4', '/', '/health', '/home3', '/home4'];
+  const publicRoutes = ['/login', '/', '/health'];
   if (publicRoutes.includes(req.path) || req.path.startsWith('/partials/login-')) {
     return next();
   }
@@ -295,7 +334,14 @@ app.get('/health', (req, res) => {
   });
 });
 
-// GET: Landing Page (Public)
+// ==========================================
+// 🔒 LOCKED PRODUCTION ROUTE - LANDING PAGE
+// ==========================================
+// GET: Landing Page (Public) - LOCKED to landing.html
+// Status: Production-ready with radar scan logo and governance engine branding
+// Date Locked: 2025-01-XX
+// DO NOT CHANGE: This route is locked to landing.html. Any experimental landing pages
+// should be archived to src/views/pages/.archive/ before making changes.
 app.get('/', (req, res) => {
   res.render('pages/landing.html');
 });
@@ -399,12 +445,26 @@ app.get('/cases/:id', async (req, res) => {
       }
     }
 
-    // 4. Render response
+    // 4. AI Data Validation (Sprint 13.2) - Run validation if case exists
+    let validationResult = null;
+    if (caseDetail) {
+      try {
+        const checklistSteps = await vmpAdapter.getChecklistSteps(caseId);
+        const evidence = await vmpAdapter.getEvidence(caseId);
+        validationResult = await validateCaseData(caseDetail, checklistSteps, evidence);
+      } catch (validationError) {
+        // Don't fail if validation fails - just log it
+        logError(validationError, { path: req.path, caseId, operation: 'aiDataValidation' });
+      }
+    }
+
+    // 5. Render response
     res.render('pages/case_detail.html', {
       caseId,
       caseDetail,
       isInternal: req.user?.isInternal || false,
-      user: req.user
+      user: req.user,
+      validationResult
     });
   } catch (error) {
     handleRouteError(error, req, res);
@@ -495,11 +555,25 @@ app.get('/partials/case-detail.html', async (req, res) => {
       }
     }
 
-    // 4. Render response
+    // 4. AI Data Validation (Sprint 13.2) - Run validation if case exists
+    let validationResult = null;
+    if (caseDetail) {
+      try {
+        const checklistSteps = await vmpAdapter.getChecklistSteps(caseId);
+        const evidence = await vmpAdapter.getEvidence(caseId);
+        validationResult = await validateCaseData(caseDetail, checklistSteps, evidence);
+      } catch (validationError) {
+        // Don't fail if validation fails - just log it
+        logError(validationError, { path: req.path, caseId, operation: 'aiDataValidation' });
+      }
+    }
+
+    // 5. Render response
     res.render('partials/case_detail.html', {
       caseId,
       caseDetail,
-      isInternal: req.user?.isInternal || false
+      isInternal: req.user?.isInternal || false,
+      validationResult
     });
   } catch (error) {
     handlePartialError(error, req, res, 'partials/case_detail.html', {
@@ -546,6 +620,42 @@ app.get('/partials/case-thread.html', async (req, res) => {
       caseId: req.query.case_id || null,
       messages: []
     });
+  }
+});
+
+// Case Activity Feed Partial (Sprint 8.1)
+app.get('/partials/case-activity.html', async (req, res) => {
+  try {
+    // 1. Authentication
+    if (!requireAuth(req, res)) return;
+
+    // 2. Input validation
+    const caseId = req.query.case_id;
+    const defaultData = { activities: [], error: null };
+
+    if (!caseId) {
+      return res.render('partials/case_activity.html', defaultData);
+    }
+
+    // Validate UUID if provided
+    if (!validateUUIDParam(caseId, res, 'partials/case_activity.html')) return;
+
+    // 3. Business logic
+    let activities = [];
+    try {
+      activities = await vmpAdapter.getCaseActivity(caseId);
+    } catch (adapterError) {
+      // Return with error message for graceful degradation
+      return res.render('partials/case_activity.html', {
+        activities: [],
+        error: adapterError.message || 'Failed to load activity feed'
+      });
+    }
+
+    // 4. Render response
+    res.render('partials/case_activity.html', { activities, error: null });
+  } catch (error) {
+    handlePartialError(error, req, res, 'partials/case_activity.html', { activities: [], error: error.message || 'Failed to load activity' });
   }
 });
 
@@ -685,6 +795,56 @@ app.get('/partials/case-evidence.html', async (req, res) => {
   }
 });
 
+// GET: Document Template Download (Sprint 8.2)
+app.get('/templates/:type-template.pdf', async (req, res) => {
+  try {
+    // 1. Authentication
+    if (!requireAuth(req, res)) return;
+
+    // 2. Input validation
+    const templateType = req.params.type;
+    const validTypes = ['po_number', 'grn', 'invoice_pdf', 'contract', 'certificate', 'misc'];
+    
+    if (!validTypes.includes(templateType)) {
+      return res.status(400).render('pages/error.html', {
+        error: {
+          status: 400,
+          message: 'Invalid template type'
+        }
+      });
+    }
+
+    // 3. Generate template PDF content (basic implementation)
+    // In production, this would load actual template files from storage
+    const templateContent = `
+Document Template: ${templateType.replace('_', ' ').toUpperCase()}
+
+This is a template document for ${templateType.replace('_', ' ')}.
+
+Instructions:
+- Fill in all required fields
+- Ensure all signatures are present
+- Submit the completed document through the case portal
+
+Generated: ${new Date().toISOString()}
+    `.trim();
+
+    // 4. Return as PDF (for now, return as text - can be enhanced with PDF generation library)
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${templateType}-template.pdf"`);
+    // For now, return text content - in production, use a PDF library like pdfkit
+    res.send(templateContent);
+  } catch (error) {
+    logError(error, { path: req.path, userId: req.user?.id, templateType: req.params.type });
+    res.status(500).render('pages/error.html', {
+      error: {
+        status: 500,
+        message: 'Failed to download template'
+      }
+    });
+  }
+});
+
 // Escalation Partial
 app.get('/partials/escalation.html', async (req, res) => {
   try {
@@ -716,7 +876,7 @@ app.get('/partials/escalation.html', async (req, res) => {
 
       // If Level 3 escalation, fetch Director info
       if (caseDetail && caseDetail.escalation_level >= 3) {
-        const groupId = caseDetail.group_id || null;
+        const groupId = caseDetail.group_id || (caseDetail.vmp_companies && caseDetail.vmp_companies.group_id) || null;
         try {
           directorInfo = await vmpAdapter.getGroupDirectorInfo(groupId);
         } catch (directorError) {
@@ -1019,6 +1179,21 @@ app.post('/cases/:id/verify-evidence', async (req, res) => {
     // 3. Business logic - Verify evidence
     try {
       await vmpAdapter.verifyEvidence(checklist_step_id, req.user.id, null);
+      
+      // Log decision
+      try {
+        const step = await vmpAdapter.getChecklistStep(checklist_step_id);
+        await vmpAdapter.logDecision(
+          caseId,
+          'evidence_verified',
+          req.user.display_name || req.user.email,
+          `Verified evidence for: ${step?.label || 'checklist step'}`,
+          'Evidence meets requirements and has been approved'
+        );
+      } catch (logError) {
+        // Don't fail verification if logging fails
+        logError(logError, { path: req.path, caseId, operation: 'logDecision-verify' });
+      }
     } catch (verifyError) {
       const wrappedError = new Error('Failed to verify evidence');
       wrappedError.statusCode = verifyError.statusCode || 500;
@@ -1104,6 +1279,22 @@ app.post('/cases/:id/reject-evidence', async (req, res) => {
     // 3. Business logic - Reject evidence
     try {
       await vmpAdapter.rejectEvidence(checklist_step_id, req.user.id, reason.trim());
+      
+      // Log decision
+      try {
+        const steps = await vmpAdapter.getChecklistSteps(caseId);
+        const step = steps.find(s => s.id === checklist_step_id);
+        await vmpAdapter.logDecision(
+          caseId,
+          'evidence_rejected',
+          req.user.display_name || req.user.email,
+          `Rejected evidence for: ${step?.label || 'checklist step'}`,
+          reason.trim()
+        );
+      } catch (logError) {
+        // Don't fail rejection if logging fails
+        logError(logError, { path: req.path, caseId, operation: 'logDecision-reject' });
+      }
     } catch (rejectError) {
       const wrappedError = new Error('Failed to reject evidence');
       wrappedError.statusCode = rejectError.statusCode || 500;
@@ -1185,6 +1376,20 @@ app.post('/cases/:id/reassign', async (req, res) => {
     // 3. Business logic - Reassign case
     try {
       await vmpAdapter.reassignCase(caseId, owner_team, req.user.id);
+      
+      // Log decision
+      try {
+        await vmpAdapter.logDecision(
+          caseId,
+          'case_reassigned',
+          req.user.display_name || req.user.email,
+          `Reassigned case to ${owner_team} team`,
+          `Case ownership transferred to ${owner_team} team`
+        );
+      } catch (logError) {
+        // Don't fail reassignment if logging fails
+        logError(logError, { path: req.path, caseId, operation: 'logDecision-reassign' });
+      }
     } catch (reassignError) {
       const wrappedError = new Error('Failed to reassign case');
       wrappedError.statusCode = reassignError.statusCode || 500;
@@ -1346,6 +1551,20 @@ app.post('/cases/:id/escalate', async (req, res) => {
         req.user.id,
         reason || null
       );
+      
+      // Log decision
+      try {
+        await vmpAdapter.logDecision(
+          caseId,
+          'case_escalated',
+          req.user.display_name || req.user.email,
+          `Escalated case to level ${escalationLevel}`,
+          reason || `Case escalated to level ${escalationLevel} for urgent attention`
+        );
+      } catch (logError) {
+        // Don't fail escalation if logging fails
+        logError(logError, { path: req.path, caseId, operation: 'logDecision-escalate' });
+      }
 
       // Fetch updated case detail with all relations
       caseDetail = await vmpAdapter.getCaseDetail(caseId, req.user.vendorId);
@@ -1655,6 +1874,7 @@ app.get('/payments/:id', async (req, res) => {
 
     // 3. Business logic
     let paymentDetail = null;
+    let paymentStatusInfo = null;
     try {
       paymentDetail = await vmpAdapter.getPaymentDetail(paymentId, req.user.vendorId);
 
@@ -1666,6 +1886,16 @@ app.get('/payments/:id', async (req, res) => {
             message: 'Access denied to this payment'
           }
         });
+      }
+
+      // Sprint 8.3: Get payment status info (blocking cases, explanation, forecast)
+      if (paymentDetail) {
+        try {
+          paymentStatusInfo = await vmpAdapter.getPaymentStatusInfo(paymentId, req.user.vendorId);
+        } catch (statusError) {
+          // Don't fail if status info fails - just log it
+          logError(statusError, { path: req.path, paymentId, operation: 'getPaymentStatusInfo' });
+        }
       }
     } catch (adapterError) {
       // If payment not found, render page with empty state (not an error)
@@ -1681,11 +1911,203 @@ app.get('/payments/:id', async (req, res) => {
     res.render('pages/payment_detail.html', {
       paymentId,
       paymentDetail,
+      paymentStatusInfo,
       isInternal: req.user?.isInternal || false,
       user: req.user
     });
   } catch (error) {
     handleRouteError(error, req, res);
+  }
+});
+
+// GET: Payment History Page (Sprint 7.3)
+app.get('/payments/history', async (req, res) => {
+  try {
+    // 1. Authentication
+    if (!requireAuth(req, res)) return;
+
+    // 2. Render response
+    res.render('pages/payment_history.html', {
+      title: 'Payment History',
+      user: req.user,
+      isInternal: req.user?.isInternal || false
+    });
+  } catch (error) {
+    handleRouteError(error, req, res);
+  }
+});
+
+// GET: Payment History Partial (Sprint 7.3)
+app.get('/partials/payment-history.html', async (req, res) => {
+  try {
+    // 1. Authentication
+    if (!requireAuth(req, res)) return;
+
+    // 2. Business logic
+    const { payment_ref, invoice_num, date_from, date_to, company_id, amount_min, amount_max, status } = req.query;
+    const filters = {};
+    if (payment_ref) filters.payment_ref = payment_ref;
+    if (invoice_num) filters.invoice_num = invoice_num;
+    if (date_from) filters.date_from = date_from;
+    if (date_to) filters.date_to = date_to;
+    if (amount_min) filters.amount_min = amount_min;
+    if (amount_max) filters.amount_max = amount_max;
+    if (status) filters.status = status;
+
+    const payments = await vmpAdapter.getPayments(
+      req.user.vendorId,
+      company_id || null,
+      filters
+    );
+
+    // Sort chronologically (oldest first for timeline)
+    const sortedPayments = (payments || []).sort((a, b) => {
+      const dateA = new Date(a.payment_date || a.created_at);
+      const dateB = new Date(b.payment_date || b.created_at);
+      return dateA - dateB; // Ascending order (oldest first)
+    });
+
+    // 3. Render response
+    res.render('partials/payment_history.html', {
+      payments: sortedPayments,
+      isInternal: req.user?.isInternal || false,
+      query: req.query,
+      error: null
+    });
+  } catch (error) {
+    logError(error, { path: req.path, userId: req.user?.id });
+    res.render('partials/payment_history.html', {
+      payments: [],
+      isInternal: req.user?.isInternal || false,
+      query: req.query,
+      error: error.message || 'Failed to load payment history'
+    });
+  }
+});
+
+// GET: Payment Receipt Download (Sprint 7.4)
+app.get('/payments/:id/receipt', async (req, res) => {
+  try {
+    // 1. Authentication
+    if (!requireAuth(req, res)) return;
+
+    // 2. Input validation
+    const paymentId = req.params.id;
+    if (!validateUUIDParam(paymentId, res)) return;
+
+    // 3. Business logic - Verify payment access
+    const payment = await vmpAdapter.getPaymentDetail(paymentId, req.user.vendorId);
+    if (!payment) {
+      return res.status(404).render('pages/error.html', {
+        error: {
+          status: 404,
+          message: 'Payment not found or access denied'
+        }
+      });
+    }
+
+    // 4. Generate receipt
+    // If remittance URL exists, redirect to it (remittance_url is already a public URL from storage)
+    if (payment.remittance_url) {
+      // Remittance URL is already a full public URL from Supabase Storage
+      return res.redirect(payment.remittance_url);
+    } else {
+      // No remittance - generate simple text receipt
+      const receiptText = `
+PAYMENT RECEIPT
+===============
+
+Payment Reference: ${payment.payment_ref}
+Payment Date: ${payment.payment_date || 'N/A'}
+Amount: ${payment.currency_code || 'USD'} ${payment.amount ? payment.amount.toFixed(2) : '0.00'}
+Company: ${payment.vmp_companies?.name || 'N/A'}
+${payment.invoice_num ? `Invoice: ${payment.invoice_num}` : ''}
+${payment.description ? `Description: ${payment.description}` : ''}
+
+Generated: ${new Date().toISOString()}
+      `.trim();
+
+      res.setHeader('Content-Type', 'text/plain');
+      res.setHeader('Content-Disposition', `attachment; filename="payment-receipt-${payment.payment_ref}.txt"`);
+      res.send(receiptText);
+    }
+  } catch (error) {
+    logError(error, { path: req.path, userId: req.user?.id, paymentId: req.params.id });
+    res.status(500).render('pages/error.html', {
+      error: {
+        status: 500,
+        message: error.message || 'Failed to download receipt'
+      }
+    });
+  }
+});
+
+// GET: Payment History CSV Export (Sprint 7.3)
+app.get('/payments/history/export', async (req, res) => {
+  try {
+    // 1. Authentication
+    if (!requireAuth(req, res)) return;
+
+    // 2. Business logic - Apply same filters as history view
+    const { payment_ref, invoice_num, date_from, date_to, company_id, amount_min, amount_max, status } = req.query;
+    const filters = {};
+    if (payment_ref) filters.payment_ref = payment_ref;
+    if (invoice_num) filters.invoice_num = invoice_num;
+    if (date_from) filters.date_from = date_from;
+    if (date_to) filters.date_to = date_to;
+    if (amount_min) filters.amount_min = amount_min;
+    if (amount_max) filters.amount_max = amount_max;
+    if (status) filters.status = status;
+
+    const payments = await vmpAdapter.getPayments(
+      req.user.vendorId,
+      company_id || null,
+      filters
+    );
+
+    // 3. Generate CSV
+    const csvRows = [];
+    
+    // CSV Header
+    csvRows.push([
+      'Payment Date',
+      'Payment Reference',
+      'Amount',
+      'Currency',
+      'Company',
+      'Invoice Number',
+      'Remittance Available',
+      'Source System',
+      'Description'
+    ].join(','));
+
+    // CSV Data Rows
+    for (const payment of payments || []) {
+      csvRows.push([
+        payment.payment_date || '',
+        payment.payment_ref || '',
+        payment.amount || '0.00',
+        payment.currency_code || 'USD',
+        payment.vmp_companies?.name || '',
+        payment.vmp_invoices?.invoice_num || payment.invoice_num || '',
+        payment.remittance_url ? 'Yes' : 'No',
+        payment.source_system || 'manual',
+        (payment.description || '').replace(/"/g, '""') // Escape quotes in CSV
+      ].map(field => `"${field}"`).join(','));
+    }
+
+    const csvContent = csvRows.join('\n');
+
+    // 4. Set response headers for CSV download
+    const filename = `payment-history-${new Date().toISOString().split('T')[0]}.csv`;
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.send(csvContent);
+  } catch (error) {
+    logError(error, { path: req.path, userId: req.user?.id });
+    res.status(500).json({
+      error: error.message || 'Failed to export payment history'
+    });
   }
 });
 
@@ -2248,6 +2670,66 @@ app.get('/ops/cases/:id', async (req, res) => {
   }
 });
 
+// ==========================================
+// 📅 SLA REMINDERS (Sprint 14)
+// ==========================================
+
+// POST: Trigger SLA Reminders Check (Internal Only)
+app.post('/ops/sla-reminders/check', async (req, res) => {
+  try {
+    // 1. Authentication & Authorization
+    if (!requireInternal(req, res)) return;
+
+    // 2. Input validation
+    const { warningThresholdHours = 24, sendToVendors = true, sendToInternal = true } = req.body;
+
+    // 3. Business logic - Run SLA reminder check
+    const summary = await checkAndSendSLAReminders({
+      warningThresholdHours: parseInt(warningThresholdHours, 10),
+      sendToVendors: sendToVendors !== false,
+      sendToInternal: sendToInternal !== false,
+    });
+
+    // 4. Return response
+    return res.json({
+      success: true,
+      summary,
+      message: `Checked ${summary.checked} cases. Sent ${summary.warningsSent} warnings and ${summary.overdueSent} overdue reminders.`,
+    });
+  } catch (error) {
+    logError(error, { path: req.path, operation: 'triggerSLAReminders' });
+    return res.status(500).json({
+      success: false,
+      error: 'Failed to check SLA reminders',
+      message: error.message,
+    });
+  }
+});
+
+// GET: SLA Reminder Statistics (Internal Only)
+app.get('/ops/sla-reminders/stats', async (req, res) => {
+  try {
+    // 1. Authentication & Authorization
+    if (!requireInternal(req, res)) return;
+
+    // 2. Business logic - Get SLA stats
+    const stats = await getSLAReminderStats();
+
+    // 3. Return response
+    return res.json({
+      success: true,
+      stats,
+    });
+  } catch (error) {
+    logError(error, { path: req.path, operation: 'getSLAReminderStats' });
+    return res.status(500).json({
+      success: false,
+      error: 'Failed to get SLA reminder statistics',
+      message: error.message,
+    });
+  }
+});
+
 // GET: Compliance Docs Partial
 app.get('/partials/compliance-docs.html', async (req, res) => {
   try {
@@ -2308,6 +2790,652 @@ app.get('/partials/contract-library.html', async (req, res) => {
     handlePartialError(error, req, res, 'partials/contract_library.html', {
       contracts: []
     });
+  }
+});
+
+// GET: Notification Badge Partial (Sprint 7.4)
+app.get('/partials/notification-badge.html', async (req, res) => {
+  try {
+    // 1. Authentication
+    if (!requireAuth(req, res)) return;
+
+    // 2. Business logic - Get unread notification count
+    const unreadNotifications = await vmpAdapter.getUserNotifications(req.user.id, 50, true);
+    const unreadCount = unreadNotifications ? unreadNotifications.length : 0;
+
+    // 3. Render response
+    res.render('partials/notification_badge.html', {
+      unreadCount,
+      error: null
+    });
+  } catch (error) {
+    logError(error, { path: req.path, userId: req.user?.id });
+    res.render('partials/notification_badge.html', {
+      unreadCount: 0,
+      error: null
+    });
+  }
+});
+
+// GET: Notifications Page (Sprint 7.4)
+app.get('/notifications', async (req, res) => {
+  try {
+    // 1. Authentication
+    if (!requireAuth(req, res)) return;
+
+    // 2. Business logic - Get user notifications
+    const notifications = await vmpAdapter.getUserNotifications(req.user.id, 100, false);
+
+    // 3. Render response
+    res.render('pages/notifications.html', {
+      title: 'Notifications',
+      user: req.user,
+      notifications: notifications || [],
+      unreadCount: (notifications || []).filter(n => !n.is_read).length
+    });
+  } catch (error) {
+    handleRouteError(error, req, res);
+  }
+});
+
+// POST: Mark Notification as Read (Sprint 7.4)
+app.post('/notifications/:id/read', async (req, res) => {
+  try {
+    // 1. Authentication
+    if (!requireAuth(req, res)) return;
+
+    // 2. Input validation
+    const notificationId = req.params.id;
+    if (!validateUUIDParam(notificationId, res)) return;
+
+    // 3. Business logic - Mark notification as read
+    const updateQuery = supabase
+      .from('vmp_notifications')
+      .update({
+        is_read: true,
+        read_at: new Date().toISOString()
+      })
+      .eq('id', notificationId)
+      .eq('user_id', req.user.id)
+      .select()
+      .single();
+
+    const { data, error } = await withTimeout(updateQuery, 5000, 'markNotificationRead');
+
+    if (error) {
+      return res.status(500).json({
+        error: error.message || 'Failed to mark notification as read'
+      });
+    }
+
+    // 4. Return success (redirect back to notifications page if from page, else JSON)
+    if (req.headers['hx-request']) {
+      // HTMX request - return updated notification badge
+      const unreadNotifications = await vmpAdapter.getUserNotifications(req.user.id, 50, true);
+      const unreadCount = unreadNotifications ? unreadNotifications.length : 0;
+      res.render('partials/notification_badge.html', {
+        unreadCount,
+        error: null
+      });
+    } else {
+      res.redirect('/notifications');
+    }
+  } catch (error) {
+    logError(error, { path: req.path, userId: req.user?.id, notificationId: req.params.id });
+    res.status(500).json({
+      error: error.message || 'Failed to mark notification as read'
+    });
+  }
+});
+
+// POST: Mark All Notifications as Read (Sprint 7.4)
+app.post('/notifications/mark-all-read', async (req, res) => {
+  try {
+    // 1. Authentication
+    if (!requireAuth(req, res)) return;
+
+    // 2. Business logic - Mark all user notifications as read
+    const updateQuery = supabase
+      .from('vmp_notifications')
+      .update({
+        is_read: true,
+        read_at: new Date().toISOString()
+      })
+      .eq('user_id', req.user.id)
+      .eq('is_read', false);
+
+    const { error } = await withTimeout(updateQuery, 5000, 'markAllNotificationsRead');
+
+    if (error) {
+      return res.status(500).json({
+        error: error.message || 'Failed to mark all notifications as read'
+      });
+    }
+
+    // 3. Redirect back to notifications page
+    res.redirect('/notifications');
+  } catch (error) {
+    logError(error, { path: req.path, userId: req.user?.id });
+    res.status(500).json({
+      error: error.message || 'Failed to mark all notifications as read'
+    });
+  }
+});
+
+// ============================================================================
+// SPRINT 9.1: EMAIL-TO-CASE WEBHOOK ENDPOINT
+// ============================================================================
+
+// POST: Email Webhook (Sprint 9.1)
+app.post('/ports/email', express.json({ limit: '10mb' }), async (req, res) => {
+  try {
+    // 1. Accept webhook from email providers (no auth required - webhook uses secret key)
+    // In production, verify webhook signature here
+    
+    // 2. Determine email provider from headers or query param
+    const provider = req.query.provider || req.headers['x-email-provider'] || 'generic';
+    
+    // 3. Parse email webhook payload
+    let emailData;
+    try {
+      emailData = parseEmailWebhook(req.body, provider);
+    } catch (parseError) {
+      logError(parseError, { path: req.path, provider, operation: 'parseEmailWebhook' });
+      return res.status(400).json({
+        error: 'Failed to parse email webhook',
+        message: parseError.message
+      });
+    }
+
+    // 4. Extract vendor identifier from sender email
+    const senderEmail = extractVendorIdentifier(emailData);
+    if (!senderEmail) {
+      return res.status(400).json({
+        error: 'Could not extract sender email from webhook'
+      });
+    }
+
+    // 5. Find vendor by email
+    let vendorInfo;
+    try {
+      vendorInfo = await vmpAdapter.findVendorByEmail(senderEmail);
+    } catch (vendorError) {
+      logError(vendorError, { path: req.path, senderEmail, operation: 'findVendorByEmail' });
+      return res.status(500).json({
+        error: 'Failed to find vendor',
+        message: vendorError.message
+      });
+    }
+
+    if (!vendorInfo) {
+      // Vendor not found - could create case manually or return error
+      return res.status(404).json({
+        error: 'Vendor not found',
+        message: `No vendor found for email: ${senderEmail}. Please ensure the sender is registered.`
+      });
+    }
+
+    // 6. Extract case reference from email (if replying to existing case)
+    const caseReference = extractCaseReference(emailData);
+
+    // 7. Find or create case
+    let caseId;
+    try {
+      caseId = await vmpAdapter.findOrCreateCaseFromEmail(emailData, vendorInfo, caseReference);
+    } catch (caseError) {
+      logError(caseError, { path: req.path, vendorInfo, caseReference, operation: 'findOrCreateCaseFromEmail' });
+      return res.status(500).json({
+        error: 'Failed to find or create case',
+        message: caseError.message
+      });
+    }
+
+    // 9. Log webhook received activity (with AI analysis)
+    try {
+      await vmpAdapter.logPortActivity('email', 'webhook_received', 'success', {
+        messageId: emailData.messageId,
+        from: emailData.from,
+        provider: emailData.provider,
+        aiIntent: aiAnalysis?.intent,
+        aiConfidence: aiAnalysis?.confidence,
+        matchedCase: matchedCase?.caseNum || null
+      }, caseId);
+    } catch (logError) {
+      // Don't fail if logging fails
+      console.warn('Failed to log port activity:', logError);
+    }
+
+    // 10. Create message from email (with AI-extracted metadata)
+    const messageBody = emailData.text || emailData.html || emailData.subject || 'Email received';
+    const emailMetadata = {
+      from: emailData.from,
+      to: emailData.to,
+      subject: emailData.subject,
+      messageId: emailData.messageId,
+      provider: emailData.provider,
+      headers: emailData.headers,
+      // AI-extracted metadata (Sprint 13.1)
+      aiIntent: aiAnalysis?.intent,
+      aiConfidence: aiAnalysis?.confidence,
+      extractedInvoiceNumbers: extractedData?.invoiceNumbers || [],
+      extractedPONumbers: extractedData?.poNumbers || [],
+      extractedPaymentRefs: extractedData?.paymentReferences || [],
+      urgency: extractedData?.urgency || 'normal',
+      matchedCaseConfidence: matchedCase?.confidence || null
+    };
+
+    try {
+      await vmpAdapter.createMessage(
+        caseId,
+        messageBody,
+        'vendor', // sender_type
+        'email', // channel_source
+        vendorInfo.userId, // sender_user_id
+        false, // is_internal_note
+        emailMetadata // metadata
+      );
+
+      // Log message processed activity
+      await vmpAdapter.logPortActivity('email', 'message_processed', 'success', {
+        messageId: emailData.messageId,
+        caseId: caseId,
+        vendorId: vendorInfo.vendorId
+      });
+    } catch (messageError) {
+      logError(messageError, { path: req.path, caseId, operation: 'createMessage' });
+      
+      // Log error activity
+      try {
+        await vmpAdapter.logPortActivity('email', 'error', 'error', {
+          messageId: emailData.messageId,
+          caseId: caseId,
+          errorMessage: messageError.message
+        });
+      } catch (logError) {
+        // Don't fail if logging fails
+      }
+      
+      // Continue even if message creation fails - case was created
+    }
+
+    // 10. Log case created activity if new case
+    if (!caseReference) {
+      try {
+        await vmpAdapter.logPortActivity('email', 'case_created', 'success', {
+          messageId: emailData.messageId,
+          caseId: caseId,
+          vendorId: vendorInfo.vendorId
+        });
+      } catch (logError) {
+        // Don't fail if logging fails
+      }
+    }
+
+    // 9. Handle attachments (log for now - full upload to evidence can be added later)
+    if (emailData.attachments && emailData.attachments.length > 0) {
+      logError(null, {
+        path: req.path,
+        caseId,
+        operation: 'emailAttachments',
+        attachmentsCount: emailData.attachments.length,
+        attachmentNames: emailData.attachments.map(att => att.filename).join(', ')
+      });
+    }
+
+    // 10. Return success response
+    return res.status(200).json({
+      success: true,
+      caseId,
+      message: 'Email processed successfully',
+      caseCreated: !caseReference,
+      attachmentsCount: emailData.attachments?.length || 0
+    });
+
+  } catch (error) {
+    logError(error, { path: req.path, operation: 'emailWebhook' });
+    return res.status(500).json({
+      error: 'Internal server error',
+      message: error.message
+    });
+  }
+});
+
+// ============================================================================
+// SPRINT 9.2: WHATSAPP-TO-CASE WEBHOOK ENDPOINT
+// ============================================================================
+
+// POST: WhatsApp Webhook (Sprint 9.2)
+app.post('/ports/whatsapp', express.json({ limit: '10mb' }), async (req, res) => {
+  try {
+    // 1. Accept webhook from WhatsApp providers (no auth required - webhook uses secret key)
+    // In production, verify webhook signature here
+    
+    // 2. Determine WhatsApp provider from headers or query param
+    const provider = req.query.provider || req.headers['x-whatsapp-provider'] || 'whatsapp';
+    
+    // 3. Parse WhatsApp webhook payload
+    let whatsappData;
+    try {
+      whatsappData = parseWhatsAppWebhook(req.body, provider);
+    } catch (parseError) {
+      logError(parseError, { path: req.path, provider, operation: 'parseWhatsAppWebhook' });
+      return res.status(400).json({
+        error: 'Failed to parse WhatsApp webhook',
+        message: parseError.message
+      });
+    }
+
+    // 4. Skip status updates (only process actual messages)
+    if (whatsappData.messageType === 'status') {
+      return res.status(200).json({
+        success: true,
+        message: 'Status update received',
+        skipped: true
+      });
+    }
+
+    // 5. Extract vendor identifier from phone number
+    const phoneNumber = extractVendorIdentifierFromWhatsApp(whatsappData);
+    if (!phoneNumber) {
+      return res.status(400).json({
+        error: 'Could not extract phone number from webhook'
+      });
+    }
+
+    // 6. Find vendor by phone number
+    let vendorInfo;
+    try {
+      vendorInfo = await vmpAdapter.findVendorByPhone(phoneNumber);
+    } catch (vendorError) {
+      logError(vendorError, { path: req.path, phoneNumber, operation: 'findVendorByPhone' });
+      return res.status(500).json({
+        error: 'Failed to find vendor',
+        message: vendorError.message
+      });
+    }
+
+    if (!vendorInfo) {
+      return res.status(404).json({
+        error: 'Vendor not found',
+        message: `No vendor found for phone number: ${phoneNumber}. Please ensure the phone number is registered with a vendor account.`
+      });
+    }
+
+    // 7. Extract case reference from message (if replying to existing case)
+    const caseReference = extractCaseReferenceFromWhatsApp(whatsappData);
+
+    // 8. Find or create case
+    // Convert WhatsApp data to email-like format for reuse
+    const emailLikeData = {
+      from: whatsappData.fromName ? `${whatsappData.fromName} <${whatsappData.from}@whatsapp>` : `${whatsappData.from}@whatsapp`,
+      to: whatsappData.to || '',
+      subject: `WhatsApp Message from ${whatsappData.fromName || whatsappData.from}`,
+      text: whatsappData.text || '',
+      html: whatsappData.text || '',
+      attachments: (whatsappData.media || []).map(media => ({
+        filename: media.filename || `${media.type}-${media.id || 'unknown'}`,
+        contentType: media.mimeType,
+        content: null, // Media URLs need to be downloaded separately
+        size: 0,
+        url: media.url,
+        mediaId: media.id
+      })),
+      headers: {},
+      messageId: whatsappData.messageId,
+      timestamp: whatsappData.timestamp
+    };
+
+    let caseId;
+    try {
+      caseId = await vmpAdapter.findOrCreateCaseFromEmail(emailLikeData, vendorInfo, caseReference);
+    } catch (caseError) {
+      logError(caseError, { path: req.path, vendorInfo, caseReference, operation: 'findOrCreateCaseFromWhatsApp' });
+      return res.status(500).json({
+        error: 'Failed to find or create case',
+        message: caseError.message
+      });
+    }
+
+    // 9. Log webhook received activity
+    try {
+      await vmpAdapter.logPortActivity('whatsapp', 'webhook_received', 'success', {
+        messageId: whatsappData.messageId,
+        from: whatsappData.from,
+        provider: whatsappData.provider
+      });
+    } catch (logError) {
+      // Don't fail if logging fails
+      console.warn('Failed to log port activity:', logError);
+    }
+
+    // 10. Create message from WhatsApp
+    const messageBody = whatsappData.text || `WhatsApp message from ${whatsappData.fromName || whatsappData.from}`;
+    const whatsappMetadata = {
+      from: whatsappData.from,
+      fromName: whatsappData.fromName,
+      to: whatsappData.to,
+      messageId: whatsappData.messageId,
+      messageType: whatsappData.messageType,
+      provider: whatsappData.provider,
+      media: whatsappData.media,
+      metadata: whatsappData.metadata
+    };
+
+    try {
+      await vmpAdapter.createMessage(
+        caseId,
+        messageBody,
+        'vendor', // sender_type
+        'whatsapp', // channel_source
+        vendorInfo.userId, // sender_user_id
+        false, // is_internal_note
+        whatsappMetadata // metadata
+      );
+
+      // Log message processed activity
+      await vmpAdapter.logPortActivity('whatsapp', 'message_processed', 'success', {
+        messageId: whatsappData.messageId,
+        caseId: caseId,
+        vendorId: vendorInfo.vendorId
+      });
+    } catch (messageError) {
+      logError(messageError, { path: req.path, caseId, operation: 'createMessage' });
+      
+      // Log error activity
+      try {
+        await vmpAdapter.logPortActivity('whatsapp', 'error', 'error', {
+          messageId: whatsappData.messageId,
+          caseId: caseId,
+          errorMessage: messageError.message
+        });
+      } catch (logError) {
+        // Don't fail if logging fails
+      }
+      
+      // Continue even if message creation fails - case was created
+    }
+
+    // 11. Log case created activity if new case
+    if (!caseReference) {
+      try {
+        await vmpAdapter.logPortActivity('whatsapp', 'case_created', 'success', {
+          messageId: whatsappData.messageId,
+          caseId: caseId,
+          vendorId: vendorInfo.vendorId
+        });
+      } catch (logError) {
+        // Don't fail if logging fails
+      }
+    }
+
+    // 12. Handle media attachments (download and upload as evidence if needed)
+    if (whatsappData.media && whatsappData.media.length > 0) {
+      // Log media information for audit trail
+      // Full media download and upload to evidence storage can be implemented as needed
+      const mediaInfo = whatsappData.media.map(media => ({
+        type: media.type,
+        mimeType: media.mimeType,
+        url: media.url,
+        id: media.id,
+        filename: media.filename
+      }));
+      
+      logError(null, {
+        path: req.path,
+        caseId,
+        operation: 'whatsappMediaReceived',
+        mediaCount: whatsappData.media.length,
+        media: mediaInfo
+      });
+    }
+
+    // 13. Return success response
+    return res.status(200).json({
+      success: true,
+      caseId,
+      message: 'WhatsApp message processed successfully',
+      caseCreated: !caseReference,
+      mediaCount: whatsappData.media?.length || 0
+    });
+
+  } catch (error) {
+    logError(error, { path: req.path, operation: 'whatsappWebhook' });
+    return res.status(500).json({
+      error: 'Internal server error',
+      message: error.message
+    });
+  }
+});
+
+// ============================================================================
+// SPRINT 9.3: PORT CONFIGURATION UI (Internal Only)
+// ============================================================================
+
+// GET: Port Configuration Page
+app.get('/ops/ports', async (req, res) => {
+  try {
+    // 1. Authentication & Authorization
+    if (!requireInternal(req, res)) return;
+
+    // 2. Render response
+    res.render('pages/ops_ports.html', {
+      title: 'Port Configuration',
+      user: req.user,
+      isInternal: true
+    });
+  } catch (error) {
+    handleRouteError(error, req, res);
+  }
+});
+
+// GET: Port Configuration Partial
+app.get('/partials/port-configuration.html', async (req, res) => {
+  try {
+    // 1. Authentication & Authorization
+    if (!requireInternal(req, res)) return;
+
+    // 2. Business logic - Get port configurations
+    let ports = [];
+    try {
+      ports = await vmpAdapter.getPortConfiguration();
+    } catch (adapterError) {
+      logError(adapterError, { path: req.path, operation: 'getPortConfiguration' });
+    }
+
+    // 3. Render response
+    res.render('partials/port_configuration.html', {
+      ports: ports || []
+    });
+  } catch (error) {
+    handlePartialError(error, req, res, 'partials/port_configuration.html', { ports: [] });
+  }
+});
+
+// POST: Update Port Configuration
+app.post('/ops/ports/:portType', async (req, res) => {
+  try {
+    // 1. Authentication & Authorization
+    if (!requireInternal(req, res)) return;
+
+    // 2. Input validation
+    const portType = req.params.portType;
+    const { is_enabled, webhook_url, provider, configuration } = req.body;
+
+    const validPortTypes = ['email', 'whatsapp', 'slack'];
+    if (!validPortTypes.includes(portType)) {
+      return res.status(400).json({
+        error: 'Invalid port type',
+        message: `Port type must be one of: ${validPortTypes.join(', ')}`
+      });
+    }
+
+    // 3. Build update object
+    const updates = {};
+    if (is_enabled !== undefined) {
+      // Handle checkbox: 'true' string or boolean true
+      updates.is_enabled = is_enabled === 'true' || is_enabled === true;
+    }
+    if (webhook_url !== undefined) {
+      updates.webhook_url = webhook_url || null;
+    }
+    if (provider !== undefined) {
+      updates.provider = provider || null;
+    }
+    if (configuration !== undefined) {
+      try {
+        updates.configuration = typeof configuration === 'string' ? JSON.parse(configuration) : configuration;
+      } catch (parseError) {
+        return res.status(400).json({
+          error: 'Invalid configuration JSON',
+          message: parseError.message
+        });
+      }
+    }
+
+    // 4. Business logic - Update port configuration
+    const updatedPort = await vmpAdapter.updatePortConfiguration(portType, updates);
+
+    // 5. Return success response
+    return res.status(200).json({
+      success: true,
+      port: updatedPort,
+      message: 'Port configuration updated successfully'
+    });
+
+  } catch (error) {
+    logError(error, { path: req.path, userId: req.user?.id, portType: req.params.portType });
+    return res.status(500).json({
+      error: 'Failed to update port configuration',
+      message: error.message
+    });
+  }
+});
+
+// GET: Port Activity Log Partial
+app.get('/partials/port-activity-log.html', async (req, res) => {
+  try {
+    // 1. Authentication & Authorization
+    if (!requireInternal(req, res)) return;
+
+    // 2. Input validation
+    const portType = req.query.port_type || null;
+    const limit = parseInt(req.query.limit || '100', 10);
+
+    // 3. Business logic - Get activity log
+    let activities = [];
+    try {
+      activities = await vmpAdapter.getPortActivityLog(portType, limit);
+    } catch (adapterError) {
+      logError(adapterError, { path: req.path, portType, operation: 'getPortActivityLog' });
+    }
+
+    // 4. Render response
+    res.render('partials/port_activity_log.html', {
+      activities: activities || [],
+      portType: portType || 'all'
+    });
+  } catch (error) {
+    handlePartialError(error, req, res, 'partials/port_activity_log.html', { activities: [], portType: null });
   }
 });
 
@@ -2410,6 +3538,60 @@ app.get('/partials/invoice-list.html', async (req, res) => {
       invoices: [],
       isInternal: req.user?.isInternal || false,
       query: req.query
+    });
+  }
+});
+
+// GET: Invoice Card Feed Partial (Sprint 12.1: Action Mode)
+app.get('/partials/invoice-card-feed.html', async (req, res) => {
+  try {
+    // 1. Authentication
+    if (!requireAuth(req, res)) return;
+
+    // 2. Business logic - Pagination support
+    const { status, search, company_id, page = 1 } = req.query;
+    const pageNum = parseInt(page, 10) || 1;
+    const pageSize = 12; // Cards per page
+    const offset = (pageNum - 1) * pageSize;
+
+    const filters = {};
+    if (status) filters.status = status;
+    if (search) filters.search = search;
+
+    // Get all invoices (we'll paginate in memory for now)
+    // TODO: Add pagination to adapter for better performance
+    const allInvoices = await vmpAdapter.getInvoices(
+      req.user.vendorId,
+      company_id || null,
+      filters
+    );
+
+    // Paginate
+    const totalInvoices = allInvoices?.length || 0;
+    const paginatedInvoices = allInvoices?.slice(offset, offset + pageSize) || [];
+    const hasMore = offset + pageSize < totalInvoices;
+    const nextPage = hasMore ? pageNum + 1 : null;
+
+    // 3. Render response
+    res.render('partials/invoice_card_feed.html', {
+      invoices: paginatedInvoices,
+      current_page: pageNum,
+      next_page: nextPage,
+      has_more: hasMore,
+      isInternal: req.user?.isInternal || false,
+      query: req.query,
+      error: null,
+      request: req
+    });
+  } catch (error) {
+    handlePartialError(error, req, res, 'partials/invoice_card_feed.html', {
+      invoices: [],
+      current_page: 1,
+      next_page: null,
+      has_more: false,
+      isInternal: req.user?.isInternal || false,
+      query: req.query,
+      request: req
     });
   }
 });
@@ -2573,6 +3755,183 @@ app.post('/invoices/:id/open-case', async (req, res) => {
     logError(error, { path: req.path, userId: req.user?.id, invoiceId: req.params.id });
     res.status(500).json({
       error: error.message || 'Failed to create case from invoice'
+    });
+  }
+});
+
+// POST: Request GRN (Sprint 7.1 - Action Button)
+app.post('/invoices/:id/request-grn', async (req, res) => {
+  try {
+    // 1. Authentication
+    if (!requireAuth(req, res)) return;
+
+    // 2. Input validation
+    const invoiceId = req.params.id;
+    if (!validateUUIDParam(invoiceId, res)) return;
+
+    // 3. Business logic - Verify invoice access
+    const invoice = await vmpAdapter.getInvoiceDetail(invoiceId, req.user.vendorId);
+    if (!invoice) {
+      return res.status(404).json({
+        error: 'Invoice not found or access denied'
+      });
+    }
+
+    // Get matching status to check GRN reference
+    const matchingStatus = await vmpAdapter.getMatchingStatus(invoiceId);
+    const grnRef = matchingStatus.invoice_grn_ref || 'N/A';
+
+    // Create case with exception details
+    const newCase = await vmpAdapter.createCaseFromInvoice(
+      invoiceId,
+      req.user.vendorId,
+      req.user.id,
+      `Missing GRN for Invoice ${invoice.invoice_num} (GRN Ref: ${grnRef})`
+    );
+
+    // 4. Return updated matching status (HTMX will refresh the partial)
+    const updatedMatchingStatus = await vmpAdapter.getMatchingStatus(invoiceId);
+    res.render('partials/matching_status.html', {
+      matchingStatus: updatedMatchingStatus,
+      error: null
+    });
+  } catch (error) {
+    logError(error, { path: req.path, userId: req.user?.id, invoiceId: req.params.id });
+    res.status(500).render('partials/matching_status.html', {
+      matchingStatus: null,
+      error: error.message || 'Failed to request GRN'
+    });
+  }
+});
+
+// POST: Dispute Amount (Sprint 7.1 - Action Button)
+app.post('/invoices/:id/dispute-amount', async (req, res) => {
+  try {
+    // 1. Authentication
+    if (!requireAuth(req, res)) return;
+
+    // 2. Input validation
+    const invoiceId = req.params.id;
+    if (!validateUUIDParam(invoiceId, res)) return;
+
+    // 3. Business logic - Verify invoice access
+    const invoice = await vmpAdapter.getInvoiceDetail(invoiceId, req.user.vendorId);
+    if (!invoice) {
+      return res.status(404).json({
+        error: 'Invoice not found or access denied'
+      });
+    }
+
+    // Get matching status to get mismatch details
+    const matchingStatus = await vmpAdapter.getMatchingStatus(invoiceId);
+    const amountMismatches = matchingStatus.mismatches?.amount || [];
+    
+    // Build dispute subject with mismatch details
+    let disputeSubject = `Amount Dispute for Invoice ${invoice.invoice_num}`;
+    if (amountMismatches.length > 0) {
+      const firstMismatch = amountMismatches[0];
+      if (firstMismatch.type === 'po_invoice') {
+        disputeSubject = `Amount Dispute: Invoice ${invoice.invoice_num} (${firstMismatch.currency} ${firstMismatch.invoice_amount}) vs PO (${firstMismatch.currency} ${firstMismatch.po_amount}) - Difference: ${firstMismatch.currency} ${firstMismatch.difference.toFixed(2)}`;
+      } else if (firstMismatch.type === 'grn_invoice') {
+        disputeSubject = `Amount Dispute: Invoice ${invoice.invoice_num} (${firstMismatch.currency} ${firstMismatch.invoice_amount}) vs GRN (${firstMismatch.currency} ${firstMismatch.grn_amount}) - Difference: ${firstMismatch.currency} ${firstMismatch.difference.toFixed(2)}`;
+      }
+    }
+
+    // Create case with exception details
+    const newCase = await vmpAdapter.createCaseFromInvoice(
+      invoiceId,
+      req.user.vendorId,
+      req.user.id,
+      disputeSubject,
+      'amount_mismatch'
+    );
+
+    // 4. Return updated matching status (HTMX will refresh the partial)
+    const updatedMatchingStatus = await vmpAdapter.getMatchingStatus(invoiceId);
+    res.render('partials/matching_status.html', {
+      matchingStatus: updatedMatchingStatus,
+      error: null
+    });
+  } catch (error) {
+    logError(error, { path: req.path, userId: req.user?.id, invoiceId: req.params.id });
+    res.status(500).render('partials/matching_status.html', {
+      matchingStatus: null,
+      error: error.message || 'Failed to dispute amount'
+    });
+  }
+});
+
+// POST: Report Exception (Sprint 7.2 - Exception Workflow)
+app.post('/invoices/:id/report-exception', async (req, res) => {
+  try {
+    // 1. Authentication
+    if (!requireAuth(req, res)) return;
+
+    // 2. Input validation
+    const invoiceId = req.params.id;
+    if (!validateUUIDParam(invoiceId, res)) return;
+
+    const { exception_type, notes } = req.body;
+    if (!exception_type) {
+      return res.status(400).render('partials/matching_status.html', {
+        matchingStatus: null,
+        error: 'Exception type is required'
+      });
+    }
+
+    // Validate exception type
+    const validExceptionTypes = ['missing_grn', 'amount_mismatch', 'date_mismatch', 'missing_po', 'po_status', 'grn_status'];
+    if (!validExceptionTypes.includes(exception_type)) {
+      return res.status(400).render('partials/matching_status.html', {
+        matchingStatus: null,
+        error: 'Invalid exception type'
+      });
+    }
+
+    // 3. Business logic - Verify invoice access
+    const invoice = await vmpAdapter.getInvoiceDetail(invoiceId, req.user.vendorId);
+    if (!invoice) {
+      return res.status(404).render('partials/matching_status.html', {
+        matchingStatus: null,
+        error: 'Invoice not found or access denied'
+      });
+    }
+
+    // Build subject with exception details
+    const exceptionLabels = {
+      missing_grn: 'Missing GRN',
+      amount_mismatch: 'Amount Mismatch',
+      date_mismatch: 'Date Mismatch',
+      missing_po: 'Missing PO',
+      po_status: 'PO Status Issue',
+      grn_status: 'GRN Status Issue'
+    };
+    
+    let caseSubject = `${exceptionLabels[exception_type]}: Invoice ${invoice.invoice_num}`;
+    if (notes && notes.trim()) {
+      caseSubject += ` - ${notes.trim()}`;
+    }
+
+    // Create case with exception type
+    const newCase = await vmpAdapter.createCaseFromInvoice(
+      invoiceId,
+      req.user.vendorId,
+      req.user.id,
+      caseSubject,
+      exception_type
+    );
+
+    // 4. Return updated matching status (HTMX will refresh the partial)
+    const updatedMatchingStatus = await vmpAdapter.getMatchingStatus(invoiceId);
+    res.render('partials/matching_status.html', {
+      matchingStatus: updatedMatchingStatus,
+      error: null
+    });
+  } catch (error) {
+    logError(error, { path: req.path, userId: req.user?.id, invoiceId: req.params.id });
+    res.status(500).render('partials/matching_status.html', {
+      matchingStatus: null,
+      error: error.message || 'Failed to report exception'
     });
   }
 });
@@ -2970,8 +4329,16 @@ app.get('/login', (req, res) => {
   res.render('pages/login3.html', { error: null });
 });
 
-// Legacy login redirects
+// Legacy login redirects (backward compatibility)
 app.get('/login4', (req, res) => {
+  if (req.session?.userId) {
+    return res.redirect('/home');
+  }
+  res.redirect(302, '/login');
+});
+
+// Legacy login2 redirect (backward compatibility)
+app.get('/login2', (req, res) => {
   if (req.session?.userId) {
     return res.redirect('/home');
   }
@@ -3033,7 +4400,11 @@ app.post('/login', async (req, res) => {
   }
 });
 
-// 3b. Logout Handler
+// 3b. Login Route Consistency
+// Production: /login → login3.html (LOCKED)
+// Legacy redirects: /login2, /login4 → /login (backward compatibility)
+
+// 3c. Logout Handler
 app.post('/logout', async (req, res) => {
   // Destroy session (express-session handles cleanup in PostgreSQL)
   req.session.destroy((err) => {
@@ -3044,8 +4415,9 @@ app.post('/logout', async (req, res) => {
   });
 });
 
-// 3b. Login3 (Canonical redirect to /login) - handled above
-// 3c. Login2/Login4 (Redirect to canonical) - handled above
+// 3b. Legacy Login Routes (Redirect to canonical /login)
+// - /login2 → /login (backward compatibility)
+// - /login4 → /login (backward compatibility)
 
 // 4. Login Partials (HTMX)
 app.get('/partials/login-help-access.html', (req, res) => {
@@ -3174,6 +4546,683 @@ app.use((req, res) => {
 // Global error handler
 // Uses structured error handling per Supabase best practices
 // @see https://supabase.com/docs/guides/functions/error-handling
+// ============================================================================
+// SPRINT 10.1: COMMAND PALETTE SEARCH API
+// ============================================================================
+
+// GET: Command Palette Search (Enhanced with AI - Sprint 13.3)
+app.get('/api/command-palette/search', async (req, res) => {
+  try {
+    // 1. Authentication
+    if (!requireAuth(req, res)) return;
+
+    // 2. Input validation
+    const query = req.query.q || '';
+    if (!query || query.length < 2) {
+      // Return suggestions for empty/short queries
+      const suggestions = await generateSearchSuggestions(query, [], {
+        vendorId: req.user.vendorId,
+        isInternal: req.user.isInternal
+      });
+      return res.json({ 
+        results: [],
+        suggestions,
+        intent: { type: 'general', confidence: 0 }
+      });
+    }
+
+    // 3. AI-Powered Search (Sprint 13.3)
+    const vendorId = req.user.vendorId || env.DEMO_VENDOR_ID;
+    if (!vendorId) {
+      return res.json({ results: [], error: 'Vendor ID not available' });
+    }
+
+    // Parse search intent
+    const intent = await parseSearchIntent(query);
+    
+    const results = [];
+    const searchTerm = query.toLowerCase().trim();
+
+    // 4. Search Cases (with intent-based filtering)
+    try {
+      const allCases = await vmpAdapter.getInbox(vendorId, {});
+      let filteredCases = allCases.filter(caseItem => {
+        const subject = (caseItem.subject || '').toLowerCase();
+        const caseNum = (caseItem.case_num || '').toLowerCase();
+        const id = (caseItem.id || '').toLowerCase();
+        return subject.includes(searchTerm) || caseNum.includes(searchTerm) || id.includes(searchTerm);
+      });
+
+      // Apply intent filters
+      if (intent.filters.status) {
+        filteredCases = filteredCases.filter(c => c.status === intent.filters.status);
+      }
+
+      filteredCases.slice(0, 5).forEach(caseItem => {
+        results.push({
+          id: `case-${caseItem.id}`,
+          category: 'Cases',
+          label: caseItem.subject || `Case ${caseItem.case_num || caseItem.id.substring(0, 8)}`,
+          hint: `Status: ${caseItem.status || 'open'} • ${caseItem.case_type || 'general'}`,
+          url: `/cases/${caseItem.id}`,
+          action: 'navigate',
+          icon: '📋',
+          metadata: `${caseItem.case_num || ''} ${caseItem.subject || ''}`,
+          timestamp: caseItem.created_at
+        });
+      });
+    } catch (caseError) {
+      logError(caseError, { path: req.path, operation: 'searchCases' });
+    }
+
+    // 5. Search Invoices (with intent-based filtering)
+    try {
+      const allInvoices = await vmpAdapter.getInvoices(vendorId);
+      let filteredInvoices = allInvoices.filter(invoice => {
+        const invoiceNum = (invoice.invoice_num || '').toLowerCase();
+        const id = (invoice.id || '').toLowerCase();
+        return invoiceNum.includes(searchTerm) || id.includes(searchTerm);
+      });
+
+      // Apply intent filters
+      if (intent.filters.status) {
+        filteredInvoices = filteredInvoices.filter(i => i.status === intent.filters.status);
+      }
+      if (intent.filters.amount) {
+        filteredInvoices = filteredInvoices.filter(i => Math.abs(i.amount - intent.filters.amount) < 100);
+      }
+
+      filteredInvoices.slice(0, 5).forEach(invoice => {
+        results.push({
+          id: `invoice-${invoice.id}`,
+          category: 'Invoices',
+          label: invoice.invoice_num || `Invoice ${invoice.id.substring(0, 8)}`,
+          hint: `Amount: ${invoice.currency_code || 'USD'} ${(invoice.amount || 0).toFixed(2)} • ${invoice.status || 'pending'}`,
+          url: `/invoices/${invoice.id}`,
+          action: 'navigate',
+          icon: '🧾',
+          metadata: `${invoice.invoice_num || ''} ${invoice.vmp_companies?.name || ''}`,
+          timestamp: invoice.created_at
+        });
+      });
+    } catch (invoiceError) {
+      logError(invoiceError, { path: req.path, operation: 'searchInvoices' });
+    }
+
+    // 6. Search Payments (with intent-based filtering)
+    try {
+      const allPayments = await vmpAdapter.getPayments(vendorId);
+      let filteredPayments = allPayments.filter(payment => {
+        const paymentRef = (payment.payment_ref || '').toLowerCase();
+        const id = (payment.id || '').toLowerCase();
+        return paymentRef.includes(searchTerm) || id.includes(searchTerm);
+      });
+
+      // Apply intent filters
+      if (intent.filters.status) {
+        filteredPayments = filteredPayments.filter(p => p.status === intent.filters.status);
+      }
+      if (intent.filters.amount) {
+        filteredPayments = filteredPayments.filter(p => Math.abs(p.amount - intent.filters.amount) < 100);
+      }
+      if (intent.filters.dateRange) {
+        const now = new Date();
+        const rangeStart = new Date(now);
+        if (intent.filters.dateRange === 'today') {
+          rangeStart.setHours(0, 0, 0, 0);
+        } else if (intent.filters.dateRange === 'week') {
+          rangeStart.setDate(now.getDate() - 7);
+        } else if (intent.filters.dateRange === 'month') {
+          rangeStart.setMonth(now.getMonth() - 1);
+        }
+        filteredPayments = filteredPayments.filter(p => new Date(p.payment_date || p.created_at) >= rangeStart);
+      }
+
+      filteredPayments.slice(0, 5).forEach(payment => {
+        results.push({
+          id: `payment-${payment.id}`,
+          category: 'Payments',
+          label: payment.payment_ref || `Payment ${payment.id.substring(0, 8)}`,
+          hint: `Amount: ${payment.currency_code || 'USD'} ${(payment.amount || 0).toFixed(2)} • ${payment.status || 'pending'}`,
+          url: `/payments/${payment.id}`,
+          action: 'navigate',
+          icon: '💰',
+          metadata: `${payment.payment_ref || ''} ${payment.vmp_companies?.name || ''}`,
+          timestamp: payment.payment_date || payment.created_at
+        });
+      });
+    } catch (paymentError) {
+      logError(paymentError, { path: req.path, operation: 'searchPayments' });
+    }
+
+    // 7. Add Quick Actions based on search term
+    if (searchTerm.includes('new') || searchTerm.includes('create')) {
+      results.push({
+        id: 'action-new-case',
+        category: 'Actions',
+        label: 'New Case',
+        hint: 'Create a new case',
+        url: '/cases/new',
+        action: 'navigate',
+        icon: '➕',
+        shortcut: '⌘N'
+      });
+    }
+
+    if (searchTerm.includes('invoice') || searchTerm.includes('invoices')) {
+      results.push({
+        id: 'action-view-invoices',
+        category: 'Actions',
+        label: 'View All Invoices',
+        hint: 'Browse all invoices',
+        url: '/invoices',
+        action: 'navigate',
+        icon: '📋'
+      });
+    }
+
+    if (searchTerm.includes('payment') || searchTerm.includes('payments')) {
+      results.push({
+        id: 'action-view-payments',
+        category: 'Actions',
+        label: 'View Payment History',
+        hint: 'Browse payment timeline',
+        url: '/payments/history',
+        action: 'navigate',
+        icon: '💰'
+      });
+    }
+
+    // 8. Enhance results with AI (Sprint 13.3)
+    const { enhanceSearchResults } = await import('./src/utils/ai-search.js');
+    const enhancedResults = await enhanceSearchResults(results, intent, {
+      vendorId: req.user.vendorId,
+      isInternal: req.user.isInternal
+    });
+
+    // Generate suggestions
+    const suggestions = await generateSearchSuggestions(query, [], {
+      vendorId: req.user.vendorId,
+      isInternal: req.user.isInternal
+    });
+
+    // 9. Return enhanced results
+    return res.json({ 
+      results: enhancedResults,
+      intent,
+      suggestions,
+      totalResults: enhancedResults.length
+    });
+
+  } catch (error) {
+    logError(error, { path: req.path, operation: 'commandPaletteSearch' });
+    return res.json({ results: [] });
+  }
+});
+
+// ============================================================================
+// SPRINT 11.1: BULK ACTIONS API
+// ============================================================================
+
+// POST: Bulk Actions (Cases, Invoices, Payments)
+app.post('/api/bulk-actions/:listType/:action', async (req, res) => {
+  try {
+    // 1. Authentication
+    if (!requireAuth(req, res)) return;
+
+    // 2. Input validation
+    const { listType, action } = req.params;
+    const { ids } = req.body;
+
+    if (!ids || !Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({
+        error: 'No items selected',
+        message: 'Please select at least one item to perform the action'
+      });
+    }
+
+    // Validate UUIDs
+    for (const id of ids) {
+      const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      if (!uuidPattern.test(id)) {
+        return res.status(400).json({
+          error: 'Invalid ID format',
+          message: `Invalid ID: ${id}`
+        });
+      }
+    }
+
+    const validListTypes = ['cases', 'invoices', 'payments'];
+    const validActions = ['approve', 'reject', 'export', 'close'];
+
+    if (!validListTypes.includes(listType)) {
+      return res.status(400).json({
+        error: 'Invalid list type',
+        message: `List type must be one of: ${validListTypes.join(', ')}`
+      });
+    }
+
+    if (!validActions.includes(action)) {
+      return res.status(400).json({
+        error: 'Invalid action',
+        message: `Action must be one of: ${validActions.join(', ')}`
+      });
+    }
+
+    // 3. Business logic - Execute bulk action
+    let results = [];
+    
+    try {
+      switch (listType) {
+        case 'cases':
+          results = await executeBulkCaseAction(action, ids, req.user);
+          break;
+        case 'invoices':
+          results = await executeBulkInvoiceAction(action, ids, req.user);
+          break;
+        case 'payments':
+          results = await executeBulkPaymentAction(action, ids, req.user);
+          break;
+      }
+    } catch (actionError) {
+      logError(actionError, { path: req.path, listType, action, ids, operation: 'bulkAction' });
+      return res.status(500).json({
+        error: 'Failed to execute bulk action',
+        message: actionError.message
+      });
+    }
+
+    // 4. Return success response
+    return res.status(200).json({
+      success: true,
+      action,
+      listType,
+      processed: results.length,
+      results
+    });
+
+  } catch (error) {
+    logError(error, { path: req.path, operation: 'bulkAction' });
+    return res.status(500).json({
+      error: 'Internal server error',
+      message: error.message
+    });
+  }
+});
+
+// Helper: Execute bulk case actions
+async function executeBulkCaseAction(action, caseIds, user) {
+  const results = [];
+  
+  for (const caseId of caseIds) {
+    try {
+      // Verify case access
+      const caseDetail = await vmpAdapter.getCaseDetail(caseId, user.vendorId);
+      if (!caseDetail) {
+        results.push({ id: caseId, success: false, error: 'Case not found or access denied' });
+        continue;
+      }
+
+      switch (action) {
+        case 'approve':
+          // Approve case (internal only)
+          if (!user.isInternal) {
+            results.push({ id: caseId, success: false, error: 'Unauthorized' });
+            continue;
+          }
+          await vmpAdapter.updateCaseStatus(caseId, 'resolved', user.id);
+          results.push({ id: caseId, success: true });
+          break;
+
+        case 'reject':
+          // Reject case (internal only)
+          if (!user.isInternal) {
+            results.push({ id: caseId, success: false, error: 'Unauthorized' });
+            continue;
+          }
+          await vmpAdapter.updateCaseStatus(caseId, 'rejected', user.id);
+          results.push({ id: caseId, success: true });
+          break;
+
+        case 'close':
+          // Close case (vendor can close their own cases)
+          if (caseDetail.vendor_id !== user.vendorId && !user.isInternal) {
+            results.push({ id: caseId, success: false, error: 'Unauthorized' });
+            continue;
+          }
+          await vmpAdapter.updateCaseStatus(caseId, 'resolved', user.id);
+          results.push({ id: caseId, success: true });
+          break;
+
+        case 'export':
+          // Export case data (return case info for export)
+          results.push({ id: caseId, success: true, data: caseDetail });
+          break;
+
+        default:
+          results.push({ id: caseId, success: false, error: 'Unknown action' });
+      }
+    } catch (error) {
+      logError(error, { caseId, action, operation: 'executeBulkCaseAction' });
+      results.push({ id: caseId, success: false, error: error.message });
+    }
+  }
+
+  return results;
+}
+
+// Helper: Execute bulk invoice actions
+async function executeBulkInvoiceAction(action, invoiceIds, user) {
+  const results = [];
+  
+  for (const invoiceId of invoiceIds) {
+    try {
+      // Verify invoice access
+      const invoice = await vmpAdapter.getInvoiceDetail(invoiceId, user.vendorId);
+      if (!invoice) {
+        results.push({ id: invoiceId, success: false, error: 'Invoice not found or access denied' });
+        continue;
+      }
+
+      switch (action) {
+        case 'approve':
+        case 'reject':
+        case 'close':
+          // These actions don't apply to invoices directly
+          results.push({ id: invoiceId, success: false, error: 'Action not applicable to invoices' });
+          break;
+
+        case 'export':
+          // Export invoice data
+          results.push({ id: invoiceId, success: true, data: invoice });
+          break;
+
+        default:
+          results.push({ id: invoiceId, success: false, error: 'Unknown action' });
+      }
+    } catch (error) {
+      logError(error, { invoiceId, action, operation: 'executeBulkInvoiceAction' });
+      results.push({ id: invoiceId, success: false, error: error.message });
+    }
+  }
+
+  return results;
+}
+
+// Helper: Execute bulk payment actions
+async function executeBulkPaymentAction(action, paymentIds, user) {
+  const results = [];
+  
+  for (const paymentId of paymentIds) {
+    try {
+      // Verify payment access
+      const payment = await vmpAdapter.getPaymentDetail(paymentId, user.vendorId);
+      if (!payment) {
+        results.push({ id: paymentId, success: false, error: 'Payment not found or access denied' });
+        continue;
+      }
+
+      switch (action) {
+        case 'approve':
+        case 'reject':
+        case 'close':
+          // These actions don't apply to payments directly
+          results.push({ id: paymentId, success: false, error: 'Action not applicable to payments' });
+          break;
+
+        case 'export':
+          // Export payment data
+          results.push({ id: paymentId, success: true, data: payment });
+          break;
+
+        default:
+          results.push({ id: paymentId, success: false, error: 'Unknown action' });
+      }
+    } catch (error) {
+      logError(error, { paymentId, action, operation: 'executeBulkPaymentAction' });
+      results.push({ id: paymentId, success: false, error: error.message });
+    }
+  }
+
+  return results;
+}
+
+// ============================================================================
+// SPRINT 12.3: PUSH NOTIFICATIONS API
+// ============================================================================
+
+// POST: Subscribe to Push Notifications
+app.post('/api/push/subscribe', async (req, res) => {
+  try {
+    // 1. Authentication
+    if (!requireAuth(req, res)) return;
+
+    // 2. Input validation
+    const subscription = req.body;
+    
+    if (!subscription || !subscription.endpoint) {
+      return res.status(400).json({
+        error: 'Invalid subscription',
+        message: 'Subscription object with endpoint is required'
+      });
+    }
+
+    if (!subscription.keys || !subscription.keys.p256dh || !subscription.keys.auth) {
+      return res.status(400).json({
+        error: 'Invalid subscription',
+        message: 'Subscription must include p256dh and auth keys'
+      });
+    }
+
+    // 3. Store subscription in database
+    const userAgent = req.get('user-agent') || null;
+    const storedSubscription = await vmpAdapter.storePushSubscription(
+      req.user.id,
+      req.user.vendorId,
+      subscription,
+      userAgent
+    );
+
+    if (!storedSubscription) {
+      return res.status(500).json({
+        error: 'Failed to store subscription',
+        message: 'Could not save push subscription to database'
+      });
+    }
+    
+    // 4. Return success
+    return res.json({
+      success: true,
+      message: 'Push subscription registered',
+      subscription: {
+        id: storedSubscription.id,
+        endpoint: storedSubscription.endpoint
+      }
+    });
+
+  } catch (error) {
+    logError(error, { path: req.path, operation: 'pushSubscribe', userId: req.user?.id });
+    return res.status(500).json({
+      error: 'Internal server error',
+      message: error.message
+    });
+  }
+});
+
+// POST: Unsubscribe from Push Notifications
+app.post('/api/push/unsubscribe', async (req, res) => {
+  try {
+    // 1. Authentication
+    if (!requireAuth(req, res)) return;
+
+    // 2. Input validation
+    const { endpoint } = req.body;
+    
+    if (!endpoint) {
+      return res.status(400).json({
+        error: 'Invalid request',
+        message: 'Subscription endpoint is required'
+      });
+    }
+
+    // 3. Remove subscription from database
+    const removed = await vmpAdapter.removePushSubscription(req.user.id, endpoint);
+    
+    if (!removed) {
+      return res.status(404).json({
+        error: 'Subscription not found',
+        message: 'No active subscription found for this endpoint'
+      });
+    }
+    
+    // 4. Return success
+    return res.json({
+      success: true,
+      message: 'Push subscription removed'
+    });
+
+  } catch (error) {
+    logError(error, { path: req.path, operation: 'pushUnsubscribe', userId: req.user?.id });
+    return res.status(500).json({
+      error: 'Internal server error',
+      message: error.message
+    });
+  }
+});
+
+// ============================================================================
+// SPRINT 13.2: AI DATA VALIDATION API
+// ============================================================================
+
+// GET: Validate Case Data
+app.get('/api/cases/:id/validate', async (req, res) => {
+  try {
+    // 1. Authentication
+    if (!requireAuth(req, res)) return;
+
+    // 2. Input validation
+    const caseId = req.params.id;
+    if (!validateUUIDParam(caseId, res)) return;
+
+    // 3. Business logic
+    const vendorId = req.user.vendorId || env.DEMO_VENDOR_ID;
+    if (!vendorId) {
+      return res.status(500).json({
+        error: 'Vendor ID not available'
+      });
+    }
+
+    // Get case data
+    const caseDetail = await vmpAdapter.getCaseDetail(caseId, vendorId);
+    if (!caseDetail) {
+      return res.status(404).json({
+        error: 'Case not found'
+      });
+    }
+
+    // Verify access
+    if (caseDetail.vendor_id !== vendorId && !req.user?.isInternal) {
+      return res.status(403).json({
+        error: 'Access denied'
+      });
+    }
+
+    // Get checklist steps and evidence
+    const checklistSteps = await vmpAdapter.getChecklistSteps(caseId);
+    const evidence = await vmpAdapter.getEvidence(caseId);
+
+    // Run validation
+    const validationResult = await validateCaseData(caseDetail, checklistSteps, evidence);
+
+    // Generate response message
+    const response = generateValidationResponse(validationResult, caseDetail);
+
+    // 4. Return result
+    return res.json({
+      validation: validationResult,
+      response,
+      timestamp: new Date().toISOString()
+    });
+
+  } catch (error) {
+    logError(error, { path: req.path, operation: 'validateCase', userId: req.user?.id });
+    return res.status(500).json({
+      error: 'Internal server error',
+      message: error.message
+    });
+  }
+});
+
+// POST: Auto-respond to validation issues (AI-generated message)
+app.post('/api/cases/:id/auto-respond', async (req, res) => {
+  try {
+    // 1. Authentication
+    if (!requireAuth(req, res)) return;
+
+    // 2. Input validation
+    const caseId = req.params.id;
+    if (!validateUUIDParam(caseId, res)) return;
+
+    // 3. Business logic
+    const vendorId = req.user.vendorId || env.DEMO_VENDOR_ID;
+    if (!vendorId) {
+      return res.status(500).json({
+        error: 'Vendor ID not available'
+      });
+    }
+
+    // Get case data
+    const caseDetail = await vmpAdapter.getCaseDetail(caseId, vendorId);
+    if (!caseDetail) {
+      return res.status(404).json({
+        error: 'Case not found'
+      });
+    }
+
+    // Verify access (internal only for auto-respond)
+    if (!req.user?.isInternal) {
+      return res.status(403).json({
+        error: 'Access denied - internal users only'
+      });
+    }
+
+    // Get validation result
+    const checklistSteps = await vmpAdapter.getChecklistSteps(caseId);
+    const evidence = await vmpAdapter.getEvidence(caseId);
+    const validationResult = await validateCaseData(caseDetail, checklistSteps, evidence);
+
+    // Generate response
+    const response = generateValidationResponse(validationResult, caseDetail);
+
+    // Create AI message in case thread
+    if (response.message && validationResult.missingRequired.length > 0) {
+      await vmpAdapter.createMessage(
+        caseId,
+        response.message,
+        'ai', // sender_type
+        'portal', // channel_source
+        null, // sender_user_id (AI)
+        false // is_internal_note
+      );
+    }
+
+    // 4. Return result
+    return res.json({
+      success: true,
+      message: 'Auto-response sent',
+      response,
+      validation: validationResult
+    });
+
+  } catch (error) {
+    logError(error, { path: req.path, operation: 'autoRespond', userId: req.user?.id });
+    return res.status(500).json({
+      error: 'Internal server error',
+      message: error.message
+    });
+  }
+});
+
 app.use((err, req, res, next) => {
   // Log error with context
   logError(err, {
@@ -3203,9 +5252,21 @@ export default app;
 // Keep listen for local development (skip in test environment)
 if (env.NODE_ENV !== 'production' && env.NODE_ENV !== 'test') {
   const PORT = parseInt(env.PORT, 10);
-  app.listen(PORT, () => {
+  const server = app.listen(PORT, () => {
     console.log(`NexusCanon VMP (Phase 0) running on http://localhost:${PORT}`);
     console.log(`Environment: ${env.NODE_ENV}`);
+  });
+  
+  server.on('error', (err) => {
+    if (err.code === 'EADDRINUSE') {
+      console.error(`\n❌ Port ${PORT} is already in use.`);
+      console.error(`   Please stop the process using port ${PORT} or change PORT in .env`);
+      console.error(`   To find the process: Get-NetTCPConnection -LocalPort ${PORT} | Select-Object OwningProcess\n`);
+      process.exit(1);
+    } else {
+      console.error('Server error:', err);
+      process.exit(1);
+    }
   });
 }
 

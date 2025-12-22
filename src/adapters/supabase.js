@@ -310,9 +310,18 @@ export const vmpAdapter = {
         }
 
         // Security check: ensure case belongs to vendor
+        // Sprint 8.1: Include assigned user information
         const queryPromise = supabase
             .from('vmp_cases')
-            .select('*')
+            .select(`
+                *,
+                vmp_companies (id, name, group_id),
+                assigned_user:assigned_to_user_id (
+                    id,
+                    email,
+                    display_name
+                )
+            `)
             .eq('id', caseId)
             .eq('vendor_id', vendorId)
             .single();
@@ -334,6 +343,120 @@ export const vmpAdapter = {
         }
 
         return caseData;
+    },
+
+    // Sprint 8.1: Get Case Activity Feed (Combines messages, decisions, evidence, status changes)
+    async getCaseActivity(caseId) {
+        if (!caseId) {
+            throw new ValidationError('getCaseActivity requires a caseId parameter', 'caseId');
+        }
+
+        const activities = [];
+
+        // 1. Get messages
+        try {
+            const messages = await this.getMessages(caseId);
+            if (messages && messages.length > 0) {
+                messages.forEach(msg => {
+                    activities.push({
+                        type: 'message',
+                        timestamp: msg.created_at,
+                        actor: msg.sender_party,
+                        action: 'sent message',
+                        details: msg.body,
+                        channel: msg.channel_source
+                    });
+                });
+            }
+        } catch (msgError) {
+            console.error('Error fetching messages for activity:', msgError);
+        }
+
+        // 2. Get decision log entries
+        try {
+            const decisionQuery = supabase
+                .from('vmp_decision_log')
+                .select('*')
+                .eq('case_id', caseId)
+                .order('created_at', { ascending: true });
+
+            const { data: decisions, error: decisionError } = await withTimeout(
+                decisionQuery,
+                10000,
+                `getCaseActivity-decisions(${caseId})`
+            );
+
+            if (!decisionError && decisions) {
+                decisions.forEach(decision => {
+                    activities.push({
+                        type: 'decision',
+                        timestamp: decision.created_at,
+                        actor: decision.who,
+                        action: decision.decision_type,
+                        details: decision.what,
+                        reason: decision.why
+                    });
+                });
+            }
+        } catch (decisionError) {
+            console.error('Error fetching decisions for activity:', decisionError);
+        }
+
+        // 3. Get evidence events (from evidence table)
+        try {
+            const evidenceQuery = supabase
+                .from('vmp_evidence')
+                .select('id, checklist_step_id, status, uploaded_by_user_id, verified_by_user_id, rejected_by_user_id, created_at, updated_at')
+                .eq('case_id', caseId)
+                .order('created_at', { ascending: true });
+
+            const { data: evidenceList, error: evidenceError } = await withTimeout(
+                evidenceQuery,
+                10000,
+                `getCaseActivity-evidence(${caseId})`
+            );
+
+            if (!evidenceError && evidenceList) {
+                evidenceList.forEach(ev => {
+                    if (ev.status === 'submitted') {
+                        activities.push({
+                            type: 'evidence',
+                            timestamp: ev.created_at,
+                            actor: 'vendor',
+                            action: 'uploaded evidence',
+                            details: `Evidence submitted for checklist step`
+                        });
+                    } else if (ev.status === 'verified' && ev.verified_by_user_id) {
+                        activities.push({
+                            type: 'evidence',
+                            timestamp: ev.updated_at || ev.created_at,
+                            actor: 'internal',
+                            action: 'verified evidence',
+                            details: `Evidence verified`
+                        });
+                    } else if (ev.status === 'rejected' && ev.rejected_by_user_id) {
+                        activities.push({
+                            type: 'evidence',
+                            timestamp: ev.updated_at || ev.created_at,
+                            actor: 'internal',
+                            action: 'rejected evidence',
+                            details: `Evidence rejected`
+                        });
+                    }
+                });
+            }
+        } catch (evidenceError) {
+            console.error('Error fetching evidence for activity:', evidenceError);
+        }
+
+        // 4. Sort all activities by timestamp
+        activities.sort((a, b) => {
+            const dateA = new Date(a.timestamp);
+            const dateB = new Date(b.timestamp);
+            return dateA - dateB;
+        });
+
+        return activities;
     },
 
     // Phase 3: Thread Cell - Get Messages
@@ -1051,9 +1174,9 @@ export const vmpAdapter = {
     },
 
     // Day 11: Notifications - Create Notification
-    async createNotification(caseId, userId, notificationType, title, body = null) {
-        if (!caseId || !userId || !notificationType || !title) {
-            throw new ValidationError('createNotification requires caseId, userId, notificationType, and title', null, {
+    async createNotification(caseId, userId, notificationType, title, body = null, paymentId = null) {
+        if (!userId || !notificationType || !title) {
+            throw new ValidationError('createNotification requires userId, notificationType, and title', null, {
                 caseId,
                 userId,
                 notificationType,
@@ -1064,11 +1187,12 @@ export const vmpAdapter = {
         const queryPromise = supabase
             .from('vmp_notifications')
             .insert({
-                case_id: caseId,
+                case_id: caseId || null,
                 user_id: userId,
                 notification_type: notificationType,
                 title: title,
-                body: body
+                body: body,
+                payment_id: paymentId || null
             })
             .select()
             .single();
@@ -1076,7 +1200,7 @@ export const vmpAdapter = {
         const { data, error } = await withTimeout(
             queryPromise,
             10000,
-            `createNotification(${caseId}, ${userId})`
+            `createNotification(${caseId || 'no-case'}, ${userId})`
         );
 
         if (error) {
@@ -1086,6 +1210,149 @@ export const vmpAdapter = {
         }
 
         return data;
+    },
+
+    // Sprint 12.3: Send Push Notification with In-App Notification
+    async createNotificationWithPush(caseId, userId, notificationType, title, body = null, paymentId = null) {
+        // Create in-app notification first
+        const notification = await this.createNotification(caseId, userId, notificationType, title, body, paymentId);
+        
+        // Send push notification if available
+        if (notification) {
+            try {
+                const { sendCaseNotification } = await import('../utils/push-sender.js');
+                await sendCaseNotification(caseId, userId, body || title, {
+                    title,
+                    data: {
+                        notificationId: notification.id,
+                        caseId,
+                        type: notificationType
+                    }
+                });
+            } catch (pushError) {
+                // Don't fail if push fails - in-app notification is primary
+                console.error('[Push] Failed to send push notification:', pushError);
+            }
+        }
+        
+        return notification;
+    },
+
+    // Sprint 7.4: Create Payment Notification for All Vendor Users
+    async notifyVendorUsersForPayment(paymentId, vendorId, paymentRef, amount, currencyCode, invoiceNum = null) {
+        if (!paymentId || !vendorId || !paymentRef || !amount) {
+            throw new ValidationError('notifyVendorUsersForPayment requires paymentId, vendorId, paymentRef, and amount', null, {
+                paymentId,
+                vendorId,
+                paymentRef,
+                hasAmount: !!amount
+            });
+        }
+
+        try {
+            // Get all active vendor users for this vendor
+            const usersQuery = await supabase
+                .from('vmp_vendor_users')
+                .select('id, email, display_name')
+                .eq('vendor_id', vendorId)
+                .eq('is_active', true);
+
+            if (usersQuery.error || !usersQuery.data) {
+                console.error('Error fetching vendor users for payment notification:', usersQuery.error);
+                return [];
+            }
+
+            // Create notifications for all vendor users
+            const notifications = [];
+            const title = `Payment Received: ${paymentRef}`;
+            const body = invoiceNum 
+                ? `Payment of ${currencyCode || 'USD'} ${amount.toFixed(2)} received for Invoice ${invoiceNum}`
+                : `Payment of ${currencyCode || 'USD'} ${amount.toFixed(2)} received`;
+
+            for (const user of usersQuery.data) {
+                try {
+                    const notif = await this.createNotification(
+                        null, // No case_id for payment notifications
+                        user.id,
+                        'payment_received',
+                        title,
+                        body,
+                        paymentId
+                    );
+                    if (notif) {
+                        notifications.push(notif);
+                        
+                        // Send push notification (non-blocking)
+                        try {
+                            const { sendPaymentNotification } = await import('../utils/push-sender.js');
+                            await sendPaymentNotification(paymentId, user.id, {
+                                amount,
+                                currency_code: currencyCode,
+                                payment_ref: paymentRef,
+                                invoice_num: invoiceNum
+                            });
+                        } catch (pushError) {
+                            // Don't fail if push fails - in-app notification is primary
+                            console.error(`[Push] Failed to send push to user ${user.id}:`, pushError);
+                        }
+                        
+                        // Send email notification (non-blocking)
+                        try {
+                            await this.sendPaymentEmailNotification(user.email, user.display_name || user.email, {
+                                paymentRef,
+                                amount,
+                                currencyCode: currencyCode || 'USD',
+                                invoiceNum
+                            });
+                        } catch (emailError) {
+                            // Don't fail notification creation if email fails
+                            console.error(`Failed to send email to ${user.email}:`, emailError);
+                        }
+                    }
+                } catch (notifError) {
+                    console.error(`Failed to create notification for user ${user.id}:`, notifError);
+                }
+            }
+
+            return notifications;
+        } catch (error) {
+            console.error('Error in notifyVendorUsersForPayment:', error);
+            // Don't throw - notifications are non-critical
+            return [];
+        }
+    },
+
+    // Sprint 7.4: Send Payment Email Notification (Basic Implementation)
+    async sendPaymentEmailNotification(userEmail, userName, paymentData) {
+        // Basic email notification stub
+        // In production, this would integrate with an email service (SendGrid, Resend, etc.)
+        // For now, we'll just log it - can be enhanced later with actual email service
+        
+        const emailContent = {
+            to: userEmail,
+            subject: `Payment Received: ${paymentData.paymentRef}`,
+            body: `
+Hello ${userName},
+
+A payment has been received:
+
+Payment Reference: ${paymentData.paymentRef}
+Amount: ${paymentData.currencyCode} ${paymentData.amount.toFixed(2)}
+${paymentData.invoiceNum ? `Invoice: ${paymentData.invoiceNum}` : ''}
+
+You can view the payment details in your VMP portal.
+
+Best regards,
+NexusCanon VMP
+            `.trim()
+        };
+
+        // Log email (in production, send via email service)
+        console.log('Payment email notification:', emailContent);
+        
+        // TODO: Integrate with email service (SendGrid, Resend, etc.)
+        // For now, return success (email will be sent in production)
+        return { success: true, emailContent };
     },
 
     // Day 11: Notifications - Notify All Vendor Users for Case
@@ -1739,6 +2006,21 @@ export const vmpAdapter = {
 
                     if (insertError) throw insertError;
                     upserted.push(inserted);
+
+                    // Sprint 7.4: Create payment notification for new payments
+                    try {
+                        await this.notifyVendorUsersForPayment(
+                            inserted.id,
+                            payment.vendor_id,
+                            payment.payment_ref,
+                            payment.amount,
+                            payment.currency_code || 'USD',
+                            payment.invoice_num
+                        );
+                    } catch (notifError) {
+                        // Don't fail payment creation if notification fails
+                        console.error('Failed to create payment notification:', notifError);
+                    }
                 }
 
                 // Update invoice status to 'paid' if invoice linked
@@ -2186,6 +2468,24 @@ export const vmpAdapter = {
             query = query.lte('payment_date', filters.date_to);
         }
 
+        // Sprint 7.3: Amount range filters
+        if (filters.amount_min) {
+            query = query.gte('amount', parseFloat(filters.amount_min));
+        }
+
+        if (filters.amount_max) {
+            query = query.lte('amount', parseFloat(filters.amount_max));
+        }
+
+        // Sprint 7.3: Status filter (based on remittance availability)
+        if (filters.status) {
+            if (filters.status === 'with_remittance') {
+                query = query.not('remittance_url', 'is', null);
+            } else if (filters.status === 'without_remittance') {
+                query = query.is('remittance_url', null);
+            }
+        }
+
         const { data, error } = await withTimeout(query, 10000, `getPayments(${vendorId})`);
 
         if (error) {
@@ -2195,6 +2495,125 @@ export const vmpAdapter = {
         }
 
         return data || [];
+    },
+
+    // Sprint 8.3: Get Payment Status Explanation and Blocking Cases
+    async getPaymentStatusInfo(paymentId, vendorId) {
+        if (!paymentId || !vendorId) {
+            throw new ValidationError('getPaymentStatusInfo requires both paymentId and vendorId', null, {
+                paymentId,
+                vendorId
+            });
+        }
+
+        try {
+            // Get payment with linked invoice
+            const paymentQuery = supabase
+                .from('vmp_payments')
+                .select(`
+                    *,
+                    vmp_invoices (
+                        id,
+                        invoice_num,
+                        status,
+                        amount,
+                        invoice_date
+                    )
+                `)
+                .eq('id', paymentId)
+                .eq('vendor_id', vendorId)
+                .single();
+
+            const { data: payment, error: paymentError } = await withTimeout(
+                paymentQuery,
+                10000,
+                `getPaymentStatusInfo(${paymentId})`
+            );
+
+            if (paymentError || !payment) {
+                return null;
+            }
+
+            // Get blocking cases (cases linked to the invoice that are not resolved)
+            const blockingCases = [];
+            if (payment.vmp_invoices && payment.vmp_invoices.length > 0) {
+                const invoice = Array.isArray(payment.vmp_invoices) ? payment.vmp_invoices[0] : payment.vmp_invoices;
+                
+                // Get cases linked to this invoice
+                const invoiceCasesQuery = supabase
+                    .from('vmp_cases')
+                    .select('id, subject, status, case_type')
+                    .eq('linked_invoice_id', invoice.id)
+                    .eq('vendor_id', vendorId)
+                    .neq('status', 'resolved')
+                    .neq('status', 'cancelled');
+
+                const { data: invoiceCases } = await withTimeout(
+                    invoiceCasesQuery,
+                    10000,
+                    `getPaymentStatusInfo-invoiceCases(${invoice.id})`
+                );
+
+                if (invoiceCases) {
+                    blockingCases.push(...invoiceCases);
+                }
+            }
+
+            // Get cases directly linked to payment
+            const paymentCasesQuery = supabase
+                .from('vmp_cases')
+                .select('id, subject, status, case_type')
+                .eq('linked_payment_id', paymentId)
+                .eq('vendor_id', vendorId)
+                .neq('status', 'resolved');
+
+            const { data: paymentCases } = await withTimeout(
+                paymentCasesQuery,
+                10000,
+                `getPaymentStatusInfo-cases(${paymentId})`
+            );
+
+            if (paymentCases) {
+                blockingCases.push(...paymentCases);
+            }
+
+            // Determine payment status explanation
+            let statusExplanation = '';
+            let forecastDate = null;
+
+            const invoice = payment.vmp_invoices && (Array.isArray(payment.vmp_invoices) ? payment.vmp_invoices[0] : payment.vmp_invoices);
+            
+            if (invoice) {
+                if (invoice.status === 'disputed') {
+                    statusExplanation = 'Payment is blocked due to invoice dispute. Please resolve the linked case to proceed.';
+                } else if (invoice.status === 'pending' || invoice.status === 'matched') {
+                    if (blockingCases.length > 0) {
+                        statusExplanation = `Payment pending: ${blockingCases.length} open case(s) must be resolved first.`;
+                        // Forecast: 3-5 business days after case resolution
+                        forecastDate = new Date();
+                        forecastDate.setDate(forecastDate.getDate() + 5);
+                    } else {
+                        statusExplanation = 'Payment is pending approval. Expected within 3-5 business days.';
+                        forecastDate = new Date();
+                        forecastDate.setDate(forecastDate.getDate() + 5);
+                    }
+                } else if (invoice.status === 'paid') {
+                    statusExplanation = 'Payment has been processed and completed.';
+                }
+            } else {
+                statusExplanation = 'Payment is recorded. No linked invoice found.';
+            }
+
+            return {
+                payment,
+                blockingCases: blockingCases || [],
+                statusExplanation,
+                forecastDate: forecastDate ? forecastDate.toISOString() : null
+            };
+        } catch (error) {
+            console.error('Error in getPaymentStatusInfo:', error);
+            return null;
+        }
     },
 
     // Sprint 4.4: Get Payment Detail
@@ -2263,16 +2682,16 @@ export const vmpAdapter = {
         return data;
     },
 
-    // Sprint 2.6: Get Matching Status
+    // Sprint 2.6: Get Matching Status (Enhanced for Sprint 7.1)
     async getMatchingStatus(invoiceId) {
         if (!invoiceId) {
             throw new ValidationError('getMatchingStatus requires invoiceId', null, { invoiceId });
         }
 
-        // Get invoice
+        // Get invoice with amount and date for comparison
         const invoiceQuery = supabase
             .from('vmp_invoices')
-            .select('po_ref, grn_ref, status, company_id')
+            .select('po_ref, grn_ref, status, company_id, amount, invoice_date, currency_code')
             .eq('id', invoiceId)
             .single();
 
@@ -2310,45 +2729,135 @@ export const vmpAdapter = {
             grnMatch = grnData;
         }
 
-        // Determine matching state
+        // Determine matching state and detect mismatches
         let matchState = 'READY';
         const exceptions = [];
+        const mismatches = {
+            amount: [],
+            date: []
+        };
 
+        // PO validation
         if (!invoice.po_ref) {
             matchState = 'WARN';
             exceptions.push('No PO reference');
         } else if (!poMatch) {
             matchState = 'BLOCK';
             exceptions.push(`PO ${invoice.po_ref} not found`);
-        } else if (poMatch.status !== 'open') {
-            matchState = 'WARN';
-            exceptions.push(`PO ${invoice.po_ref} is ${poMatch.status}`);
+        } else {
+            // Check PO status
+            if (poMatch.status !== 'open') {
+                matchState = 'WARN';
+                exceptions.push(`PO ${invoice.po_ref} is ${poMatch.status}`);
+            }
+            
+            // Amount mismatch: Invoice vs PO
+            if (poMatch.total_amount && invoice.amount) {
+                const amountDiff = Math.abs(Number(poMatch.total_amount) - Number(invoice.amount));
+                if (amountDiff > 0.01) { // Allow for rounding differences
+                    mismatches.amount.push({
+                        type: 'po_invoice',
+                        po_amount: Number(poMatch.total_amount),
+                        invoice_amount: Number(invoice.amount),
+                        difference: amountDiff,
+                        currency: invoice.currency_code || 'USD'
+                    });
+                    if (matchState === 'READY') matchState = 'WARN';
+                }
+            }
+
+            // Date comparison: Invoice date vs PO created date
+            if (invoice.invoice_date && poMatch.created_at) {
+                const invoiceDate = new Date(invoice.invoice_date);
+                const poDate = new Date(poMatch.created_at);
+                const daysDiff = Math.abs((invoiceDate - poDate) / (1000 * 60 * 60 * 24));
+                if (daysDiff > 30) { // Flag if more than 30 days difference
+                    mismatches.date.push({
+                        type: 'po_invoice',
+                        po_date: poMatch.created_at,
+                        invoice_date: invoice.invoice_date,
+                        days_difference: Math.round(daysDiff)
+                    });
+                }
+            }
         }
 
+        // GRN validation
         if (!invoice.grn_ref) {
             if (matchState === 'READY') matchState = 'WARN';
             exceptions.push('No GRN reference');
         } else if (!grnMatch) {
             matchState = 'BLOCK';
             exceptions.push(`GRN ${invoice.grn_ref} not found`);
-        } else if (grnMatch.status !== 'verified') {
-            matchState = 'BLOCK';
-            exceptions.push(`GRN ${invoice.grn_ref} is ${grnMatch.status}`);
+        } else {
+            // Check GRN status
+            if (grnMatch.status !== 'verified') {
+                matchState = 'BLOCK';
+                exceptions.push(`GRN ${invoice.grn_ref} is ${grnMatch.status}`);
+            }
+
+            // Amount mismatch: Invoice vs GRN
+            if (grnMatch.total_amount && invoice.amount) {
+                const amountDiff = Math.abs(Number(grnMatch.total_amount) - Number(invoice.amount));
+                if (amountDiff > 0.01) {
+                    mismatches.amount.push({
+                        type: 'grn_invoice',
+                        grn_amount: Number(grnMatch.total_amount),
+                        invoice_amount: Number(invoice.amount),
+                        difference: amountDiff,
+                        currency: invoice.currency_code || 'USD'
+                    });
+                    if (matchState === 'READY') matchState = 'WARN';
+                }
+            }
+
+            // Date comparison: Invoice date vs GRN created date
+            if (invoice.invoice_date && grnMatch.created_at) {
+                const invoiceDate = new Date(invoice.invoice_date);
+                const grnDate = new Date(grnMatch.created_at);
+                const daysDiff = Math.abs((invoiceDate - grnDate) / (1000 * 60 * 60 * 24));
+                if (daysDiff > 30) {
+                    mismatches.date.push({
+                        type: 'grn_invoice',
+                        grn_date: grnMatch.created_at,
+                        invoice_date: invoice.invoice_date,
+                        days_difference: Math.round(daysDiff)
+                    });
+                }
+            }
+        }
+
+        // PO vs GRN amount comparison (if both exist)
+        if (poMatch && grnMatch && poMatch.total_amount && grnMatch.total_amount) {
+            const poGrnDiff = Math.abs(Number(poMatch.total_amount) - Number(grnMatch.total_amount));
+            if (poGrnDiff > 0.01) {
+                mismatches.amount.push({
+                    type: 'po_grn',
+                    po_amount: Number(poMatch.total_amount),
+                    grn_amount: Number(grnMatch.total_amount),
+                    difference: poGrnDiff,
+                    currency: invoice.currency_code || 'USD'
+                });
+            }
         }
 
         return {
             invoice_id: invoiceId,
             match_state: matchState,
             exceptions,
+            mismatches,
             po_match: poMatch,
             grn_match: grnMatch,
             invoice_po_ref: invoice.po_ref,
-            invoice_grn_ref: invoice.grn_ref
+            invoice_grn_ref: invoice.grn_ref,
+            invoice_amount: invoice.amount ? Number(invoice.amount) : null,
+            invoice_date: invoice.invoice_date,
+            invoice_currency: invoice.currency_code || 'USD'
         };
     },
 
-    // Sprint 2.7: Create Case from Invoice
-    async createCaseFromInvoice(invoiceId, vendorId, userId, subject = null) {
+    // Sprint 2.7: Create Case from Invoice (Enhanced for Sprint 7.2 - Exception Workflow)
+    async createCaseFromInvoice(invoiceId, vendorId, userId, subject = null, exceptionType = null) {
         if (!invoiceId || !vendorId || !userId) {
             throw new ValidationError('createCaseFromInvoice requires invoiceId, vendorId, and userId', null, {
                 invoiceId,
@@ -2363,6 +2872,20 @@ export const vmpAdapter = {
             throw new NotFoundError('Invoice not found', { invoiceId });
         }
 
+        // Build subject with exception details if provided
+        let caseSubject = subject || `Invoice ${invoice.invoice_num} Exception`;
+        if (exceptionType) {
+            const exceptionLabels = {
+                missing_grn: 'Missing GRN',
+                amount_mismatch: 'Amount Mismatch',
+                date_mismatch: 'Date Mismatch',
+                missing_po: 'Missing PO',
+                po_status: 'PO Status Issue',
+                grn_status: 'GRN Status Issue'
+            };
+            caseSubject = `${exceptionLabels[exceptionType] || 'Exception'}: ${invoice.invoice_num}`;
+        }
+
         // Create case
         const caseData = {
             tenant_id: invoice.vmp_companies?.tenant_id || null, // Will need to get from company
@@ -2370,7 +2893,7 @@ export const vmpAdapter = {
             vendor_id: vendorId,
             case_type: 'invoice',
             status: 'open',
-            subject: subject || `Invoice ${invoice.invoice_num} Exception`,
+            subject: caseSubject,
             owner_team: 'ap',
             linked_invoice_id: invoiceId,
             group_id: null // Will be set from company relationship
@@ -2401,6 +2924,48 @@ export const vmpAdapter = {
             const handledError = handleSupabaseError(error, 'createCaseFromInvoice');
             if (handledError) throw handledError;
             throw new DatabaseError('Failed to create case from invoice', error, { invoiceId });
+        }
+
+        // Create checklist steps with exception-specific steps if provided
+        try {
+            if (exceptionType) {
+                // Use exception-specific checklist steps
+                const { getChecklistStepsForException } = await import('../utils/checklist-rules.js');
+                const exceptionSteps = getChecklistStepsForException(exceptionType);
+                
+                // Also get base invoice steps and merge
+                const { getChecklistStepsForCaseType } = await import('../utils/checklist-rules.js');
+                const baseSteps = getChecklistStepsForCaseType('invoice');
+                
+                // Create all steps (exception steps first, then base steps)
+                for (const step of [...exceptionSteps, ...baseSteps]) {
+                    try {
+                        await this.createChecklistStep(
+                            newCase.id,
+                            step.label,
+                            step.required_evidence_type
+                        );
+                    } catch (stepError) {
+                        logError(stepError, {
+                            operation: 'createChecklistStep',
+                            caseId: newCase.id,
+                            stepLabel: step.label
+                        });
+                        // Continue with other steps
+                    }
+                }
+            } else {
+                // Use standard ensureChecklistSteps
+                await this.ensureChecklistSteps(newCase.id, 'invoice');
+            }
+        } catch (checklistError) {
+            logError(checklistError, {
+                operation: 'ensureChecklistSteps',
+                caseId: newCase.id,
+                caseType: 'invoice',
+                exceptionType
+            });
+            // Don't fail case creation if checklist creation fails
         }
 
         return newCase;
@@ -4478,6 +5043,338 @@ export const vmpAdapter = {
             const handledError = handleSupabaseError(error, 'getDecisionLog');
             if (handledError) throw handledError;
             throw new DatabaseError('Failed to fetch decision log', error, { caseId });
+        }
+
+        return data || [];
+    },
+
+    // Sprint 9.1: Find or Get Vendor by Email
+    async findVendorByEmail(email) {
+        if (!email) {
+            throw new ValidationError('findVendorByEmail requires an email parameter', 'email');
+        }
+
+        // First, try to find user by email
+        const user = await this.getUserByEmail(email);
+        if (user && user.vendor_id) {
+            // Get vendor details
+            const vendorQuery = supabase
+                .from('vmp_vendors')
+                .select('id, name, tenant_id')
+                .eq('id', user.vendor_id)
+                .single();
+
+            const { data: vendor, error: vendorError } = await withTimeout(
+                vendorQuery,
+                10000,
+                `findVendorByEmail-vendor(${user.vendor_id})`
+            );
+
+            if (!vendorError && vendor) {
+                return {
+                    vendorId: vendor.id,
+                    vendorName: vendor.name,
+                    tenantId: vendor.tenant_id,
+                    userId: user.id,
+                    userEmail: user.email
+                };
+            }
+        }
+
+        // If no user found, return null (will need to create case manually or link to existing)
+        return null;
+    },
+
+    // Sprint 9.2: Find Vendor by Phone Number
+    async findVendorByPhone(phoneNumber) {
+        if (!phoneNumber) {
+            throw new ValidationError('findVendorByPhone requires a phoneNumber parameter', 'phoneNumber');
+        }
+
+        // Clean phone number (remove non-digits, country codes, etc.)
+        const cleanPhone = phoneNumber.replace(/[^0-9]/g, '');
+
+        // Try to find vendor by phone number (exact match or partial match)
+        const vendorQuery = supabase
+            .from('vmp_vendors')
+            .select('id, name, tenant_id, phone')
+            .or(`phone.eq.${phoneNumber},phone.ilike.%${cleanPhone}%,phone.ilike.%${phoneNumber}%`)
+            .limit(1);
+
+        const { data: vendors, error: vendorError } = await withTimeout(
+            vendorQuery,
+            10000,
+            `findVendorByPhone(${phoneNumber})`
+        );
+
+        if (vendorError || !vendors || vendors.length === 0) {
+            return null;
+        }
+
+        const vendor = vendors[0];
+
+        // Get first user for this vendor (for sender_user_id)
+        const userQuery = supabase
+            .from('vmp_vendor_users')
+            .select('id, email, display_name')
+            .eq('vendor_id', vendor.id)
+            .eq('is_active', true)
+            .limit(1)
+            .single();
+
+        const { data: user, error: userError } = await withTimeout(
+            userQuery,
+            10000,
+            `findVendorByPhone-user(${vendor.id})`
+        );
+
+        return {
+            vendorId: vendor.id,
+            vendorName: vendor.name,
+            tenantId: vendor.tenant_id,
+            userId: user?.id || null,
+            userEmail: user?.email || null,
+            phoneNumber: vendor.phone
+        };
+    },
+
+    // Sprint 9.1: Find or Create Case from Email
+    async findOrCreateCaseFromEmail(emailData, vendorInfo, caseReference = null) {
+        if (!emailData || !vendorInfo) {
+            throw new ValidationError('findOrCreateCaseFromEmail requires emailData and vendorInfo', null, {
+                hasEmailData: !!emailData,
+                hasVendorInfo: !!vendorInfo
+            });
+        }
+
+        const { vendorId, tenantId } = vendorInfo;
+        
+        // Try to find existing case by reference
+        if (caseReference) {
+            try {
+                // Try to parse as UUID
+                const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+                if (uuidPattern.test(caseReference)) {
+                    const caseQuery = supabase
+                        .from('vmp_cases')
+                        .select('id, vendor_id, tenant_id, company_id')
+                        .eq('id', caseReference)
+                        .eq('vendor_id', vendorId)
+                        .single();
+
+                    const { data: existingCase, error: caseError } = await withTimeout(
+                        caseQuery,
+                        10000,
+                        `findOrCreateCaseFromEmail-find(${caseReference})`
+                    );
+
+                    if (!caseError && existingCase) {
+                        return existingCase.id;
+                    }
+                }
+            } catch (error) {
+                // Continue to create new case
+                console.warn('Error finding case by reference:', error);
+            }
+        }
+
+        // Create new case from email
+        const subject = emailData.subject || 'Email Inquiry';
+        const body = emailData.text || emailData.html || '';
+        
+        // Extract first company (for now - could be enhanced to match by domain)
+        const companyQuery = supabase
+            .from('vmp_companies')
+            .select('id')
+            .eq('tenant_id', tenantId)
+            .limit(1)
+            .single();
+
+        const { data: company, error: companyError } = await withTimeout(
+            companyQuery,
+            10000,
+            `findOrCreateCaseFromEmail-company(${tenantId})`
+        );
+
+        if (companyError || !company) {
+            throw new DatabaseError('No company found for tenant', companyError, { tenantId });
+        }
+
+        // Create case
+        const caseQuery = supabase
+            .from('vmp_cases')
+            .insert({
+                tenant_id: tenantId,
+                company_id: company.id,
+                vendor_id: vendorId,
+                case_type: 'general',
+                status: 'open',
+                subject: subject.substring(0, 255), // Ensure subject fits in TEXT field
+                owner_team: 'ap',
+                sla_due_at: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000) // 2 days from now
+            })
+            .select('id')
+            .single();
+
+        const { data: newCase, error: createError } = await withTimeout(
+            caseQuery,
+            10000,
+            `findOrCreateCaseFromEmail-create`
+        );
+
+        if (createError) {
+            const handledError = handleSupabaseError(createError, 'findOrCreateCaseFromEmail');
+            if (handledError) throw handledError;
+            throw new DatabaseError('Failed to create case from email', createError);
+        }
+
+        // Create initial checklist steps
+        await this.ensureChecklistSteps(newCase.id, 'general');
+
+        return newCase.id;
+    },
+
+    // Sprint 9.3: Get Port Configuration
+    async getPortConfiguration(portType = null) {
+        let query = supabase
+            .from('vmp_port_configuration')
+            .select('*')
+            .order('port_type', { ascending: true });
+
+        if (portType) {
+            query = query.eq('port_type', portType).single();
+        }
+
+        const { data, error } = await withTimeout(
+            query,
+            10000,
+            `getPortConfiguration(${portType || 'all'})`
+        );
+
+        if (error) {
+            const handledError = handleSupabaseError(error, 'getPortConfiguration');
+            if (handledError) throw handledError;
+            throw new DatabaseError('Failed to fetch port configuration', error);
+        }
+
+        return portType ? data : (data || []);
+    },
+
+    // Sprint 9.3: Update Port Configuration
+    async updatePortConfiguration(portType, updates) {
+        if (!portType) {
+            throw new ValidationError('updatePortConfiguration requires portType parameter', 'portType');
+        }
+
+        const validPortTypes = ['email', 'whatsapp', 'slack'];
+        if (!validPortTypes.includes(portType)) {
+            throw new ValidationError(`Invalid portType. Must be one of: ${validPortTypes.join(', ')}`, 'portType');
+        }
+
+        const updateData = {
+            ...updates,
+            updated_at: new Date().toISOString()
+        };
+
+        const queryPromise = supabase
+            .from('vmp_port_configuration')
+            .update(updateData)
+            .eq('port_type', portType)
+            .select()
+            .single();
+
+        const { data, error } = await withTimeout(
+            queryPromise,
+            10000,
+            `updatePortConfiguration(${portType})`
+        );
+
+        if (error) {
+            const handledError = handleSupabaseError(error, 'updatePortConfiguration');
+            if (handledError) throw handledError;
+            throw new DatabaseError('Failed to update port configuration', error);
+        }
+
+        return data;
+    },
+
+    // Sprint 9.3: Log Port Activity
+    async logPortActivity(portType, activityType, status = 'success', metadata = {}) {
+        if (!portType || !activityType) {
+            throw new ValidationError('logPortActivity requires portType and activityType', null, {
+                portType,
+                activityType
+            });
+        }
+
+        const validPortTypes = ['email', 'whatsapp', 'slack'];
+        const validActivityTypes = ['webhook_received', 'message_processed', 'case_created', 'error', 'status_update'];
+        const validStatuses = ['success', 'error', 'skipped'];
+
+        if (!validPortTypes.includes(portType)) {
+            throw new ValidationError(`Invalid portType. Must be one of: ${validPortTypes.join(', ')}`, 'portType');
+        }
+        if (!validActivityTypes.includes(activityType)) {
+            throw new ValidationError(`Invalid activityType. Must be one of: ${validActivityTypes.join(', ')}`, 'activityType');
+        }
+        if (!validStatuses.includes(status)) {
+            throw new ValidationError(`Invalid status. Must be one of: ${validStatuses.join(', ')}`, 'status');
+        }
+
+        const insertData = {
+            port_type: portType,
+            activity_type: activityType,
+            status: status,
+            metadata: metadata || {},
+            message_id: metadata.messageId || null,
+            case_id: metadata.caseId || null,
+            vendor_id: metadata.vendorId || null,
+            error_message: status === 'error' ? (metadata.errorMessage || metadata.error?.message || null) : null
+        };
+
+        const queryPromise = supabase
+            .from('vmp_port_activity_log')
+            .insert(insertData)
+            .select()
+            .single();
+
+        const { data, error } = await withTimeout(
+            queryPromise,
+            10000,
+            `logPortActivity(${portType}, ${activityType})`
+        );
+
+        if (error) {
+            const handledError = handleSupabaseError(error, 'logPortActivity');
+            if (handledError) throw handledError;
+            throw new DatabaseError('Failed to log port activity', error);
+        }
+
+        return data;
+    },
+
+    // Sprint 9.3: Get Port Activity Log
+    async getPortActivityLog(portType = null, limit = 100) {
+        let query = supabase
+            .from('vmp_port_activity_log')
+            .select('*')
+            .order('created_at', { ascending: false })
+            .limit(limit);
+
+        if (portType) {
+            query = query.eq('port_type', portType);
+        }
+
+        const { data, error } = await withTimeout(
+            query,
+            10000,
+            `getPortActivityLog(${portType || 'all'}, ${limit})`
+        );
+
+        if (error) {
+            const handledError = handleSupabaseError(error, 'getPortActivityLog');
+            if (handledError) throw handledError;
+            throw new DatabaseError('Failed to fetch port activity log', error);
         }
 
         return data || [];

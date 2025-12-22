@@ -1,0 +1,143 @@
+<!-- AI Data Validation Panel (Sprint 13.2) -->
+{% if validationResult %}
+<div class="p-5 border-b vmp-border-color">
+    <div class="mb-4">
+        <h3 class="vmp-h4 mb-2">Data Validation</h3>
+        <p class="vmp-body-small vmp-muted">AI-powered validation of case completeness</p>
+    </div>
+
+    <!-- Completeness Indicator -->
+    <div class="mb-4">
+        <div class="flex items-center justify-between mb-2">
+            <span class="vmp-label">Completeness</span>
+            <span class="vmp-body-small font-medium">
+                {{ (validationResult.completeness * 100) | round }}%
+            </span>
+        </div>
+        <div class="w-full h-2 vmp-bg-veil rounded-full overflow-hidden">
+            <div class="h-full transition-all duration-300"
+                 style="width: {{ (validationResult.completeness * 100) | round }}%; background: {% if validationResult.completeness >= 1.0 %}var(--vmp-ok){% elif validationResult.completeness >= 0.5 %}var(--vmp-warn){% else %}var(--vmp-danger){% endif %};">
+            </div>
+        </div>
+    </div>
+
+    <!-- Validation Status -->
+    {% if validationResult.isValid %}
+    <div class="vmp-panel p-3 mb-4 vmp-signal-ok" style="background: rgba(34, 197, 94, 0.1); border-color: var(--vmp-ok);">
+        <div class="flex items-center gap-2">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--vmp-ok);">
+                <path d="M20 6L9 17l-5-5"></path>
+            </svg>
+            <span class="vmp-body-small vmp-signal-ok">All required documents verified</span>
+        </div>
+    </div>
+    {% else %}
+    <div class="vmp-panel p-3 mb-4 vmp-signal-warn" style="background: rgba(234, 179, 8, 0.1); border-color: var(--vmp-warn);">
+        <div class="flex items-center gap-2 mb-2">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--vmp-warn);">
+                <path d="M12 9v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+            <span class="vmp-body-small font-medium vmp-signal-warn">Action Required</span>
+        </div>
+        <p class="vmp-body-small vmp-muted">
+            {{ validationResult.missingRequired | length }} required document(s) missing
+        </p>
+    </div>
+    {% endif %}
+
+    <!-- Missing Required Documents -->
+    {% if validationResult.missingRequired and validationResult.missingRequired.length > 0 %}
+    <div class="mb-4">
+        <h4 class="vmp-label mb-2">Missing Required Documents</h4>
+        <ul class="space-y-2">
+            {% for missing in validationResult.missingRequired %}
+            <li class="flex items-start gap-2">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="mt-0.5 shrink-0" style="color: var(--vmp-danger);">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <path d="M12 8v4m0 4h.01"></path>
+                </svg>
+                <div class="flex-1 min-w-0">
+                    <div class="vmp-body-small font-medium">{{ missing.stepLabel }}</div>
+                    {% if missing.description %}
+                    <div class="vmp-caption vmp-muted">{{ missing.description }}</div>
+                    {% endif %}
+                </div>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+
+    <!-- Data Issues -->
+    {% if validationResult.dataIssues and validationResult.dataIssues.length > 0 %}
+    <div class="mb-4">
+        <h4 class="vmp-label mb-2">Data Issues</h4>
+        <ul class="space-y-2">
+            {% for issue in validationResult.dataIssues %}
+            <li class="flex items-start gap-2">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="mt-0.5 shrink-0" style="color: var(--vmp-warn);">
+                    <path d="M12 9v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                <div class="flex-1 min-w-0">
+                    <div class="vmp-body-small">{{ issue.message }}</div>
+                </div>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+
+    <!-- Escalation Notice -->
+    {% if validationResult.escalationRequired %}
+    <div class="vmp-panel p-3 mb-4 vmp-signal-danger" style="background: rgba(239, 68, 68, 0.1); border-color: var(--vmp-danger);">
+        <div class="flex items-center gap-2 mb-1">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--vmp-danger);">
+                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                <line x1="12" y1="9" x2="12" y2="13"></line>
+                <line x1="12" y1="17" x2="12.01" y2="17"></line>
+            </svg>
+            <span class="vmp-body-small font-medium vmp-signal-danger">Escalation Required</span>
+        </div>
+        <p class="vmp-body-small vmp-muted">{{ validationResult.escalationReason }}</p>
+    </div>
+    {% endif %}
+
+    <!-- Actionable Requests -->
+    {% if validationResult.actionableRequests and validationResult.actionableRequests.length > 0 %}
+    <div class="mb-4">
+        <h4 class="vmp-label mb-2">Recommended Actions</h4>
+        <div class="space-y-2">
+            {% for request in validationResult.actionableRequests %}
+            <div class="vmp-panel p-3">
+                <div class="flex items-start justify-between gap-2">
+                    <div class="flex-1 min-w-0">
+                        <div class="vmp-body-small font-medium mb-1">{{ request.message }}</div>
+                        {% if request.action.type == 'upload' %}
+                        <a href="/cases/{{ caseId }}?action=upload&evidence_type={{ request.action.evidenceType }}&step_id={{ request.action.stepId }}"
+                           class="vmp-link vmp-body-small">
+                            Upload {{ request.action.evidenceType | replace('_', ' ') | title }}
+                        </a>
+                        {% endif %}
+                    </div>
+                    <span class="vmp-badge {% if request.priority == 'high' %}vmp-badge-danger{% elif request.priority == 'medium' %}vmp-badge-warn{% else %}vmp-badge{% endif %} shrink-0">
+                        {{ request.priority | upper }}
+                    </span>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Confidence Score -->
+    <div class="pt-4 border-t vmp-border-color">
+        <div class="flex items-center justify-between">
+            <span class="vmp-caption vmp-muted">Validation Confidence</span>
+            <span class="vmp-body-small font-medium">
+                {{ (validationResult.confidence * 100) | round }}%
+            </span>
+        </div>
+    </div>
+</div>
+{% endif %}
+

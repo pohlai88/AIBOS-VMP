@@ -1,19 +1,69 @@
-<div class="flex flex-col h-full">
+<div class="flex flex-col h-full" data-list-type="cases">
     {% if error %}
     <div class="p-3 m-4 rounded-lg border vmp-border-warn vmp-bg-warn vmp-opacity-30">
         <div class="vmp-caption vmp-text-warn">{{ error }}</div>
     </div>
     {% endif %}
+    
+    <!-- Bulk Actions Bar (Sprint 11.1) -->
+    {% include "partials/bulk_actions_bar.html" %}
+    
     <div class="sticky top-0 z-10 vmp-component-card-header backdrop-blur-md flex gap-2 overflow-x-auto py-3">
-        <button class="vmp-tag vmp-tag-mono hover:bg-white/5 transition-colors vmp-navigation-link-active">
-            ALL ({{ cases|length }})
-        </button>
-        <button class="vmp-tag vmp-tag-mono opacity-60 hover:opacity-100 hover:bg-white/5 transition-opacity">
-            ACTION (2)
-        </button>
-        <button class="vmp-tag vmp-tag-mono opacity-60 hover:opacity-100 hover:bg-white/5 transition-opacity">
-            WAITING (5)
-        </button>
+        <div class="flex gap-2 flex-1">
+            <button class="vmp-tag vmp-tag-mono hover:bg-white/5 transition-colors vmp-navigation-link-active">
+                ALL ({{ cases|length }})
+            </button>
+            <button class="vmp-tag vmp-tag-mono opacity-60 hover:opacity-100 hover:bg-white/5 transition-opacity">
+                ACTION (2)
+            </button>
+            <button class="vmp-tag vmp-tag-mono opacity-60 hover:opacity-100 hover:bg-white/5 transition-opacity">
+                WAITING (5)
+            </button>
+        </div>
+        
+        <!-- Export Button (Sprint 11.2) -->
+        <div class="relative" x-data="{ open: false }">
+            <button 
+                @click="open = !open"
+                class="vmp-btn vmp-btn-ghost text-sm flex items-center gap-2">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                    <polyline points="7 10 12 15 17 10"></polyline>
+                    <line x1="12" y1="15" x2="12" y2="3"></line>
+                </svg>
+                Export
+            </button>
+            
+            <div 
+                x-show="open"
+                @click.away="open = false"
+                class="absolute right-0 mt-2 w-48 vmp-panel border vmp-border-color rounded-lg shadow-lg z-30"
+                style="display: none;">
+                <div class="py-1">
+                    <a 
+                        href="/api/export/cases?format=excel"
+                        class="block w-full text-left px-4 py-2 vmp-body-small hover:vmp-bg-veil transition-colors">
+                        Export to Excel
+                    </a>
+                    <a 
+                        href="/api/export/cases?format=pdf"
+                        class="block w-full text-left px-4 py-2 vmp-body-small hover:vmp-bg-veil transition-colors">
+                        Export to PDF
+                    </a>
+                    <a 
+                        href="/api/export/cases?format=csv"
+                        class="block w-full text-left px-4 py-2 vmp-body-small hover:vmp-bg-veil transition-colors">
+                        Export to CSV
+                    </a>
+                    <div class="border-t vmp-border-color my-1"></div>
+                    <button 
+                        @click="openCustomExportModal('cases'); open = false"
+                        class="w-full text-left px-4 py-2 vmp-body-small hover:vmp-bg-veil transition-colors">
+                        Custom Export...
+                    </button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <div class="divide-y vmp-border-color">
@@ -30,6 +80,16 @@
             <div class="flex items-start justify-between gap-3">
                 
                 <div class="flex items-start gap-3 min-w-0">
+                    <!-- Bulk Selection Checkbox (Sprint 11.1) -->
+                    <div class="mt-1.5 shrink-0">
+                        <input 
+                            type="checkbox" 
+                            class="vmp-checkbox"
+                            data-bulk-item-id="{{ c.id }}"
+                            @change="document.dispatchEvent(new CustomEvent('bulk-toggle', { detail: { id: '{{ c.id }}' } }))"
+                            @click.stop>
+                    </div>
+                    
                     <div class="mt-1.5 relative shrink-0">
                         {% set st = (c.status or '') | lower %}
                         {% if st == 'waiting_supplier' %}

@@ -1,0 +1,184 @@
+<!-- Mobile Navigation Drawer (Sprint 12.3) -->
+<div id="mobile-nav-drawer"
+     class="fixed inset-0 z-50 md:hidden"
+     x-data="{ isOpen: false }"
+     x-show="isOpen"
+     x-transition:enter="transition ease-out duration-300"
+     x-transition:enter-start="opacity-0"
+     x-transition:enter-end="opacity-100"
+     x-transition:leave="transition ease-in duration-200"
+     x-transition:leave-start="opacity-100"
+     x-transition:leave-end="opacity-0"
+     @click.away="isOpen = false"
+     @keydown.escape.window="isOpen = false"
+     style="display: none;">
+  
+  <!-- Backdrop -->
+  <div class="fixed inset-0 vmp-bg-veil" @click="isOpen = false"></div>
+  
+  <!-- Drawer -->
+  <div class="fixed left-0 top-0 bottom-0 w-80 vmp-sidebar overflow-y-auto"
+       x-transition:enter="transition ease-out duration-300 transform"
+       x-transition:enter-start="-translate-x-full"
+       x-transition:enter-end="translate-x-0"
+       x-transition:leave="transition ease-in duration-200 transform"
+       x-transition:leave-start="translate-x-0"
+       x-transition:leave-end="-translate-x-full">
+    
+    <div class="flex flex-col h-full p-4">
+      <!-- Header -->
+      <div class="flex items-center justify-between mb-6">
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 rounded-lg border border-opacity-10 grid place-items-center" style="background: rgba(255, 255, 255, 0.02); border-color: rgba(237, 237, 237, 0.10);">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+              <path d="M12 3 3 7.5 12 12l9-4.5L12 3Z" stroke="rgba(237,237,237,.85)" stroke-width="1.2"/>
+              <path d="M3 12l9 4.5 9-4.5" stroke="rgba(237,237,237,.65)" stroke-width="1.2"/>
+              <path d="M3 16.5 12 21l9-4.5" stroke="rgba(237,237,237,.45)" stroke-width="1.2"/>
+            </svg>
+          </div>
+          <div class="min-w-0">
+            <div class="vmp-label-kicker vmp-label-kicker-strong truncate" style="font-family: 'Playfair Display', serif; font-weight: 600; font-size: 18px; letter-spacing: 0.02em;">NexusCanon</div>
+            <div class="vmp-caption truncate" style="font-size: 11px; letter-spacing: 0.22em; text-transform: uppercase; color: rgba(237, 237, 237, 0.60); font-family: 'JetBrains Mono', monospace;">GOVERNANCE SYSTEMS</div>
+          </div>
+        </div>
+        <button 
+          @click="isOpen = false"
+          class="vmp-btn-ghost p-2"
+          style="min-width: 44px; min-height: 44px;"
+          aria-label="Close menu">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 6L6 18M6 6l12 12"></path>
+          </svg>
+        </button>
+      </div>
+
+      <!-- User Info -->
+      {% if user %}
+      <div class="mb-6 pb-6 border-b vmp-border-color">
+        <div class="vmp-caption vmp-muted mb-1">Logged in as</div>
+        <div class="vmp-body-small font-medium truncate">{{ user.displayName or user.email }}</div>
+      </div>
+      {% endif %}
+
+      <!-- Navigation Links -->
+      <nav class="flex-1 space-y-1">
+        <a href="/home" 
+           class="vmp-navigation-link vmp-navigation-link-active block"
+           style="min-height: 44px; padding: var(--vmp-space-3) var(--vmp-space-4);"
+           @click="isOpen = false">
+          <span class="vmp-body-small">Console</span>
+          <span class="vmp-label-kicker vmp-subtle">HOME</span>
+        </a>
+
+        <a href="#" 
+           class="vmp-navigation-link block"
+           style="min-height: 44px; padding: var(--vmp-space-3) var(--vmp-space-4);"
+           @click="isOpen = false">
+          <span class="vmp-body-small">Cases</span>
+          <span class="vmp-label-kicker vmp-subtle">VMP-CASE</span>
+        </a>
+
+        <a href="#" 
+           class="vmp-navigation-link block"
+           style="min-height: 44px; padding: var(--vmp-space-3) var(--vmp-space-4);"
+           @click="isOpen = false">
+          <span class="vmp-body-small">Documents</span>
+          <span class="vmp-label-kicker vmp-subtle">DOC</span>
+        </a>
+
+        <a href="#" 
+           class="vmp-navigation-link block"
+           style="min-height: 44px; padding: var(--vmp-space-3) var(--vmp-space-4);"
+           @click="isOpen = false">
+          <span class="vmp-body-small">SOA Mapping</span>
+          <span class="vmp-label-kicker vmp-subtle">SOA</span>
+        </a>
+
+        <a href="/invoices" 
+           class="vmp-navigation-link block"
+           style="min-height: 44px; padding: var(--vmp-space-3) var(--vmp-space-4);"
+           @click="isOpen = false">
+          <span class="vmp-body-small">Invoices</span>
+          <span class="vmp-label-kicker vmp-subtle">INVOICES</span>
+        </a>
+      </nav>
+
+      <!-- Theme Toggle -->
+      {% if user %}
+      <div class="pt-4 mt-4 border-t vmp-border-color">
+        <button type="button" 
+                class="vmp-theme-toggle w-full flex items-center justify-center gap-2 px-3 py-3 rounded-md border vmp-border-color hover:vmp-bg-veil transition-all duration-200"
+                style="min-height: 44px;"
+                @click="theme = (theme === 'dark') ? 'light' : 'dark'"
+                :aria-label="theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'">
+          <svg x-show="theme === 'dark'" 
+               xmlns="http://www.w3.org/2000/svg" 
+               fill="none" 
+               viewBox="0 0 24 24"
+               stroke="currentColor" 
+               class="w-5 h-5"
+               x-cloak>
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+          </svg>
+          <svg x-show="theme === 'light'" 
+               xmlns="http://www.w3.org/2000/svg" 
+               fill="none" 
+               viewBox="0 0 24 24"
+               stroke="currentColor" 
+               class="w-5 h-5"
+               x-cloak>
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+          </svg>
+          <span class="vmp-body-small" x-text="theme === 'dark' ? 'Light Mode' : 'Dark Mode'"></span>
+        </button>
+      </div>
+      {% endif %}
+
+      <!-- Logout -->
+      {% if user %}
+      <div class="pt-4 mt-4 border-t vmp-border-color">
+        <form method="POST" action="/logout">
+          <button type="submit" 
+                  class="vmp-btn vmp-btn-outline w-full"
+                  style="min-height: 44px;">
+            Sign Out
+          </button>
+        </form>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- Mobile Menu Button -->
+<button 
+  id="mobile-menu-button"
+  class="md:hidden fixed top-4 left-4 z-40 vmp-btn-ghost p-3 rounded-lg"
+  style="min-width: 44px; min-height: 44px;"
+  @click="document.getElementById('mobile-nav-drawer').__x.$data.isOpen = true"
+  aria-label="Open menu">
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <path d="M3 12h18M3 6h18M3 18h18"></path>
+  </svg>
+</button>
+
+<script>
+// Global function to open mobile drawer
+window.openMobileDrawer = function() {
+  const drawer = document.getElementById('mobile-nav-drawer');
+  if (drawer && drawer.__x) {
+    drawer.__x.$data.isOpen = true;
+  }
+};
+
+// Close drawer on navigation
+document.addEventListener('htmx:afterSwap', () => {
+  const drawer = document.getElementById('mobile-nav-drawer');
+  if (drawer && drawer.__x) {
+    drawer.__x.$data.isOpen = false;
+  }
+});
+</script>
+

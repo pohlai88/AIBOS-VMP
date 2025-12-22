@@ -258,21 +258,53 @@ html[data-theme="dark"] {
   --vmp-z-tooltip: 70;
 }
 
-/* Light Theme */
+/* Light Theme (Sprint 10.3 - Enhanced) */
 html[data-theme="light"] {
-  --vmp-bg: hsl(0, 0%, 98%);
+  /* Backgrounds */
+  --vmp-bg-h: 0;
+  --vmp-bg-s: 0%;
+  --vmp-bg-l: 98%;
+  --vmp-bg: hsl(var(--vmp-bg-h), var(--vmp-bg-s), var(--vmp-bg-l));
   --vmp-bg2: hsl(0, 0%, 100%);
-  --vmp-veil: hsla(0, 0%, 0%, 0.05);
-  --vmp-panel: hsla(0, 0%, 0%, 0.03);
-  --vmp-border: hsla(0, 0%, 0%, 0.14);
-  --vmp-border2: hsla(0, 0%, 0%, 0.20);
-  --vmp-text: hsl(0, 0%, 9%);
-  --vmp-muted: hsla(0, 0%, 9%, 0.90);
-  --vmp-subtle: hsla(0, 0%, 9%, 0.65);
-  --vmp-ok: hsl(155, 70%, 50%);
-  --vmp-brand: hsl(195, 85%, 50%);
-  --vmp-warn: hsl(42, 90%, 55%);
-  --vmp-danger: hsl(0, 80%, 55%);
+  --vmp-veil: hsla(0, 0%, 100%, 0.80);
+
+  /* Glass/Panels */
+  --vmp-panel-h: 0;
+  --vmp-panel-s: 0%;
+  --vmp-panel-l: 0%;
+  --vmp-panel: hsla(var(--vmp-panel-h), var(--vmp-panel-s), var(--vmp-panel-l), 0.05);
+  --vmp-border: hsla(0, 0%, 0%, 0.12);
+  --vmp-border2: hsla(0, 0%, 0%, 0.18);
+
+  /* Text (WCAG AAA Compliant) */
+  --vmp-text-h: 0;
+  --vmp-text-s: 0%;
+  --vmp-text-l: 9%;
+  --vmp-text: hsl(var(--vmp-text-h), var(--vmp-text-s), var(--vmp-text-l));
+  --vmp-muted: hsla(0, 0%, 0%, 0.70);
+  --vmp-subtle: hsla(0, 0%, 0%, 0.50);
+
+  /* Signals (darker for light mode contrast) */
+  --vmp-ok-h: 155;
+  --vmp-ok-s: 100%;
+  --vmp-ok-l: 45%;
+  --vmp-ok: hsl(var(--vmp-ok-h), var(--vmp-ok-s), var(--vmp-ok-l));
+  
+  /* Brand / Accent (darker for light mode) */
+  --vmp-brand-h: 195;
+  --vmp-brand-s: 100%;
+  --vmp-brand-l: 50%;
+  --vmp-brand: hsl(var(--vmp-brand-h), var(--vmp-brand-s), var(--vmp-brand-l));
+  
+  --vmp-warn-h: 42;
+  --vmp-warn-s: 100%;
+  --vmp-warn-l: 50%;
+  --vmp-warn: hsl(var(--vmp-warn-h), var(--vmp-warn-s), var(--vmp-warn-l));
+  
+  --vmp-danger-h: 0;
+  --vmp-danger-s: 100%;
+  --vmp-danger-l: 50%;
+  --vmp-danger: hsl(var(--vmp-danger-h), var(--vmp-danger-s), var(--vmp-danger-l));
 }
 
 /* Color Scheme (Native Control Theming) */
@@ -1272,6 +1304,32 @@ html[data-surface="vmp"] {
     justify-content: flex-end;
   }
 
+  & .vmp-modal-close {
+    position: absolute;
+    top: var(--vmp-space-5);
+    right: var(--vmp-space-6);
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    background: transparent;
+    color: var(--vmp-text-muted);
+    cursor: pointer;
+    border-radius: var(--vmp-radius-md);
+    transition: all var(--vmp-transition-fast);
+  }
+
+  & .vmp-modal-close:hover {
+    background: var(--vmp-veil);
+    color: var(--vmp-text);
+  }
+
+  & .vmp-modal-header {
+    position: relative;
+  }
+
   /* ===== DROPDOWNS (Semantic) ===== */
   
   & .vmp-dropdown,
@@ -1625,6 +1683,278 @@ html[data-surface="vmp"] {
  * - Foundation Layer: ONLY applies to data presentation contexts
  * - Design Layer: Marketing and others have free hand, without control
  */
+
+/* ==========================================================================
+   COMMAND PALETTE (Sprint 10.1)
+   ========================================================================== */
+
+.vmp-command-palette {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 10vh;
+}
+
+.vmp-command-palette-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+}
+
+.vmp-command-palette-dialog {
+  position: relative;
+  width: 100%;
+  max-width: 640px;
+  max-height: 70vh;
+  background: var(--vmp-bg-panel);
+  border: 1px solid var(--vmp-border-color);
+  border-radius: 8px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 10px 10px -5px rgba(0, 0, 0, 0.2);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.vmp-command-input-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--vmp-border-color);
+}
+
+.vmp-command-search-icon {
+  position: absolute;
+  left: 16px;
+  width: 20px;
+  height: 20px;
+  color: var(--vmp-text-muted);
+  pointer-events: none;
+}
+
+.vmp-command-input {
+  width: 100%;
+  padding: 8px 8px 8px 36px;
+  background: transparent;
+  border: none;
+  outline: none;
+  font-size: 16px;
+  font-family: inherit;
+  color: var(--vmp-text);
+  font-weight: 300;
+}
+
+.vmp-command-input::placeholder {
+  color: var(--vmp-text-muted);
+}
+
+.vmp-command-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px;
+  max-height: calc(70vh - 60px);
+}
+
+.vmp-command-group {
+  margin-bottom: 16px;
+}
+
+.vmp-command-group:last-child {
+  margin-bottom: 0;
+}
+
+.vmp-command-group-title {
+  padding: 8px 12px;
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--vmp-text-muted);
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.vmp-command-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  text-decoration: none;
+  color: var(--vmp-text);
+  transition: background-color 0.15s ease;
+}
+
+.vmp-command-item:hover,
+.vmp-command-item-active {
+  background: var(--vmp-bg-veil);
+}
+
+.vmp-command-item-icon {
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.vmp-command-item-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.vmp-command-item-label {
+  font-size: 14px;
+  font-weight: 300;
+  color: var(--vmp-text);
+  margin-bottom: 2px;
+}
+
+.vmp-command-item-hint {
+  font-size: 12px;
+  color: var(--vmp-text-muted);
+  font-weight: 300;
+}
+
+.vmp-command-shortcut {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px 6px;
+  font-size: 11px;
+  font-family: 'JetBrains Mono', monospace;
+  background: var(--vmp-bg-veil);
+  border: 1px solid var(--vmp-border-color);
+  border-radius: 4px;
+  color: var(--vmp-text-muted);
+  font-weight: 300;
+}
+
+.vmp-command-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 24px;
+  text-align: center;
+}
+
+/* ==========================================================================
+   LIGHT MODE THEME (Sprint 10.3)
+   ========================================================================== */
+
+html[data-theme="light"] {
+  /* Backgrounds */
+  --vmp-bg-h: 0;
+  --vmp-bg-s: 0%;
+  --vmp-bg-l: 98%;
+  --vmp-bg: hsl(var(--vmp-bg-h), var(--vmp-bg-s), var(--vmp-bg-l));
+  --vmp-bg2: hsl(0, 0%, 100%);
+  --vmp-veil: hsla(0, 0%, 100%, 0.80);
+
+  /* Glass/Panels */
+  --vmp-panel-h: 0;
+  --vmp-panel-s: 0%;
+  --vmp-panel-l: 0%;
+  --vmp-panel: hsla(var(--vmp-panel-h), var(--vmp-panel-s), var(--vmp-panel-l), 0.05);
+  --vmp-border: hsla(0, 0%, 0%, 0.12);
+  --vmp-border2: hsla(0, 0%, 0%, 0.18);
+
+  /* Text (WCAG AAA Compliant) */
+  --vmp-text-h: 0;
+  --vmp-text-s: 0%;
+  --vmp-text-l: 0%;
+  --vmp-text: hsl(var(--vmp-text-h), var(--vmp-text-s), var(--vmp-text-l));
+  --vmp-muted: hsla(0, 0%, 0%, 0.70);
+  --vmp-subtle: hsla(0, 0%, 0%, 0.50);
+
+  /* Signals (same colors, adjusted for light mode) */
+  --vmp-ok-h: 155;
+  --vmp-ok-s: 100%;
+  --vmp-ok-l: 45%;
+  --vmp-ok: hsl(var(--vmp-ok-h), var(--vmp-ok-s), var(--vmp-ok-l));
+  
+  /* Brand / Accent (Electric Cyan - darker for light mode) */
+  --vmp-brand-h: 195;
+  --vmp-brand-s: 100%;
+  --vmp-brand-l: 50%;
+  --vmp-brand: hsl(var(--vmp-brand-h), var(--vmp-brand-s), var(--vmp-brand-l));
+  
+  --vmp-warn-h: 42;
+  --vmp-warn-s: 100%;
+  --vmp-warn-l: 50%;
+  --vmp-warn: hsl(var(--vmp-warn-h), var(--vmp-warn-s), var(--vmp-warn-l));
+  
+  --vmp-danger-h: 0;
+  --vmp-danger-s: 100%;
+  --vmp-danger-l: 50%;
+  --vmp-danger: hsl(var(--vmp-danger-h), var(--vmp-danger-s), var(--vmp-danger-l));
+}
+
+/* Smooth theme transitions */
+* {
+  transition: background-color 0.3s ease, 
+              border-color 0.3s ease, 
+              color 0.3s ease;
+}
+
+/* Exclude transitions for elements that shouldn't animate */
+svg,
+img,
+canvas,
+video {
+  transition: none;
+}
+
+/* ==========================================================================
+   MOBILE TOUCH OPTIMIZATION (Sprint 12.3)
+   ========================================================================== */
+
+/* Ensure all interactive elements meet 44px touch target minimum */
+@media (max-width: 768px) {
+  button,
+  a.vmp-btn,
+  .vmp-btn,
+  input[type="button"],
+  input[type="submit"],
+  .vmp-navigation-link,
+  .vmp-checkbox,
+  .vmp-radio {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* Increase padding for better touch targets */
+  .vmp-btn {
+    padding: var(--vmp-space-3) var(--vmp-space-4);
+  }
+
+  /* Ensure form inputs are easily tappable */
+  .vmp-input,
+  .vmp-select,
+  .vmp-textarea {
+    min-height: 44px;
+    font-size: 16px; /* Prevents zoom on iOS */
+  }
+}
+
+/* ==========================================================================
+   SWIPE GESTURE INDICATORS (Sprint 12.3)
+   ========================================================================== */
+
+.swipeable {
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
+}
+
+.swipeable-horizontal {
+  touch-action: pan-x;
+}
 
 /* ==========================================================================
    END OF VMP DESIGN SYSTEM

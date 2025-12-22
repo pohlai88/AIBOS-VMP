@@ -1,0 +1,88 @@
+{% extends "layout.html" %}
+{% block title %}Notifications — NexusCanon VMP{% endblock %}
+
+{% block content %}
+<div class="h-full overflow-y-auto">
+    <div class="vmp-container max-w-4xl mx-auto p-6">
+        <header class="mb-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h1 class="vmp-h1 mb-2">Notifications</h1>
+                    <p class="vmp-body vmp-muted">
+                        {% if unreadCount and unreadCount > 0 %}
+                            {{ unreadCount }} unread notification{{ 's' if unreadCount != 1 else '' }}
+                        {% else %}
+                            All caught up
+                        {% endif %}
+                    </p>
+                </div>
+                {% if unreadCount and unreadCount > 0 %}
+                <form method="POST" action="/notifications/mark-all-read" class="inline">
+                    <button type="submit" class="vmp-btn vmp-btn-ghost text-sm">
+                        Mark All Read
+                    </button>
+                </form>
+                {% endif %}
+            </div>
+        </header>
+
+        <div class="space-y-3">
+            {% if notifications and notifications|length > 0 %}
+                {% for notification in notifications %}
+                <div class="vmp-panel p-4 border vmp-border-color {% if not notification.is_read %}vmp-bg-ok vmp-opacity-10 vmp-border-ok{% endif %}">
+                    <div class="flex items-start justify-between gap-4">
+                        <div class="flex-1">
+                            <div class="flex items-center gap-2 mb-1">
+                                <h3 class="vmp-h4 {% if not notification.is_read %}vmp-text-ok{% endif %}">
+                                    {{ notification.title }}
+                                </h3>
+                                {% if not notification.is_read %}
+                                <span class="vmp-badge vmp-badge-ok text-xs">New</span>
+                                {% endif %}
+                            </div>
+                            {% if notification.body %}
+                            <p class="vmp-body-small vmp-muted mb-2">{{ notification.body }}</p>
+                            {% endif %}
+                            <div class="flex items-center gap-3">
+                                <span class="vmp-caption vmp-muted">
+                                    {{ notification.created_at | date('%b %d, %Y at %I:%M %p') if notification.created_at else '—' }}
+                                </span>
+                                {% if notification.payment_id %}
+                                <a href="/payments/{{ notification.payment_id }}" class="vmp-caption vmp-text-ok hover:underline">
+                                    View Payment
+                                </a>
+                                {% endif %}
+                                {% if notification.case_id %}
+                                <a href="/cases/{{ notification.case_id }}" class="vmp-caption vmp-text-ok hover:underline">
+                                    View Case
+                                </a>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% if not notification.is_read %}
+                        <form method="POST" action="/notifications/{{ notification.id }}/read" class="inline">
+                            <button type="submit" class="vmp-btn vmp-btn-ghost text-sm">
+                                Mark Read
+                            </button>
+                        </form>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+            <!-- Empty State -->
+            <div class="flex items-center justify-center h-64">
+                <div class="text-center">
+                    <div class="font-serif text-6xl italic opacity-35 mb-4">N</div>
+                    <div class="vmp-h3 mb-2">No Notifications</div>
+                    <div class="vmp-body vmp-muted">
+                        You're all caught up. New notifications will appear here.
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
