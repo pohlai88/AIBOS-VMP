@@ -130,142 +130,140 @@
             </div>
         </div>
 
-        <div class="grid grid-cols-2 md:grid-cols-4 border-y mb-8 divide-x divide-white/10"
-            style="border-color: var(--vmp-border);">
-            <button class="p-6 text-left hover:bg-white/5 transition-colors relative group"
+        <div class="vmp-metrics-grid">
+            <button class="vmp-metrics-item"
                 @click="posture='action'; refresh()">
-                <div class="vmp-label mb-2 opacity-60">ACTION REQUIRED</div>
-                <div class="vmp-h2 leading-none mb-2 group-hover:scale-105 transition-transform origin-left">{{
-                    actionCount or '0' }}</div>
-                <div class="vmp-label text-[10px] opacity-40">WAITING: YOU</div>
-                <div class="absolute bottom-0 left-0 h-0.5 bg-[var(--vmp-brand)] transition-all"
-                    :class="posture==='action' ? 'w-full' : 'w-0 group-hover:w-full opacity-50'"></div>
+                <div class="vmp-label vmp-subtle" style="margin-bottom: var(--vmp-space-2);">ACTION REQUIRED</div>
+                <div class="vmp-h2" style="line-height: 1; margin-bottom: var(--vmp-space-2);">{{ actionCount or '0' }}</div>
+                <div class="vmp-label vmp-subtle" style="font-size: 10px;">WAITING: YOU</div>
+                <div class="vmp-metrics-indicator"
+                    :class="posture==='action' ? 'vmp-metrics-indicator-active' : ''"></div>
             </button>
 
-            <button class="p-6 text-left hover:bg-white/5 transition-colors relative group"
+            <button class="vmp-metrics-item"
                 @click="posture='open'; refresh()">
-                <div class="vmp-label mb-2 opacity-60">OPEN CASES</div>
-                <div class="vmp-h2 leading-none mb-2 group-hover:scale-105 transition-transform origin-left">{{
-                    openCount or '0' }}</div>
-                <div class="vmp-label text-[10px] opacity-40">SLA LIVE</div>
-                <div class="absolute bottom-0 left-0 h-0.5 bg-[var(--vmp-brand)] transition-all"
-                    :class="posture==='open' ? 'w-full' : 'w-0 group-hover:w-full opacity-50'"></div>
+                <div class="vmp-label vmp-subtle" style="margin-bottom: var(--vmp-space-2);">OPEN CASES</div>
+                <div class="vmp-h2" style="line-height: 1; margin-bottom: var(--vmp-space-2);">{{ openCount or '0' }}</div>
+                <div class="vmp-label vmp-subtle" style="font-size: 10px;">SLA LIVE</div>
+                <div class="vmp-metrics-indicator"
+                    :class="posture==='open' ? 'vmp-metrics-indicator-active' : ''"></div>
             </button>
 
-            <button class="p-6 text-left hover:bg-white/5 transition-colors relative group"
+            <button class="vmp-metrics-item"
                 @click="posture='soa'; refresh()">
-                <div class="vmp-label mb-2 opacity-60">STATEMENTS</div>
-                <div class="vmp-h2 leading-none mb-2 group-hover:scale-105 transition-transform origin-left">{{ soaCount
-                    or '0' }}</div>
-                <div class="vmp-label text-[10px] opacity-40">CURRENT CYCLE</div>
-                <div class="absolute bottom-0 left-0 h-0.5 bg-[var(--vmp-brand)] transition-all"
-                    :class="posture==='soa' ? 'w-full' : 'w-0 group-hover:w-full opacity-50'"></div>
+                <div class="vmp-label vmp-subtle" style="margin-bottom: var(--vmp-space-2);">STATEMENTS</div>
+                <div class="vmp-h2" style="line-height: 1; margin-bottom: var(--vmp-space-2);">{{ soaCount or '0' }}</div>
+                <div class="vmp-label vmp-subtle" style="font-size: 10px;">CURRENT CYCLE</div>
+                <div class="vmp-metrics-indicator"
+                    :class="posture==='soa' ? 'vmp-metrics-indicator-active' : ''"></div>
             </button>
 
-            <button class="p-6 text-left hover:bg-white/5 transition-colors relative group"
+            <button class="vmp-metrics-item"
                 @click="posture='paid'; refresh()">
-                <div class="vmp-label mb-2 opacity-60">PAYMENTS</div>
-                <div class="vmp-h2 leading-none mb-2 group-hover:scale-105 transition-transform origin-left">{{
-                    paidCount or '0' }}</div>
-                <div class="vmp-label text-[10px] opacity-40">IN REVIEW</div>
-                <div class="absolute bottom-0 left-0 h-0.5 bg-[var(--vmp-brand)] transition-all"
-                    :class="posture==='paid' ? 'w-full' : 'w-0 group-hover:w-full opacity-50'"></div>
+                <div class="vmp-label vmp-subtle" style="margin-bottom: var(--vmp-space-2);">PAYMENTS</div>
+                <div class="vmp-h2" style="line-height: 1; margin-bottom: var(--vmp-space-2);">{{ paidCount or '0' }}</div>
+                <div class="vmp-label vmp-subtle" style="font-size: 10px;">IN REVIEW</div>
+                <div class="vmp-metrics-indicator"
+                    :class="posture==='paid' ? 'vmp-metrics-indicator-active' : ''"></div>
             </button>
         </div>
 
-        <div class="grid xl:grid-cols-[380px_1fr_320px] gap-6 min-h-[700px]">
+        <div class="vmp-case-dashboard-grid">
 
-            <section class="vmp-card flex flex-col h-[calc(100vh-280px)] sticky top-4">
-                <header class="vmp-card-header flex justify-between items-start shrink-0">
+            <section class="vmp-card vmp-case-dashboard-inbox">
+                <header class="vmp-card-header" style="display: flex; justify-content: space-between; align-items: flex-start; flex-shrink: 0;">
                     <div>
-                        <div class="vmp-label mb-1 opacity-80">CASE INBOX</div>
-                        <div class="vmp-caption opacity-60 leading-snug">Newest updates on top.</div>
+                        <div class="vmp-label-kicker vmp-subtle" style="margin-bottom: var(--vmp-space-1);">Uplink // Signals</div>
+                        <div class="vmp-caption vmp-muted">Recent interaction truth.</div>
                     </div>
-                    <div class="vmp-code-small opacity-40">SORT · UPDATED</div>
+                    <div class="vmp-code-small vmp-subtle">SORT · UPDATED</div>
                 </header>
 
-                <div id="case-inbox" class="flex-1 overflow-y-auto" hx-get="/partials/case-inbox.html"
-                    hx-trigger="load"
-                    hx-include="[name='q'],[name='posture'],[name='channel']">
-                    <div class="p-4 space-y-3">
-                        <div class="vmp-skeleton h-20 w-full"></div>
-                        <div class="vmp-skeleton h-20 w-full"></div>
-                        <div class="vmp-skeleton h-20 w-full"></div>
+                <div id="case-inbox" 
+                     class="vmp-case-inbox-list" 
+                     hx-get="/partials/case-inbox.html"
+                     hx-trigger="load"
+                     hx-include="[name='q'],[name='posture'],[name='channel']">
+                    <div style="padding: var(--vmp-space-4); display: flex; flex-direction: column; gap: var(--vmp-space-3);">
+                        <div class="vmp-skeleton" style="height: 80px; width: 100%;"></div>
+                        <div class="vmp-skeleton" style="height: 80px; width: 100%;"></div>
+                        <div class="vmp-skeleton" style="height: 80px; width: 100%;"></div>
                     </div>
                 </div>
 
-                <footer class="p-4 border-t shrink-0" style="border-color: var(--vmp-border);">
-                    <button class="vmp-btn vmp-btn-outline w-full justify-center" hx-get="/partials/modals/new-case"
-                        hx-target="#modal-container">
+                <footer class="vmp-card-footer" style="padding: var(--vmp-space-4); border-top: 1px solid var(--vmp-border); flex-shrink: 0;">
+                    <button class="vmp-btn vmp-btn-outline vmp-btn-wide" 
+                            hx-get="/partials/modals/new-case"
+                            hx-target="#modal-container">
                         Create New Case
                     </button>
                 </footer>
             </section>
 
-            <section class="vmp-card flex flex-col h-[calc(100vh-280px)] relative">
-                <header class="vmp-card-header flex justify-between items-start shrink-0 bg-opacity-50">
+            <section class="vmp-card vmp-case-dashboard-workspace">
+                <header class="vmp-card-header" style="display: flex; justify-content: space-between; align-items: flex-start; flex-shrink: 0; border-bottom: 1px solid var(--vmp-border); background: hsla(0, 0%, 100%, 0.01);">
                     <div>
-                        <div class="vmp-label mb-1 opacity-80">WORKSPACE</div>
-                        <div class="vmp-caption opacity-60">Thread · Checklist · Evidence</div>
+                        <div class="vmp-label-kicker vmp-subtle" style="margin-bottom: var(--vmp-space-1);">Workspace // Collaboration Spine</div>
+                        <div class="vmp-caption vmp-muted">Thread · Checklist · Evidence</div>
                     </div>
-                    <div class="vmp-tag vmp-tag-mono opacity-50">TRUTH PANEL</div>
+                    <div class="vmp-tag vmp-tag-mono vmp-subtle">INTERACTION_TRUTH</div>
                 </header>
 
-                <div id="case-detail-panel" class="flex-1 relative overflow-hidden flex flex-col">
-                    <div class="vmp-empty m-auto">
-                        <div class="font-serif text-6xl italic opacity-20 mb-4">N</div>
+                <div id="case-detail-panel" style="flex: 1; position: relative; overflow: hidden; display: flex; flex-direction: column;">
+                    <div class="vmp-empty" style="margin: auto;">
+                        <div class="vmp-empty-icon">N</div>
                         <div class="vmp-empty-title">SELECT CASE</div>
-                        <div class="vmp-empty-description max-w-sm mx-auto">
+                        <div class="vmp-empty-description" style="max-width: 24rem; margin: 0 auto;">
                             Choose a case from the inbox to reveal the audit chain and take action.
                         </div>
-                        <div class="vmp-caption opacity-50 mt-3">
+                        <div class="vmp-caption vmp-subtle" style="margin-top: var(--vmp-space-3);">
                             Tip: Cmd+K to search · Tab to focus inbox · Enter to open.
                         </div>
                     </div>
 
                     <div id="detail-loading"
-                        class="htmx-indicator absolute inset-0 z-50 grid place-items-center backdrop-blur-sm"
-                        style="background: var(--vmp-veil);">
-                        <div class="flex flex-col items-center gap-3">
+                        class="htmx-indicator"
+                        style="position: absolute; inset: 0; z-index: 50; display: grid; place-items: center; backdrop-filter: blur(4px); background: var(--vmp-veil);">
+                        <div style="display: flex; flex-direction: column; align-items: center; gap: var(--vmp-space-3);">
                             <div class="vmp-spinner"></div>
-                            <div class="vmp-label animate-pulse">LOADING PROTOCOL...</div>
+                            <div class="vmp-label" style="animation: vmp-pulse 2s ease-in-out infinite;">LOADING PROTOCOL...</div>
                         </div>
                     </div>
                 </div>
             </section>
 
-            <aside class="vmp-card flex flex-col h-fit sticky top-4">
-                <header class="vmp-card-header flex justify-between items-start">
+            <aside class="vmp-card vmp-case-dashboard-aside">
+                <header class="vmp-card-header" style="display: flex; justify-content: space-between; align-items: flex-start;">
                     <div>
-                        <div class="vmp-label mb-1 opacity-80">PROTOCOL DRAWER</div>
-                        <div class="vmp-caption opacity-60">Actions + Evidence Pulse</div>
+                        <div class="vmp-label-kicker vmp-subtle" style="margin-bottom: var(--vmp-space-1);">Protocol // Evidence Gating</div>
+                        <div class="vmp-caption vmp-muted">Actions + Evidence Pulse</div>
                     </div>
-                    <div class="vmp-badge vmp-badge-ok">LIVE</div>
+                    <div class="vmp-badge vmp-badge-ok">ENFORCEMENT_ACTIVE</div>
                 </header>
 
-                <div class="p-4 space-y-6">
-                    <div class="vmp-panel p-3">
-                        <div class="vmp-label mb-3 opacity-60">QUICK ACTIONS</div>
-                        <div class="space-y-2">
-                            <button class="vmp-btn vmp-btn-primary w-full justify-between">
+                <div style="padding: var(--vmp-space-4); display: flex; flex-direction: column; gap: var(--vmp-space-6); overflow-y: auto;">
+                    <div class="vmp-panel" style="padding: var(--vmp-space-3);">
+                        <div class="vmp-label vmp-subtle" style="margin-bottom: var(--vmp-space-3);">QUICK ACTIONS</div>
+                        <div style="display: flex; flex-direction: column; gap: var(--vmp-space-2);">
+                            <button class="vmp-btn vmp-btn-primary vmp-btn-wide" style="display: flex; justify-content: space-between;">
                                 <span>Upload Evidence</span>
-                                <span class="opacity-50">+</span>
+                                <span class="vmp-subtle">+</span>
                             </button>
-                            <button class="vmp-btn vmp-btn-outline w-full justify-between">
+                            <button class="vmp-btn vmp-btn-outline vmp-btn-wide" style="display: flex; justify-content: space-between;">
                                 <span>Export Pack</span>
                                 <span class="vmp-code-small">JSON</span>
                             </button>
                         </div>
                     </div>
 
-                    <div class="vmp-panel p-3">
-                        <div class="vmp-label mb-3 opacity-60">ACTIVE PROTOCOLS</div>
-                        <div class="space-y-2">
-                            <div class="flex justify-between items-center p-2 rounded border border-white/5">
+                    <div class="vmp-panel" style="padding: var(--vmp-space-3);">
+                        <div class="vmp-label vmp-subtle" style="margin-bottom: var(--vmp-space-3);">ACTIVE PROTOCOLS</div>
+                        <div style="display: flex; flex-direction: column; gap: var(--vmp-space-2);">
+                            <div style="display: flex; justify-content: space-between; align-items: center; padding: var(--vmp-space-2); border-radius: var(--vmp-radius-sm); border: 1px solid var(--vmp-border);">
                                 <span class="vmp-body-small">Matching</span>
                                 <span class="vmp-badge">3-WAY</span>
                             </div>
-                            <div class="flex justify-between items-center p-2 rounded border border-white/5">
+                            <div style="display: flex; justify-content: space-between; align-items: center; padding: var(--vmp-space-2); border-radius: var(--vmp-radius-sm); border: 1px solid var(--vmp-border);">
                                 <span class="vmp-body-small">Narrative</span>
                                 <span class="vmp-badge vmp-badge-ok">ON</span>
                             </div>
@@ -273,25 +271,23 @@
                     </div>
 
                     <div>
-                        <div class="flex justify-between items-center mb-3">
-                            <div class="vmp-label opacity-60">EVIDENCE STREAM</div>
-                            <span class="vmp-code-small text-[var(--vmp-brand)]">REALTIME</span>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--vmp-space-3);">
+                            <div class="vmp-label vmp-subtle">EVIDENCE STREAM</div>
+                            <span class="vmp-code-small" style="color: var(--vmp-brand);">REALTIME</span>
                         </div>
-                        <div class="vmp-list border-t" style="border-color: var(--vmp-border);">
-                            <div
-                                class="vmp-list-item hover:bg-white/5 cursor-pointer flex justify-between gap-2 py-2 px-2">
-                                <div class="flex items-center gap-2 min-w-0">
-                                    <span class="vmp-code-small opacity-40">10:42</span>
-                                    <span class="vmp-badge vmp-badge-danger text-[9px] py-0 px-1">RISK</span>
-                                    <span class="vmp-caption truncate">Price variance #9921</span>
+                        <div class="vmp-list" style="border-top: 1px solid var(--vmp-border);">
+                            <div class="vmp-list-item" style="display: flex; justify-content: space-between; gap: var(--vmp-space-2); padding: var(--vmp-space-2); cursor: pointer;">
+                                <div style="display: flex; align-items: center; gap: var(--vmp-space-2); min-width: 0;">
+                                    <span class="vmp-code-small vmp-subtle">10:42</span>
+                                    <span class="vmp-badge vmp-badge-danger" style="font-size: 9px; padding: 0 var(--vmp-space-1);">RISK</span>
+                                    <span class="vmp-caption" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Price variance #9921</span>
                                 </div>
                             </div>
-                            <div
-                                class="vmp-list-item hover:bg-white/5 cursor-pointer flex justify-between gap-2 py-2 px-2">
-                                <div class="flex items-center gap-2 min-w-0">
-                                    <span class="vmp-code-small opacity-40">09:15</span>
-                                    <span class="vmp-badge vmp-badge-ok text-[9px] py-0 px-1">OK</span>
-                                    <span class="vmp-caption truncate">Auto-approval</span>
+                            <div class="vmp-list-item" style="display: flex; justify-content: space-between; gap: var(--vmp-space-2); padding: var(--vmp-space-2); cursor: pointer;">
+                                <div style="display: flex; align-items: center; gap: var(--vmp-space-2); min-width: 0;">
+                                    <span class="vmp-code-small vmp-subtle">09:15</span>
+                                    <span class="vmp-badge vmp-badge-ok" style="font-size: 9px; padding: 0 var(--vmp-space-1);">OK</span>
+                                    <span class="vmp-caption" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Auto-approval</span>
                                 </div>
                             </div>
                         </div>

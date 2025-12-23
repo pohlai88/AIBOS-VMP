@@ -548,6 +548,17 @@ html[data-surface="vmp"] {
     color: var(--vmp-muted);
   }
 
+  & .vmp-label-kicker {
+    font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+    font-size: 9px;
+    line-height: var(--vmp-line-height-normal);
+    letter-spacing: 0.2em;
+    font-weight: 300;
+    text-transform: uppercase;
+    color: var(--vmp-subtle);
+    margin-bottom: var(--vmp-space-2);
+  }
+
   & .vmp-caption {
     font-family: "Liter", ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
     font-size: var(--vmp-font-xs);
@@ -1309,6 +1320,189 @@ html[data-surface="vmp"] {
     color: var(--vmp-danger);
   }
 
+  /* ===== POSTURE RAIL (Supplier Status Heat Map) ===== */
+  /* 
+   * ===== POSTURE RAIL COMPONENT (IDE-Readable) =====
+   * 
+   * COMPONENT STRUCTURE:
+   * - .vmp-posture-rail: Container for posture status indicators
+   *   - .vmp-posture-ready: Ready status indicator
+   *   - .vmp-posture-action: Action required status indicator
+   *   - .vmp-posture-blocked: Blocked status indicator
+   * 
+   * USAGE: At-a-glance supplier health status on supplier dashboard
+   * SCOPE: Foundation Layer - Data presentation
+   * 
+   * IDE AUTocomplete:
+   * - Type ".vmp-posture-rail" for posture rail container
+   * - Type ".vmp-posture-ready" for ready status
+   * - Type ".vmp-posture-action" for action required status
+   * - Type ".vmp-posture-blocked" for blocked status
+   */
+  
+  & .vmp-posture-rail {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--vmp-space-6);
+    padding: var(--vmp-space-6) var(--vmp-space-4);
+  }
+
+  & .vmp-posture-ready,
+  & .vmp-posture-action,
+  & .vmp-posture-blocked {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--vmp-space-1);
+    cursor: pointer;
+    transition: opacity var(--vmp-transition-fast);
+    position: relative;
+    padding: var(--vmp-space-2);
+  }
+
+  & .vmp-posture-ready {
+    opacity: 0.6;
+  }
+
+  & .vmp-posture-ready:hover {
+    opacity: 1;
+  }
+
+  & .vmp-posture-action {
+    opacity: 0.8;
+  }
+
+  & .vmp-posture-action:hover {
+    opacity: 1;
+  }
+
+  & .vmp-posture-blocked {
+    opacity: 0.6;
+  }
+
+  & .vmp-posture-blocked:hover {
+    opacity: 1;
+  }
+
+  & .vmp-posture-ready::after,
+  & .vmp-posture-action::after,
+  & .vmp-posture-blocked::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    height: 1px;
+    width: 0;
+    transition: width var(--vmp-transition-slow);
+  }
+
+  & .vmp-posture-ready:hover::after {
+    width: 100%;
+    background: var(--vmp-ok);
+  }
+
+  & .vmp-posture-action:hover::after {
+    width: 100%;
+    background: var(--vmp-danger);
+  }
+
+  & .vmp-posture-blocked:hover::after {
+    width: 100%;
+    background: var(--vmp-warn);
+  }
+
+  /* ===== CASE DETAIL (Data Presentation) ===== */
+  /* 
+   * ===== CASE DETAIL COMPONENT (IDE-Readable) =====
+   * 
+   * COMPONENT STRUCTURE:
+   * - .vmp-case-detail: Container for case detail view
+   *   - .vmp-case-detail-header: Case header section
+   *   - .vmp-case-detail-meta: Metadata grid
+   *   - .vmp-case-detail-body: Main content area
+   * 
+   * USAGE: Case detail page layout
+   * SCOPE: Foundation Layer - Data presentation
+   * 
+   * IDE AUTocomplete:
+   * - Type ".vmp-case-detail" for case detail container
+   * - Type ".vmp-case-detail-header" for header section
+   */
+  
+  & .vmp-case-detail {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    background: var(--vmp-veil);
+  }
+
+  & .vmp-case-detail-header {
+    flex-shrink: 0;
+    padding: var(--vmp-space-6);
+    border-bottom: 1px solid var(--vmp-border);
+    background: var(--vmp-panel);
+  }
+
+  & .vmp-case-detail-title-section {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: var(--vmp-space-6);
+  }
+
+  & .vmp-case-detail-meta {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: var(--vmp-space-8);
+    padding-top: var(--vmp-space-6);
+    border-top: 1px solid var(--vmp-border);
+  }
+
+  & .vmp-case-detail-meta-item {
+    display: flex;
+    flex-direction: column;
+  }
+
+  & .vmp-case-detail-body {
+    flex: 1;
+    overflow: hidden;
+    display: grid;
+    grid-template-columns: 1fr 420px;
+    gap: var(--vmp-space-8);
+  }
+
+  & .vmp-case-detail-main {
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid var(--vmp-border);
+    height: 100%;
+    position: relative;
+  }
+
+  & .vmp-case-detail-sidebar {
+    display: flex;
+    flex-direction: column;
+    background: hsla(0, 0%, 100%, 0.01);
+    overflow-y: auto;
+  }
+
+  @media (max-width: 1024px) {
+    & .vmp-case-detail-body {
+      grid-template-columns: 1fr;
+    }
+
+    & .vmp-case-detail-main {
+      border-right: none;
+      border-bottom: 1px solid var(--vmp-border);
+    }
+
+    & .vmp-case-detail-meta {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
   /* ===== TRUTH PANEL (Transaction Context) ===== */
   /* 
    * ===== TRUTH PANEL COMPONENT (IDE-Readable) =====
@@ -1761,6 +1955,446 @@ html[data-surface="vmp"] {
     }
   }
 
+  /* ===== PAYMENT HISTORY (Data Presentation) ===== */
+  /* 
+   * ===== PAYMENT HISTORY COMPONENT (IDE-Readable) =====
+   * 
+   * COMPONENT STRUCTURE:
+   * - .vmp-payment-history: Container for payment history timeline
+   *   - .vmp-payment-history-header: Sticky header with filters
+   *   - .vmp-payment-history-timeline: Timeline container
+   *   - .vmp-payment-history-summary: Summary stats footer
+   * 
+   * USAGE: Payment history chronological display
+   * SCOPE: Foundation Layer - Data presentation
+   * 
+   * IDE AUTocomplete:
+   * - Type ".vmp-payment-history" for payment history container
+   * - Type ".vmp-payment-history-header" for filter header
+   */
+  
+  & .vmp-payment-history {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+  }
+
+  & .vmp-payment-history-header {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--vmp-space-3);
+    border-bottom: 1px solid var(--vmp-border);
+    background: var(--vmp-veil);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    flex-shrink: 0;
+    margin-bottom: var(--vmp-space-4);
+  }
+
+  & .vmp-payment-history-filters {
+    display: flex;
+    flex-direction: column;
+    gap: var(--vmp-space-2);
+    flex: 1;
+    overflow-x: auto;
+  }
+
+  @media (min-width: 768px) {
+    & .vmp-payment-history-filters {
+      flex-direction: row;
+      align-items: center;
+    }
+  }
+
+  & .vmp-payment-history-filters .vmp-input,
+  & .vmp-payment-history-filters .vmp-select {
+    font-size: var(--vmp-font-sm);
+  }
+
+  & .vmp-payment-history-timeline {
+    flex: 1;
+    overflow-y: auto;
+    position: relative;
+    padding-left: var(--vmp-space-8);
+  }
+
+  & .vmp-payment-history-timeline::before {
+    content: '';
+    position: absolute;
+    left: var(--vmp-space-6);
+    top: 0;
+    bottom: 0;
+    width: 1px;
+    background: var(--vmp-border);
+  }
+
+  & .vmp-payment-history-item {
+    position: relative;
+    display: flex;
+    align-items: flex-start;
+    gap: var(--vmp-space-4);
+    margin-bottom: var(--vmp-space-6);
+  }
+
+  & .vmp-payment-history-dot {
+    position: absolute;
+    left: calc(-1 * var(--vmp-space-8) + var(--vmp-space-6) - 8px);
+    top: var(--vmp-space-2);
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--vmp-panel);
+    border: 2px solid var(--vmp-border);
+    z-index: 1;
+  }
+
+  & .vmp-payment-history-dot-ok {
+    border-color: var(--vmp-ok);
+  }
+
+  & .vmp-payment-history-dot-ok::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--vmp-ok);
+  }
+
+  & .vmp-payment-history-card {
+    flex: 1;
+    padding: var(--vmp-space-4);
+    border: 1px solid var(--vmp-border);
+    border-radius: var(--vmp-radius-lg);
+    background: var(--vmp-panel);
+    transition: border-color var(--vmp-transition-fast), background-color var(--vmp-transition-fast);
+  }
+
+  & .vmp-payment-history-card:hover {
+    border-color: var(--vmp-border2);
+    background: hsla(0, 0%, 100%, 0.04);
+  }
+
+  & .vmp-payment-history-card-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--vmp-space-4);
+    margin-bottom: var(--vmp-space-3);
+  }
+
+  & .vmp-payment-history-card-body {
+    display: flex;
+    flex-direction: column;
+    gap: var(--vmp-space-2);
+  }
+
+  & .vmp-payment-history-card-footer {
+    display: flex;
+    align-items: center;
+    gap: var(--vmp-space-2);
+    margin-top: var(--vmp-space-3);
+  }
+
+  & .vmp-payment-history-summary {
+    margin-top: var(--vmp-space-4);
+    padding-top: var(--vmp-space-4);
+    border-top: 1px solid var(--vmp-border);
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--vmp-space-4);
+  }
+
+  & .vmp-payment-history-summary-item {
+    display: flex;
+    flex-direction: column;
+  }
+
+  @media (max-width: 768px) {
+    & .vmp-payment-history-summary {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  /* ===== REMITTANCE VIEWER (Data Presentation) ===== */
+  /* 
+   * ===== REMITTANCE VIEWER COMPONENT (IDE-Readable) =====
+   * 
+   * COMPONENT STRUCTURE:
+   * - .vmp-remittance-viewer: Container for remittance document viewer
+   *   - .vmp-remittance-viewer-frame: iframe container
+   *   - .vmp-remittance-viewer-actions: Action buttons
+   * 
+   * USAGE: Display remittance PDF/document
+   * SCOPE: Foundation Layer - Data presentation
+   * 
+   * IDE AUTocomplete:
+   * - Type ".vmp-remittance-viewer" for remittance viewer container
+   * - Type ".vmp-remittance-viewer-frame" for iframe container
+   */
+  
+  & .vmp-remittance-viewer {
+    width: 100%;
+  }
+
+  & .vmp-remittance-viewer-frame {
+    width: 100%;
+    height: 600px;
+    border: 1px solid var(--vmp-border);
+    border-radius: var(--vmp-radius-lg);
+    overflow: hidden;
+    background: var(--vmp-bg);
+  }
+
+  & .vmp-remittance-viewer-actions {
+    margin-top: var(--vmp-space-4);
+    display: flex;
+    justify-content: flex-end;
+  }
+
+  & .vmp-remittance-viewer-empty {
+    padding: var(--vmp-space-8);
+    text-align: center;
+    color: var(--vmp-muted);
+  }
+
+  /* ===== CASE DASHBOARD GRID (Data Presentation) ===== */
+  /* 
+   * ===== CASE DASHBOARD GRID COMPONENT (IDE-Readable) =====
+   * 
+   * COMPONENT STRUCTURE:
+   * - .vmp-case-dashboard-grid: Container for 3-column split layout
+   *   - .vmp-case-dashboard-inbox: Left column (case inbox)
+   *   - .vmp-case-dashboard-workspace: Center column (case detail)
+   *   - .vmp-case-dashboard-aside: Right column (truth panel/protocol)
+   * 
+   * USAGE: Split-screen case dashboard layout
+   * SCOPE: Foundation Layer - Data presentation
+   * 
+   * IDE AUTocomplete:
+   * - Type ".vmp-case-dashboard-grid" for dashboard grid container
+   */
+  
+  /* ===== METRICS GRID (Posture Metrics) ===== */
+  & .vmp-metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0;
+    border-top: 1px solid var(--vmp-border);
+    border-bottom: 1px solid var(--vmp-border);
+    margin-bottom: var(--vmp-space-8);
+  }
+
+  & .vmp-metrics-grid > * {
+    border-right: 1px solid var(--vmp-border);
+  }
+
+  & .vmp-metrics-grid > *:last-child {
+    border-right: none;
+  }
+
+  @media (min-width: 768px) {
+    & .vmp-metrics-grid {
+      grid-template-columns: repeat(4, 1fr);
+    }
+  }
+
+  & .vmp-metrics-item {
+    padding: var(--vmp-space-6);
+    text-align: left;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    position: relative;
+    transition: background-color var(--vmp-transition-fast);
+  }
+
+  & .vmp-metrics-item:hover {
+    background: hsla(0, 0%, 100%, 0.05);
+  }
+
+  & .vmp-metrics-indicator {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    height: 2px;
+    width: 0;
+    background: var(--vmp-brand);
+    transition: width var(--vmp-transition-fast);
+    opacity: 0.5;
+  }
+
+  & .vmp-metrics-item:hover .vmp-metrics-indicator {
+    width: 100%;
+  }
+
+  & .vmp-metrics-indicator-active {
+    width: 100% !important;
+    opacity: 1 !important;
+  }
+
+  & .vmp-case-dashboard-grid {
+    display: grid;
+    grid-template-columns: 380px 1fr 320px;
+    gap: var(--vmp-space-6);
+    min-height: 700px;
+    height: calc(100vh - 280px);
+  }
+
+  @media (max-width: 1280px) {
+    & .vmp-case-dashboard-grid {
+      grid-template-columns: 1fr;
+      height: auto;
+    }
+
+    & .vmp-case-dashboard-aside {
+      display: none;
+    }
+  }
+
+  & .vmp-case-dashboard-inbox {
+    position: sticky;
+    top: var(--vmp-space-4);
+    height: calc(100vh - 280px);
+    display: flex;
+    flex-direction: column;
+  }
+
+  & .vmp-case-dashboard-workspace {
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - 280px);
+    position: relative;
+  }
+
+  & .vmp-case-dashboard-aside {
+    position: sticky;
+    top: var(--vmp-space-4);
+    height: fit-content;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ===== AUDIT RAIL (Modal Overlay) ===== */
+  /* 
+   * ===== AUDIT RAIL COMPONENT (IDE-Readable) =====
+   * 
+   * COMPONENT STRUCTURE:
+   * - .vmp-audit-rail: Modal overlay container
+   *   - .vmp-audit-rail-backdrop: Backdrop overlay
+   *   - .vmp-audit-rail-panel: Side panel
+   * 
+   * USAGE: Audit trail modal overlay
+   * SCOPE: Foundation Layer - Data presentation
+   * 
+   * IDE AUTocomplete:
+   * - Type ".vmp-audit-rail" for audit rail container
+   */
+  
+  & .vmp-audit-rail {
+    position: fixed;
+    inset: 0;
+    z-index: 999;
+    display: none;
+  }
+
+  & .vmp-audit-rail[x-cloak] {
+    display: none !important;
+  }
+
+  & .vmp-audit-rail-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+  }
+
+  & .vmp-audit-rail-panel {
+    position: absolute;
+    right: 0;
+    top: 0;
+    height: 100%;
+    width: 440px;
+    background: #050505;
+    border-left: 1px solid var(--vmp-border);
+    box-shadow: -8px 0 32px rgba(0, 0, 0, 0.4);
+    display: flex;
+    flex-direction: column;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+
+  & .vmp-audit-rail-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--vmp-space-3) var(--vmp-space-4);
+    border-bottom: 1px solid var(--vmp-border);
+    flex-shrink: 0;
+  }
+
+  & .vmp-audit-rail-tabs {
+    display: flex;
+    gap: var(--vmp-space-2);
+    padding: var(--vmp-space-3) var(--vmp-space-4);
+    border-bottom: 1px solid var(--vmp-border);
+    flex-shrink: 0;
+  }
+
+  & .vmp-audit-rail-tab {
+    padding: var(--vmp-space-1) var(--vmp-space-3);
+    border-radius: var(--vmp-radius-sm);
+    font-size: var(--vmp-font-xs);
+    font-weight: 500;
+    transition: all var(--vmp-transition-fast);
+    background: transparent;
+    border: none;
+    color: var(--vmp-muted);
+    cursor: pointer;
+  }
+
+  & .vmp-audit-rail-tab:hover {
+    color: var(--vmp-text);
+    background: hsla(0, 0%, 100%, 0.05);
+  }
+
+  & .vmp-audit-rail-tab-active {
+    background: hsla(0, 0%, 100%, 0.10);
+    color: var(--vmp-text);
+  }
+
+  & .vmp-audit-rail-content {
+    padding: var(--vmp-space-4);
+    overflow-y: auto;
+    flex: 1;
+  }
+
+  & .vmp-audit-rail-close {
+    padding: var(--vmp-space-1);
+    border-radius: var(--vmp-radius-sm);
+    transition: all var(--vmp-transition-fast);
+    color: var(--vmp-muted);
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  & .vmp-audit-rail-close:hover {
+    background: hsla(0, 0%, 100%, 0.10);
+    color: var(--vmp-text);
+  }
+
   /* ===== ACTIVITY FEED (Case Activity Stream) ===== */
   /* 
    * ===== ACTIVITY FEED COMPONENT (IDE-Readable) =====
@@ -2039,6 +2673,229 @@ html[data-surface="vmp"] {
     }
   }
 
+  & .vmp-table-wrapper {
+    overflow-x: auto;
+  }
+
+  & .vmp-table-check {
+    width: 40px;
+  }
+
+  & .vmp-table-head-right {
+    text-align: right;
+  }
+
+  & .vmp-table-head-center {
+    text-align: center;
+  }
+
+  & .vmp-table-row {
+    cursor: pointer;
+    transition: background-color var(--vmp-transition-fast);
+  }
+
+  & .vmp-table-row:hover {
+    background: hsla(0, 0%, 100%, 0.02);
+  }
+
+  & .vmp-table-cell {
+    padding: var(--vmp-space-3) var(--vmp-space-4);
+  }
+
+  & .vmp-table-cell-right {
+    text-align: right;
+    font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  }
+
+  & .vmp-table-cell-center {
+    text-align: center;
+  }
+
+  /* ===== INVOICE LIST (Data Presentation) ===== */
+  /* 
+   * ===== INVOICE LIST COMPONENT (IDE-Readable) =====
+   * 
+   * COMPONENT STRUCTURE:
+   * - .vmp-invoice-list-container: Container for invoice list
+   *   - .vmp-invoice-list-header: Sticky header with filters
+   *   - .vmp-table-wrapper: Scrollable table container
+   * 
+   * USAGE: Invoice ledger display
+   * SCOPE: Foundation Layer - Data presentation
+   * 
+   * IDE AUTocomplete:
+   * - Type ".vmp-invoice-list-container" for invoice list
+   * - Type ".vmp-invoice-list-header" for filter header
+   */
+  
+  & .vmp-invoice-list-container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    background: var(--vmp-bg);
+  }
+
+  & .vmp-invoice-list-header {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--vmp-space-3) var(--vmp-space-4);
+    border-bottom: 1px solid var(--vmp-border);
+    background: var(--vmp-veil);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    flex-shrink: 0;
+    margin-bottom: var(--vmp-space-4);
+  }
+
+  & .vmp-invoice-list-filters {
+    display: flex;
+    flex-direction: column;
+    gap: var(--vmp-space-2);
+    width: 100%;
+  }
+
+  @media (min-width: 768px) {
+    & .vmp-invoice-list-filters {
+      flex-direction: row;
+      align-items: stretch;
+    }
+  }
+
+  & .vmp-invoice-list-filters .vmp-input {
+    flex: 1;
+  }
+
+  & .vmp-invoice-list-filters .vmp-select {
+    flex: 1;
+  }
+
+  @media (min-width: 768px) {
+    & .vmp-invoice-list-filters .vmp-select {
+      flex: none;
+    }
+  }
+
+  /* ===== MATCHING STATUS (3-Way Match Diagram) ===== */
+  /* 
+   * ===== MATCHING STATUS COMPONENT (IDE-Readable) =====
+   * 
+   * COMPONENT STRUCTURE:
+   * - .vmp-matching-status-panel: Container for matching status
+   *   - .vmp-match-diagram: Visual 3-way match diagram
+   *     - .vmp-match-node: Individual match node (PO/GRN/Invoice)
+   *     - .vmp-match-connector: Connection line between nodes
+   * 
+   * USAGE: Visualize 3-way match status (PO, GRN, Invoice)
+   * SCOPE: Foundation Layer - Data presentation
+   * 
+   * IDE AUTocomplete:
+   * - Type ".vmp-matching-status-panel" for matching status container
+   * - Type ".vmp-match-diagram" for 3-way match diagram
+   * - Type ".vmp-match-node" for match node
+   */
+  
+  & .vmp-matching-status-panel {
+    padding: var(--vmp-space-5);
+    border-bottom: 1px solid var(--vmp-border);
+  }
+
+  & .vmp-match-diagram {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--vmp-space-4);
+    margin-bottom: var(--vmp-space-4);
+  }
+
+  & .vmp-match-node {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: var(--vmp-space-3);
+    border: 1px solid var(--vmp-border);
+    border-radius: var(--vmp-radius-lg);
+    background: var(--vmp-panel);
+    text-align: center;
+    transition: background-color var(--vmp-transition-fast), border-color var(--vmp-transition-fast);
+  }
+
+  & .vmp-match-node-ok {
+    background: rgba(86, 255, 184, 0.08);
+    border-color: rgba(86, 255, 184, 0.20);
+  }
+
+  & .vmp-match-node-warn {
+    background: rgba(255, 210, 120, 0.08);
+    border-color: rgba(255, 210, 120, 0.20);
+  }
+
+  & .vmp-match-node-danger {
+    background: rgba(255, 100, 100, 0.08);
+    border-color: rgba(255, 100, 100, 0.20);
+  }
+
+  & .vmp-match-node-active {
+    background: rgba(86, 255, 184, 0.12);
+    border-color: rgba(86, 255, 184, 0.30);
+  }
+
+  & .vmp-match-connector {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--vmp-space-2);
+    margin-top: var(--vmp-space-3);
+  }
+
+  & .vmp-match-connector::before,
+  & .vmp-match-connector::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--vmp-border);
+  }
+
+  & .vmp-match-connector::before {
+    margin-right: var(--vmp-space-2);
+  }
+
+  & .vmp-match-connector::after {
+    margin-left: var(--vmp-space-2);
+  }
+
+  & .vmp-match-connector-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--vmp-border);
+  }
+
+  & .vmp-match-connector-ok .vmp-match-connector-dot,
+  & .vmp-match-connector-ok::before,
+  & .vmp-match-connector-ok::after {
+    background: var(--vmp-ok);
+  }
+
+  & .vmp-match-connector-danger .vmp-match-connector-dot,
+  & .vmp-match-connector-danger::before,
+  & .vmp-match-connector-danger::after {
+    background: var(--vmp-danger);
+  }
+
+  @media (max-width: 768px) {
+    & .vmp-match-diagram {
+      grid-template-columns: 1fr;
+      gap: var(--vmp-space-3);
+    }
+
+    & .vmp-match-connector {
+      display: none;
+    }
+  }
+
   /* ===== LISTS (Semantic - Data Presentation) ===== */
   
   & .vmp-list,
@@ -2046,6 +2903,10 @@ html[data-surface="vmp"] {
     list-style: none;
     padding: 0;
     margin: 0;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow-y: auto;
   }
 
   & .vmp-list-item {
@@ -2054,6 +2915,7 @@ html[data-surface="vmp"] {
     transition: background-color var(--vmp-transition-fast);
     font-weight: 300;
     line-height: var(--vmp-line-height-relaxed);
+    position: relative;
 
     &:hover {
       background: hsla(0, 0%, 100%, 0.02);
@@ -2061,6 +2923,161 @@ html[data-surface="vmp"] {
 
     &:last-child {
       border-bottom: none;
+    }
+  }
+
+  /* ===== CASE INBOX (Data Presentation) ===== */
+  /* 
+   * ===== CASE INBOX COMPONENT (IDE-Readable) =====
+   * 
+   * COMPONENT STRUCTURE:
+   * - .vmp-case-inbox: Container for case list
+   *   - .vmp-case-inbox-header: Sticky header with filters
+   *   - .vmp-case-inbox-list: Scrollable case list
+   *   - .vmp-case-item: Individual case row
+   *     - .vmp-case-item-indicator: Status indicator dot
+   *     - .vmp-case-item-content: Case content area
+   * 
+   * USAGE: Case triage and inbox display
+   * SCOPE: Foundation Layer - Data presentation
+   * 
+   * IDE AUTocomplete:
+   * - Type ".vmp-case-inbox" for case inbox container
+   * - Type ".vmp-case-item" for case row
+   */
+  
+  & .vmp-case-inbox {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    background: var(--vmp-bg);
+  }
+
+  & .vmp-case-inbox-header {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--vmp-space-3) var(--vmp-space-4);
+    border-bottom: 1px solid var(--vmp-border);
+    background: var(--vmp-veil);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    flex-shrink: 0;
+  }
+
+  & .vmp-case-inbox-filters {
+    display: flex;
+    gap: var(--vmp-space-2);
+    overflow-x: auto;
+  }
+
+  & .vmp-case-inbox-list {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+  }
+
+  & .vmp-case-item {
+    display: block;
+    position: relative;
+    padding: var(--vmp-space-4);
+    border-bottom: 1px solid hsla(0, 0%, 100%, 0.05);
+    transition: background-color var(--vmp-transition-fast);
+    text-decoration: none;
+    color: inherit;
+  }
+
+  & .vmp-case-item:hover {
+    background: hsla(0, 0%, 100%, 0.02);
+  }
+
+  & .vmp-case-item::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: var(--vmp-space-2);
+    bottom: var(--vmp-space-2);
+    width: 2px;
+    background: var(--vmp-brand);
+    opacity: 0;
+    transition: opacity var(--vmp-transition-fast);
+  }
+
+  & .vmp-case-item:hover::before,
+  & .vmp-case-item:focus::before {
+    opacity: 1;
+  }
+
+  & .vmp-case-item-content {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--vmp-space-3);
+  }
+
+  & .vmp-case-item-indicator {
+    flex-shrink: 0;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-top: var(--vmp-space-2);
+  }
+
+  & .vmp-case-item-indicator-danger {
+    background: var(--vmp-danger);
+    animation: vmp-pulse 2s ease-in-out infinite;
+  }
+
+  & .vmp-case-item-indicator-warn {
+    background: var(--vmp-warn);
+  }
+
+  & .vmp-case-item-indicator-ok {
+    background: var(--vmp-ok);
+    opacity: 0.4;
+  }
+
+  & .vmp-case-item-indicator-default {
+    border: 1px solid var(--vmp-border);
+    background: transparent;
+  }
+
+  & .vmp-case-item-body {
+    flex: 1;
+    min-width: 0;
+  }
+
+  & .vmp-case-item-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--vmp-space-1);
+    gap: var(--vmp-space-2);
+  }
+
+  & .vmp-case-item-meta {
+    display: flex;
+    align-items: center;
+    gap: var(--vmp-space-2);
+    min-width: 0;
+  }
+
+  & .vmp-case-item-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: var(--vmp-space-2);
+  }
+
+  @keyframes vmp-pulse {
+    0%, 100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.5;
     }
   }
 

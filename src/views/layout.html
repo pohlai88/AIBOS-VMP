@@ -35,6 +35,131 @@
   <link rel="stylesheet" href="/globals.css">
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+  <script>
+    // Global bulkActions function - must be defined before Alpine.js initializes
+    function bulkActions() {
+      return {
+        selectedItems: new Set(),
+        selectedCount: 0,
+        listType: 'cases',
+
+        init() {
+          const listContainer = this.$el.closest('[data-list-type]');
+          if (listContainer) {
+            this.listType = listContainer.getAttribute('data-list-type') || 'cases';
+          }
+
+          document.addEventListener('bulk-toggle', (e) => {
+            this.toggleSelection(e.detail.id);
+          });
+
+          document.addEventListener('bulk-select-all', () => {
+            this.selectAll();
+          });
+        },
+
+        toggleSelection(itemId) {
+          if (this.selectedItems.has(itemId)) {
+            this.selectedItems.delete(itemId);
+          } else {
+            this.selectedItems.add(itemId);
+          }
+          this.selectedCount = this.selectedItems.size;
+          this.updateCheckboxes();
+        },
+
+        selectAll() {
+          const checkboxes = document.querySelectorAll('[data-bulk-item-id]');
+          checkboxes.forEach(cb => {
+            const itemId = cb.getAttribute('data-bulk-item-id');
+            this.selectedItems.add(itemId);
+          });
+          this.selectedCount = this.selectedItems.size;
+          this.updateCheckboxes();
+        },
+
+        clearSelection() {
+          this.selectedItems.clear();
+          this.selectedCount = 0;
+          this.updateCheckboxes();
+        },
+
+        updateCheckboxes() {
+          const checkboxes = document.querySelectorAll('[data-bulk-item-id]');
+          checkboxes.forEach(cb => {
+            const itemId = cb.getAttribute('data-bulk-item-id');
+            cb.checked = this.selectedItems.has(itemId);
+          });
+        },
+
+        async executeBulkAction(action) {
+          const selectedIds = Array.from(this.selectedItems);
+          if (selectedIds.length === 0) return;
+
+          const confirmModal = document.getElementById('bulk-action-confirm-modal');
+          if (!confirmModal) {
+            console.warn('Bulk action confirmation modal not found');
+            return;
+          }
+
+          const confirmData = Alpine.$data(confirmModal);
+          const actionLabels = {
+            approve: 'approve',
+            reject: 'reject',
+            export: 'export',
+            close: 'close'
+          };
+
+          confirmData.action = actionLabels[action] || action;
+          confirmData.selectedCount = selectedIds.length;
+          confirmData.isOpen = true;
+
+          confirmData.confirmAction = async () => {
+            const progressModal = document.getElementById('bulk-action-progress-modal');
+            if (progressModal) {
+              const progressData = Alpine.$data(progressModal);
+              progressData.isOpen = true;
+              progressData.total = selectedIds.length;
+              progressData.current = 0;
+              progressData.action = actionLabels[action] || action;
+            }
+
+            try {
+              const response = await fetch(`/api/bulk-actions/${this.listType}/${action}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ids: selectedIds })
+              });
+
+              if (!response.ok) {
+                throw new Error('Bulk action failed');
+              }
+
+              if (progressModal) {
+                const progressData = Alpine.$data(progressModal);
+                progressData.current = selectedIds.length;
+                setTimeout(() => {
+                  progressData.isOpen = false;
+                  this.clearSelection();
+                  if (window.htmx) {
+                    htmx.ajax('GET', '/partials/case-inbox.html', { target: '#case-inbox', swap: 'innerHTML' });
+                  }
+                }, 500);
+              } else {
+                this.clearSelection();
+              }
+            } catch (error) {
+              console.error('Bulk action error:', error);
+              if (progressModal) {
+                Alpine.$data(progressModal).isOpen = false;
+              }
+              alert(error.message || 'Failed to execute bulk action');
+            }
+          };
+        }
+      };
+    }
+  </script>
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.3/dist/cdn.min.js"></script>
   <script src="/toast.js"></script>
 
@@ -210,7 +335,7 @@
   {% include "partials/keyboard_shortcuts_modal.html" %}
   {% include "partials/export_modal.html" %}
   
-  <!-- Audit Rail Overlay -->
+  <!-- Audit Rail Overlay (Foundation Layer) -->
   <div
     x-data="{ 
       open:false, 
@@ -223,7 +348,34 @@
       decisionLoaded: false,
       decisionContent: null,
       truthLoaded: false,
-      truthContent: null
+      truthContent: null,
+      loadTimeline() {
+        if (this.tab === 'timeline' && this.caseId && !this.timelineLoaded) {
+          this.timelineLoaded = true;
+          fetch('/partials/timeline.html?case_id=' + this.caseId)
+            .then(r => r.text())
+            .then(html => { this.timelineContent = html; })
+            .catch(e => { this.timelineContent = '<div class="vmp-empty" style="padding: 2rem; text-align: center;"><div class="vmp-caption" style="opacity: 0.4;">Failed to load timeline</div></div>'; });
+        }
+      },
+      loadDecision() {
+        if (this.tab === 'decision' && this.caseId && !this.decisionLoaded) {
+          this.decisionLoaded = true;
+          fetch('/partials/decision-log.html?case_id=' + this.caseId)
+            .then(r => r.text())
+            .then(html => { this.decisionContent = html; })
+            .catch(e => { this.decisionContent = '<div class="vmp-empty" style="padding: 2rem; text-align: center;"><div class="vmp-caption" style="opacity: 0.4;">Failed to load decision log</div></div>'; });
+        }
+      },
+      loadTruth() {
+        if (this.tab === 'truth' && this.caseId && !this.truthLoaded) {
+          this.truthLoaded = true;
+          fetch('/partials/truth-panel.html?case_id=' + this.caseId)
+            .then(r => r.text())
+            .then(html => { this.truthContent = html; })
+            .catch(e => { this.truthContent = '<div class="vmp-empty" style="padding: 2rem; text-align: center;"><div class="vmp-caption" style="opacity: 0.4;">Failed to load truth panel</div></div>'; });
+        }
+      }
     }"
     x-show="open"
     x-cloak
@@ -235,26 +387,26 @@
       entity=$event.detail.entity || '';
     "
     @keydown.escape.window="open=false"
-    class="fixed inset-0 z-[999]"
+    class="vmp-audit-rail"
     aria-label="Audit Rail"
     role="dialog"
     aria-modal="true"
     style="display: none;">
     <!-- backdrop -->
-    <div class="absolute inset-0 bg-black/60" @click="open=false"></div>
+    <div class="vmp-audit-rail-backdrop" @click="open=false"></div>
 
     <!-- rail -->
-    <aside class="absolute right-0 top-0 h-full w-[440px] bg-[#050505] border-l border-white/10 backdrop-blur-md flex flex-col">
-      <div class="flex items-center justify-between px-4 py-3 border-b border-white/10 shrink-0">
-        <div class="min-w-0 flex-1">
-          <div class="text-[10px] uppercase tracking-wider text-white/50 mb-1">AUDIT TRAIL</div>
-          <div class="truncate text-sm text-white/90">
-            <span class="text-white/50 font-mono text-xs" x-text="caseId"></span>
-            <span class="ml-2" x-text="title"></span>
+    <aside class="vmp-audit-rail-panel">
+      <div class="vmp-audit-rail-header">
+        <div style="min-width: 0; flex: 1;">
+          <div class="vmp-label-kicker vmp-subtle" style="margin-bottom: var(--vmp-space-1);">AUDIT TRAIL</div>
+          <div class="vmp-body-small" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+            <span class="vmp-code-small vmp-subtle" x-text="caseId"></span>
+            <span style="margin-left: var(--vmp-space-2);" x-text="title"></span>
           </div>
         </div>
 
-        <button class="ml-4 p-1.5 rounded hover:bg-white/10 transition-colors text-white/60 hover:text-white" @click="open=false" aria-label="Close audit rail">
+        <button class="vmp-audit-rail-close" @click="open=false" aria-label="Close audit rail">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <line x1="18" y1="6" x2="6" y2="18"></line>
             <line x1="6" y1="6" x2="18" y2="18"></line>
@@ -262,59 +414,44 @@
         </button>
       </div>
 
-      <div class="flex gap-2 px-4 py-3 border-b border-white/10 shrink-0">
+      <div class="vmp-audit-rail-tabs">
         <button 
-          class="px-3 py-1.5 rounded text-xs font-medium transition-colors"
-          :class="tab==='timeline' ? 'bg-white/10 text-white' : 'text-white/60 hover:text-white/80 hover:bg-white/5'"
+          class="vmp-audit-rail-tab"
+          :class="tab==='timeline' ? 'vmp-audit-rail-tab-active' : ''"
           :aria-pressed="tab==='timeline'"
-          @click="tab='timeline'; timelineLoaded = false; timelineContent = null">Timeline</button>
+          @click="tab='timeline'; timelineLoaded = false; timelineContent = null; loadTimeline()">Timeline</button>
         <button 
-          class="px-3 py-1.5 rounded text-xs font-medium transition-colors"
-          :class="tab==='decision' ? 'bg-white/10 text-white' : 'text-white/60 hover:text-white/80 hover:bg-white/5'"
+          class="vmp-audit-rail-tab"
+          :class="tab==='decision' ? 'vmp-audit-rail-tab-active' : ''"
           :aria-pressed="tab==='decision'"
-          @click="tab='decision'; decisionLoaded = false; decisionContent = null">Decision Log</button>
+          @click="tab='decision'; decisionLoaded = false; decisionContent = null; loadDecision()">Decision Log</button>
         <button 
-          class="px-3 py-1.5 rounded text-xs font-medium transition-colors"
-          :class="tab==='truth' ? 'bg-white/10 text-white' : 'text-white/60 hover:text-white/80 hover:bg-white/5'"
+          class="vmp-audit-rail-tab"
+          :class="tab==='truth' ? 'vmp-audit-rail-tab-active' : ''"
           :aria-pressed="tab==='truth'"
-          @click="tab='truth'; truthLoaded = false; truthContent = null">Truth Panel</button>
+          @click="tab='truth'; truthLoaded = false; truthContent = null; loadTruth()">Truth Panel</button>
       </div>
 
-      <div class="p-4 overflow-y-auto flex-1">
+      <div class="vmp-audit-rail-content">
         <div x-show="tab==='timeline'" 
-             x-init="if (tab === 'timeline' && caseId && !timelineLoaded) { 
-               timelineLoaded = true; 
-               fetch('/partials/timeline.html?case_id=' + caseId)
-                 .then(r => r.text())
-                 .then(html => { timelineContent = html; })
-                 .catch(e => { timelineContent = '<div class=\"vmp-empty py-8 text-center\"><div class=\"vmp-caption opacity-40\">Failed to load timeline</div></div>'; });
-             }"
-             @audit:open.window="timelineLoaded = false; timelineContent = null">
-          <div x-html="timelineContent || '<div class=\'vmp-empty py-8 text-center\'><div class=\'vmp-caption opacity-40\'>Select a case to view timeline</div></div>'"></div>
+             x-init="loadTimeline()"
+             @audit:open.window="timelineLoaded = false; timelineContent = null"
+             x-effect="loadTimeline()">
+          <div x-html="timelineContent || '<div class=\'vmp-empty\' style=\'padding: 2rem; text-align: center;\'><div class=\'vmp-caption\' style=\'opacity: 0.4;\'>Select a case to view timeline</div></div>'"></div>
         </div>
         <div x-show="tab==='decision'" 
              style="display: none;"
-             x-init="if (tab === 'decision' && caseId && !decisionLoaded) { 
-               decisionLoaded = true; 
-               fetch('/partials/decision-log.html?case_id=' + caseId)
-                 .then(r => r.text())
-                 .then(html => { decisionContent = html; })
-                 .catch(e => { decisionContent = '<div class=\"vmp-empty py-8 text-center\"><div class=\"vmp-caption opacity-40\">Failed to load decision log</div></div>'; });
-             }"
-             @audit:open.window="decisionLoaded = false; decisionContent = null">
-          <div x-html="decisionContent || '<div class=\'vmp-empty py-8 text-center\'><div class=\'vmp-caption opacity-40\'>Select a case to view decision log</div></div>'"></div>
+             x-init="loadDecision()"
+             @audit:open.window="decisionLoaded = false; decisionContent = null"
+             x-effect="loadDecision()">
+          <div x-html="decisionContent || '<div class=\'vmp-empty\' style=\'padding: 2rem; text-align: center;\'><div class=\'vmp-caption\' style=\'opacity: 0.4;\'>Select a case to view decision log</div></div>'"></div>
         </div>
         <div x-show="tab==='truth'" 
              style="display: none;"
-             x-init="if (tab === 'truth' && caseId && !truthLoaded) { 
-               truthLoaded = true; 
-               fetch('/partials/truth-panel.html?case_id=' + caseId)
-                 .then(r => r.text())
-                 .then(html => { truthContent = html; })
-                 .catch(e => { truthContent = '<div class=\"vmp-empty py-8 text-center\"><div class=\'vmp-caption opacity-40\'>Failed to load truth panel</div></div>'; });
-             }"
-             @audit:open.window="truthLoaded = false; truthContent = null">
-          <div x-html="truthContent || '<div class=\'vmp-empty py-8 text-center\'><div class=\'vmp-caption opacity-40\'>Select a case to view truth panel</div></div>'"></div>
+             x-init="loadTruth()"
+             @audit:open.window="truthLoaded = false; truthContent = null"
+             x-effect="loadTruth()">
+          <div x-html="truthContent || '<div class=\'vmp-empty\' style=\'padding: 2rem; text-align: center;\'><div class=\'vmp-caption\' style=\'opacity: 0.4;\'>Select a case to view truth panel</div></div>'"></div>
         </div>
       </div>
     </aside>
