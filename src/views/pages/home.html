@@ -361,8 +361,8 @@
                     class="text-4xl font-light tracking-tighter text-white mb-1 group-hover:scale-105 transition-transform origin-left">
                     {{ soaCount or 0 }}
                 </div>
-                <div class="text-xs text-white/30">
-                    CURRENT CYCLE
+                <div class="text-xs {% if soaNetVariance and soaNetVariance != 0 %}text-[var(--vmp-danger)]{% else %}text-white/30{% endif %}">
+                    NET VARIANCE: {{ "%.2f"|format(soaNetVariance) if soaNetVariance else "0.00" }}
                 </div>
             </a>
 

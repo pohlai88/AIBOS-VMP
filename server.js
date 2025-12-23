@@ -29,6 +29,7 @@ import { performAISearch, parseSearchIntent, generateSearchSuggestions } from '.
 import { checkAndSendSLAReminders, getSLAReminderStats } from './src/utils/sla-reminders.js';
 import { generatePDF, generateExcel, getExportFields } from './src/utils/export-utils.js';
 import { sendPasswordResetEmail, sendInviteEmail } from './src/utils/notifications.js';
+import { detectPeriodFromFilename, formatUserFriendlyError, getPeriodSuggestions } from './src/utils/soa-upload-helpers.js';
 
 // Timeout wrapper for async operations (local helper)
 const withTimeout = async (promise, timeoutMs = 10000, operationName = 'operation') => {
@@ -377,18 +378,20 @@ app.use(async (req, res, next) => {
   if (env.NODE_ENV === 'test' && req.headers['x-test-auth'] === 'bypass') {
     const testUserId = req.headers['x-test-user-id'] || 'test-user-id';
     const testVendorId = req.headers['x-test-vendor-id'] || env.DEMO_VENDOR_ID;
+    const testTenantId = req.headers['x-test-tenant-id'] || null;
     const isInternal = req.headers['x-test-is-internal'] === 'true';
 
     // Ensure testUserId and testVendorId are strings (not string[])
     const userId = Array.isArray(testUserId) ? testUserId[0] : testUserId;
     const vendorId = Array.isArray(testVendorId) ? testVendorId[0] : testVendorId;
+    const tenantId = Array.isArray(testTenantId) ? testTenantId[0] : testTenantId;
 
     req.user = {
       id: userId,
       email: 'test@example.com',
       displayName: 'Test User',
       vendorId: vendorId,
-      vendor: { id: vendorId, name: 'Test Vendor', tenant_id: '' },
+      vendor: { id: vendorId, name: 'Test Vendor', tenant_id: tenantId || '' },
       isInternal: isInternal || false
     };
     return next();
@@ -1311,6 +1314,7 @@ async function renderHomePage(req, res) {
     let openCount = 0;
     let soaCount = 0;
     let paidCount = 0;
+    let soaNetVariance = 0;
 
     if (VENDOR_ID_HARDCODED) {
       try {
@@ -1319,8 +1323,20 @@ async function renderHomePage(req, res) {
         // Calculate metrics
         actionCount = rawCases.filter(c => c.status === 'blocked' || c.status === 'waiting_supplier').length;
         openCount = rawCases.filter(c => c.status === 'open').length;
-        soaCount = rawCases.filter(c => c.case_type === 'soa').length;
+        const soaCases = rawCases.filter(c => c.case_type === 'soa');
+        soaCount = soaCases.length;
         paidCount = rawCases.filter(c => c.status === 'resolved' || c.status === 'paid').length;
+
+        // Calculate SOA net variance (sum of all SOA case variances)
+        for (const soaCase of soaCases) {
+          try {
+            const summary = await vmpAdapter.getSOASummary(soaCase.id, VENDOR_ID_HARDCODED);
+            soaNetVariance += summary.net_variance || 0;
+          } catch (error) {
+            // Skip if summary calculation fails (case might not have SOA items yet)
+            logError(error, { path: '/home', operation: 'calculateSOAVariance', caseId: soaCase.id });
+          }
+        }
       } catch (error) {
         logError(error, { path: '/home', operation: 'loadMetrics' });
       }
@@ -1331,6 +1347,7 @@ async function renderHomePage(req, res) {
       actionCount: actionCount,
       openCount: openCount,
       soaCount: soaCount,
+      soaNetVariance: soaNetVariance,
       paidCount: paidCount,
       isIndependent: false
     });
@@ -3786,35 +3803,53 @@ app.get('/supplier/radar', async (req, res) => {
 // === HELPER: BUILD ORG TREE ===
 async function getOrgTopology(tenantId) {
   try {
-    // 1. Fetch the Tenant Details
-    const { data: tenant, error: tenantError } = await supabase
+    // 1. Fetch the Tenant Details (with timeout protection)
+    const tenantQuery = supabase
       .from('vmp_tenants')
       .select('id, name')
       .eq('id', tenantId)
       .single();
+
+    const { data: tenant, error: tenantError } = await withTimeout(
+      tenantQuery,
+      10000,
+      `getOrgTopology-tenant(${tenantId})`
+    );
 
     if (tenantError || !tenant) {
       logError(tenantError || new Error('Tenant not found'), { tenantId, operation: 'getOrgTopology' });
       return null;
     }
 
-    // 2. Fetch All Groups
-    const { data: groups, error: groupsError } = await supabase
+    // 2. Fetch All Groups (with timeout protection)
+    const groupsQuery = supabase
       .from('vmp_groups')
       .select('id, name, code')
       .eq('tenant_id', tenantId)
       .order('name', { ascending: true });
 
+    const { data: groups, error: groupsError } = await withTimeout(
+      groupsQuery,
+      10000,
+      `getOrgTopology-groups(${tenantId})`
+    );
+
     if (groupsError) {
       logError(groupsError, { tenantId, operation: 'getOrgTopology-groups' });
     }
 
-    // 3. Fetch All Companies (include code if it exists in the schema)
-    const { data: companies, error: companiesError } = await supabase
+    // 3. Fetch All Companies (include code if it exists in the schema) (with timeout protection)
+    const companiesQuery = supabase
       .from('vmp_companies')
       .select('id, group_id, name, legal_name, country_code, currency_code')
       .eq('tenant_id', tenantId)
       .order('name', { ascending: true });
+
+    const { data: companies, error: companiesError } = await withTimeout(
+      companiesQuery,
+      10000,
+      `getOrgTopology-companies(${tenantId})`
+    );
 
     // Add code field for display (use country_code as fallback)
     const companiesWithCode = (companies || []).map(company => ({
@@ -5869,6 +5904,1379 @@ app.post('/invoices/:id/report-exception', async (req, res) => {
 });
 
 // ============================================================================
+// ============================================================================
+// SOA RECONCILIATION ROUTES
+// ============================================================================
+
+// GET: SOA Reconciliation Workspace
+app.get('/soa/recon/:caseId', async (req, res) => {
+  try {
+    // 1. Authentication
+    if (!requireAuth(req, res)) return;
+
+    // 2. Input validation
+    const caseId = getStringParam(req.params.caseId);
+    if (!caseId || !isValidUUID(caseId)) {
+      return res.status(400).render('pages/error.html', {
+        error: { status: 400, message: 'Invalid case ID' },
+        user: req.user
+      });
+    }
+
+    // 3. Business logic
+    const soaLines = await vmpAdapter.getSOALines(caseId, req.user.vendorId);
+    const summary = await vmpAdapter.getSOASummary(caseId, req.user.vendorId);
+    const issues = await vmpAdapter.getSOAIssues(caseId);
+
+    // 4. Render response
+    res.render('pages/soa_recon.html', {
+      title: 'SOA Reconciliation',
+      user: req.user,
+      caseId: caseId,
+      soaLines: soaLines || [],
+      summary: summary,
+      issues: issues || []
+    });
+  } catch (error) {
+    handleRouteError(error, req, res);
+  }
+});
+
+// GET: SOA Reconciliation Partial (3-column workspace)
+app.get('/partials/soa-recon-workspace.html', async (req, res) => {
+  try {
+    // 1. Authentication
+    if (!requireAuth(req, res)) return;
+
+    // 2. Input validation
+    const caseId = getStringParam(req.query.case_id);
+    if (!caseId || !isValidUUID(caseId)) {
+      return res.status(400).render('partials/error_message.html', {
+        error: { message: 'Invalid case ID' }
+      });
+    }
+
+    // 3. Business logic
+    const soaLines = await vmpAdapter.getSOALines(caseId, req.user.vendorId);
+    const summary = await vmpAdapter.getSOASummary(caseId, req.user.vendorId);
+    const issues = await vmpAdapter.getSOAIssues(caseId);
+
+    // 4. Render response
+    res.render('partials/soa_recon_workspace.html', {
+      caseId: caseId,
+      soaLines: soaLines || [],
+      summary: summary,
+      issues: issues || []
+    });
+  } catch (error) {
+    handlePartialError(error, req, res, 'partials/soa_recon_workspace.html', {
+      caseId: req.query.case_id,
+      soaLines: [],
+      summary: null,
+      issues: []
+    });
+  }
+});
+
+// POST: Match SOA Line to Invoice
+app.post('/soa/match', async (req, res) => {
+  try {
+    // 1. Authentication
+    if (!requireAuth(req, res)) return;
+
+    // 2. Input validation
+    const { soaItemId, invoiceId, matchData } = req.body;
+    if (!soaItemId || !invoiceId) {
+      return res.status(400).json({
+        error: 'soaItemId and invoiceId are required'
+      });
+    }
+
+    // 3. Business logic
+    const match = await vmpAdapter.createSOAMatch(soaItemId, invoiceId, matchData || {});
+
+    // 4. Render response
+    res.json({
+      success: true,
+      match: match
+    });
+  } catch (error) {
+    logError(error, { path: req.path, userId: req.user?.id });
+    res.status(500).json({
+      error: 'Failed to create SOA match',
+      message: error.message
+    });
+  }
+});
+
+// POST: Confirm SOA Match
+app.post('/soa/match/:matchId/confirm', async (req, res) => {
+  try {
+    // 1. Authentication
+    if (!requireAuth(req, res)) return;
+
+    // 2. Input validation
+    const matchId = getStringParam(req.params.matchId);
+    if (!matchId || !isValidUUID(matchId)) {
+      return res.status(400).json({
+        error: 'Invalid match ID'
+      });
+    }
+
+    // 3. Business logic
+    const match = await vmpAdapter.confirmSOAMatch(matchId, req.user.id);
+
+    // 4. Render response
+    res.json({
+      success: true,
+      match: match
+    });
+  } catch (error) {
+    logError(error, { path: req.path, userId: req.user?.id });
+    res.status(500).json({
+      error: 'Failed to confirm SOA match',
+      message: error.message
+    });
+  }
+});
+
+// POST: Reject SOA Match
+app.post('/soa/match/:matchId/reject', async (req, res) => {
+  try {
+    // 1. Authentication
+    if (!requireAuth(req, res)) return;
+
+    // 2. Input validation
+    const matchId = getStringParam(req.params.matchId);
+    if (!matchId || !isValidUUID(matchId)) {
+      return res.status(400).json({
+        error: 'Invalid match ID'
+      });
+    }
+
+    const { reason } = req.body;
+
+    // 3. Business logic
+    const match = await vmpAdapter.rejectSOAMatch(matchId, req.user.id, reason);
+
+    // 4. Render response
+    res.json({
+      success: true,
+      match: match
+    });
+  } catch (error) {
+    logError(error, { path: req.path, userId: req.user?.id });
+    res.status(500).json({
+      error: 'Failed to reject SOA match',
+      message: error.message
+    });
+  }
+});
+
+// POST: Run Autonomous Matching
+app.post('/soa/match/auto', async (req, res) => {
+  try {
+    // 1. Authentication
+    if (!requireAuth(req, res)) return;
+
+    // 2. Input validation
+    const { caseId } = req.body;
+    if (!caseId || !isValidUUID(caseId)) {
+      return res.status(400).json({
+        error: 'Invalid case ID'
+      });
+    }
+
+    // 3. Business logic
+    const soaLines = await vmpAdapter.getSOALines(caseId, req.user.vendorId, 'extracted');
+    const { batchMatchSOALines } = await import('../utils/soa-matching-engine.js');
+    
+    const matchResults = await batchMatchSOALines(
+      soaLines,
+      req.user.vendorId,
+      req.user.companyId || null
+    );
+
+    // Create matches for successful matches
+    const createdMatches = [];
+    for (const result of matchResults) {
+      if (result.match && result.soaLine) {
+        const matchData = {
+          matchType: result.match.matchType,
+          isExactMatch: result.match.isExactMatch,
+          confidence: result.match.confidence,
+          matchScore: result.match.matchScore,
+          matchCriteria: result.match.matchCriteria,
+          soaAmount: result.soaLine.amount,
+          invoiceAmount: result.match.invoice.total_amount,
+          soaDate: result.soaLine.invoice_date,
+          invoiceDate: result.match.invoice.invoice_date,
+          matchedBy: 'system',
+          metadata: { pass: result.pass }
+        };
+
+        const match = await vmpAdapter.createSOAMatch(
+          result.soaLineId,
+          result.match.invoice.id,
+          matchData
+        );
+        createdMatches.push(match);
+      }
+    }
+
+    // 4. Render response
+    res.json({
+      success: true,
+      matchesCreated: createdMatches.length,
+      totalLines: soaLines.length,
+      results: matchResults
+    });
+  } catch (error) {
+    logError(error, { path: req.path, userId: req.user?.id });
+    res.status(500).json({
+      error: 'Failed to run autonomous matching',
+      message: error.message
+    });
+  }
+});
+
+// POST: Resolve SOA Issue
+app.post('/soa/resolve', async (req, res) => {
+  try {
+    // 1. Authentication
+    if (!requireAuth(req, res)) return;
+
+    // 2. Input validation
+    const { issueId, resolutionData } = req.body;
+    if (!issueId || !isValidUUID(issueId)) {
+      return res.status(400).json({
+        error: 'Invalid issue ID'
+      });
+    }
+
+    // 3. Business logic
+    const issue = await vmpAdapter.resolveSOAIssue(issueId, req.user.id, resolutionData || {});
+
+    // 4. Render response
+    res.json({
+      success: true,
+      issue: issue
+    });
+  } catch (error) {
+    logError(error, { path: req.path, userId: req.user?.id });
+    res.status(500).json({
+      error: 'Failed to resolve SOA issue',
+      message: error.message
+    });
+  }
+});
+
+// POST: Sign Off SOA Reconciliation
+app.post('/soa/signoff', async (req, res) => {
+  try {
+    // 1. Authentication
+    if (!requireAuth(req, res)) return;
+
+    // 2. Input validation
+    const { caseId, acknowledgementData } = req.body;
+    if (!caseId || !isValidUUID(caseId)) {
+      return res.status(400).json({
+        error: 'Invalid case ID'
+      });
+    }
+
+    // 3. Business logic
+    const acknowledgement = await vmpAdapter.signOffSOA(
+      caseId,
+      req.user.vendorId,
+      req.user.id,
+      acknowledgementData || {}
+    );
+
+    // 4. Render response
+    res.json({
+      success: true,
+      acknowledgement: acknowledgement
+    });
+  } catch (error) {
+    logError(error, { path: req.path, userId: req.user?.id });
+    res.status(500).json({
+      error: 'Failed to sign off SOA',
+      message: error.message
+    });
+  }
+});
+
+// ============================================================================
+// SOA API ENDPOINTS (HTMX-Compatible)
+// ============================================================================
+
+// GET: SOA Template Download (P1: Template Download)
+app.get('/api/soa/template', async (req, res) => {
+  try {
+    // 1. Authentication
+    if (!requireAuth(req, res)) return;
+
+    // 2. Generate CSV template
+    const csvContent = `Invoice #,Date,Amount,Currency,Type,Description
+INV-001,2024-01-15,1000.00,USD,INV,Sample invoice
+INV-002,2024-01-20,2500.50,USD,INV,Another invoice
+CN-001,2024-01-25,100.00,USD,CN,Credit note`;
+
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', 'attachment; filename="soa-template.csv"');
+    res.send(csvContent);
+  } catch (error) {
+    logError(error, { path: req.path, userId: req.user?.id });
+    res.status(500).json({
+      error: 'Failed to generate template',
+      message: error.message,
+      userFriendly: true
+    });
+  }
+});
+
+// POST: SOA Preview (P0: Preview before upload)
+app.post('/api/soa/preview', upload.single('file'), async (req, res) => {
+  try {
+    // 1. Authentication
+    if (!requireAuth(req, res)) return;
+
+    // 2. Input validation
+    if (!req.file) {
+      return res.status(400).json({
+        error: 'File is required for preview',
+        userFriendly: true
+      });
+    }
+
+    // Detect file type
+    const isCSV = req.file.mimetype === 'text/csv' ||
+      req.file.mimetype === 'application/vnd.ms-excel' ||
+      req.file.originalname.toLowerCase().endsWith('.csv');
+    
+    const isPDF = req.file.mimetype === 'application/pdf' ||
+      req.file.originalname.toLowerCase().endsWith('.pdf');
+
+    const isExcel = req.file.mimetype === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
+      req.file.mimetype === 'application/vnd.ms-excel' ||
+      req.file.originalname.toLowerCase().endsWith('.xlsx') ||
+      req.file.originalname.toLowerCase().endsWith('.xls');
+
+    if (!isCSV && !isPDF && !isExcel) {
+      return res.status(400).json({
+        error: 'File must be a CSV, PDF, or Excel file',
+        userFriendly: true
+      });
+    }
+
+    // 3. Extract preview (first 5 lines)
+    let preview = {
+      filename: req.file.originalname,
+      fileType: isCSV ? 'csv' : isPDF ? 'pdf' : 'excel',
+      lines: [],
+      detectedPeriod: null,
+      errors: []
+    };
+
+    // Detect period from filename
+    preview.detectedPeriod = detectPeriodFromFilename(req.file.originalname);
+
+    try {
+      if (isCSV) {
+        const { parse } = await import('csv-parse/sync');
+        const records = parse(req.file.buffer, {
+          columns: true,
+          skip_empty_lines: true,
+          trim: true,
+          relax_column_count: true,
+          cast: false
+        });
+        preview.lines = records.slice(0, 5).map((r, i) => ({
+          lineNumber: i + 2,
+          data: r
+        }));
+      } else if (isExcel) {
+        const ExcelJS = (await import('exceljs')).default;
+        const workbook = new ExcelJS.Workbook();
+        await workbook.xlsx.load(req.file.buffer);
+        const worksheet = workbook.worksheets[0];
+        if (worksheet) {
+          for (let i = 1; i <= Math.min(6, worksheet.rowCount); i++) {
+            const row = worksheet.getRow(i);
+            const rowData = {};
+            row.eachCell({ includeEmpty: false }, (cell, colNumber) => {
+              rowData[colNumber] = cell.value;
+            });
+            preview.lines.push({
+              lineNumber: i,
+              data: rowData
+            });
+          }
+        }
+      } else if (isPDF) {
+        const pdfParse = (await import('pdf-parse')).default;
+        const pdfData = await pdfParse(req.file.buffer);
+        if (pdfData && pdfData.text) {
+          const lines = pdfData.text.split('\n').slice(0, 10);
+          preview.lines = lines.map((line, i) => ({
+            lineNumber: i + 1,
+            data: { text: line.trim() }
+          }));
+        }
+      }
+    } catch (parseError) {
+      preview.errors.push(`Could not parse file: ${parseError.message}`);
+    }
+
+    // 4. Return preview
+    res.json({
+      success: true,
+      preview: preview
+    });
+  } catch (error) {
+    logError(error, { path: req.path, userId: req.user?.id });
+    res.status(500).json({
+      error: 'Failed to generate preview',
+      message: error.message,
+      userFriendly: true
+    });
+  }
+});
+
+// POST: SOA Ingest (Upload SOA file)
+app.post('/api/soa/ingest', upload.single('file'), async (req, res) => {
+  try {
+    // 1. Authentication
+    if (!requireAuth(req, res)) return;
+
+    // 2. Input validation
+    if (!req.file) {
+      return res.status(400).json({
+        error: 'File is required'
+      });
+    }
+
+    // Detect file type (CSV, PDF, or Excel)
+    const isCSV = req.file.mimetype === 'text/csv' ||
+      req.file.mimetype === 'application/vnd.ms-excel' ||
+      req.file.originalname.toLowerCase().endsWith('.csv');
+    
+    const isPDF = req.file.mimetype === 'application/pdf' ||
+      req.file.originalname.toLowerCase().endsWith('.pdf');
+
+    const isExcel = req.file.mimetype === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
+      req.file.mimetype === 'application/vnd.ms-excel' ||
+      req.file.originalname.toLowerCase().endsWith('.xlsx') ||
+      req.file.originalname.toLowerCase().endsWith('.xls');
+
+    if (!isCSV && !isPDF && !isExcel) {
+      return res.status(400).json({
+        error: 'File must be a CSV, PDF, or Excel file (.xlsx, .xls)',
+        userFriendly: true,
+        supportedFormats: ['CSV', 'PDF', 'Excel (.xlsx, .xls)']
+      });
+    }
+
+    // P0 Improvement: Auto-detect vendor_id from logged-in user
+    const vendorId = req.user.vendorId;
+    if (!vendorId && !req.user.isInternal) {
+      return res.status(400).json({
+        error: 'You must be associated with a vendor to upload SOA statements. Please contact support if you believe this is an error.',
+        userFriendly: true
+      });
+    }
+
+    // P0 Improvement: Auto-default tenant_id from logged-in user (always set from user)
+    let tenantId = req.user.vendor?.tenant_id || null;
+    
+    // P0 Improvement: Get companies for vendor and auto-select if only one
+    let finalCompanyId = req.body.company_id || req.user.companyId;
+    if (!finalCompanyId && vendorId) {
+      try {
+        const vendorCompanies = await vmpAdapter.getVendorCompanies(vendorId);
+        if (vendorCompanies.length === 0) {
+          return res.status(400).json({
+            error: 'No companies are linked to your vendor account. Please contact support to link a company.',
+            userFriendly: true
+          });
+        } else if (vendorCompanies.length === 1) {
+          // Auto-select if only one company
+          finalCompanyId = vendorCompanies[0].id;
+        } else {
+          // Multiple companies - return list for user to select
+          return res.status(400).json({
+            error: 'Please select a company',
+            userFriendly: true,
+            requiresCompanySelection: true,
+            companies: vendorCompanies.map(c => ({
+              id: c.id,
+              name: c.name,
+              legal_name: c.legal_name
+            }))
+          });
+        }
+      } catch (companyError) {
+        logError(companyError, { operation: 'getVendorCompanies', vendorId });
+        return res.status(500).json({
+          error: 'Failed to retrieve company information. Please try again or contact support.',
+          userFriendly: true
+        });
+      }
+    }
+
+    // Validate company_id if provided
+    if (finalCompanyId && !validateUUIDParam(finalCompanyId, res)) return;
+
+    // P0 Improvement: If tenant_id not set from user, get it from company (fallback)
+    if (!tenantId && finalCompanyId) {
+      try {
+        const { data: company, error: companyError } = await supabase
+          .from('vmp_companies')
+          .select('tenant_id')
+          .eq('id', finalCompanyId)
+          .single();
+        
+        if (!companyError && company?.tenant_id) {
+          tenantId = company.tenant_id;
+        }
+      } catch (tenantError) {
+        logError(tenantError, { operation: 'getCompanyTenantId', companyId: finalCompanyId });
+        // Continue without tenant_id if we can't get it from company
+      }
+    }
+
+    // P1 Improvement: Smart period detection from filename
+    let periodStart = req.body.period_start;
+    let periodEnd = req.body.period_end;
+    
+    if (!periodStart || !periodEnd) {
+      // Try to detect from filename
+      const detectedPeriod = detectPeriodFromFilename(req.file.originalname);
+      if (detectedPeriod) {
+        periodStart = periodStart || detectedPeriod.period_start;
+        periodEnd = periodEnd || detectedPeriod.period_end;
+      }
+    }
+
+    // Validate dates (required)
+    if (!periodStart || !periodEnd) {
+      const suggestions = getPeriodSuggestions();
+      return res.status(400).json({
+        error: 'Please specify the statement period (start and end dates)',
+        userFriendly: true,
+        requiresPeriodSelection: true,
+        suggestions: suggestions
+      });
+    }
+
+    // Validate dates with user-friendly messages
+    const startDate = new Date(periodStart);
+    const endDate = new Date(periodEnd);
+    if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+      return res.status(400).json({
+        error: `Date format is incorrect. Found start: "${periodStart}", end: "${periodEnd}". Please use format: YYYY-MM-DD (e.g., 2024-01-15)`,
+        userFriendly: true,
+        field: 'date',
+        expectedFormat: 'YYYY-MM-DD'
+      });
+    }
+    if (startDate > endDate) {
+      return res.status(400).json({
+        error: `The start date (${periodStart}) must be before the end date (${periodEnd}). Please check and correct the dates.`,
+        userFriendly: true
+      });
+    }
+
+    // 3. Business logic - Ingest SOA from CSV, PDF, or Excel
+    // tenantId is now auto-defaulted from user (or company fallback) above
+    let result;
+    
+    if (isCSV) {
+      result = await vmpAdapter.ingestSOAFromCSV(
+        req.file.buffer,
+        vendorId,
+        finalCompanyId,
+        periodStart,
+        periodEnd,
+        tenantId
+      );
+    } else if (isPDF) {
+      result = await vmpAdapter.ingestSOAFromPDF(
+        req.file.buffer,
+        vendorId,
+        finalCompanyId,
+        periodStart,
+        periodEnd,
+        tenantId
+      );
+    } else if (isExcel) {
+      result = await vmpAdapter.ingestSOAFromExcel(
+        req.file.buffer,
+        vendorId,
+        finalCompanyId,
+        periodStart,
+        periodEnd,
+        tenantId
+      );
+    } else {
+      return res.status(400).json({
+        error: 'Unsupported file type. Please use CSV, PDF, or Excel (.xlsx, .xls)',
+        userFriendly: true,
+        supportedFormats: ['CSV', 'PDF', 'Excel (.xlsx, .xls)']
+      });
+    }
+
+    // 4. Trigger automatic matching (per PRD: matching protocol runs after upload)
+    try {
+      const { batchMatchSOALines } = await import('./src/utils/soa-matching-engine.js');
+      const matchResults = await batchMatchSOALines(
+        result.soaLines || [],
+        vendorId,
+        finalCompanyId
+      );
+
+      // Create matches for successful matches
+      let matchesCreated = 0;
+      for (const matchResult of matchResults) {
+        if (matchResult.match && matchResult.soaLine) {
+          try {
+            const matchData = {
+              matchType: matchResult.match.matchType,
+              isExactMatch: matchResult.match.isExactMatch,
+              confidence: matchResult.match.confidence,
+              matchScore: matchResult.match.matchScore,
+              matchCriteria: matchResult.match.matchCriteria,
+              soaAmount: matchResult.soaLine.amount,
+              invoiceAmount: matchResult.match.invoice.total_amount,
+              soaDate: matchResult.soaLine.invoice_date,
+              invoiceDate: matchResult.match.invoice.invoice_date,
+              matchedBy: 'system',
+              metadata: { pass: matchResult.pass }
+            };
+
+            await vmpAdapter.createSOAMatch(
+              matchResult.soaLineId,
+              matchResult.match.invoice.id,
+              matchData
+            );
+            matchesCreated++;
+          } catch (matchError) {
+            logError(matchError, { 
+              operation: 'autoMatchSOA', 
+              soaLineId: matchResult.soaLineId 
+            });
+          }
+        }
+      }
+
+      // Update case status based on matching results
+      const summary = await vmpAdapter.getSOASummary(result.caseId, vendorId);
+      let caseStatus = 'open';
+      if (summary.net_variance === 0 && summary.unmatched_lines === 0) {
+        caseStatus = 'resolved'; // CLEAN per PRD
+      } else if (summary.unmatched_lines > 0 || summary.discrepancy_lines > 0) {
+        caseStatus = 'open'; // ACTION_REQUIRED per PRD
+      }
+
+      await supabase
+        .from('vmp_cases')
+        .update({ status: caseStatus })
+        .eq('id', result.caseId);
+
+      // 5. Return response
+      res.json({
+        success: true,
+        case_id: result.caseId,
+        statement_id: result.caseId,
+        total_lines: result.total,
+        inserted_lines: result.inserted,
+        matched_lines: matchesCreated,
+        unmatched_lines: result.inserted - matchesCreated,
+        errors: result.errors,
+        extraction_method: result.extractionMethod || (isCSV ? 'csv' : isPDF ? 'pdf' : 'excel'),
+        confidence: result.confidence || (isCSV ? 1.0 : isPDF ? 0.85 : 0.9),
+        message: `SOA ingested from ${isCSV ? 'CSV' : isPDF ? 'PDF' : 'Excel'}: ${result.inserted} lines, ${matchesCreated} auto-matched`
+      });
+    } catch (matchError) {
+      // Log matching error but don't fail the ingestion
+      logError(matchError, { 
+        operation: 'autoMatchAfterIngest', 
+        caseId: result.caseId 
+      });
+      
+      res.json({
+        success: true,
+        case_id: result.caseId,
+        statement_id: result.caseId,
+        total_lines: result.total,
+        inserted_lines: result.inserted,
+        matched_lines: 0,
+        unmatched_lines: result.inserted,
+        errors: result.errors,
+        extraction_method: result.extractionMethod || (isCSV ? 'csv' : isPDF ? 'pdf' : 'excel'),
+        confidence: result.confidence || (isCSV ? 1.0 : isPDF ? 0.85 : 0.9),
+        warning: 'SOA ingested but automatic matching failed. Please run manual matching.',
+        message: `SOA ingested from ${isCSV ? 'CSV' : isPDF ? 'PDF' : 'Excel'}: ${result.inserted} lines (matching will be done manually)`
+      });
+    }
+  } catch (error) {
+    logError(error, { path: req.path, userId: req.user?.id });
+    
+    // P0 Improvement: User-friendly error messages
+    const userFriendlyError = formatUserFriendlyError(error.message, {
+      row: error.row,
+      field: error.field,
+      value: error.value,
+      expectedFormat: error.expectedFormat
+    });
+    
+    res.status(500).json({
+      error: userFriendlyError || 'Failed to process SOA file. Please check the file format and try again.',
+      message: error.message, // Keep technical message for debugging
+      userFriendly: true
+    });
+  }
+});
+
+// POST: SOA Recompute
+app.post('/api/soa/:statementId/recompute', async (req, res) => {
+  try {
+    // 1. Authentication
+    if (!requireAuth(req, res)) return;
+
+    // 2. Input validation
+    const statementId = getStringParam(req.params.statementId);
+    if (!statementId || !isValidUUID(statementId)) {
+      return res.status(400).json({
+        error: 'Invalid statement ID'
+      });
+    }
+
+    // 3. Business logic - Run matching and update summary
+    const soaLines = await vmpAdapter.getSOALines(statementId, req.user.vendorId);
+    const { batchMatchSOALines } = await import('../utils/soa-matching-engine.js');
+    
+    const matchResults = await batchMatchSOALines(
+      soaLines.filter(l => l.status === 'extracted'),
+      req.user.vendorId,
+      req.user.companyId || null
+    );
+
+    // Create matches for successful matches
+    for (const result of matchResults) {
+      if (result.match && result.soaLine) {
+        const matchData = {
+          matchType: result.match.matchType,
+          isExactMatch: result.match.isExactMatch,
+          confidence: result.match.confidence,
+          matchScore: result.match.matchScore,
+          matchCriteria: result.match.matchCriteria,
+          soaAmount: result.soaLine.amount,
+          invoiceAmount: result.match.invoice.total_amount,
+          soaDate: result.soaLine.invoice_date,
+          invoiceDate: result.match.invoice.invoice_date,
+          matchedBy: 'system',
+          metadata: { pass: result.pass }
+        };
+
+        await vmpAdapter.createSOAMatch(
+          result.soaLineId,
+          result.match.invoice.id,
+          matchData
+        );
+      }
+    }
+
+    const summary = await vmpAdapter.getSOASummary(statementId, req.user.vendorId);
+
+    // 4. Render response (HTMX toast)
+    res.render('partials/toast_message.html', {
+      message: `Recomputed: ${matchResults.filter(r => r.match).length} matches created`,
+      type: 'success'
+    });
+  } catch (error) {
+    logError(error, { path: req.path, userId: req.user?.id });
+    res.status(500).render('partials/toast_message.html', {
+      message: 'Failed to recompute: ' + error.message,
+      type: 'error'
+    });
+  }
+});
+
+// POST: SOA Sign-off (API endpoint)
+app.post('/api/soa/:statementId/signoff', async (req, res) => {
+  try {
+    // 1. Authentication
+    if (!requireAuth(req, res)) return;
+
+    // 2. Input validation
+    const statementId = getStringParam(req.params.statementId);
+    if (!statementId || !isValidUUID(statementId)) {
+      return res.status(400).render('partials/toast_message.html', {
+        message: 'Invalid statement ID',
+        type: 'error'
+      });
+    }
+
+    // 3. Check sign-off readiness
+    const summary = await vmpAdapter.getSOASummary(statementId, req.user.vendorId);
+    if (summary.net_variance != 0 || summary.unmatched_lines > 0) {
+      return res.status(400).render('partials/toast_message.html', {
+        message: 'Cannot sign off: variances must be resolved',
+        type: 'error'
+      });
+    }
+
+    // 4. Business logic
+    const acknowledgement = await vmpAdapter.signOffSOA(
+      statementId,
+      req.user.vendorId,
+      req.user.id,
+      { type: 'full', notes: 'Digital sign-off' }
+    );
+
+    // 5. Render response (HTMX toast)
+    res.render('partials/toast_message.html', {
+      message: 'SOA reconciliation signed off successfully',
+      type: 'success'
+    });
+  } catch (error) {
+    logError(error, { path: req.path, userId: req.user?.id });
+    res.status(500).render('partials/toast_message.html', {
+      message: 'Failed to sign off: ' + error.message,
+      type: 'error'
+    });
+  }
+});
+
+// GET: SOA Export
+app.get('/api/soa/:statementId/export', async (req, res) => {
+  try {
+    // 1. Authentication
+    if (!requireAuth(req, res)) return;
+
+    // 2. Input validation
+    const statementId = getStringParam(req.params.statementId);
+    if (!statementId || !isValidUUID(statementId)) {
+      return res.status(400).render('partials/toast_message.html', {
+        message: 'Invalid statement ID',
+        type: 'error'
+      });
+    }
+
+    // 3. Business logic - Generate export pack
+    const soaLines = await vmpAdapter.getSOALines(statementId, req.user.vendorId);
+    const summary = await vmpAdapter.getSOASummary(statementId, req.user.vendorId);
+    const issues = await vmpAdapter.getSOAIssues(statementId);
+
+    // TODO: Generate CSV/PDF export
+    // For now, return JSON
+    res.json({
+      success: true,
+      statement_id: statementId,
+      summary: summary,
+      lines: soaLines,
+      issues: issues
+    });
+  } catch (error) {
+    logError(error, { path: req.path, userId: req.user?.id });
+    res.status(500).render('partials/toast_message.html', {
+      message: 'Failed to export: ' + error.message,
+      type: 'error'
+    });
+  }
+});
+
+// GET: SOA Lines (with filters)
+app.get('/soa/:statementId/lines', async (req, res) => {
+  try {
+    // 1. Authentication
+    if (!requireAuth(req, res)) return;
+
+    // 2. Input validation
+    const statementId = getStringParam(req.params.statementId);
+    if (!statementId || !isValidUUID(statementId)) {
+      return res.status(400).render('partials/error_message.html', {
+        error: { message: 'Invalid statement ID' }
+      });
+    }
+
+    // 3. Business logic
+    const { q, status } = req.query;
+    let soaLines = await vmpAdapter.getSOALines(statementId, req.user.vendorId, status || null);
+
+    // Filter by search query
+    if (q) {
+      const query = q.toLowerCase();
+      soaLines = soaLines.filter(line => 
+        (line.invoice_number && line.invoice_number.toLowerCase().includes(query)) ||
+        (line.description && line.description.toLowerCase().includes(query))
+      );
+    }
+
+    // 4. Render response
+    res.render('partials/soa_lines_list.html', {
+      soaLines: soaLines || [],
+      caseId: statementId
+    });
+  } catch (error) {
+    handlePartialError(error, req, res, 'partials/soa_lines_list.html', {
+      soaLines: [],
+      caseId: req.params.statementId
+    });
+  }
+});
+
+// GET: SOA Line Focus (detail view)
+app.get('/soa/:statementId/lines/:lineId/focus', async (req, res) => {
+  try {
+    // 1. Authentication
+    if (!requireAuth(req, res)) return;
+
+    // 2. Input validation
+    const statementId = getStringParam(req.params.statementId);
+    const lineId = getStringParam(req.params.lineId);
+    if (!statementId || !isValidUUID(statementId) || !lineId || !isValidUUID(lineId)) {
+      return res.status(400).render('partials/error_message.html', {
+        error: { message: 'Invalid statement or line ID' }
+      });
+    }
+
+    // 3. Business logic
+    const soaLines = await vmpAdapter.getSOALines(statementId, req.user.vendorId);
+    const line = soaLines.find(l => l.id === lineId);
+
+    if (!line) {
+      return res.status(404).render('partials/error_message.html', {
+        error: { message: 'SOA line not found' }
+      });
+    }
+
+    // Get suggested matches (invoices that could match)
+    const invoices = await vmpAdapter.getInvoices(req.user.vendorId, req.user.companyId || null, {
+      status: ['pending', 'approved', 'paid']
+    });
+
+    // Simple matching suggestions (can be enhanced with matching engine)
+    const suggestions = invoices
+      .filter(inv => {
+        const soaDoc = (line.invoice_number || '').toLowerCase().replace(/[\s\-_.,]/g, '');
+        const invDoc = (inv.invoice_number || '').toLowerCase().replace(/[\s\-_.,]/g, '');
+        return soaDoc && invDoc && (soaDoc === invDoc || soaDoc.includes(invDoc) || invDoc.includes(soaDoc));
+      })
+      .slice(0, 5)
+      .map(inv => ({
+        id: inv.id,
+        doc_no: inv.invoice_number,
+        doc_type: 'INV',
+        posting_date: inv.invoice_date,
+        amount_open: inv.total_amount,
+        confidence: 0.85,
+        match_type: 'PROBABILISTIC'
+      }));
+
+    // Get evidence for this line (from case evidence)
+    const evidence = []; // TODO: Get evidence linked to this SOA line
+
+    // 4. Render response
+    res.render('partials/soa_line_focus.html', {
+      line: line,
+      suggestions: suggestions,
+      evidence: evidence,
+      statement: { id: statementId, vendor_id: req.user.vendorId }
+    });
+  } catch (error) {
+    handlePartialError(error, req, res, 'partials/soa_line_focus.html', {
+      line: null,
+      suggestions: [],
+      evidence: []
+    });
+  }
+});
+
+// POST: SOA Line Match
+app.post('/api/soa/lines/:lineId/match', async (req, res) => {
+  try {
+    // 1. Authentication
+    if (!requireAuth(req, res)) return;
+
+    // 2. Input validation
+    const lineId = getStringParam(req.params.lineId);
+    if (!lineId || !isValidUUID(lineId)) {
+      return res.status(400).render('partials/toast_message.html', {
+        message: 'Invalid line ID',
+        type: 'error'
+      });
+    }
+
+    const { ledger_line_id, matched_amount, match_type } = req.body;
+    if (!ledger_line_id) {
+      return res.status(400).render('partials/toast_message.html', {
+        message: 'ledger_line_id is required',
+        type: 'error'
+      });
+    }
+
+    // 3. Business logic
+    // Get SOA line
+    const soaLines = await vmpAdapter.getSOALines(req.body.case_id || '', req.user.vendorId);
+    const soaLine = soaLines.find(l => l.id === lineId);
+    if (!soaLine) {
+      return res.status(404).render('partials/toast_message.html', {
+        message: 'SOA line not found',
+        type: 'error'
+      });
+    }
+
+    // Get invoice
+    const invoice = await vmpAdapter.getInvoiceDetail(ledger_line_id, req.user.vendorId);
+    if (!invoice) {
+      return res.status(404).render('partials/toast_message.html', {
+        message: 'Invoice not found',
+        type: 'error'
+      });
+    }
+
+    // Create match
+    const matchData = {
+      matchType: match_type === 'EXACT' ? 'deterministic' : 'probabilistic',
+      isExactMatch: match_type === 'EXACT',
+      confidence: match_type === 'EXACT' ? 1.0 : 0.85,
+      matchScore: match_type === 'EXACT' ? 100 : 85,
+      matchCriteria: {
+        invoice_number: true,
+        amount: true,
+        currency: true
+      },
+      soaAmount: parseFloat(matched_amount || soaLine.amount),
+      invoiceAmount: parseFloat(invoice.total_amount),
+      soaDate: soaLine.invoice_date,
+      invoiceDate: invoice.invoice_date,
+      matchedBy: 'manual'
+    };
+
+    const match = await vmpAdapter.createSOAMatch(lineId, ledger_line_id, matchData);
+    const summary = await vmpAdapter.getSOASummary(soaLine.case_id, req.user.vendorId);
+
+    // 4. Render response
+    res.render('partials/toast_message.html', {
+      message: `Match created. Net variance: ${summary.net_variance.toFixed(2)}`,
+      type: 'success'
+    });
+  } catch (error) {
+    logError(error, { path: req.path, userId: req.user?.id });
+    res.status(500).render('partials/toast_message.html', {
+      message: 'Failed to create match: ' + error.message,
+      type: 'error'
+    });
+  }
+});
+
+// POST: SOA Line Dispute
+app.post('/api/soa/lines/:lineId/dispute', async (req, res) => {
+  try {
+    // 1. Authentication
+    if (!requireAuth(req, res)) return;
+
+    // 2. Input validation
+    const lineId = getStringParam(req.params.lineId);
+    if (!lineId || !isValidUUID(lineId)) {
+      return res.status(400).render('partials/toast_message.html', {
+        message: 'Invalid line ID',
+        type: 'error'
+      });
+    }
+
+    const { reason, amount_delta } = req.body;
+
+    // 3. Business logic
+    // Get SOA line to find case_id
+    const soaLines = await vmpAdapter.getSOALines(req.body.case_id || '', req.user.vendorId);
+    const soaLine = soaLines.find(l => l.id === lineId);
+    if (!soaLine) {
+      return res.status(404).render('partials/toast_message.html', {
+        message: 'SOA line not found',
+        type: 'error'
+      });
+    }
+
+    // Create issue
+    const issue = await vmpAdapter.createSOAIssue(soaLine.case_id, {
+      soaItemId: lineId,
+      issueType: 'amount_mismatch',
+      severity: 'medium',
+      description: reason || 'Line disputed',
+      amountDelta: parseFloat(amount_delta || 0),
+      detectedBy: 'manual',
+      expectedValue: null,
+      actualValue: null
+    });
+
+    // Update line status
+    await supabase
+      .from('vmp_soa_items')
+      .update({ status: 'discrepancy' })
+      .eq('id', lineId);
+
+    // 4. Render response
+    res.render('partials/toast_message.html', {
+      message: 'Line marked as disputed',
+      type: 'success'
+    });
+  } catch (error) {
+    logError(error, { path: req.path, userId: req.user?.id });
+    res.status(500).render('partials/toast_message.html', {
+      message: 'Failed to dispute line: ' + error.message,
+      type: 'error'
+    });
+  }
+});
+
+// POST: SOA Line Resolve
+app.post('/api/soa/lines/:lineId/resolve', async (req, res) => {
+  try {
+    // 1. Authentication
+    if (!requireAuth(req, res)) return;
+
+    // 2. Input validation
+    const lineId = getStringParam(req.params.lineId);
+    if (!lineId || !isValidUUID(lineId)) {
+      return res.status(400).render('partials/toast_message.html', {
+        message: 'Invalid line ID',
+        type: 'error'
+      });
+    }
+
+    const { resolution } = req.body;
+
+    // 3. Business logic
+    // Get SOA line to find case_id and issues
+    const soaLines = await vmpAdapter.getSOALines(req.body.case_id || '', req.user.vendorId);
+    const soaLine = soaLines.find(l => l.id === lineId);
+    if (!soaLine) {
+      return res.status(404).render('partials/toast_message.html', {
+        message: 'SOA line not found',
+        type: 'error'
+      });
+    }
+
+    // Resolve all issues for this line
+    const issues = await vmpAdapter.getSOAIssues(soaLine.case_id);
+    const lineIssues = issues.filter(i => i.soa_item_id === lineId && i.status === 'open');
+
+    for (const issue of lineIssues) {
+      await vmpAdapter.resolveSOAIssue(issue.id, req.user.id, {
+        action: 'corrected',
+        notes: resolution || 'Line resolved'
+      });
+    }
+
+    // Update line status
+    await supabase
+      .from('vmp_soa_items')
+      .update({ status: 'resolved' })
+      .eq('id', lineId);
+
+    // 4. Render response
+    res.render('partials/toast_message.html', {
+      message: 'Line resolved',
+      type: 'success'
+    });
+  } catch (error) {
+    logError(error, { path: req.path, userId: req.user?.id });
+    res.status(500).render('partials/toast_message.html', {
+      message: 'Failed to resolve line: ' + error.message,
+      type: 'error'
+    });
+  }
+});
+
+// POST: SOA Line Evidence Upload
+app.post('/api/soa/lines/:lineId/evidence', upload.single('file'), async (req, res) => {
+  try {
+    // 1. Authentication
+    if (!requireAuth(req, res)) return;
+
+    // 2. Input validation
+    const lineId = getStringParam(req.params.lineId);
+    if (!lineId || !isValidUUID(lineId)) {
+      return res.status(400).render('partials/toast_message.html', {
+        message: 'Invalid line ID',
+        type: 'error'
+      });
+    }
+
+    if (!req.file) {
+      return res.status(400).render('partials/toast_message.html', {
+        message: 'File is required',
+        type: 'error'
+      });
+    }
+
+    // 3. Business logic
+    // Get SOA line to find case_id
+    const soaLines = await vmpAdapter.getSOALines(req.body.case_id || '', req.user.vendorId);
+    const soaLine = soaLines.find(l => l.id === lineId);
+    if (!soaLine) {
+      return res.status(404).render('partials/toast_message.html', {
+        message: 'SOA line not found',
+        type: 'error'
+      });
+    }
+
+    // Upload evidence to case
+    const evidence = await vmpAdapter.uploadEvidence(
+      soaLine.case_id,
+      req.file,
+      'soa_line_evidence',
+      null, // checklistStepId
+      'vendor', // uploaderType
+      req.user.id // uploaderUserId
+    );
+
+    // 4. Render response
+    res.render('partials/toast_message.html', {
+      message: 'Evidence uploaded successfully',
+      type: 'success'
+    });
+  } catch (error) {
+    logError(error, { path: req.path, userId: req.user?.id });
+    res.status(500).render('partials/toast_message.html', {
+      message: 'Failed to upload evidence: ' + error.message,
+      type: 'error'
+    });
+  }
+});
+
+// ============================================================================
+// DEBIT NOTE (DN) API ENDPOINTS
+// ============================================================================
+
+// POST: Propose Debit Note
+app.post('/api/dn/propose', async (req, res) => {
+  try {
+    // 1. Authentication
+    if (!requireAuth(req, res)) return;
+
+    // 2. Input validation
+    const { soa_statement_id, soa_issue_id, vendor_id, reason_code, amount, note } = req.body;
+    if (!soa_statement_id || !vendor_id || !reason_code || !amount) {
+      return res.status(400).render('partials/toast_message.html', {
+        message: 'Missing required fields',
+        type: 'error'
+      });
+    }
+
+    // 3. Business logic
+    const dn = await vmpAdapter.proposeDebitNote({
+      soaStatementId: soa_statement_id,
+      soaIssueId: soa_issue_id || null,
+      vendorId: vendor_id,
+      companyId: req.user.companyId || null,
+      amount: parseFloat(amount),
+      reasonCode: reason_code,
+      notes: note || null,
+      userId: req.user.id
+    });
+
+    // 4. Render response
+    res.render('partials/toast_message.html', {
+      message: `Debit Note ${dn.dn_no} created (DRAFT)`,
+      type: 'success'
+    });
+  } catch (error) {
+    logError(error, { path: req.path, userId: req.user?.id });
+    res.status(500).render('partials/toast_message.html', {
+      message: 'Failed to propose DN: ' + error.message,
+      type: 'error'
+    });
+  }
+});
+
+// POST: Approve Debit Note
+app.post('/api/dn/:dnId/approve', async (req, res) => {
+  try {
+    // 1. Authentication & Authorization (Finance role)
+    if (!requireAuth(req, res)) return;
+    if (!req.user.isInternal) {
+      return res.status(403).render('partials/toast_message.html', {
+        message: 'Only finance users can approve debit notes',
+        type: 'error'
+      });
+    }
+
+    // 2. Input validation
+    const dnId = getStringParam(req.params.dnId);
+    if (!dnId || !isValidUUID(dnId)) {
+      return res.status(400).render('partials/toast_message.html', {
+        message: 'Invalid DN ID',
+        type: 'error'
+      });
+    }
+
+    // 3. Business logic
+    const dn = await vmpAdapter.approveDebitNote(dnId, req.user.id);
+
+    // 4. Render response
+    res.render('partials/toast_message.html', {
+      message: `Debit Note ${dn.dn_no} approved`,
+      type: 'success'
+    });
+  } catch (error) {
+    logError(error, { path: req.path, userId: req.user?.id });
+    res.status(500).render('partials/toast_message.html', {
+      message: 'Failed to approve DN: ' + error.message,
+      type: 'error'
+    });
+  }
+});
+
+// POST: Post Debit Note
+app.post('/api/dn/:dnId/post', async (req, res) => {
+  try {
+    // 1. Authentication & Authorization (Finance role)
+    if (!requireAuth(req, res)) return;
+    if (!req.user.isInternal) {
+      return res.status(403).render('partials/toast_message.html', {
+        message: 'Only finance users can post debit notes',
+        type: 'error'
+      });
+    }
+
+    // 2. Input validation
+    const dnId = getStringParam(req.params.dnId);
+    if (!dnId || !isValidUUID(dnId)) {
+      return res.status(400).render('partials/toast_message.html', {
+        message: 'Invalid DN ID',
+        type: 'error'
+      });
+    }
+
+    // 3. Business logic
+    const { ledger_entry_id } = req.body;
+    const dn = await vmpAdapter.postDebitNote(dnId, req.user.id, ledger_entry_id || null);
+
+    // Recompute SOA if linked
+    if (dn.soa_statement_id) {
+      // Trigger recompute (async)
+      const summary = await vmpAdapter.getSOASummary(dn.soa_statement_id, req.user.vendorId);
+    }
+
+    // 4. Render response
+    res.render('partials/toast_message.html', {
+      message: `Debit Note ${dn.dn_no} posted to ledger`,
+      type: 'success'
+    });
+  } catch (error) {
+    logError(error, { path: req.path, userId: req.user?.id });
+    res.status(500).render('partials/toast_message.html', {
+      message: 'Failed to post DN: ' + error.message,
+      type: 'error'
+    });
+  }
+});
+
 // SPRINT 3: Supplier Onboarding Flow
 // ============================================================================
 

@@ -31,13 +31,20 @@ export async function createTestSession(userId, vendorId) {
  * Get test headers for authenticated requests (uses test auth bypass)
  * @param {string} userId - User ID
  * @param {string} vendorId - Vendor ID
+ * @param {string} tenantId - Optional tenant ID
  * @returns {object} Headers object for supertest
  */
-export function getTestAuthHeaders(userId, vendorId) {
-  return {
+export function getTestAuthHeaders(userId, vendorId, tenantId = null) {
+  const headers = {
     'x-test-auth': 'bypass',
     'x-test-user-id': userId,
     'x-test-vendor-id': vendorId
   };
+  
+  if (tenantId) {
+    headers['x-test-tenant-id'] = tenantId;
+  }
+  
+  return headers;
 }
 

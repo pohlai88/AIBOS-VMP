@@ -1,0 +1,31 @@
+{% extends "layout.html" %}
+
+{% block title %}SOA Reconciliation — NexusCanon VMP{% endblock %}
+
+{% block content %}
+<div class="vmp-container">
+  <div class="vmp-panel" style="padding: var(--vmp-space-6);">
+    <!-- Page Header -->
+    <div style="margin-bottom: var(--vmp-space-6);">
+      <h1 class="vmp-h1">SOA Reconciliation</h1>
+      <p class="vmp-body" style="color: var(--vmp-subtle); margin-top: var(--vmp-space-2);">
+        Statement of Account Truth Surface — Continuous reconciliation of supplier claims vs buyer ledger
+      </p>
+    </div>
+
+    <!-- 3-Column Workspace -->
+    <div 
+      id="soa-workspace"
+      hx-get="/partials/soa-recon-workspace.html?case_id={{ caseId }}"
+      hx-trigger="load"
+      hx-swap="innerHTML"
+      hx-indicator="#soa-loading">
+      <div id="soa-loading" class="htmx-indicator" style="text-align: center; padding: var(--vmp-space-8);">
+        <div class="vmp-spinner"></div>
+        <p class="vmp-body" style="margin-top: var(--vmp-space-4); color: var(--vmp-subtle);">Loading reconciliation workspace...</p>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+

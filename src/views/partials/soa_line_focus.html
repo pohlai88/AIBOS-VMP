@@ -1,0 +1,109 @@
+<!-- SOA Line Focus View (replaces center panel when line is selected) -->
+<div style="display: flex; align-items: flex-start; justify-content: space-between; gap: var(--vmp-space-4);">
+  <div style="min-width: 0;">
+    <div class="vmp-label-kicker" style="margin-bottom: var(--vmp-space-2);">// selected line</div>
+    <div style="font-size: var(--vmp-font-sm); color: var(--vmp-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+      {{ line.doc_type or 'INV' }} · {{ line.invoice_number or 'N/A' }}
+    </div>
+    <div style="margin-top: var(--vmp-space-2); font-size: var(--vmp-font-xs); color: var(--vmp-subtle);">
+      Date: <span style="color: var(--vmp-text);">{{ line.invoice_date or 'N/A' }}</span> ·
+      Amount: <span style="color: var(--vmp-text);">{{ line.currency_code }} {{ "%.2f"|format(line.amount) }}</span> ·
+      Status: <span style="color: var(--vmp-text);">{{ line.status|upper }}</span>
+    </div>
+  </div>
+
+  <div style="display: flex; gap: var(--vmp-space-2);">
+    <button
+      class="vmp-btn vmp-btn-ghost"
+      hx-post="/api/soa/lines/{{ line.id }}/dispute"
+      hx-trigger="click"
+      hx-target="#soa-toast"
+      hx-swap="innerHTML">
+      Mark Disputed
+    </button>
+
+    <button
+      class="vmp-btn vmp-btn-ghost"
+      hx-post="/api/soa/lines/{{ line.id }}/resolve"
+      hx-trigger="click"
+      hx-target="#soa-toast"
+      hx-swap="innerHTML">
+      Resolve
+    </button>
+  </div>
+</div>
+
+<div style="height: 1px; background: var(--vmp-border); margin: var(--vmp-space-4) 0;"></div>
+
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--vmp-space-3);">
+  <!-- Suggested matches -->
+  <div class="vmp-panel" style="padding: var(--vmp-space-3);">
+    <div class="vmp-label-kicker" style="margin-bottom: var(--vmp-space-3);">// suggested ledger matches</div>
+
+    {% if suggestions and suggestions.length > 0 %}
+      <div style="display: flex; flex-direction: column; gap: var(--vmp-space-2);">
+        {% for s in suggestions %}
+          <div class="vmp-case-item">
+            <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: var(--vmp-space-3);">
+              <div style="min-width: 0;">
+                <div class="vmp-label" style="font-size: var(--vmp-font-xs); text-transform: uppercase; letter-spacing: var(--vmp-letter-spacing-wider); color: var(--vmp-subtle);">
+                  {{ s.doc_type or 'INV' }} · {{ s.posting_date or 'N/A' }}
+                </div>
+                <div style="margin-top: var(--vmp-space-1); font-size: var(--vmp-font-sm); color: var(--vmp-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                  {{ s.doc_no or 'N/A' }}
+                </div>
+                <div style="margin-top: var(--vmp-space-1); font-size: var(--vmp-font-xs); color: var(--vmp-subtle);">
+                  Open: <span style="color: var(--vmp-text);">{{ "%.2f"|format(s.amount_open) if s.amount_open else '0.00' }}</span>
+                  · Confidence: <span style="color: var(--vmp-text);">{{ "%.0f"|format(s.confidence * 100) if s.confidence else '0' }}%</span>
+                </div>
+              </div>
+
+              <button
+                class="vmp-btn vmp-btn-primary"
+                hx-post="/api/soa/lines/{{ line.id }}/match"
+                hx-vals='{"ledger_line_id":"{{ s.id }}","matched_amount":"{{ line.amount }}","match_type":"{{ s.match_type or 'PROBABILISTIC' }}"}'
+                hx-trigger="click"
+                hx-target="#soa-toast"
+                hx-swap="innerHTML">
+                Link
+              </button>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="vmp-body" style="font-size: var(--vmp-font-sm); color: var(--vmp-subtle);">No suggested matches found.</div>
+    {% endif %}
+  </div>
+
+  <!-- Evidence -->
+  <div class="vmp-panel" style="padding: var(--vmp-space-3);">
+    <div class="vmp-label-kicker" style="margin-bottom: var(--vmp-space-3);">// evidence pack</div>
+
+    <form
+      hx-post="/api/soa/lines/{{ line.id }}/evidence"
+      hx-encoding="multipart/form-data"
+      hx-target="#soa-toast"
+      hx-swap="innerHTML"
+      style="display: flex; flex-direction: column; gap: var(--vmp-space-2);">
+      <input class="vmp-input" type="file" name="file" required>
+      <input class="vmp-input" type="text" name="note" placeholder="Evidence note (optional)">
+      <button class="vmp-btn vmp-btn-primary" type="submit">Upload Evidence</button>
+    </form>
+
+    <div style="height: 1px; background: var(--vmp-border); margin: var(--vmp-space-3) 0;"></div>
+
+    <div style="display: flex; flex-direction: column; gap: var(--vmp-space-2);">
+      {% if evidence and evidence.length > 0 %}
+        {% for e in evidence %}
+          <div class="vmp-body" style="font-size: var(--vmp-font-xs); color: var(--vmp-subtle);">
+            {{ e.uploaded_at or 'N/A' }} · <span style="color: var(--vmp-text);">{{ e.filename or 'Unknown' }}</span>
+          </div>
+        {% endfor %}
+      {% else %}
+        <div class="vmp-body" style="font-size: var(--vmp-font-xs); color: var(--vmp-subtle);">No evidence uploaded yet</div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+

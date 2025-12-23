@@ -3,6 +3,8 @@ import bcrypt from 'bcrypt';
 import { randomBytes } from 'crypto';
 import dotenv from 'dotenv';
 import { parse } from 'csv-parse/sync';
+import pdfParse from 'pdf-parse';
+import ExcelJS from 'exceljs';
 import {
     DatabaseError,
     TimeoutError,
@@ -490,14 +492,20 @@ export const vmpAdapter = {
 
         // Handle independent users (no vendor required)
         if (userTier === 'independent') {
-            // Get vendor_user record (without vendor_id)
-            const { data: vendorUser, error: vendorUserError } = await supabase
+            // Get vendor_user record (without vendor_id) (with timeout protection)
+            const vendorUserQuery = supabase
                 .from('vmp_vendor_users')
                 .select('*')
                 .eq('email', user.email)
                 .eq('user_tier', 'independent')
                 .is('vendor_id', null)
                 .single();
+
+            const { data: vendorUser, error: vendorUserError } = await withTimeout(
+                vendorUserQuery,
+                10000,
+                `getVendorContext-independent(${user.email})`
+            );
 
             if (vendorUserError || !vendorUser) {
                 const handledError = handleSupabaseError(vendorUserError || new Error('Vendor user not found'), 'getVendorContext-independent');
@@ -534,13 +542,19 @@ export const vmpAdapter = {
         }
 
         // Get vendor_user record to check is_internal from database (fallback to user_metadata)
-        // IMPORTANT: Select 'id' to return the vendor_user ID, not the auth user ID
-        const { data: vendorUser, error: vendorUserError } = await supabase
+        // IMPORTANT: Select 'id' to return the vendor_user ID, not the auth user ID (with timeout protection)
+        const vendorUserQuery = supabase
             .from('vmp_vendor_users')
             .select('id, is_internal, is_active')
             .eq('email', user.email)
             .eq('vendor_id', vendorId)
             .maybeSingle(); // Use maybeSingle() instead of single() to avoid throwing on no match
+
+        const { data: vendorUser, error: vendorUserError } = await withTimeout(
+            vendorUserQuery,
+            10000,
+            `getVendorContext-vendorUser(${user.email}, ${vendorId})`
+        );
 
         if (vendorUserError && vendorUserError.code !== 'PGRST116') {
             // PGRST116 means no rows found, which is handled below
@@ -6653,6 +6667,1520 @@ export const vmpAdapter = {
             const handledError = handleSupabaseError(error, 'updateAccessRequestStatus');
             if (handledError) throw handledError;
             throw new DatabaseError('Failed to update access request status', error, { requestId, status });
+        }
+
+        return data;
+    },
+
+    // ============================================================================
+    // SOA RECONCILIATION METHODS
+    // ============================================================================
+
+    // Get companies linked to a vendor (for SOA upload company selection)
+    async getVendorCompanies(vendorId) {
+        if (!vendorId) {
+            throw new ValidationError('getVendorCompanies requires vendorId', null, { vendorId });
+        }
+
+        const { data, error } = await withTimeout(
+            supabase
+                .from('vmp_vendor_company_links')
+                .select(`
+                    company_id,
+                    vmp_companies (
+                        id,
+                        name,
+                        legal_name,
+                        country_code,
+                        currency_code
+                    )
+                `)
+                .eq('vendor_id', vendorId)
+                .eq('status', 'active')
+                .order('created_at', { ascending: true }),
+            10000,
+            `getVendorCompanies(${vendorId})`
+        );
+
+        if (error) {
+            const handledError = handleSupabaseError(error, 'getVendorCompanies');
+            if (handledError) throw handledError;
+            throw new DatabaseError('Failed to get vendor companies', error);
+        }
+
+        return (data || []).map(link => ({
+            id: link.company_id,
+            ...link.vmp_companies
+        }));
+    },
+
+    // Ingest SOA from CSV (VMP-07: SOA Reconciliation)
+    async ingestSOAFromCSV(csvBuffer, vendorId, companyId, periodStart, periodEnd, tenantId = null) {
+        if (!csvBuffer || !vendorId || !companyId || !periodStart || !periodEnd) {
+            throw new ValidationError('ingestSOAFromCSV requires csvBuffer, vendorId, companyId, periodStart, and periodEnd', null, {
+                hasBuffer: !!csvBuffer,
+                vendorId,
+                companyId,
+                periodStart,
+                periodEnd
+            });
+        }
+
+        // Parse CSV using csv-parse
+        let records;
+        try {
+            records = parse(csvBuffer, {
+                columns: true,
+                skip_empty_lines: true,
+                trim: true,
+                relax_column_count: true,
+                cast: false
+            });
+        } catch (parseError) {
+            throw new ValidationError(`Failed to parse CSV: ${parseError.message}`, parseError, {
+                operation: 'ingestSOAFromCSV'
+            });
+        }
+
+        if (!records || records.length === 0) {
+            throw new ValidationError('CSV must have at least a header row and one data row', null, {
+                recordCount: records?.length || 0
+            });
+        }
+
+        // Normalize headers
+        const normalizeHeader = (header) => {
+            if (!header) return '';
+            return header.trim().toLowerCase()
+                .replace(/\s+/g, ' ')
+                .replace(/[#]/g, '');
+        };
+
+        const findColumn = (headers, patterns) => {
+            const normalizedHeaders = headers.map(normalizeHeader);
+            for (const pattern of patterns) {
+                const normalizedPattern = normalizeHeader(pattern);
+                const idx = normalizedHeaders.findIndex(h => h.includes(normalizedPattern) || normalizedPattern.includes(h));
+                if (idx >= 0) return idx;
+            }
+            return -1;
+        };
+
+        const headers = Object.keys(records[0] || {});
+
+        // Map columns with flexible matching
+        const docNoIdx = findColumn(headers, ['Invoice #', 'Invoice', 'Invoice Number', 'Doc #', 'Doc No', 'Document Number', 'Reference']);
+        const dateIdx = findColumn(headers, ['Date', 'Invoice Date', 'Doc Date', 'Document Date', 'Transaction Date']);
+        const amountIdx = findColumn(headers, ['Amount', 'Invoice Amount', 'Total', 'Total Amount', 'Transaction Amount']);
+        const docTypeIdx = findColumn(headers, ['Type', 'Doc Type', 'Document Type', 'Transaction Type']);
+        const descriptionIdx = findColumn(headers, ['Description', 'Desc', 'Notes', 'Remarks', 'Memo']);
+        const currencyIdx = findColumn(headers, ['Currency', 'Currency Code', 'CCY']);
+
+        // Validate required columns
+        const requiredColumns = [
+            { name: 'Document Number', idx: docNoIdx },
+            { name: 'Date', idx: dateIdx },
+            { name: 'Amount', idx: amountIdx }
+        ];
+
+        const missingColumns = requiredColumns.filter(col => col.idx < 0);
+        if (missingColumns.length > 0) {
+            throw new ValidationError(
+                `CSV missing required columns: ${missingColumns.map(c => c.name).join(', ')}. Found columns: ${headers.join(', ')}`,
+                null,
+                {
+                    foundColumns: headers,
+                    missingColumns: missingColumns.map(c => c.name)
+                }
+            );
+        }
+
+        // Create SOA Case first
+        const caseSubject = `SOA Reconciliation - ${periodStart} to ${periodEnd}`;
+        const caseInsertQuery = supabase
+            .from('vmp_cases')
+            .insert({
+                tenant_id: tenantId,
+                company_id: companyId,
+                vendor_id: vendorId,
+                case_type: 'soa',
+                status: 'open', // Will be updated to ACTION_REQUIRED after parsing
+                subject: caseSubject,
+                owner_team: 'finance',
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+            })
+            .select()
+            .single();
+
+        const { data: soaCase, error: caseError } = await withTimeout(caseInsertQuery, 10000, 'createSOACase');
+
+        if (caseError || !soaCase) {
+            throw new DatabaseError('Failed to create SOA case', caseError);
+        }
+
+        // Parse SOA lines
+        const soaLines = [];
+        const errors = [];
+
+        for (let i = 0; i < records.length; i++) {
+            try {
+                const row = records[i];
+                const values = headers.map(h => row[h] || '');
+
+                const docNo = values[docNoIdx]?.trim();
+                const dateStr = values[dateIdx]?.trim();
+                const amountStr = values[amountIdx]?.trim();
+
+                if (!docNo || !dateStr || !amountStr) {
+                    errors.push({
+                        row: i + 2,
+                        field: 'required_fields',
+                        value: null,
+                        message: `Line ${i + 2}: Missing required information. Please ensure Document Number, Date, and Amount are filled in.`,
+                        technical: `Row ${i + 2}: Missing required fields (Document Number, Date, or Amount)`
+                    });
+                    continue;
+                }
+
+                // Parse date
+                const docDate = this._parseDate(dateStr);
+                if (!docDate) {
+                    errors.push({
+                        row: i + 2,
+                        field: 'date',
+                        value: dateStr,
+                        expectedFormat: 'DD/MM/YYYY or YYYY-MM-DD',
+                        message: `Line ${i + 2}: Date looks wrong. Found "${dateStr}", but expected format: DD/MM/YYYY or YYYY-MM-DD (e.g., 15/01/2024 or 2024-01-15). Please check and correct the date.`,
+                        technical: `Row ${i + 2}: Invalid date format: ${dateStr}`
+                    });
+                    continue;
+                }
+
+                // Parse amount
+                const amount = parseFloat(amountStr.replace(/[^0-9.-]/g, ''));
+                if (isNaN(amount) || amount <= 0) {
+                    errors.push({
+                        row: i + 2,
+                        field: 'amount',
+                        value: amountStr,
+                        message: `Line ${i + 2}: Amount looks wrong. Found "${amountStr}", but expected a number (e.g., 1000.00). Please check and correct the amount.`,
+                        technical: `Row ${i + 2}: Invalid amount: ${amountStr}`
+                    });
+                    continue;
+                }
+
+                // Determine doc type (default to INV if not specified)
+                let docType = 'INV';
+                if (docTypeIdx >= 0 && values[docTypeIdx]) {
+                    const typeStr = values[docTypeIdx].trim().toUpperCase();
+                    if (['INV', 'CN', 'DN', 'PAY', 'WHT', 'ADJ'].includes(typeStr)) {
+                        docType = typeStr;
+                    }
+                }
+
+                // Get currency (default to USD)
+                const currency = currencyIdx >= 0 && values[currencyIdx] 
+                    ? values[currencyIdx].trim().toUpperCase() 
+                    : 'USD';
+
+                soaLines.push({
+                    case_id: soaCase.id,
+                    vendor_id: vendorId,
+                    company_id: companyId,
+                    line_number: i + 1,
+                    invoice_number: docNo,
+                    invoice_date: docDate.toISOString().split('T')[0],
+                    amount: amount,
+                    currency_code: currency,
+                    doc_type: docType,
+                    description: descriptionIdx >= 0 ? (values[descriptionIdx]?.trim() || null) : null,
+                    extraction_method: 'csv_import',
+                    extraction_confidence: 1.0,
+                    status: 'extracted',
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString()
+                });
+            } catch (rowError) {
+                errors.push({
+                    row: i + 2,
+                    field: 'unknown',
+                    value: null,
+                    message: `Line ${i + 2}: Error processing this line. ${rowError.message}. Please check the data and try again.`,
+                    technical: `Row ${i + 2}: ${rowError.message}`
+                });
+            }
+        }
+
+        if (soaLines.length === 0) {
+            // Delete the case if no valid lines
+            await supabase.from('vmp_cases').delete().eq('id', soaCase.id);
+            const userFriendlyErrors = errors.map(e => typeof e === 'object' ? e.message : e);
+            throw new ValidationError('No valid SOA lines found in CSV. Please check the file format and ensure all required columns are present. You can download a template to see the expected format.', null, { 
+                errors: userFriendlyErrors,
+                technicalErrors: errors.map(e => typeof e === 'object' ? e.technical : e),
+                userFriendly: true
+            });
+        }
+
+        // Insert SOA lines in batch
+        const { data: insertedLines, error: insertError } = await withTimeout(
+            supabase
+                .from('vmp_soa_items')
+                .insert(soaLines)
+                .select(),
+            30000,
+            'insertSOALines'
+        );
+
+        if (insertError) {
+            // Delete the case if insert fails
+            await supabase.from('vmp_cases').delete().eq('id', soaCase.id);
+            throw new DatabaseError('Failed to insert SOA lines', insertError);
+        }
+
+        // Update case status to ACTION_REQUIRED (per PRD status model)
+        await supabase
+            .from('vmp_cases')
+            .update({ 
+                status: 'open', // Will be updated by matching engine
+                updated_at: new Date().toISOString()
+            })
+            .eq('id', soaCase.id);
+
+        // Format errors for user-friendly display
+        const formattedErrors = errors.length > 0 ? errors.map(e => 
+            typeof e === 'object' ? e.message : e
+        ) : null;
+
+        return {
+            caseId: soaCase.id,
+            total: records.length,
+            inserted: insertedLines?.length || 0,
+            failed: errors.length,
+            errors: formattedErrors,
+            soaLines: insertedLines || []
+        };
+    },
+
+    // Ingest SOA from PDF (VMP-07: SOA Reconciliation - PDF Support)
+    async ingestSOAFromPDF(pdfBuffer, vendorId, companyId, periodStart, periodEnd, tenantId = null) {
+        if (!pdfBuffer || !vendorId || !companyId || !periodStart || !periodEnd) {
+            throw new ValidationError('ingestSOAFromPDF requires pdfBuffer, vendorId, companyId, periodStart, and periodEnd', null, {
+                hasBuffer: !!pdfBuffer,
+                vendorId,
+                companyId,
+                periodStart,
+                periodEnd
+            });
+        }
+
+        // Extract text from PDF
+        let pdfData;
+        try {
+            pdfData = await pdfParse(pdfBuffer);
+        } catch (parseError) {
+            throw new ValidationError(`Failed to parse PDF: ${parseError.message}`, parseError, {
+                operation: 'ingestSOAFromPDF'
+            });
+        }
+
+        if (!pdfData || !pdfData.text || pdfData.text.trim().length === 0) {
+            throw new ValidationError('PDF appears to be empty or scanned. Please use a text-based PDF or convert to CSV.', null, {
+                pageCount: pdfData?.numpages || 0,
+                textLength: pdfData?.text?.length || 0
+            });
+        }
+
+        const pdfText = pdfData.text;
+
+        // Create SOA Case first
+        const caseSubject = `SOA Reconciliation - ${periodStart} to ${periodEnd}`;
+        const caseInsertQuery = supabase
+            .from('vmp_cases')
+            .insert({
+                tenant_id: tenantId,
+                company_id: companyId,
+                vendor_id: vendorId,
+                case_type: 'soa',
+                status: 'open',
+                subject: caseSubject,
+                owner_team: 'finance',
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+            })
+            .select()
+            .single();
+
+        const { data: soaCase, error: caseError } = await withTimeout(caseInsertQuery, 10000, 'createSOACase');
+
+        if (caseError || !soaCase) {
+            throw new DatabaseError('Failed to create SOA case', caseError);
+        }
+
+        // Parse SOA lines from PDF text
+        const soaLines = [];
+        const errors = [];
+
+        // Common SOA line patterns (handles various formats)
+        // Pattern 1: Table format with columns (most common)
+        // Example: "INV-001    2024-01-15    1000.00    USD"
+        const tablePattern = /(\S+)\s+(\d{4}[-/]\d{1,2}[-/]\d{1,2}|\d{1,2}[-/]\d{1,2}[-/]\d{4})\s+([\d,]+\.?\d*)\s*([A-Z]{3})?/gi;
+
+        // Pattern 2: Invoice number, date, amount on separate lines or with labels
+        // Example: "Invoice: INV-001 Date: 2024-01-15 Amount: 1000.00"
+        const labeledPattern = /(?:invoice|inv|doc|document)[\s#:]*([A-Z0-9\-_]+)[\s,;]*(?:date|dated)[\s:]*(\d{4}[-/]\d{1,2}[-/]\d{1,2}|\d{1,2}[-/]\d{1,2}[-/]\d{4})[\s,;]*(?:amount|amt|total)[\s:]*([\d,]+\.?\d*)/gi;
+
+        // Pattern 3: Simple line format (doc number, date, amount)
+        // Example: "INV-001 15/01/2024 1000.00"
+        const simplePattern = /([A-Z]{2,4}[-_]?\d+)\s+(\d{1,2}[-/]\d{1,2}[-/]\d{4}|\d{4}[-/]\d{1,2}[-/]\d{1,2})\s+([\d,]+\.?\d*)/gi;
+
+        // Try to extract lines using multiple patterns
+        const allMatches = [];
+        
+        // Try table pattern first (most common)
+        let match;
+        while ((match = tablePattern.exec(pdfText)) !== null) {
+            allMatches.push({
+                docNo: match[1]?.trim(),
+                dateStr: match[2]?.trim(),
+                amountStr: match[3]?.trim(),
+                currency: match[4]?.trim() || 'USD',
+                pattern: 'table'
+            });
+        }
+
+        // Try labeled pattern if table pattern didn't find much
+        if (allMatches.length < 3) {
+            tablePattern.lastIndex = 0; // Reset regex
+            while ((match = labeledPattern.exec(pdfText)) !== null) {
+                allMatches.push({
+                    docNo: match[1]?.trim(),
+                    dateStr: match[2]?.trim(),
+                    amountStr: match[3]?.trim(),
+                    currency: 'USD', // Default, can be extracted separately
+                    pattern: 'labeled'
+                });
+            }
+        }
+
+        // Try simple pattern as fallback
+        if (allMatches.length < 3) {
+            labeledPattern.lastIndex = 0; // Reset regex
+            while ((match = simplePattern.exec(pdfText)) !== null) {
+                allMatches.push({
+                    docNo: match[1]?.trim(),
+                    dateStr: match[2]?.trim(),
+                    amountStr: match[3]?.trim(),
+                    currency: 'USD',
+                    pattern: 'simple'
+                });
+            }
+        }
+
+        // Remove duplicates (same doc number)
+        const uniqueMatches = [];
+        const seenDocNos = new Set();
+        for (const m of allMatches) {
+            if (m.docNo && !seenDocNos.has(m.docNo.toUpperCase())) {
+                seenDocNos.add(m.docNo.toUpperCase());
+                uniqueMatches.push(m);
+            }
+        }
+
+        if (uniqueMatches.length === 0) {
+            // Delete the case if no lines found
+            await supabase.from('vmp_cases').delete().eq('id', soaCase.id);
+            throw new ValidationError('Could not extract SOA lines from PDF. The PDF may be scanned (image-based) or in an unsupported format. Please try: 1) Export the PDF to CSV or Excel, 2) Use a text-based PDF (not scanned), or 3) Contact support for assistance.', null, {
+                pdfTextLength: pdfText.length,
+                pdfPages: pdfData.numpages,
+                suggestion: 'Try exporting the PDF to CSV or ensure the PDF is text-based (not scanned)',
+                userFriendly: true
+            });
+        }
+
+        // Process extracted matches
+        for (let i = 0; i < uniqueMatches.length; i++) {
+            try {
+                const match = uniqueMatches[i];
+
+                if (!match.docNo || !match.dateStr || !match.amountStr) {
+                    errors.push({
+                        row: i + 1,
+                        field: 'required_fields',
+                        value: null,
+                        message: `Line ${i + 1}: Missing required information. Please ensure Document Number, Date, and Amount are present in the PDF.`,
+                        technical: `Line ${i + 1}: Missing required fields (Document Number, Date, or Amount)`
+                    });
+                    continue;
+                }
+
+                // Parse date
+                const docDate = this._parseDate(match.dateStr);
+                if (!docDate) {
+                    errors.push({
+                        row: i + 1,
+                        field: 'date',
+                        value: match.dateStr,
+                        expectedFormat: 'DD/MM/YYYY or YYYY-MM-DD',
+                        message: `Line ${i + 1}: Date looks wrong. Found "${match.dateStr}", but expected format: DD/MM/YYYY or YYYY-MM-DD. Please check the PDF and correct if needed.`,
+                        technical: `Line ${i + 1}: Invalid date format: ${match.dateStr}`
+                    });
+                    continue;
+                }
+
+                // Parse amount (remove commas, currency symbols)
+                const amount = parseFloat(match.amountStr.replace(/[^0-9.-]/g, ''));
+                if (isNaN(amount) || amount <= 0) {
+                    errors.push({
+                        row: i + 1,
+                        field: 'amount',
+                        value: match.amountStr,
+                        message: `Line ${i + 1}: Amount looks wrong. Found "${match.amountStr}", but expected a number (e.g., 1000.00). Please check the PDF and correct if needed.`,
+                        technical: `Line ${i + 1}: Invalid amount: ${match.amountStr}`
+                    });
+                    continue;
+                }
+
+                // Determine doc type from document number prefix
+                let docType = 'INV';
+                const docNoUpper = match.docNo.toUpperCase();
+                if (docNoUpper.startsWith('CN') || docNoUpper.includes('CREDIT')) {
+                    docType = 'CN';
+                } else if (docNoUpper.startsWith('DN') || docNoUpper.includes('DEBIT')) {
+                    docType = 'DN';
+                } else if (docNoUpper.startsWith('PAY') || docNoUpper.includes('PAYMENT')) {
+                    docType = 'PAY';
+                } else if (docNoUpper.startsWith('WHT')) {
+                    docType = 'WHT';
+                } else if (docNoUpper.startsWith('ADJ')) {
+                    docType = 'ADJ';
+                }
+
+                // Get currency (default to USD)
+                const currency = match.currency || 'USD';
+
+                soaLines.push({
+                    case_id: soaCase.id,
+                    vendor_id: vendorId,
+                    company_id: companyId,
+                    line_number: i + 1,
+                    invoice_number: match.docNo,
+                    invoice_date: docDate.toISOString().split('T')[0],
+                    amount: amount,
+                    currency_code: currency,
+                    doc_type: docType,
+                    description: null,
+                    extraction_method: 'pdf_parse',
+                    extraction_confidence: 0.85, // PDF parsing is less reliable than CSV
+                    raw_text: `${match.docNo} ${match.dateStr} ${match.amountStr}`, // Store raw for audit
+                    status: 'extracted',
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString()
+                });
+            } catch (rowError) {
+                errors.push({
+                    row: i + 1,
+                    field: 'unknown',
+                    value: null,
+                    message: `Line ${i + 1}: Error processing this line. ${rowError.message}. Please check the PDF and try again.`,
+                    technical: `Line ${i + 1}: ${rowError.message}`
+                });
+            }
+        }
+
+        if (soaLines.length === 0) {
+            // Delete the case if no valid lines
+            await supabase.from('vmp_cases').delete().eq('id', soaCase.id);
+            const userFriendlyErrors = errors.map(e => typeof e === 'object' ? e.message : e);
+            throw new ValidationError('No valid SOA lines could be extracted from PDF. Please check the file format or try using CSV/Excel instead.', null, { 
+                errors: userFriendlyErrors,
+                technicalErrors: errors.map(e => typeof e === 'object' ? e.technical : e),
+                userFriendly: true
+            });
+        }
+
+        // Insert SOA lines in batch
+        const { data: insertedLines, error: insertError } = await withTimeout(
+            supabase
+                .from('vmp_soa_items')
+                .insert(soaLines)
+                .select(),
+            30000,
+            'insertSOALines'
+        );
+
+        if (insertError) {
+            // Delete the case if insert fails
+            await supabase.from('vmp_cases').delete().eq('id', soaCase.id);
+            throw new DatabaseError('Failed to insert SOA lines', insertError);
+        }
+
+        // Update case status
+        await supabase
+            .from('vmp_cases')
+            .update({ 
+                status: 'open',
+                updated_at: new Date().toISOString()
+            })
+            .eq('id', soaCase.id);
+
+        return {
+            caseId: soaCase.id,
+            total: uniqueMatches.length,
+            inserted: insertedLines?.length || 0,
+            failed: errors.length,
+            errors: errors.length > 0 ? errors.map(e => typeof e === 'object' ? e.message : e) : null,
+            soaLines: insertedLines || [],
+            extractionMethod: 'pdf_parse',
+            confidence: soaLines.length > 0 ? (soaLines.length / uniqueMatches.length) : 0
+        };
+    },
+
+    // Ingest SOA from Excel (VMP-07: SOA Reconciliation - Excel Support)
+    async ingestSOAFromExcel(excelBuffer, vendorId, companyId, periodStart, periodEnd, tenantId = null) {
+        if (!excelBuffer || !vendorId || !companyId || !periodStart || !periodEnd) {
+            throw new ValidationError('ingestSOAFromExcel requires excelBuffer, vendorId, companyId, periodStart, and periodEnd', null, {
+                hasBuffer: !!excelBuffer,
+                vendorId,
+                companyId,
+                periodStart,
+                periodEnd
+            });
+        }
+
+        // Parse Excel file
+        const workbook = new ExcelJS.Workbook();
+        let worksheet;
+        try {
+            await workbook.xlsx.load(excelBuffer);
+            worksheet = workbook.worksheets[0]; // Use first sheet
+            if (!worksheet) {
+                throw new ValidationError('Excel file appears to be empty or has no worksheets', null, {
+                    sheetCount: workbook.worksheets.length
+                });
+            }
+        } catch (parseError) {
+            throw new ValidationError(`Failed to parse Excel file: ${parseError.message}`, parseError, {
+                operation: 'ingestSOAFromExcel'
+            });
+        }
+
+        // Create SOA Case first
+        const caseSubject = `SOA Reconciliation - ${periodStart} to ${periodEnd}`;
+        const caseInsertQuery = supabase
+            .from('vmp_cases')
+            .insert({
+                tenant_id: tenantId,
+                company_id: companyId,
+                vendor_id: vendorId,
+                case_type: 'soa',
+                status: 'open',
+                subject: caseSubject,
+                owner_team: 'finance',
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+            })
+            .select()
+            .single();
+
+        const { data: soaCase, error: caseError } = await withTimeout(caseInsertQuery, 10000, 'createSOACase');
+
+        if (caseError || !soaCase) {
+            throw new DatabaseError('Failed to create SOA case', caseError);
+        }
+
+        // Find header row (look for common column names)
+        let headerRowIndex = -1;
+        const headerPatterns = ['invoice', 'doc', 'document', 'date', 'amount', 'total'];
+        
+        for (let i = 1; i <= Math.min(10, worksheet.rowCount); i++) {
+            const row = worksheet.getRow(i);
+            const rowText = row.values.map(v => String(v || '').toLowerCase()).join(' ');
+            if (headerPatterns.some(pattern => rowText.includes(pattern))) {
+                headerRowIndex = i;
+                break;
+            }
+        }
+
+        if (headerRowIndex < 0) {
+            await supabase.from('vmp_cases').delete().eq('id', soaCase.id);
+            throw new ValidationError('Could not find header row in Excel file. Please ensure the file has column headers like "Invoice #", "Date", "Amount"', null, {
+                suggestion: 'Download the template to see the expected format'
+            });
+        }
+
+        // Extract headers
+        const headerRow = worksheet.getRow(headerRowIndex);
+        const headers = [];
+        headerRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+            headers[colNumber] = String(cell.value || '').trim();
+        });
+
+        // Normalize headers (same as CSV)
+        const normalizeHeader = (header) => {
+            if (!header) return '';
+            return header.trim().toLowerCase()
+                .replace(/\s+/g, ' ')
+                .replace(/[#]/g, '');
+        };
+
+        const findColumn = (headers, patterns) => {
+            const normalizedHeaders = headers.map(normalizeHeader);
+            for (const pattern of patterns) {
+                const normalizedPattern = normalizeHeader(pattern);
+                const idx = normalizedHeaders.findIndex(h => h.includes(normalizedPattern) || normalizedPattern.includes(h));
+                if (idx >= 0) return idx;
+            }
+            return -1;
+        };
+
+        // Map columns
+        const docNoIdx = findColumn(headers, ['Invoice #', 'Invoice', 'Invoice Number', 'Doc #', 'Doc No', 'Document Number', 'Reference']);
+        const dateIdx = findColumn(headers, ['Date', 'Invoice Date', 'Doc Date', 'Document Date', 'Transaction Date']);
+        const amountIdx = findColumn(headers, ['Amount', 'Invoice Amount', 'Total', 'Total Amount', 'Transaction Amount']);
+        const docTypeIdx = findColumn(headers, ['Type', 'Doc Type', 'Document Type', 'Transaction Type']);
+        const descriptionIdx = findColumn(headers, ['Description', 'Desc', 'Notes', 'Remarks', 'Memo']);
+        const currencyIdx = findColumn(headers, ['Currency', 'Currency Code', 'CCY']);
+
+        // Validate required columns
+        const requiredColumns = [
+            { name: 'Document Number', idx: docNoIdx },
+            { name: 'Date', idx: dateIdx },
+            { name: 'Amount', idx: amountIdx }
+        ];
+
+        const missingColumns = requiredColumns.filter(col => col.idx < 0);
+        if (missingColumns.length > 0) {
+            await supabase.from('vmp_cases').delete().eq('id', soaCase.id);
+            throw new ValidationError(
+                `Excel file missing required columns: ${missingColumns.map(c => c.name).join(', ')}. Found columns: ${headers.filter(h => h).join(', ')}`,
+                null,
+                {
+                    foundColumns: headers.filter(h => h),
+                    missingColumns: missingColumns.map(c => c.name),
+                    suggestion: 'Download the template to see the expected format'
+                }
+            );
+        }
+
+        // Parse SOA lines
+        const soaLines = [];
+        const errors = [];
+
+        for (let i = headerRowIndex + 1; i <= worksheet.rowCount; i++) {
+            try {
+                const row = worksheet.getRow(i);
+                if (!row || row.cellCount === 0) continue;
+
+                const docNo = docNoIdx > 0 ? String(row.getCell(docNoIdx).value || '').trim() : '';
+                const dateStr = dateIdx > 0 ? String(row.getCell(dateIdx).value || '').trim() : '';
+                const amountStr = amountIdx > 0 ? String(row.getCell(amountIdx).value || '').trim() : '';
+
+                // Skip empty rows
+                if (!docNo && !dateStr && !amountStr) continue;
+
+                if (!docNo || !dateStr || !amountStr) {
+                    errors.push({
+                        row: i,
+                        field: 'required_fields',
+                        value: null,
+                        message: `Line ${i}: Missing required information. Please ensure Document Number, Date, and Amount are filled in.`,
+                        technical: `Row ${i}: Missing required fields (Document Number, Date, or Amount)`
+                    });
+                    continue;
+                }
+
+                // Parse date (Excel dates are numbers, but can also be strings)
+                let docDate;
+                if (typeof row.getCell(dateIdx).value === 'number') {
+                    // Excel date serial number
+                    docDate = new Date((row.getCell(dateIdx).value - 25569) * 86400 * 1000);
+                } else {
+                    docDate = this._parseDate(dateStr);
+                }
+
+                if (!docDate || isNaN(docDate.getTime())) {
+                    errors.push({
+                        row: i,
+                        field: 'date',
+                        value: dateStr,
+                        expectedFormat: 'DD/MM/YYYY or YYYY-MM-DD',
+                        message: `Line ${i}: Date looks wrong. Found "${dateStr}", but expected format: DD/MM/YYYY or YYYY-MM-DD. Please check and correct the date.`,
+                        technical: `Row ${i}: Invalid date format: ${dateStr}`
+                    });
+                    continue;
+                }
+
+                // Parse amount
+                let amount;
+                if (typeof row.getCell(amountIdx).value === 'number') {
+                    amount = row.getCell(amountIdx).value;
+                } else {
+                    amount = parseFloat(amountStr.replace(/[^0-9.-]/g, ''));
+                }
+
+                if (isNaN(amount) || amount <= 0) {
+                    errors.push({
+                        row: i,
+                        field: 'amount',
+                        value: amountStr,
+                        message: `Line ${i}: Amount looks wrong. Found "${amountStr}", but expected a number (e.g., 1000.00). Please check and correct the amount.`,
+                        technical: `Row ${i}: Invalid amount: ${amountStr}`
+                    });
+                    continue;
+                }
+
+                // Determine doc type
+                let docType = 'INV';
+                if (docTypeIdx > 0 && row.getCell(docTypeIdx).value) {
+                    const typeStr = String(row.getCell(docTypeIdx).value).trim().toUpperCase();
+                    if (['INV', 'CN', 'DN', 'PAY', 'WHT', 'ADJ'].includes(typeStr)) {
+                        docType = typeStr;
+                    }
+                }
+
+                // Get currency
+                const currency = currencyIdx > 0 && row.getCell(currencyIdx).value
+                    ? String(row.getCell(currencyIdx).value).trim().toUpperCase()
+                    : 'USD';
+
+                soaLines.push({
+                    case_id: soaCase.id,
+                    vendor_id: vendorId,
+                    company_id: companyId,
+                    line_number: i - headerRowIndex,
+                    invoice_number: docNo,
+                    invoice_date: docDate.toISOString().split('T')[0],
+                    amount: amount,
+                    currency_code: currency,
+                    doc_type: docType,
+                    description: descriptionIdx > 0 && row.getCell(descriptionIdx).value
+                        ? String(row.getCell(descriptionIdx).value).trim()
+                        : null,
+                    extraction_method: 'excel_import',
+                    extraction_confidence: 0.95,
+                    status: 'extracted',
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString()
+                });
+            } catch (rowError) {
+                errors.push({
+                    row: i,
+                    field: 'unknown',
+                    value: null,
+                    message: `Line ${i}: Error processing this line. ${rowError.message}. Please check the Excel file and try again.`,
+                    technical: `Row ${i}: ${rowError.message}`
+                });
+            }
+        }
+
+        if (soaLines.length === 0) {
+            await supabase.from('vmp_cases').delete().eq('id', soaCase.id);
+            const userFriendlyErrors = errors.map(e => typeof e === 'object' ? e.message : e);
+            throw new ValidationError('No valid SOA lines found in Excel file. Please check the file format and ensure all required columns are present.', null, { 
+                errors: userFriendlyErrors,
+                technicalErrors: errors.map(e => typeof e === 'object' ? e.technical : e),
+                userFriendly: true
+            });
+        }
+
+        // Insert SOA lines in batch
+        const { data: insertedLines, error: insertError } = await withTimeout(
+            supabase
+                .from('vmp_soa_items')
+                .insert(soaLines)
+                .select(),
+            30000,
+            'insertSOALines'
+        );
+
+        if (insertError) {
+            await supabase.from('vmp_cases').delete().eq('id', soaCase.id);
+            throw new DatabaseError('Failed to insert SOA lines', insertError);
+        }
+
+        // Update case status
+        await supabase
+            .from('vmp_cases')
+            .update({ 
+                status: 'open',
+                updated_at: new Date().toISOString()
+            })
+            .eq('id', soaCase.id);
+
+        return {
+            caseId: soaCase.id,
+            total: worksheet.rowCount - headerRowIndex,
+            inserted: insertedLines?.length || 0,
+            failed: errors.length,
+            errors: errors.length > 0 ? errors.map(e => typeof e === 'object' ? e.message : e) : null,
+            soaLines: insertedLines || [],
+            extractionMethod: 'excel_import',
+            confidence: soaLines.length > 0 ? (soaLines.length / (worksheet.rowCount - headerRowIndex)) : 0
+        };
+    },
+
+    // Get SOA Cases (Statements) for a vendor
+    async getSOAStatements(vendorId, companyId = null, status = null) {
+        if (!vendorId) {
+            throw new ValidationError('getSOAStatements requires vendorId', null, { vendorId });
+        }
+
+        let query = supabase
+            .from('vmp_cases')
+            .select('*')
+            .eq('vendor_id', vendorId)
+            .eq('case_type', 'soa')
+            .order('created_at', { ascending: false });
+
+        if (companyId) {
+            query = query.eq('company_id', companyId);
+        }
+
+        if (status) {
+            query = query.eq('status', status);
+        }
+
+        const { data, error } = await withTimeout(
+            query,
+            10000,
+            `getSOAStatements(${vendorId})`
+        );
+
+        if (error) {
+            const handledError = handleSupabaseError(error, 'getSOAStatements');
+            if (handledError) throw handledError;
+            throw new DatabaseError('Failed to get SOA statements', error);
+        }
+
+        return data || [];
+    },
+
+    // Get SOA Items (Lines) for a case
+    async getSOALines(caseId, vendorId, status = null) {
+        if (!caseId || !vendorId) {
+            throw new ValidationError('getSOALines requires both caseId and vendorId', null, {
+                caseId,
+                vendorId
+            });
+        }
+
+        // Verify case belongs to vendor and is SOA type
+        const caseQuery = supabase
+            .from('vmp_cases')
+            .select('id, case_type, vendor_id')
+            .eq('id', caseId)
+            .eq('vendor_id', vendorId)
+            .eq('case_type', 'soa')
+            .single();
+
+        const { data: caseData, error: caseError } = await withTimeout(
+            caseQuery,
+            5000,
+            'verifySOACase'
+        );
+
+        if (caseError || !caseData) {
+            throw new NotFoundError('SOA case not found or access denied', { caseId, vendorId });
+        }
+
+        let query = supabase
+            .from('vmp_soa_items')
+            .select(`
+                *,
+                vmp_soa_matches (
+                    id,
+                    invoice_id,
+                    match_type,
+                    is_exact_match,
+                    match_confidence,
+                    status,
+                    amount_difference,
+                    date_difference_days
+                )
+            `)
+            .eq('case_id', caseId)
+            .order('line_number', { ascending: true });
+
+        if (status) {
+            query = query.eq('status', status);
+        }
+
+        const { data, error } = await withTimeout(
+            query,
+            10000,
+            `getSOALines(${caseId})`
+        );
+
+        if (error) {
+            const handledError = handleSupabaseError(error, 'getSOALines');
+            if (handledError) throw handledError;
+            throw new DatabaseError('Failed to get SOA lines', error);
+        }
+
+        return data || [];
+    },
+
+    // Get SOA Reconciliation Summary
+    async getSOASummary(caseId, vendorId) {
+        if (!caseId || !vendorId) {
+            throw new ValidationError('getSOASummary requires both caseId and vendorId', null, {
+                caseId,
+                vendorId
+            });
+        }
+
+        // Get all lines for the case
+        const lines = await this.getSOALines(caseId, vendorId);
+
+        // Calculate summary
+        const summary = {
+            total_lines: lines.length,
+            total_amount: 0,
+            matched_lines: 0,
+            matched_amount: 0,
+            unmatched_lines: 0,
+            unmatched_amount: 0,
+            discrepancy_lines: 0,
+            discrepancy_amount: 0,
+            statement_only_lines: 0,
+            statement_only_amount: 0,
+            ledger_only_lines: 0,
+            ledger_only_amount: 0
+        };
+
+        lines.forEach(line => {
+            summary.total_amount += parseFloat(line.amount || 0);
+
+            if (line.status === 'matched') {
+                summary.matched_lines++;
+                summary.matched_amount += parseFloat(line.amount || 0);
+            } else if (line.status === 'discrepancy') {
+                summary.discrepancy_lines++;
+                summary.discrepancy_amount += parseFloat(line.amount || 0);
+            } else if (line.status === 'extracted') {
+                summary.unmatched_lines++;
+                summary.unmatched_amount += parseFloat(line.amount || 0);
+            }
+        });
+
+        // Calculate net variance
+        summary.net_variance = summary.total_amount - summary.matched_amount;
+
+        return summary;
+    },
+
+    // Create SOA Match
+    async createSOAMatch(soaItemId, invoiceId, matchData) {
+        if (!soaItemId || !invoiceId) {
+            throw new ValidationError('createSOAMatch requires both soaItemId and invoiceId', null, {
+                soaItemId,
+                invoiceId
+            });
+        }
+
+        const { data, error } = await withTimeout(
+            supabase
+                .from('vmp_soa_matches')
+                .insert({
+                    soa_item_id: soaItemId,
+                    invoice_id: invoiceId,
+                    match_type: matchData.matchType || 'probabilistic',
+                    is_exact_match: matchData.isExactMatch || false,
+                    match_confidence: matchData.confidence || 0.5,
+                    match_score: matchData.matchScore || null,
+                    match_criteria: matchData.matchCriteria || {},
+                    soa_amount: matchData.soaAmount,
+                    invoice_amount: matchData.invoiceAmount,
+                    soa_date: matchData.soaDate,
+                    invoice_date: matchData.invoiceDate,
+                    status: 'pending',
+                    matched_by: matchData.matchedBy || 'system',
+                    metadata: matchData.metadata || {}
+                })
+                .select()
+                .single(),
+            10000,
+            'createSOAMatch'
+        );
+
+        if (error) {
+            const handledError = handleSupabaseError(error, 'createSOAMatch');
+            if (handledError) throw handledError;
+            throw new DatabaseError('Failed to create SOA match', error);
+        }
+
+        // Update SOA item status
+        await supabase
+            .from('vmp_soa_items')
+            .update({ status: 'matched' })
+            .eq('id', soaItemId);
+
+        return data;
+    },
+
+    // Confirm SOA Match
+    async confirmSOAMatch(matchId, userId) {
+        if (!matchId || !userId) {
+            throw new ValidationError('confirmSOAMatch requires both matchId and userId', null, {
+                matchId,
+                userId
+            });
+        }
+
+        const { data, error } = await withTimeout(
+            supabase
+                .from('vmp_soa_matches')
+                .update({
+                    status: 'confirmed',
+                    confirmed_by_user_id: userId,
+                    confirmed_at: new Date().toISOString()
+                })
+                .eq('id', matchId)
+                .select()
+                .single(),
+            10000,
+            'confirmSOAMatch'
+        );
+
+        if (error) {
+            const handledError = handleSupabaseError(error, 'confirmSOAMatch');
+            if (handledError) throw handledError;
+            throw new DatabaseError('Failed to confirm SOA match', error);
+        }
+
+        return data;
+    },
+
+    // Reject SOA Match
+    async rejectSOAMatch(matchId, userId, reason) {
+        if (!matchId || !userId) {
+            throw new ValidationError('rejectSOAMatch requires both matchId and userId', null, {
+                matchId,
+                userId
+            });
+        }
+
+        const { data, error } = await withTimeout(
+            supabase
+                .from('vmp_soa_matches')
+                .update({
+                    status: 'rejected',
+                    rejection_reason: reason || null
+                })
+                .eq('id', matchId)
+                .select()
+                .single(),
+            10000,
+            'rejectSOAMatch'
+        );
+
+        if (error) {
+            const handledError = handleSupabaseError(error, 'rejectSOAMatch');
+            if (handledError) throw handledError;
+            throw new DatabaseError('Failed to reject SOA match', error);
+        }
+
+        // Update SOA item status back to extracted
+        await supabase
+            .from('vmp_soa_items')
+            .update({ status: 'extracted' })
+            .eq('id', data.soa_item_id);
+
+        return data;
+    },
+
+    // Create SOA Issue (Variance/Exception)
+    async createSOAIssue(caseId, issueData) {
+        if (!caseId) {
+            throw new ValidationError('createSOAIssue requires caseId', null, { caseId });
+        }
+
+        const { data, error } = await withTimeout(
+            supabase
+                .from('vmp_soa_discrepancies')
+                .insert({
+                    case_id: caseId,
+                    soa_item_id: issueData.soaItemId || null,
+                    match_id: issueData.matchId || null,
+                    invoice_id: issueData.invoiceId || null,
+                    discrepancy_type: issueData.issueType,
+                    severity: issueData.severity || 'medium',
+                    description: issueData.description,
+                    expected_value: issueData.expectedValue || null,
+                    actual_value: issueData.actualValue || null,
+                    difference_amount: issueData.amountDelta || null,
+                    status: 'open',
+                    detected_by: issueData.detectedBy || 'system',
+                    metadata: issueData.metadata || {}
+                })
+                .select()
+                .single(),
+            10000,
+            'createSOAIssue'
+        );
+
+        if (error) {
+            const handledError = handleSupabaseError(error, 'createSOAIssue');
+            if (handledError) throw handledError;
+            throw new DatabaseError('Failed to create SOA issue', error);
+        }
+
+        return data;
+    },
+
+    // Get SOA Issues for a case
+    async getSOAIssues(caseId, status = null) {
+        if (!caseId) {
+            throw new ValidationError('getSOAIssues requires caseId', null, { caseId });
+        }
+
+        let query = supabase
+            .from('vmp_soa_discrepancies')
+            .select('*')
+            .eq('case_id', caseId)
+            .order('created_at', { ascending: false });
+
+        if (status) {
+            query = query.eq('status', status);
+        }
+
+        const { data, error } = await withTimeout(
+            query,
+            10000,
+            `getSOAIssues(${caseId})`
+        );
+
+        if (error) {
+            const handledError = handleSupabaseError(error, 'getSOAIssues');
+            if (handledError) throw handledError;
+            throw new DatabaseError('Failed to get SOA issues', error);
+        }
+
+        return data || [];
+    },
+
+    // Resolve SOA Issue
+    async resolveSOAIssue(issueId, userId, resolutionData) {
+        if (!issueId || !userId) {
+            throw new ValidationError('resolveSOAIssue requires both issueId and userId', null, {
+                issueId,
+                userId
+            });
+        }
+
+        const { data, error } = await withTimeout(
+            supabase
+                .from('vmp_soa_discrepancies')
+                .update({
+                    status: 'resolved',
+                    resolution_notes: resolutionData.notes || null,
+                    resolved_by_user_id: userId,
+                    resolved_at: new Date().toISOString(),
+                    resolution_action: resolutionData.action || 'corrected'
+                })
+                .eq('id', issueId)
+                .select()
+                .single(),
+            10000,
+            'resolveSOAIssue'
+        );
+
+        if (error) {
+            const handledError = handleSupabaseError(error, 'resolveSOAIssue');
+            if (handledError) throw handledError;
+            throw new DatabaseError('Failed to resolve SOA issue', error);
+        }
+
+        return data;
+    },
+
+    // Sign off SOA Reconciliation
+    async signOffSOA(caseId, vendorId, userId, acknowledgementData) {
+        if (!caseId || !vendorId || !userId) {
+            throw new ValidationError('signOffSOA requires caseId, vendorId, and userId', null, {
+                caseId,
+                vendorId,
+                userId
+            });
+        }
+
+        // Get summary for acknowledgement
+        const summary = await this.getSOASummary(caseId, vendorId);
+
+        // Create or update acknowledgement
+        const { data, error } = await withTimeout(
+            supabase
+                .from('vmp_soa_acknowledgements')
+                .upsert({
+                    case_id: caseId,
+                    vendor_id: vendorId,
+                    company_id: acknowledgementData.companyId || null,
+                    acknowledgement_type: acknowledgementData.type || 'full',
+                    total_items: summary.total_lines,
+                    matched_items: summary.matched_lines,
+                    discrepancy_items: summary.discrepancy_lines,
+                    unmatched_items: summary.unmatched_lines,
+                    total_amount: summary.total_amount,
+                    matched_amount: summary.matched_amount,
+                    discrepancy_amount: summary.discrepancy_amount,
+                    unmatched_amount: summary.unmatched_amount,
+                    status: 'acknowledged',
+                    acknowledged_by_user_id: userId,
+                    acknowledged_at: new Date().toISOString(),
+                    acknowledgement_notes: acknowledgementData.notes || null
+                }, {
+                    onConflict: 'case_id'
+                })
+                .select()
+                .single(),
+            10000,
+            'signOffSOA'
+        );
+
+        if (error) {
+            const handledError = handleSupabaseError(error, 'signOffSOA');
+            if (handledError) throw handledError;
+            throw new DatabaseError('Failed to sign off SOA', error);
+        }
+
+        // Update case status to closed
+        await supabase
+            .from('vmp_cases')
+            .update({ status: 'closed' })
+            .eq('id', caseId);
+
+        return data;
+    },
+
+    // ============================================================================
+    // DEBIT NOTE (DN) METHODS
+    // ============================================================================
+
+    // Propose Debit Note
+    async proposeDebitNote(dnData) {
+        if (!dnData.soaStatementId || !dnData.vendorId || !dnData.amount) {
+            throw new ValidationError('proposeDebitNote requires soaStatementId, vendorId, and amount', null, dnData);
+        }
+
+        // Generate DN number
+        const year = new Date().getFullYear();
+        const { count } = await supabase
+            .from('vmp_debit_notes')
+            .select('*', { count: 'exact', head: true })
+            .like('dn_no', `DN-${year}-%`);
+
+        const dnNo = `DN-${year}-${String((count || 0) + 1).padStart(4, '0')}`;
+
+        const { data, error } = await withTimeout(
+            supabase
+                .from('vmp_debit_notes')
+                .insert({
+                    tenant_id: dnData.tenantId || null,
+                    vendor_id: dnData.vendorId,
+                    company_id: dnData.companyId || null,
+                    soa_statement_id: dnData.soaStatementId,
+                    soa_issue_id: dnData.soaIssueId || null,
+                    dn_no: dnNo,
+                    dn_date: dnData.dnDate || new Date().toISOString().split('T')[0],
+                    currency_code: dnData.currencyCode || 'USD',
+                    amount: dnData.amount,
+                    reason_code: dnData.reasonCode,
+                    status: 'DRAFT',
+                    notes: dnData.notes || null,
+                    created_by_user_id: dnData.userId || null
+                })
+                .select()
+                .single(),
+            10000,
+            'proposeDebitNote'
+        );
+
+        if (error) {
+            const handledError = handleSupabaseError(error, 'proposeDebitNote');
+            if (handledError) throw handledError;
+            throw new DatabaseError('Failed to propose debit note', error);
+        }
+
+        return data;
+    },
+
+    // Get Debit Notes
+    async getDebitNotes(vendorId, status = null, soaStatementId = null) {
+        if (!vendorId) {
+            throw new ValidationError('getDebitNotes requires vendorId', null, { vendorId });
+        }
+
+        let query = supabase
+            .from('vmp_debit_notes')
+            .select('*')
+            .eq('vendor_id', vendorId)
+            .order('created_at', { ascending: false });
+
+        if (status) {
+            query = query.eq('status', status);
+        }
+
+        if (soaStatementId) {
+            query = query.eq('soa_statement_id', soaStatementId);
+        }
+
+        const { data, error } = await withTimeout(
+            query,
+            10000,
+            `getDebitNotes(${vendorId})`
+        );
+
+        if (error) {
+            const handledError = handleSupabaseError(error, 'getDebitNotes');
+            if (handledError) throw handledError;
+            throw new DatabaseError('Failed to get debit notes', error);
+        }
+
+        return data || [];
+    },
+
+    // Approve Debit Note
+    async approveDebitNote(dnId, userId) {
+        if (!dnId || !userId) {
+            throw new ValidationError('approveDebitNote requires both dnId and userId', null, {
+                dnId,
+                userId
+            });
+        }
+
+        // Verify current status is DRAFT
+        const { data: current } = await supabase
+            .from('vmp_debit_notes')
+            .select('status')
+            .eq('id', dnId)
+            .single();
+
+        if (!current || current.status !== 'DRAFT') {
+            throw new ValidationError('Debit note must be in DRAFT status to approve', 'status', { currentStatus: current?.status });
+        }
+
+        const { data, error } = await withTimeout(
+            supabase
+                .from('vmp_debit_notes')
+                .update({
+                    status: 'APPROVED',
+                    approved_by_user_id: userId,
+                    approved_at: new Date().toISOString()
+                })
+                .eq('id', dnId)
+                .select()
+                .single(),
+            10000,
+            'approveDebitNote'
+        );
+
+        if (error) {
+            const handledError = handleSupabaseError(error, 'approveDebitNote');
+            if (handledError) throw handledError;
+            throw new DatabaseError('Failed to approve debit note', error);
+        }
+
+        return data;
+    },
+
+    // Post Debit Note (to AP Ledger)
+    async postDebitNote(dnId, userId, ledgerEntryId = null) {
+        if (!dnId || !userId) {
+            throw new ValidationError('postDebitNote requires both dnId and userId', null, {
+                dnId,
+                userId
+            });
+        }
+
+        // Verify current status is APPROVED
+        const { data: current } = await supabase
+            .from('vmp_debit_notes')
+            .select('status')
+            .eq('id', dnId)
+            .single();
+
+        if (!current || current.status !== 'APPROVED') {
+            throw new ValidationError('Debit note must be in APPROVED status to post', 'status', { currentStatus: current?.status });
+        }
+
+        const { data, error } = await withTimeout(
+            supabase
+                .from('vmp_debit_notes')
+                .update({
+                    status: 'POSTED',
+                    posted_by_user_id: userId,
+                    posted_at: new Date().toISOString(),
+                    ledger_entry_id: ledgerEntryId || null,
+                    ledger_posted_at: new Date().toISOString()
+                })
+                .eq('id', dnId)
+                .select()
+                .single(),
+            10000,
+            'postDebitNote'
+        );
+
+        if (error) {
+            const handledError = handleSupabaseError(error, 'postDebitNote');
+            if (handledError) throw handledError;
+            throw new DatabaseError('Failed to post debit note', error);
+        }
+
+        // Update linked SOA issue to RESOLVED if exists
+        if (data.soa_issue_id) {
+            await supabase
+                .from('vmp_soa_discrepancies')
+                .update({
+                    status: 'resolved',
+                    resolution_action: 'corrected',
+                    resolved_at: new Date().toISOString()
+                })
+                .eq('id', data.soa_issue_id);
+        }
+
+        return data;
+    },
+
+    // Void Debit Note
+    async voidDebitNote(dnId, userId, voidReason) {
+        if (!dnId || !userId) {
+            throw new ValidationError('voidDebitNote requires both dnId and userId', null, {
+                dnId,
+                userId
+            });
+        }
+
+        // Verify current status is DRAFT or APPROVED (cannot void POSTED)
+        const { data: current } = await supabase
+            .from('vmp_debit_notes')
+            .select('status')
+            .eq('id', dnId)
+            .single();
+
+        if (!current || current.status === 'POSTED') {
+            throw new ValidationError('Cannot void a POSTED debit note', 'status', { currentStatus: current?.status });
+        }
+
+        const { data, error } = await withTimeout(
+            supabase
+                .from('vmp_debit_notes')
+                .update({
+                    status: 'VOID',
+                    void_reason: voidReason || null
+                })
+                .eq('id', dnId)
+                .select()
+                .single(),
+            10000,
+            'voidDebitNote'
+        );
+
+        if (error) {
+            const handledError = handleSupabaseError(error, 'voidDebitNote');
+            if (handledError) throw handledError;
+            throw new DatabaseError('Failed to void debit note', error);
         }
 
         return data;
