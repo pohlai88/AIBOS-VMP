@@ -54,6 +54,10 @@
       /* Editorial feel for body text */
     }
 
+    .vmp-muted { color: rgba(237,237,237,.62); }
+    .vmp-subtle { color: rgba(237,237,237,.36); }
+    .vmp-border { border-color: rgba(255,255,255,.08); }
+
     /* The Cinematic Grain Layer */
     .vmp-atmosphere {
       position: fixed;
@@ -120,8 +124,8 @@
     style="border-right: 1px solid var(--shell-border); background: linear-gradient(180deg, rgba(5,5,5,0.8) 0%, rgba(5,5,5,0.95) 100%); backdrop-filter: blur(20px);"
     id="org-tree-sidebar" hx-get="/partials/org-tree-sidebar.html" hx-trigger="load" hx-swap="innerHTML"
     hx-indicator="#org-tree-loading"
-    hx-on::htmx:response-error="console.error('HTMX Error loading org tree:', event.detail)"
-    hx-on::htmx:after-request="if(event.detail.failed) { console.error('HTMX Request failed:', event.detail); }">
+    hx-on::htmx:response-error="window.VMPOrgTreeFail && window.VMPOrgTreeFail(event)"
+    hx-on::htmx:after-request="if(event.detail.failed) { window.VMPOrgTreeFail && window.VMPOrgTreeFail(event) }">
     <div id="org-tree-loading" class="flex items-center justify-center h-full htmx-indicator">
       <div class="text-white/20 text-xs">Loading organization tree...</div>
     </div>
@@ -212,6 +216,42 @@
         });
       }
     });
+
+    // Org Tree graceful fallback (prevents "loud red error box" drift)
+    window.VMPOrgTreeFail = function (event) {
+      try {
+        const el = document.getElementById('org-tree-sidebar');
+        if (!el) return;
+        el.innerHTML = `
+          <div class="p-5 h-full flex flex-col justify-between">
+            <div>
+              <div class="flex items-center gap-3 mb-4">
+                <span class="w-2 h-2 rounded-full" style="background: rgba(255,85,85,.85); box-shadow: 0 0 12px rgba(255,85,85,.18)"></span>
+                <div class="text-xs tracking-[0.22em] uppercase vmp-muted">Topology unavailable</div>
+              </div>
+              <div class="text-sm text-white/85 leading-relaxed">
+                Organization scope controls could not be loaded.
+              </div>
+              <div class="text-xs vmp-subtle mt-2">
+                You can continue using the console. Scope filters will reappear once connectivity is restored.
+              </div>
+            </div>
+            <div class="mt-6">
+              <button type="button"
+                class="w-full px-3 py-2 rounded-lg bg-white/[0.03] border border-white/10 hover:border-white/20 hover:bg-white/[0.06] transition text-xs tracking-[0.22em] uppercase"
+                onclick="location.reload()">
+                Retry
+              </button>
+              <div class="text-[10px] vmp-subtle mt-3">
+                If this persists, check session + org tree endpoint.
+              </div>
+            </div>
+          </div>
+        `;
+      } catch (e) {
+        console.error('[VMP] OrgTree fallback failed', e);
+      }
+    };
   </script>
 
   <style>

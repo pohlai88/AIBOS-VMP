@@ -281,3 +281,5 @@ COMMENT ON TABLE vmp_soa_matches IS 'Reconciliation Engine: Probabilistic reconc
 COMMENT ON TABLE vmp_soa_discrepancies IS 'Discrepancy Forensics: Exception tracking and resolution workflow for SOA reconciliation discrepancies.';
 COMMENT ON TABLE vmp_soa_acknowledgements IS 'Reconciliation Confirmation: Acknowledgement tracking and audit trail for reconciled SOA statements.';
 
+
+

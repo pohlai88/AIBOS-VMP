@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-surface="vmp" class="h-full antialiased">
 
 <head>
     <meta charset="utf-8" />
@@ -23,6 +23,8 @@
             --warn: 30 80% 55%;
             /* Amber */
             --max: 1180px;
+            --nav-h: 80px;
+            --nav-offset: 24px;
         }
 
         * {
@@ -34,12 +36,19 @@
             height: 100%
         }
 
+        html {
+            /* Anchor jumps should land below the fixed nav */
+            scroll-padding-top: calc(var(--nav-h) + var(--nav-offset));
+        }
+
         body {
             margin: 0;
             font-family: var(--sans);
             color: var(--txt);
             background: var(--bg);
             overflow-x: hidden;
+            /* Prevent hero/sections from hiding under fixed nav */
+            padding-top: calc(var(--nav-h) + var(--nav-offset));
         }
 
         /* --- DEEP VOID ATMOSPHERE --- */
@@ -100,7 +109,7 @@
             position: fixed;
             top: 0;
             width: 100%;
-            height: 80px;
+            height: var(--nav-h);
             display: flex;
             align-items: center;
             background: rgba(6, 6, 7, .72);
@@ -119,6 +128,32 @@
             background: linear-gradient(to right, transparent, rgba(255, 255, 255, .10), transparent);
             opacity: .6;
             pointer-events: none;
+        }
+
+        /* Kernel Spine (same motif as landing; "one OS" illusion) */
+        .vmp-kernel-spine{
+            position:absolute;
+            left:50%;
+            top:12px;
+            bottom:12px;
+            width:1px;
+            transform: translateX(-0.5px);
+            background: linear-gradient(to bottom, transparent, rgba(255,255,255,.14), transparent);
+            opacity:.65;
+            pointer-events:none;
+        }
+        .vmp-kernel-spine::after{
+            content:"";
+            position:absolute;
+            left:50%;
+            top:50%;
+            width:8px;
+            height:8px;
+            transform: translate(-50%,-50%);
+            border-radius:999px;
+            background: hsla(var(--accent),1);
+            border:1px solid rgba(255,255,255,.14);
+            opacity:.75;
         }
 
         .nav-inner {
@@ -333,14 +368,19 @@
 
         /* --- HERO --- */
         header {
-            padding: 140px 0 60px;
-            text-align: center
+            padding: 0 0 60px;
+            margin-top: 100px; /* Account for fixed nav (80px) + extra space */
+            padding-top: 180px; /* Creates the actual visual gap below nav */
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start; /* Prevents vertical centering from eating the gap */
         }
 
         .pre-head {
             color: hsl(var(--accent));
             font-size: 11px;
-            margin-bottom: 24px;
+            margin-bottom: 40px;
             display: inline-flex;
             align-items: center;
             gap: 8px;
@@ -351,19 +391,21 @@
 
         h1 {
             font-size: clamp(40px, 6vw, 72px);
-            line-height: 1;
+            line-height: 1.2; /* Prevents clipping of capital letters */
             background: linear-gradient(to bottom, #fff, #888);
             -webkit-background-clip: text;
             background-clip: text;
             color: transparent;
             margin-bottom: 24px;
+            margin-top: 60px !important; /* Forces gap even if parent has flex-centering */
+            padding-top: 20px; /* Extra breathing room for the text */
         }
 
         .lead {
             font-size: 18px;
             color: var(--muted);
             max-width: 680px;
-            margin: 0 auto 40px;
+            margin: 40px auto 80px; /* Increased top margin, more bottom margin before next section */
             line-height: 1.6;
         }
 
@@ -556,12 +598,13 @@
     </style>
 </head>
 
-<body>
+<body class="vmp-marketing vmp-free-form">
 
     <div class="noise"></div>
     <div class="grid-layer"></div>
 
     <nav>
+        <div class="vmp-kernel-spine" aria-hidden="true"></div>
         <div class="container nav-inner">
             <a href="/home" class="brand brand-link">
                 <svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"

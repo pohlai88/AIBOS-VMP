@@ -571,8 +571,11 @@
       cursor: pointer;
       margin-top: var(--space-md);
       transition: all .2s ease;
-      display: grid;
-      place-items: center;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      z-index: 1;
     }
 
     .btn-primary:hover {
@@ -635,6 +638,11 @@
       display: flex;
       align-items: flex-start;
       gap: var(--space-sm);
+      width: 100%;
+      position: relative;
+      z-index: 10;
+      pointer-events: auto;
+      -webkit-tap-highlight-color: transparent;
     }
 
     .tier-btn:hover {
@@ -889,14 +897,14 @@
                 <!-- Tier Selector -->
                 <div class="tier-selector">
                   <div class="tier-buttons">
-                    <button type="button" class="tier-btn active" id="tier-institutional" data-tier="institutional" onclick="setTier('institutional')">
+                    <button type="button" class="tier-btn active" id="tier-institutional" data-tier="institutional">
                       <span class="tier-icon">🏢</span>
                       <div class="tier-content">
                         <span class="tier-label">Institutional Node</span>
                         <span class="tier-desc">Organization-based access</span>
                       </div>
                     </button>
-                    <button type="button" class="tier-btn" id="tier-independent" data-tier="independent" onclick="setTier('independent')">
+                    <button type="button" class="tier-btn" id="tier-independent" data-tier="independent">
                       <span class="tier-icon">🔬</span>
                       <div class="tier-content">
                         <span class="tier-label">Independent Investigator</span>
@@ -1005,11 +1013,16 @@
       const institutionalBtn = document.getElementById('tier-institutional');
       const independentBtn = document.getElementById('tier-independent');
       
-      institutionalBtn.classList.toggle('active', isInstitutional);
-      independentBtn.classList.toggle('active', !isInstitutional);
+      if (institutionalBtn && independentBtn) {
+        institutionalBtn.classList.toggle('active', isInstitutional);
+        independentBtn.classList.toggle('active', !isInstitutional);
+      }
       
       // Update hidden input
-      document.getElementById('user_tier_input').value = tier;
+      const tierInput = document.getElementById('user_tier_input');
+      if (tierInput) {
+        tierInput.value = tier;
+      }
       
       // Toggle organization field
       const orgContainer = document.getElementById('org-container');
@@ -1017,20 +1030,45 @@
       const independentNotice = document.getElementById('independent-notice');
       
       if (isInstitutional) {
-        orgContainer.style.display = 'block';
-        orgInput.setAttribute('required', 'required');
-        independentNotice.style.display = 'none';
+        if (orgContainer) orgContainer.style.display = 'block';
+        if (orgInput) {
+          orgInput.setAttribute('required', 'required');
+        }
+        if (independentNotice) independentNotice.style.display = 'none';
       } else {
-        orgContainer.style.display = 'none';
-        orgInput.removeAttribute('required');
-        orgInput.value = '';
-        independentNotice.style.display = 'block';
+        if (orgContainer) orgContainer.style.display = 'none';
+        if (orgInput) {
+          orgInput.removeAttribute('required');
+          orgInput.value = '';
+        }
+        if (independentNotice) independentNotice.style.display = 'block';
       }
     }
 
-    // Initialize on page load
+    // Initialize on page load and attach event listeners
     document.addEventListener('DOMContentLoaded', function() {
-      setTier('institutional'); // Default to institutional
+      // Attach click event listeners to tier buttons
+      const institutionalBtn = document.getElementById('tier-institutional');
+      const independentBtn = document.getElementById('tier-independent');
+      
+      if (institutionalBtn) {
+        institutionalBtn.addEventListener('click', function(e) {
+          e.preventDefault();
+          e.stopPropagation();
+          setTier('institutional');
+        });
+      }
+      
+      if (independentBtn) {
+        independentBtn.addEventListener('click', function(e) {
+          e.preventDefault();
+          e.stopPropagation();
+          setTier('independent');
+        });
+      }
+      
+      // Default to institutional
+      setTier('institutional');
     });
   </script>
 </body>

@@ -24,3 +24,5 @@ CREATE INDEX IF NOT EXISTS idx_vmp_password_reset_tokens_token ON vmp_password_r
 CREATE INDEX IF NOT EXISTS idx_vmp_password_reset_tokens_expires_at ON vmp_password_reset_tokens(expires_at);
 CREATE INDEX IF NOT EXISTS idx_vmp_password_reset_tokens_used_at ON vmp_password_reset_tokens(used_at) WHERE used_at IS NULL;
 
+
+
