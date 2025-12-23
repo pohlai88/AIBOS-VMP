@@ -68,6 +68,7 @@ const env = cleanEnv(process.env, {
   PORT: str({ default: '9000' }),
   NODE_ENV: str({ default: 'development', choices: ['development', 'production', 'test'] }),
   BASE_URL: str({ default: 'http://localhost:9000' }), // For password reset redirects
+  BASE_PATH: str({ default: '' }), // Base path for sub-directory deployment (e.g., /VMP)
   // Rollback switch for home page (allows quick rollback without code changes)
   // Note: Login route is LOCKED to login3.html (no rollback switch)
   VMP_HOME_PAGE: str({ default: 'home' }),
@@ -187,6 +188,7 @@ const nunjucksEnv = nunjucks.configure('src/views', {
 nunjucksEnv.addGlobal('vapid_public_key', env.VAPID_PUBLIC_KEY || '');
 nunjucksEnv.addGlobal('supabase_url', env.SUPABASE_URL || '');
 nunjucksEnv.addGlobal('supabase_anon_key', env.SUPABASE_ANON_KEY || '');
+nunjucksEnv.addGlobal('base_path', env.BASE_PATH || ''); // Base path for sub-directory deployment
 
 // Add custom filters
 nunjucksEnv.addFilter('upper', (str) => {
@@ -303,23 +305,33 @@ nunjucksEnv.addFilter('format', (value, formatStr) => {
   }
 });
 
-app.use(express.static('public'));
+// Serve static files with base path support
+if (env.BASE_PATH) {
+  app.use(env.BASE_PATH, express.static('public'));
+} else {
+  app.use(express.static('public'));
+}
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // PWA Manifest and Service Worker (Sprint 12.2)
-app.get('/manifest.json', (req, res) => {
+// Support base path for sub-directory deployment
+const manifestPath = env.BASE_PATH ? `${env.BASE_PATH}/manifest.json` : '/manifest.json';
+const swPath = env.BASE_PATH ? `${env.BASE_PATH}/sw.js` : '/sw.js';
+const offlinePath = env.BASE_PATH ? `${env.BASE_PATH}/offline.html` : '/offline.html';
+
+app.get(manifestPath, (req, res) => {
   res.setHeader('Content-Type', 'application/manifest+json');
   res.sendFile(path.join(__dirname, 'public', 'manifest.json'));
 });
 
-app.get('/sw.js', (req, res) => {
+app.get(swPath, (req, res) => {
   res.setHeader('Content-Type', 'application/javascript');
-  res.setHeader('Service-Worker-Allowed', '/');
+  res.setHeader('Service-Worker-Allowed', env.BASE_PATH || '/');
   res.sendFile(path.join(__dirname, 'public', 'sw.js'));
 });
 
-app.get('/offline.html', (req, res) => {
+app.get(offlinePath, (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'offline.html'));
 });
 
@@ -806,7 +818,7 @@ app.post('/forgot-password', passwordResetLimiter, async (req, res) => {
     const { error } = await supabaseAuth.auth.resetPasswordForEmail(
       email.toLowerCase().trim(),
       {
-        redirectTo: `${env.BASE_URL}/reset-password`
+        redirectTo: `${env.BASE_URL}${env.BASE_PATH || ''}/reset-password`
       }
     );
 
