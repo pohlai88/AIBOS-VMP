@@ -37,8 +37,7 @@
         }
 
         html {
-            /* Anchor jumps should land below the fixed nav */
-            scroll-padding-top: calc(var(--nav-h) + var(--nav-offset));
+            scroll-padding-top: 96px;
         }
 
         body {
@@ -141,19 +140,6 @@
             background: linear-gradient(to bottom, transparent, rgba(255,255,255,.14), transparent);
             opacity:.65;
             pointer-events:none;
-        }
-        .vmp-kernel-spine::after{
-            content:"";
-            position:absolute;
-            left:50%;
-            top:50%;
-            width:8px;
-            height:8px;
-            transform: translate(-50%,-50%);
-            border-radius:999px;
-            background: hsla(var(--accent),1);
-            border:1px solid rgba(255,255,255,.14);
-            opacity:.75;
         }
 
         .nav-inner {
@@ -292,26 +278,8 @@
             padding: 8px 0;
         }
 
-        .nav-links a::after {
-            content: "";
-            position: absolute;
-            left: 0;
-            right: 0;
-            bottom: 3px;
-            height: 1px;
-            background: rgba(255, 255, 255, .16);
-            opacity: 0;
-            transform: translateY(2px);
-            transition: .18s ease;
-        }
-
         .nav-links a:hover {
             color: white;
-        }
-
-        .nav-links a:hover::after {
-            opacity: 1;
-            transform: translateY(0px);
         }
 
         /* Nav Actions Container */
@@ -368,13 +336,8 @@
 
         /* --- HERO --- */
         header {
-            padding: 0 0 60px;
-            margin-top: 100px; /* Account for fixed nav (80px) + extra space */
-            padding-top: 180px; /* Creates the actual visual gap below nav */
+            padding: calc(var(--nav-h) + 96px) 0 60px;
             text-align: center;
-            display: flex;
-            flex-direction: column;
-            justify-content: flex-start; /* Prevents vertical centering from eating the gap */
         }
 
         .pre-head {
@@ -387,6 +350,10 @@
             border: 1px solid rgba(255, 255, 255, .1);
             padding: 6px 12px;
             border-radius: 100px;
+            width: fit-content;
+            max-width: 100%;
+            margin-left: auto;
+            margin-right: auto;
         }
 
         h1 {
@@ -407,6 +374,17 @@
             max-width: 680px;
             margin: 40px auto 80px; /* Increased top margin, more bottom margin before next section */
             line-height: 1.6;
+        }
+
+        /* Hero subtext spacing */
+        .hero-subtext {
+            margin-top: 40px;
+            margin-bottom: 80px; /* Space before the Transmutation Engine */
+        }
+
+        .lead-em {
+            color: rgba(235, 235, 235, .86);
+            font-weight: 500;
         }
 
         /* --- THE MIRROR (TRANSMUTATION ENGINE) --- */
@@ -581,6 +559,10 @@
 
         /* RESPONSIVE */
         @media(max-width: 768px) {
+            header {
+                padding: calc(var(--nav-h) + 56px) 0 40px;
+            }
+
             .mirror-grid {
                 grid-template-columns: 1fr;
             }
@@ -661,9 +643,9 @@
         <h1>Governance is not a policy.<br>It is code.</h1>
         <p class="lead">
             We believe the way companies pay suppliers is fundamentally broken.
-            It isn’t broken because of the ERP. It is broken because of the <strong>WhatsApp Gap</strong>—the chaotic
+            It isn't broken because of the ERP. It is broken because of the <span class="lead-em">WhatsApp Gap</span>—the chaotic
             void
-            between the supplier’s phone and your ledger.
+            between the supplier's phone and your ledger.
         </p>
     </header>
 

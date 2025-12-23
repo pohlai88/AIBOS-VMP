@@ -63,6 +63,9 @@
             <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
 
                 <div class="flex-1 max-w-md relative">
+                    <!-- HTMX include targets (prevents posture drift) -->
+                    <input type="hidden" name="posture" x-model="posture" />
+                    <input type="hidden" name="audit" x-model="audit" />
                     <label class="sr-only" for="q">Search</label>
                     <div class="absolute inset-y-0 left-3 flex items-center pointer-events-none opacity-40">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -74,7 +77,7 @@
                     <input id="q" class="vmp-input pl-10 w-full" type="search"
                         placeholder="Search case / invoice / vendor (Cmd+K)" name="q" x-model="q"
                         hx-get="/partials/case-inbox.html" hx-target="#case-inbox"
-                        hx-trigger="input changed delay:300ms, search" hx-include="[name='posture'],[name='channel']"
+                        hx-trigger="input changed delay:300ms, search" hx-include="[name='q'],[name='posture'],[name='channel']"
                         autocomplete="off" />
                 </div>
 
@@ -84,13 +87,16 @@
                         <div class="vmp-label opacity-60">Posture</div>
                         <div class="flex p-1 rounded-lg border bg-black/20" style="border-color: var(--vmp-border);">
                             <button class="vmp-btn vmp-btn-ghost vmp-btn-sm py-1 px-3 h-auto"
-                                :class="posture === 'action' ? 'bg-white/10 text-white shadow-sm' : 'opacity-60'"
+                                :class="posture === 'action' ? 'bg-white/10 text-white' : 'opacity-60'"
                                 @click="posture='action'; refresh()">Action</button>
                             <button class="vmp-btn vmp-btn-ghost vmp-btn-sm py-1 px-3 h-auto"
-                                :class="posture === 'open' ? 'bg-white/10 text-white shadow-sm' : 'opacity-60'"
+                                :class="posture === 'open' ? 'bg-white/10 text-white' : 'opacity-60'"
                                 @click="posture='open'; refresh()">Open</button>
                             <button class="vmp-btn vmp-btn-ghost vmp-btn-sm py-1 px-3 h-auto"
-                                :class="posture === 'paid' ? 'bg-white/10 text-white shadow-sm' : 'opacity-60'"
+                                :class="posture === 'soa' ? 'bg-white/10 text-white' : 'opacity-60'"
+                                @click="posture='soa'; refresh()">SOA</button>
+                            <button class="vmp-btn vmp-btn-ghost vmp-btn-sm py-1 px-3 h-auto"
+                                :class="posture === 'paid' ? 'bg-white/10 text-white' : 'opacity-60'"
                                 @click="posture='paid'; refresh()">Paid</button>
                         </div>
                     </div>
@@ -169,7 +175,7 @@
 
         <div class="grid xl:grid-cols-[380px_1fr_320px] gap-6 min-h-[700px]">
 
-            <section class="vmp-card flex flex-col shadow-2xl h-[calc(100vh-280px)] sticky top-4">
+            <section class="vmp-card flex flex-col h-[calc(100vh-280px)] sticky top-4">
                 <header class="vmp-card-header flex justify-between items-start shrink-0">
                     <div>
                         <div class="vmp-label mb-1 opacity-80">CASE INBOX</div>
@@ -179,7 +185,8 @@
                 </header>
 
                 <div id="case-inbox" class="flex-1 overflow-y-auto" hx-get="/partials/case-inbox.html"
-                    hx-trigger="load">
+                    hx-trigger="load"
+                    hx-include="[name='q'],[name='posture'],[name='channel']">
                     <div class="p-4 space-y-3">
                         <div class="vmp-skeleton h-20 w-full"></div>
                         <div class="vmp-skeleton h-20 w-full"></div>
@@ -210,6 +217,9 @@
                         <div class="vmp-empty-title">SELECT CASE</div>
                         <div class="vmp-empty-description max-w-sm mx-auto">
                             Choose a case from the inbox to reveal the audit chain and take action.
+                        </div>
+                        <div class="vmp-caption opacity-50 mt-3">
+                            Tip: Cmd+K to search · Tab to focus inbox · Enter to open.
                         </div>
                     </div>
 

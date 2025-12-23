@@ -6,6 +6,7 @@
       { id: 'nav-inbox', label: 'Go to Case Inbox', icon: 'Inbox', action: () => window.location.href = '/cases' },
       { id: 'nav-inv', label: 'Go to Invoices', icon: 'FileText', action: () => window.location.href = '/invoices' },
       { id: 'act-new', label: 'Create New Case', icon: 'Plus', action: () => htmx.ajax('GET', '/partials/modals/new-case', { target: '#modal-container' }) },
+      { id: 'act-audit', label: 'Open Audit Rail', icon: 'FileText', action: () => window.dispatchEvent(new CustomEvent('audit:open', { detail: { id: '', title: 'Audit Trail', entity: '' } })) },
       { id: 'act-theme', label: 'Toggle Theme', icon: 'Moon', action: () => document.documentElement.setAttribute('data-theme', document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark') }
   ],
   init() {
@@ -16,6 +17,12 @@
               if (this.open) this.$nextTick(() => this.$refs.cmdInput.focus());
           }
           if (e.key === 'Escape') this.open = false;
+      });
+      
+      // Listen for programmatic open event
+      window.addEventListener('cmdk:open', () => {
+          this.open = true;
+          this.$nextTick(() => this.$refs.cmdInput?.focus());
       });
   },
   execute(index) {

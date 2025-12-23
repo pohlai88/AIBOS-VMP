@@ -297,6 +297,29 @@
             </div>
         </header>
 
+        <div data-testid="quick-actions" class="flex flex-wrap items-center gap-2 mb-4">
+            <a href="/new-case"
+                class="inline-flex items-center gap-2 bg-white/[0.03] border border-white/10 hover:border-white/25 hover:bg-white/[0.06] rounded-full px-3 py-2 text-[11px] font-mono uppercase tracking-wider text-white/70 hover:text-white transition-all">
+                <span class="inline-flex h-1.5 w-1.5 rounded-full bg-[var(--neon-green)]"></span>
+                New Case
+            </a>
+            <a href="/case-dashboard"
+                class="inline-flex items-center gap-2 bg-white/[0.03] border border-white/10 hover:border-white/25 hover:bg-white/[0.06] rounded-full px-3 py-2 text-[11px] font-mono uppercase tracking-wider text-white/70 hover:text-white transition-all">
+                <span class="inline-flex h-1.5 w-1.5 rounded-full bg-white/25"></span>
+                Case Inbox
+            </a>
+            <a href="/invoices"
+                class="inline-flex items-center gap-2 bg-white/[0.03] border border-white/10 hover:border-white/25 hover:bg-white/[0.06] rounded-full px-3 py-2 text-[11px] font-mono uppercase tracking-wider text-white/70 hover:text-white transition-all">
+                <span class="inline-flex h-1.5 w-1.5 rounded-full bg-white/25"></span>
+                Invoices
+            </a>
+            <a href="/ops/ingest"
+                class="inline-flex items-center gap-2 bg-white/[0.03] border border-white/10 hover:border-white/25 hover:bg-white/[0.06] rounded-full px-3 py-2 text-[11px] font-mono uppercase tracking-wider text-white/70 hover:text-white transition-all">
+                <span class="inline-flex h-1.5 w-1.5 rounded-full bg-[var(--neon-amber)]"></span>
+                Bulk Ingest
+            </a>
+        </div>
+
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
 
             <a href="/case-dashboard?posture=action"

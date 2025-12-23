@@ -31,7 +31,7 @@
                 <svg width="12" height="12" class="ml-1 opacity-50" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
             </button>
             
-            <div class="vmp-dropdown-menu right-0 w-48 shadow-xl" 
+            <div class="vmp-dropdown-menu right-0 w-48" 
                  :class="{ 'show': open }" 
                  @click.outside="open = false">
                 <div class="vmp-label opacity-50 px-3 py-2 text-[10px]">FORMAT</div>
@@ -56,12 +56,16 @@
         <a href="#" 
            class="group block relative hover:bg-[var(--vmp-panel)] transition-colors duration-200"
            style="padding: var(--vmp-space-3) var(--vmp-space-4);"
+           data-case-row
+           data-case-id="{{ c.id }}"
+           data-case-title="{{ c.subject or 'Untitled Case' }}"
+           data-case-entity="{{ c.vmp_companies.name if c.vmp_companies else 'Unknown Entity' }}"
            hx-get="/partials/case-detail.html?case_id={{ c.id }}" 
            hx-target="#case-detail-panel" 
            hx-swap="innerHTML"
            hx-indicator="#detail-loading">
             
-            <div class="absolute left-0 top-0 bottom-0 w-[3px] bg-[var(--vmp-brand)] opacity-0 group-focus:opacity-100 transition-opacity"></div>
+            <div class="absolute left-0 top-0 bottom-0 w-[3px] bg-[var(--vmp-brand)] opacity-0 group-focus:opacity-100 group-focus-within:opacity-100 transition-opacity"></div>
 
             <div class="flex items-start gap-3">
                 
@@ -112,9 +116,25 @@
                             {{ (c.case_type or 'General') }}
                          </span>
                          
-                         {% if st == 'waiting_supplier' %}
-                            <span class="vmp-badge vmp-badge-danger text-[9px] py-0 px-1.5">ACTION</span>
-                         {% endif %}
+                         <div class="flex items-center gap-1.5">
+                             {% if c.sla_status == 'overdue' %}
+                                <span class="vmp-badge vmp-badge-danger text-[9px] py-0 px-1.5" title="SLA Overdue" aria-label="SLA Overdue">
+                                    ⚠️ OVERDUE
+                                </span>
+                             {% elif c.sla_status == 'urgent' %}
+                                <span class="vmp-badge text-[9px] py-0 px-1.5" style="background: var(--vmp-warn); color: var(--vmp-bg);" title="SLA Due in {{ c.hours_remaining }}h" aria-label="SLA Due in {{ c.hours_remaining }} hours">
+                                    ⏰ {{ c.hours_remaining }}h
+                                </span>
+                             {% elif c.sla_status == 'warning' %}
+                                <span class="vmp-badge text-[9px] py-0 px-1.5 opacity-70" style="background: var(--vmp-warn); color: var(--vmp-bg);" title="SLA Due in {{ c.hours_remaining }}h" aria-label="SLA Due in {{ c.hours_remaining }} hours">
+                                    {{ c.hours_remaining }}h
+                                </span>
+                             {% endif %}
+                             
+                             {% if st == 'waiting_supplier' %}
+                                <span class="vmp-badge vmp-badge-danger text-[9px] py-0 px-1.5">ACTION</span>
+                             {% endif %}
+                         </div>
                     </div>
                 </div>
             </div>

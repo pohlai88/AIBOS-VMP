@@ -917,11 +917,14 @@ html[data-surface="vmp"] {
    * - .vmp-btn/.vmp-action-button: Base button
    *   - .vmp-btn-ghost: Transparent background
    *   - .vmp-btn-brand: Brand color (electric cyan)
-   *   - .vmp-btn-primary: Primary action (green/ok)
+   *   - .vmp-btn-primary/.vmp-action-button-primary: Primary action (green/ok) - Wireframe: Primary
+   *   - .vmp-btn-secondary/.vmp-action-button-secondary: Secondary action - Wireframe: Secondary
    *   - .vmp-btn-danger: Destructive action (red)
    *   - .vmp-btn-outline: Outlined style
    *   - .vmp-btn-wide: Full width
-   *   - .vmp-btn-loading: Loading state with spinner
+   *   - .vmp-btn-loading/.vmp-action-button-loading: Loading state with spinner
+   *   - .vmp-btn-success/.vmp-action-button-success: Success state (after action completes)
+   *   - .vmp-btn-error/.vmp-action-button-error: Error state (after action fails)
    * 
    * STATES:
    * - :hover: Enhanced background and border
@@ -929,9 +932,19 @@ html[data-surface="vmp"] {
    * - :disabled, [disabled]: Reduced opacity, no pointer events
    * - :focus-visible: Focus outline
    * 
+   * WIREFRAME REQUIREMENTS:
+   * - Touch Target: ≥44px height (enforced via mobile media query)
+   * - Mobile: Full-width on small screens (<768px)
+   * - Feedback: Loading, success, error states
+   * 
+   * WIREFRAME PATTERN:
+   * <button class="vmp-action-button vmp-action-button-primary">Open Case</button>
+   * <button class="vmp-action-button vmp-action-button-secondary">Upload Evidence</button>
+   * 
    * IDE AUTocomplete:
    * - Type ".vmp-btn" for base button
-   * - Type ".vmp-btn-primary" for primary action
+   * - Type ".vmp-btn-primary" or ".vmp-action-button-primary" for primary action
+   * - Type ".vmp-btn-secondary" or ".vmp-action-button-secondary" for secondary action
    * - Type ".vmp-btn-danger" for destructive action
    * - Type ".vmp-btn-ghost" for minimal style
    */
@@ -1041,6 +1054,15 @@ html[data-surface="vmp"] {
     background: var(--vmp-ok);
     border-color: var(--vmp-ok);
     color: hsl(0, 0%, 2%);
+    min-height: 44px; /* Wireframe: Touch target requirement */
+  }
+
+  & .vmp-btn-secondary,
+  & .vmp-action-button-secondary {
+    background: hsla(0, 0%, 100%, 0.05);
+    border-color: var(--vmp-border2);
+    color: var(--vmp-text);
+    min-height: 44px; /* Wireframe: Touch target requirement */
   }
 
   & .vmp-btn-wide {
@@ -1079,6 +1101,32 @@ html[data-surface="vmp"] {
       border-top-color: transparent;
       border-radius: 50%;
       animation: vmp-spin 0.6s linear infinite;
+    }
+  }
+
+  /* Wireframe: Success state (after action completes) */
+  & .vmp-btn-success,
+  & .vmp-action-button-success {
+    background: var(--vmp-ok);
+    border-color: var(--vmp-ok);
+    color: hsl(0, 0%, 2%);
+    
+    &::before {
+      content: "✓";
+      margin-right: var(--vmp-space-1);
+    }
+  }
+
+  /* Wireframe: Error state (after action fails) */
+  & .vmp-btn-error,
+  & .vmp-action-button-error {
+    background: var(--vmp-danger);
+    border-color: var(--vmp-danger);
+    color: hsl(0, 0%, 2%);
+    
+    &::before {
+      content: "✕";
+      margin-right: var(--vmp-space-1);
     }
   }
 
@@ -1153,21 +1201,30 @@ html[data-surface="vmp"] {
    * 
    * COMPONENT STRUCTURE:
    * - .vmp-pill: Base pill component (rounded, inline)
-   *   - .vmp-pill-paid: Paid status (green)
-   *   - .vmp-pill-pending: Pending status (yellow)
-   *   - .vmp-pill-disputed: Disputed status (red)
-   *   - .vmp-pill-blocked: Blocked status (red, darker)
-   *   - .vmp-pill-matched: Matched status (green)
+   *   - .vmp-pill-paid: Paid status (green) - Wireframe: [PAID]
+   *   - .vmp-pill-pending: Pending status (yellow) - Wireframe: [PENDING]
+   *   - .vmp-pill-disputed: Disputed status (red) - Wireframe: [DISPUTED]
+   *   - .vmp-pill-blocked: Blocked status (red, darker) - Wireframe: [BLOCKED]
+   *   - .vmp-pill-matched: Matched status (green) - Wireframe: [MATCHED]
    *   - .vmp-pill-ready: Ready status (green)
    *   - .vmp-pill-warn: Warning status (yellow)
    * 
    * USAGE: Status indicators for invoices, payments, cases
    * SCOPE: Foundation Layer - Data presentation
+   * ACCESSIBILITY: Always include role="status" and aria-label
+   * MOBILE: Full-width on small screens (<640px), inline on desktop
    * 
    * IDE AUTocomplete:
    * - Type ".vmp-pill" for base pill
    * - Type ".vmp-pill-paid" for paid status
    * - Type ".vmp-pill-pending" for pending status
+   * 
+   * WIREFRAME PATTERN:
+   * <span class="vmp-pill vmp-pill-paid" role="status" aria-label="Status: Paid">PAID</span>
+   * <span class="vmp-pill vmp-pill-matched" role="status" aria-label="Status: Matched">MATCHED</span>
+   * <span class="vmp-pill vmp-pill-pending" role="status" aria-label="Status: Pending">PENDING</span>
+   * <span class="vmp-pill vmp-pill-disputed" role="status" aria-label="Status: Disputed">DISPUTED</span>
+   * <span class="vmp-pill vmp-pill-blocked" role="status" aria-label="Status: Blocked">BLOCKED</span>
    */
   
   & .vmp-pill {
@@ -2867,6 +2924,7 @@ video {
   button,
   a.vmp-btn,
   .vmp-btn,
+  .vmp-action-button,
   input[type="button"],
   input[type="submit"],
   .vmp-navigation-link,
@@ -2877,8 +2935,16 @@ video {
   }
 
   /* Increase padding for better touch targets */
-  .vmp-btn {
+  .vmp-btn,
+  .vmp-action-button {
     padding: var(--vmp-space-3) var(--vmp-space-4);
+  }
+
+  /* Wireframe: Full-width on mobile for action buttons */
+  .vmp-action-button,
+  .vmp-action-button-primary,
+  .vmp-action-button-secondary {
+    width: 100%;
   }
 
   /* Ensure form inputs are easily tappable */

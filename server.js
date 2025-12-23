@@ -1580,8 +1580,37 @@ app.get('/partials/case-inbox.html', async (req, res) => {
 
     const cases = await vmpAdapter.getInbox(vendorId);
 
+    // Calculate SLA status for each case
+    const now = new Date();
+    const casesWithSLA = (cases || []).map(c => {
+      if (!c.sla_due_at) {
+        return { ...c, hours_remaining: null, is_overdue: false, sla_status: null };
+      }
+      
+      const dueAt = new Date(c.sla_due_at);
+      const hoursRemaining = Math.round((dueAt.getTime() - now.getTime()) / (1000 * 60 * 60));
+      const isOverdue = hoursRemaining < 0;
+      
+      // Determine SLA status: 'overdue', 'urgent' (<24h), 'warning' (<48h), 'ok'
+      let slaStatus = 'ok';
+      if (isOverdue) {
+        slaStatus = 'overdue';
+      } else if (hoursRemaining <= 24) {
+        slaStatus = 'urgent';
+      } else if (hoursRemaining <= 48) {
+        slaStatus = 'warning';
+      }
+      
+      return {
+        ...c,
+        hours_remaining: hoursRemaining,
+        is_overdue: isOverdue,
+        sla_status: slaStatus
+      };
+    });
+
     // 3. Render response
-    res.render('partials/case_inbox.html', { cases });
+    res.render('partials/case_inbox.html', { cases: casesWithSLA });
   } catch (error) {
     handlePartialError(error, req, res, 'partials/case_inbox.html', { cases: [] });
   }
@@ -4168,6 +4197,156 @@ app.get('/partials/decision-log.html', async (req, res) => {
     handlePartialError(error, req, res, 'partials/decision_log.html', {
       caseId: req.query.case_id || null,
       decisions: []
+    });
+  }
+});
+
+// GET: Timeline Partial (Audit Rail)
+app.get('/partials/timeline.html', async (req, res) => {
+  try {
+    // 1. Authentication
+    if (!requireAuth(req, res)) return;
+
+    // 2. Input validation (case_id is optional for partials - can render empty state)
+    const { case_id } = req.query;
+    const defaultData = { caseId: null, timelineItems: [] };
+
+    if (!case_id) {
+      return res.render('partials/timeline.html', defaultData);
+    }
+
+    // Validate UUID if provided
+    if (!validateUUIDParam(getStringParam(case_id), res, 'partials/timeline.html')) return;
+
+    // 3. Business logic - Get case messages and activity
+    let timelineItems = [];
+    try {
+      const vendorId = req.user.vendorId || req.user.vendor_id;
+      if (!vendorId) {
+        return res.render('partials/timeline.html', defaultData);
+      }
+
+      // Get case messages for timeline
+      const messages = await vmpAdapter.getCaseMessages(case_id, vendorId);
+      
+      // Transform messages into timeline items
+      timelineItems = (messages || []).map(msg => ({
+        date: msg.created_at,
+        title: msg.message_type === 'internal' ? 'Internal Note' : 'Message',
+        description: msg.content,
+        status: msg.message_type === 'internal' ? 'internal' : 'default',
+        meta: {
+          from: msg.sender_name || 'System',
+          type: msg.message_type || 'message'
+        }
+      }));
+
+    } catch (adapterError) {
+      return handlePartialError(adapterError, req, res, 'partials/timeline.html', {
+        caseId: case_id,
+        timelineItems: []
+      });
+    }
+
+    // 4. Render response
+    res.render('partials/timeline.html', {
+      caseId: case_id,
+      timelineItems,
+      error: null
+    });
+  } catch (error) {
+    handlePartialError(error, req, res, 'partials/timeline.html', {
+      caseId: req.query.case_id || null,
+      timelineItems: []
+    });
+  }
+});
+
+// GET: Truth Panel Partial (Audit Rail)
+app.get('/partials/truth-panel.html', async (req, res) => {
+  try {
+    // 1. Authentication
+    if (!requireAuth(req, res)) return;
+
+    // 2. Input validation (case_id is optional for partials - can render empty state)
+    const { case_id } = req.query;
+    const defaultData = { 
+      caseId: null, 
+      invoice: null, 
+      purchaseOrder: null, 
+      grn: null, 
+      payment: null,
+      linkedCases: [],
+      linkedPayments: [],
+      evidenceCount: 0
+    };
+
+    if (!case_id) {
+      return res.render('partials/truth_panel.html', defaultData);
+    }
+
+    // Validate UUID if provided
+    if (!validateUUIDParam(getStringParam(case_id), res, 'partials/truth_panel.html')) return;
+
+    // 3. Business logic - Get linked transactions
+    let invoice = null;
+    let purchaseOrder = null;
+    let grn = null;
+    let payment = null;
+    let linkedCases = [];
+    let linkedPayments = [];
+    let evidenceCount = 0;
+
+    try {
+      const vendorId = req.user.vendorId || req.user.vendor_id;
+      if (!vendorId) {
+        return res.render('partials/truth_panel.html', defaultData);
+      }
+
+      // Get case detail to find linked invoice_id
+      const caseDetail = await vmpAdapter.getCaseDetail(case_id, vendorId);
+      
+      if (caseDetail && caseDetail.invoice_id) {
+        // Get invoice
+        invoice = await vmpAdapter.getInvoice(caseDetail.invoice_id, vendorId);
+        
+        // Get linked cases for this invoice
+        if (invoice) {
+          const allCases = await vmpAdapter.getInbox(vendorId);
+          linkedCases = (allCases || []).filter(c => c.invoice_id === invoice.id);
+        }
+      }
+
+      // Get evidence count
+      const evidence = await vmpAdapter.getCaseEvidence(case_id, vendorId);
+      evidenceCount = (evidence || []).length;
+
+    } catch (adapterError) {
+      return handlePartialError(adapterError, req, res, 'partials/truth_panel.html', defaultData);
+    }
+
+    // 4. Render response
+    res.render('partials/truth_panel.html', {
+      caseId: case_id,
+      invoice,
+      purchaseOrder,
+      grn,
+      payment,
+      linkedCases,
+      linkedPayments,
+      evidenceCount,
+      error: null
+    });
+  } catch (error) {
+    handlePartialError(error, req, res, 'partials/truth_panel.html', {
+      caseId: req.query.case_id || null,
+      invoice: null,
+      purchaseOrder: null,
+      grn: null,
+      payment: null,
+      linkedCases: [],
+      linkedPayments: [],
+      evidenceCount: 0
     });
   }
 });

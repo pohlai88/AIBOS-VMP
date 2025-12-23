@@ -236,19 +236,6 @@
       pointer-events: none;
     }
 
-    .vmp-kernel-spine::after {
-      content: "";
-      position: absolute;
-      left: 50%;
-      top: 50%;
-      width: 8px;
-      height: 8px;
-      transform: translate(-50%, -50%);
-      border-radius: 999px;
-      background: var(--accent);
-      border: 1px solid rgba(255, 255, 255, .14);
-      opacity: .75;
-    }
 
     /* Mirror Control */
     .sim-tabs {
@@ -428,26 +415,8 @@
       padding: 8px 0;
     }
 
-    .nav-links a::after {
-      content: "";
-      position: absolute;
-      left: 0;
-      right: 0;
-      bottom: 3px;
-      height: 1px;
-      background: rgba(255, 255, 255, .16);
-      opacity: 0;
-      transform: translateY(2px);
-      transition: .18s ease;
-    }
-
     .nav-links a:hover {
       color: white;
-    }
-
-    .nav-links a:hover::after {
-      opacity: 1;
-      transform: translateY(0px);
     }
 
     /* Nav Actions Container */

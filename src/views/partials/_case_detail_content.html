@@ -86,7 +86,8 @@
         </div>
     </header>
 
-    <div class="flex-1 overflow-hidden grid lg:grid-cols-[1fr_400px]">
+    <div x-data="{ toolbeltOpen: true, toolbeltPanel: 'evidence' }" class="flex-1 overflow-hidden grid gap-8" :class="toolbeltOpen ? 'lg:grid-cols-[1fr_400px]' : 'lg:grid-cols-[1fr_92px]'">
+        <!-- Left Column: Thread + Truth -->
         <div class="flex flex-col border-r h-full relative" style="border-color: var(--vmp-border);">
             <div id="case-thread-container" 
                  hx-get="/partials/case-thread?case_id={{ caseId }}" 
@@ -100,11 +101,110 @@
             </div>
         </div>
 
-        <div class="flex flex-col h-full overflow-y-auto" style="background: var(--vmp-panel);">
-            <div id="case-checklist-container" hx-get="/partials/case-checklist?case_id={{ caseId }}" hx-trigger="load" hx-target="this"></div>
-            <div id="case-evidence-container" hx-get="/partials/case-evidence?case_id={{ caseId }}" hx-trigger="load" hx-target="this" class="flex-1"></div>
-            <div id="case-activity-container" hx-get="/partials/case-activity?case_id={{ caseId }}" hx-trigger="load" hx-target="this"></div>
-            <div id="case-escalation-container" hx-get="/partials/escalation?case_id={{ caseId }}" hx-trigger="load" hx-target="this"></div>
+        <!-- Right Column: Protocol Toolbelt -->
+        <div class="rounded-3xl border vmp-border-color bg-[color:var(--vmp-panel)]" :class="toolbeltOpen ? 'p-5' : 'p-3'">
+            <!-- Toolbelt Header (sticky) -->
+            <div class="sticky top-4 z-10 rounded-2xl border vmp-border-color bg-[color:rgba(6,6,7,.55)] backdrop-blur-md" :class="toolbeltOpen ? 'p-4' : 'p-3'">
+                <div class="flex items-start justify-between gap-3">
+                    <div class="min-w-0">
+                        <div class="vmp-label-kicker">Protocol Toolbelt</div>
+                        <div class="mt-1 text-xs vmp-muted" x-show="toolbeltOpen" x-transition.opacity.duration.150ms>
+                            Checklist • Evidence • Activity • Escalation
+                        </div>
+                    </div>
+
+                    <button
+                        type="button"
+                        class="vmp-btn vmp-btn-ghost"
+                        @click="toolbeltOpen = !toolbeltOpen"
+                        :aria-expanded="toolbeltOpen ? 'true' : 'false'"
+                        aria-label="Toggle toolbelt"
+                        title="Collapse toolbelt"
+                    >
+                        <span x-show="toolbeltOpen" aria-hidden="true">Collapse</span>
+                        <span x-show="!toolbeltOpen" aria-hidden="true">Expand</span>
+                    </button>
+                </div>
+
+                <!-- Tabs -->
+                <div class="mt-4 flex flex-wrap gap-2" role="tablist" aria-label="Protocol toolbelt tabs">
+                    <button type="button"
+                        class="vmp-pill cursor-pointer select-none"
+                        :class="toolbeltPanel === 'checklist' ? 'vmp-pill-ready' : ''"
+                        @click="toolbeltPanel = 'checklist'"
+                        :aria-selected="toolbeltPanel === 'checklist' ? 'true' : 'false'"
+                        role="tab"
+                    >
+                        <span x-show="toolbeltOpen">CHECKLIST</span>
+                        <span x-show="!toolbeltOpen" aria-hidden="true">CL</span>
+                    </button>
+
+                    <button type="button"
+                        class="vmp-pill cursor-pointer select-none"
+                        :class="toolbeltPanel === 'evidence' ? 'vmp-pill-ready' : ''"
+                        @click="toolbeltPanel = 'evidence'"
+                        :aria-selected="toolbeltPanel === 'evidence' ? 'true' : 'false'"
+                        role="tab"
+                    >
+                        <span x-show="toolbeltOpen">EVIDENCE</span>
+                        <span x-show="!toolbeltOpen" aria-hidden="true">EV</span>
+                    </button>
+
+                    <button type="button"
+                        class="vmp-pill cursor-pointer select-none"
+                        :class="toolbeltPanel === 'activity' ? 'vmp-pill-ready' : ''"
+                        @click="toolbeltPanel = 'activity'"
+                        :aria-selected="toolbeltPanel === 'activity' ? 'true' : 'false'"
+                        role="tab"
+                    >
+                        <span x-show="toolbeltOpen">ACTIVITY</span>
+                        <span x-show="!toolbeltOpen" aria-hidden="true">AC</span>
+                    </button>
+
+                    <button type="button"
+                        class="vmp-pill cursor-pointer select-none"
+                        :class="toolbeltPanel === 'escalation' ? 'vmp-pill-warn' : ''"
+                        @click="toolbeltPanel = 'escalation'"
+                        :aria-selected="toolbeltPanel === 'escalation' ? 'true' : 'false'"
+                        role="tab"
+                    >
+                        <span x-show="toolbeltOpen">ESCALATE</span>
+                        <span x-show="!toolbeltOpen" aria-hidden="true">ES</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Panels -->
+            <div class="mt-4" x-show="toolbeltOpen" x-transition.opacity.duration.150ms>
+                <div x-show="toolbeltPanel === 'checklist'" x-cloak>
+                    <div class="border-b vmp-border-color pb-5" hx-get="/partials/case-checklist.html?case_id={{ caseId }}" hx-trigger="load">
+                        Loading checklist...
+                    </div>
+                </div>
+
+                <div x-show="toolbeltPanel === 'evidence'" x-cloak>
+                    <div class="border-b vmp-border-color pb-5" hx-get="/partials/case-evidence.html?case_id={{ caseId }}" hx-trigger="load">
+                        Loading evidence...
+                    </div>
+                </div>
+
+                <div x-show="toolbeltPanel === 'activity'" x-cloak>
+                    <div class="border-b vmp-border-color pb-5" hx-get="/partials/case-activity.html?case_id={{ caseId }}" hx-trigger="load">
+                        Loading activity...
+                    </div>
+                </div>
+
+                <div x-show="toolbeltPanel === 'escalation'" x-cloak>
+                    <div hx-get="/partials/escalation.html?case_id={{ caseId }}" hx-trigger="load">
+                        Loading escalation...
+                    </div>
+                </div>
+            </div>
+
+            <!-- Collapsed hint -->
+            <div class="mt-4 text-xs vmp-muted text-center" x-show="!toolbeltOpen" x-transition.opacity.duration.150ms>
+                Click a tab
+            </div>
         </div>
     </div>
 </div>

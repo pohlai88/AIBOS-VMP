@@ -28,7 +28,7 @@
                     {% else %}
                         {% set status_pill = 'vmp-pill-pending' %}
                     {% endif %}
-                    <span class="vmp-pill {{ status_pill }}">
+                    <span class="vmp-pill {{ status_pill }}" role="status" aria-label="Case status: {{ (case.status or 'OPEN') | upper | replace('_', ' ') }}">
                         {{ (case.status or 'OPEN') | upper | replace('_', ' ') }}
                     </span>
 

@@ -1,77 +1,121 @@
-<!-- Truth Panel Partial (Sprint 8) -->
+<!-- Truth Panel Partial (Sprint 8) - Wireframe Pattern -->
 <div class="vmp-truth-panel">
-    <div class="vmp-h6 mb-4">Transaction Context</div>
-    
     {% if invoice %}
     <div class="vmp-truth-item">
-        <div class="vmp-truth-item-header">
-            <div class="vmp-truth-item-title">Invoice</div>
-            <span class="vmp-truth-item-type">INV</span>
+        <div class="vmp-label-kicker">INVOICE</div>
+        <div class="vmp-h3 mb-3">
+            <a href="/invoices/{{ invoice.id }}" class="hover:opacity-80 transition-opacity">
+                {{ invoice.invoice_num or 'INV-' + invoice.id|string|truncate(8, True, '') }}
+            </a>
         </div>
-        <div class="vmp-truth-item-body">
-            <div class="vmp-body-small">
-                <a href="/invoices/{{ invoice.id }}" class="vmp-truth-item-link">{{ invoice.invoice_num or invoice.id }}</a>
+        <div class="vmp-body-small space-y-2">
+            {% if invoice.status %}
+            <div class="flex items-center gap-2">
+                <span class="vmp-muted">Status:</span>
+                <span class="vmp-pill vmp-pill-{{ invoice.status|lower }}" role="status" aria-label="Invoice status: {{ invoice.status|upper }}">{{ invoice.status|upper }}</span>
             </div>
-            <div class="vmp-truth-item-meta">
-                {% if invoice.amount %}<span>Amount: {{ invoice.currency_code or 'USD' }} {{ invoice.amount.toFixed(2) }}</span>{% endif %}
-                {% if invoice.invoice_date %}<span>Date: {{ invoice.invoice_date }}</span>{% endif %}
-                {% if invoice.status %}<span class="vmp-pill vmp-pill-{{ invoice.status }}">{{ invoice.status }}</span>{% endif %}
+            {% endif %}
+            {% if invoice.amount %}
+            <div class="flex items-center gap-2">
+                <span class="vmp-muted">Amount:</span>
+                <span class="vmp-body">{{ invoice.currency_code or 'USD' }} {{ "%.2f"|format(invoice.amount) }}</span>
             </div>
+            {% endif %}
+            {% if linkedCases %}
+            <div class="flex items-center gap-2 flex-wrap">
+                <span class="vmp-muted">Linked:</span>
+                {% for case in linkedCases %}
+                <a href="/cases/{{ case.id }}" class="vmp-code-small text-[var(--vmp-brand)] hover:opacity-80">Case #{{ case.id|string|truncate(8, True, '') }}</a>
+                {% endfor %}
+            </div>
+            {% endif %}
+            {% if linkedPayments %}
+            <div class="flex items-center gap-2 flex-wrap">
+                <span class="vmp-muted">Payments:</span>
+                {% for payment in linkedPayments %}
+                <a href="/payments/{{ payment.id }}" class="vmp-code-small text-[var(--vmp-brand)] hover:opacity-80">Payment #{{ payment.id|string|truncate(8, True, '') }}</a>
+                {% endfor %}
+            </div>
+            {% endif %}
+            {% if evidenceCount is defined %}
+            <div class="flex items-center gap-2">
+                <span class="vmp-muted">Evidence:</span>
+                <span class="vmp-body">{{ evidenceCount or 0 }} file{{ 's' if (evidenceCount or 0) != 1 else '' }}</span>
+            </div>
+            {% endif %}
         </div>
     </div>
     {% endif %}
 
     {% if purchaseOrder %}
     <div class="vmp-truth-item">
-        <div class="vmp-truth-item-header">
-            <div class="vmp-truth-item-title">Purchase Order</div>
-            <span class="vmp-truth-item-type">PO</span>
-        </div>
-        <div class="vmp-truth-item-body">
-            <div class="vmp-body-small">
-                <span>{{ purchaseOrder.po_number or purchaseOrder.id }}</span>
+        <div class="vmp-label-kicker">PURCHASE ORDER</div>
+        <div class="vmp-h3 mb-3">{{ purchaseOrder.po_number or 'PO-' + purchaseOrder.id|string|truncate(8, True, '') }}</div>
+        <div class="vmp-body-small space-y-2">
+            {% if purchaseOrder.amount %}
+            <div class="flex items-center gap-2">
+                <span class="vmp-muted">Amount:</span>
+                <span class="vmp-body">{{ purchaseOrder.currency_code or 'USD' }} {{ "%.2f"|format(purchaseOrder.amount) }}</span>
             </div>
-            <div class="vmp-truth-item-meta">
-                {% if purchaseOrder.amount %}<span>Amount: {{ purchaseOrder.currency_code or 'USD' }} {{ purchaseOrder.amount.toFixed(2) }}</span>{% endif %}
-                {% if purchaseOrder.po_date %}<span>Date: {{ purchaseOrder.po_date }}</span>{% endif %}
+            {% endif %}
+            {% if purchaseOrder.po_date %}
+            <div class="flex items-center gap-2">
+                <span class="vmp-muted">Date:</span>
+                <span class="vmp-body">{{ purchaseOrder.po_date }}</span>
             </div>
+            {% endif %}
         </div>
     </div>
     {% endif %}
 
     {% if grn %}
     <div class="vmp-truth-item">
-        <div class="vmp-truth-item-header">
-            <div class="vmp-truth-item-title">Goods Received Note</div>
-            <span class="vmp-truth-item-type">GRN</span>
-        </div>
-        <div class="vmp-truth-item-body">
-            <div class="vmp-body-small">
-                <span>{{ grn.grn_number or grn.id }}</span>
+        <div class="vmp-label-kicker">GOODS RECEIVED NOTE</div>
+        <div class="vmp-h3 mb-3">{{ grn.grn_number or 'GRN-' + grn.id|string|truncate(8, True, '') }}</div>
+        <div class="vmp-body-small space-y-2">
+            {% if grn.received_date %}
+            <div class="flex items-center gap-2">
+                <span class="vmp-muted">Received:</span>
+                <span class="vmp-body">{{ grn.received_date }}</span>
             </div>
-            <div class="vmp-truth-item-meta">
-                {% if grn.received_date %}<span>Received: {{ grn.received_date }}</span>{% endif %}
-                {% if grn.status %}<span class="vmp-pill vmp-pill-{{ grn.status }}">{{ grn.status }}</span>{% endif %}
+            {% endif %}
+            {% if grn.status %}
+            <div class="flex items-center gap-2">
+                <span class="vmp-muted">Status:</span>
+                <span class="vmp-pill vmp-pill-{{ grn.status|lower }}" role="status" aria-label="GRN status: {{ grn.status|upper }}">{{ grn.status|upper }}</span>
             </div>
+            {% endif %}
         </div>
     </div>
     {% endif %}
 
     {% if payment %}
     <div class="vmp-truth-item">
-        <div class="vmp-truth-item-header">
-            <div class="vmp-truth-item-title">Payment</div>
-            <span class="vmp-truth-item-type">PAY</span>
+        <div class="vmp-label-kicker">PAYMENT</div>
+        <div class="vmp-h3 mb-3">
+            <a href="/payments/{{ payment.id }}" class="hover:opacity-80 transition-opacity">
+                {{ payment.payment_ref or 'PAY-' + payment.id|string|truncate(8, True, '') }}
+            </a>
         </div>
-        <div class="vmp-truth-item-body">
-            <div class="vmp-body-small">
-                <a href="/payments/{{ payment.id }}" class="vmp-truth-item-link">{{ payment.payment_ref or payment.id }}</a>
+        <div class="vmp-body-small space-y-2">
+            {% if payment.status %}
+            <div class="flex items-center gap-2">
+                <span class="vmp-muted">Status:</span>
+                <span class="vmp-pill vmp-pill-{{ payment.status|lower }}" role="status" aria-label="Payment status: {{ payment.status|upper }}">{{ payment.status|upper }}</span>
             </div>
-            <div class="vmp-truth-item-meta">
-                {% if payment.amount %}<span>Amount: {{ payment.currency_code or 'USD' }} {{ payment.amount.toFixed(2) }}</span>{% endif %}
-                {% if payment.payment_date %}<span>Date: {{ payment.payment_date }}</span>{% endif %}
-                {% if payment.status %}<span class="vmp-pill vmp-pill-{{ payment.status }}">{{ payment.status }}</span>{% endif %}
+            {% endif %}
+            {% if payment.amount %}
+            <div class="flex items-center gap-2">
+                <span class="vmp-muted">Amount:</span>
+                <span class="vmp-body">{{ payment.currency_code or 'USD' }} {{ "%.2f"|format(payment.amount) }}</span>
             </div>
+            {% endif %}
+            {% if payment.payment_date %}
+            <div class="flex items-center gap-2">
+                <span class="vmp-muted">Date:</span>
+                <span class="vmp-body">{{ payment.payment_date }}</span>
+            </div>
+            {% endif %}
         </div>
     </div>
     {% endif %}
