@@ -4,7 +4,7 @@
  */
 
 import PDFDocument from 'pdfkit';
-import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
 
 /**
  * Generate PDF from data
@@ -107,9 +107,9 @@ export async function generatePDF(data, options = {}) {
  * Generate Excel from data
  * @param {Array} data - Array of objects to export
  * @param {Object} options - Export options
- * @returns {Buffer} Excel buffer
+ * @returns {Promise<Buffer>} Excel buffer
  */
-export function generateExcel(data, options = {}) {
+export async function generateExcel(data, options = {}) {
     const {
         title = 'Export Report',
         fields = null, // If null, export all fields
@@ -117,45 +117,51 @@ export function generateExcel(data, options = {}) {
     } = options;
 
     try {
-        // Prepare worksheet data
-        if (data.length === 0) {
-            // Empty sheet with header
-            const allFields = fields || [];
-            const worksheet = XLSX.utils.aoa_to_sheet([allFields.map(f => formatFieldLabel(f))]);
-            const workbook = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
-            return XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+        // Create workbook
+        const workbook = new ExcelJS.Workbook();
+        const worksheet = workbook.addWorksheet(sheetName);
+
+        // Prepare fields
+        const allFields = fields || (data.length > 0 ? Object.keys(data[0]) : []);
+
+        // Add header row
+        if (allFields.length > 0) {
+            const headerRow = allFields.map(field => formatFieldLabel(field));
+            worksheet.addRow(headerRow);
+
+            // Style header row
+            const headerRowObj = worksheet.getRow(1);
+            headerRowObj.font = { bold: true };
+            headerRowObj.fill = {
+                type: 'pattern',
+                pattern: 'solid',
+                fgColor: { argb: 'FFE0E0E0' }
+            };
         }
 
-        const allFields = fields || Object.keys(data[0]);
-
-        // Create worksheet data
-        const worksheetData = [
-            // Header row
-            allFields.map(field => formatFieldLabel(field)),
-            // Data rows
-            ...data.map(row => allFields.map(field => formatFieldValue(row[field])))
-        ];
-
-        const worksheet = XLSX.utils.aoa_to_sheet(worksheetData);
+        // Add data rows
+        if (data.length > 0) {
+            data.forEach(row => {
+                const rowData = allFields.map(field => formatFieldValue(row[field]));
+                worksheet.addRow(rowData);
+            });
+        }
 
         // Auto-size columns
-        const colWidths = allFields.map((field, colIndex) => {
+        worksheet.columns = allFields.map((field) => {
             let maxLength = formatFieldLabel(field).length;
-            data.forEach(row => {
-                const value = String(formatFieldValue(row[field]) || '');
-                if (value.length > maxLength) maxLength = value.length;
-            });
-            return { wch: Math.min(maxLength + 2, 50) }; // Cap at 50 characters
+            if (data.length > 0) {
+                data.forEach(row => {
+                    const value = String(formatFieldValue(row[field]) || '');
+                    if (value.length > maxLength) maxLength = value.length;
+                });
+            }
+            return { width: Math.min(maxLength + 2, 50) }; // Cap at 50 characters
         });
-        worksheet['!cols'] = colWidths;
-
-        // Create workbook
-        const workbook = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
 
         // Generate buffer
-        return XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+        const buffer = await workbook.xlsx.writeBuffer();
+        return Buffer.from(buffer);
     } catch (error) {
         throw new Error(`Failed to generate Excel: ${error.message}`);
     }

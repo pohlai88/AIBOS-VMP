@@ -1,49 +1,46 @@
 {% extends "layout.html" %}
-{% block title %}Case Queue — NexusCanon VMP{% endblock %}
+
+{% block title %}Operations Queue — NexusCanon VMP{% endblock %}
 
 {% block content %}
-<div class="h-full overflow-y-auto">
-    <div class="flex h-full">
-        <!-- Left Sidebar: Org Tree -->
-        <aside class="w-64 border-r vmp-border-color vmp-bg-panel shrink-0 overflow-y-auto">
-            <div id="org-tree-container"
-                 hx-get="/partials/org-tree-sidebar.html?scope_type={{ scopeType }}&scope_id={{ scopeId }}"
-                 hx-trigger="load"
-                 hx-target="this"
-                 hx-swap="innerHTML">
-                <div class="flex items-center justify-center h-64">
-                    <div class="vmp-label-kicker animate-pulse opacity-60">Loading org tree...</div>
-                </div>
+<div class="h-full flex flex-col">
+    <header class="vmp-container py-6 shrink-0 border-b" style="border-color: var(--vmp-border);">
+        <div class="flex items-center justify-between">
+            <div>
+                <h1 class="vmp-h2 leading-none mb-1">Case Operations</h1>
+                <p class="vmp-body-small opacity-60">Manager triage and high-volume processing queue.</p>
             </div>
-        </aside>
+            <div class="flex items-center gap-3">
+                <button class="vmp-btn vmp-btn-ghost vmp-btn-sm" title="Refresh Data"
+                        hx-get="/partials/ops-case-queue.html" 
+                        hx-target="#case-queue-container"
+                        hx-indicator="#queue-loading">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                </button>
+                <a href="/ops/cases/new" class="vmp-btn vmp-btn-primary vmp-btn-sm">
+                    Create Case
+                </a>
+            </div>
+        </div>
+    </header>
 
-        <!-- Main Content Area -->
-        <main class="flex-1 overflow-y-auto">
-            <div class="vmp-container max-w-7xl mx-auto p-6">
-                <header class="mb-6">
-                    <h1 class="vmp-h1 mb-2">Case Queue</h1>
-                    <p class="vmp-body vmp-muted">
-                        {% if scopeType == 'group' %}
-                        Director View: All cases in group
-                        {% else %}
-                        Manager View: Company-specific cases
-                        {% endif %}
-                    </p>
-                </header>
-
-                <!-- Case Queue Content -->
-                <div id="case-queue-container"
-                     hx-get="/partials/ops-case-queue.html?scope_type={{ scopeType }}&scope_id={{ scopeId }}"
-                     hx-trigger="load"
-                     hx-target="this"
-                     hx-swap="innerHTML">
-                    <div class="flex items-center justify-center h-64">
-                        <div class="vmp-label-kicker animate-pulse opacity-60">Loading case queue...</div>
+    <main class="flex-1 overflow-hidden relative bg-[var(--vmp-background-secondary)]">
+        <div class="h-full overflow-y-auto vmp-scrollbar">
+            <div class="vmp-container py-6">
+                <div id="queue-loading" class="htmx-indicator mb-4">
+                    <div class="flex items-center gap-2 text-[var(--vmp-brand)]">
+                        <div class="vmp-spinner w-4 h-4"></div>
+                        <span class="vmp-code-small">SYNCING QUEUE...</span>
                     </div>
                 </div>
+
+                <div id="case-queue-container" 
+                     hx-get="/partials/ops-case-queue.html" 
+                     hx-trigger="load" 
+                     hx-swap="innerHTML">
+                    </div>
             </div>
-        </main>
-    </div>
+        </div>
+    </main>
 </div>
 {% endblock %}
-

@@ -131,8 +131,16 @@
          hx-trigger="intersect once"
          hx-target="#invoice-cards-grid"
          hx-swap="beforeend"
+         hx-indicator="#infinite-scroll-loading"
          class="h-20 flex items-center justify-center">
-        <div class="vmp-spinner"></div>
+        <div id="infinite-scroll-loading" class="htmx-indicator">
+            <div class="vmp-spinner"></div>
+            <span class="vmp-caption vmp-muted ml-2">Loading more...</span>
+        </div>
+    </div>
+    {% else %}
+    <div class="h-20 flex items-center justify-center">
+        <div class="vmp-caption vmp-muted">No more invoices to load</div>
     </div>
     {% endif %}
 </div>

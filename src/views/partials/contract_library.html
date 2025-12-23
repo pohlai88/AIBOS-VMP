@@ -1,52 +1,49 @@
-<!-- Contract Library Partial -->
-<div class="vmp-panel p-6 border vmp-border-color">
-    <div class="vmp-label-kicker vmp-label-kicker-strong mb-4">CONTRACT LIBRARY</div>
-
-    {% if error %}
-    <div class="p-3 mb-4 rounded-lg border vmp-border-warn vmp-bg-warn vmp-opacity-30">
-        <div class="vmp-caption vmp-text-warn">{{ error }}</div>
+<div class="vmp-panel p-5 border" style="border-color: var(--vmp-border);">
+    
+    <div class="flex items-center justify-between mb-4">
+        <div>
+            <h3 class="vmp-h6">Legal Agreements</h3>
+            <div class="vmp-caption opacity-60">Active Contracts</div>
+        </div>
+        <div class="vmp-tag vmp-tag-mono opacity-50">LEGAL</div>
     </div>
-    {% endif %}
 
     {% if contracts and contracts|length > 0 %}
-    <div class="space-y-3">
+    <div class="divide-y" style="divide-color: var(--vmp-border);">
         {% for contract in contracts %}
-        <div class="p-3 rounded-lg border vmp-border-color vmp-bg-panel">
-            <div class="flex items-start justify-between">
-                <div class="flex-1 min-w-0">
-                    <div class="vmp-body-small font-medium mb-1 truncate">
-                        {{ contract.filename }}
-                    </div>
-                    <div class="vmp-caption vmp-muted">
-                        {{ contract.contract_type | upper }}
-                    </div>
-                    <div class="vmp-caption vmp-muted mt-1">
-                        {{ contract.uploaded_at | date('%b %d, %Y') if contract.uploaded_at else '—' }}
-                    </div>
+        <div class="py-3 first:pt-0 last:pb-0 group">
+            <div class="flex items-start gap-3">
+                
+                <div class="mt-0.5 w-8 h-8 rounded border grid place-items-center shrink-0 text-[var(--vmp-brand)]" 
+                     style="border-color: var(--vmp-border); background: var(--vmp-bg);">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
                 </div>
-                <div class="shrink-0 ml-3 flex flex-col gap-2">
-                    <span class="vmp-tag vmp-tag-mono text-xs">
-                        {{ (contract.status or 'submitted') | upper }}
-                    </span>
-                    {% if contract.storage_path %}
-                    <a href="/cases/{{ contract.case_id }}#evidence" 
-                       class="vmp-btn-outline text-xs">
-                        View
-                    </a>
-                    {% endif %}
+
+                <div class="flex-1 min-w-0">
+                    <div class="flex justify-between mb-0.5">
+                        <div class="vmp-body-small font-medium truncate pr-2">{{ contract.title }}</div>
+                        {% if contract.status == 'active' %}
+                            <div class="w-1.5 h-1.5 rounded-full bg-[var(--vmp-ok)] mt-1.5 shrink-0" title="Active"></div>
+                        {% else %}
+                            <div class="w-1.5 h-1.5 rounded-full bg-[var(--vmp-warn)] mt-1.5 shrink-0" title="Pending"></div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="flex justify-between items-center">
+                        <div class="vmp-code-small opacity-40 text-[10px]">REF: {{ contract.ref_id }}</div>
+                        <a href="{{ contract.download_url }}" class="opacity-0 group-hover:opacity-100 transition-opacity">
+                            <svg class="w-4 h-4 text-[var(--vmp-text)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                        </a>
+                    </div>
                 </div>
             </div>
         </div>
         {% endfor %}
     </div>
+    
     {% else %}
-    <div class="vmp-body vmp-muted text-center py-8">
-        {% if error %}
-        {{ error }}
-        {% else %}
-        No contracts found. Contracts will appear here after they are uploaded.
-        {% endif %}
+    <div class="vmp-empty py-6 text-center">
+        <div class="vmp-caption opacity-50">No active contracts found.</div>
     </div>
     {% endif %}
 </div>
-

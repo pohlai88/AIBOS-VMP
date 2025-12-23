@@ -1,1106 +1,508 @@
 <!doctype html>
-<html lang="en" class="h-full">
+<html lang="en">
+
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <meta name="color-scheme" content="dark" />
-  <title>NexusCanon VMP — Governed Settlement Access</title>
-
-  <!-- Fonts -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500&family=Playfair+Display:ital,wght@0,500;0,600;1,500;1,600&family=JetBrains+Mono:wght@300;400&display=swap" rel="stylesheet">
-
+  <title>NexusCanon — The Doctrine</title>
+  <meta name="description" content="The Operating System for Settlement Governance." />
   <style>
-    /* ==========================================================================
-       NexusCanon VMP: AIBOS Optimized Login (Production-Grade)
-       ==========================================================================
-       Design Layer - Marketing/Creative (Full Freedom)
-       Best Practices: Figma-aligned, WCAG 2.2 AAA, Performance-optimized
-       ========================================================================== */
-    
     :root {
-      /* Deep Void Palette (NOIR-inspired) */
-      --bg0: #050506;
-      --bg1: #070709;
+      --bg: #050505;
       --bg2: #0a0a0c;
-
-      --ink: #ededed;
-      --muted: rgba(237, 237, 237, 0.66);
-      --subtle: rgba(237, 237, 237, 0.40);
-
-      --hair: rgba(237, 237, 237, 0.10);
-      --hair2: rgba(237, 237, 237, 0.16);
-
-      /* Governance Signals (WCAG AAA Compliant) */
-      --ok: rgba(86, 255, 184, 0.92);
-      --warn: rgba(255, 210, 120, 0.92);
-      --danger: rgba(255, 100, 100, 0.90);
-      --accent: rgba(140, 210, 255, 0.85);
-
-      /* Typography Scale */
-      --r12: 12px;
-      --r14: 14px;
-      --r16: 16px;
-      --r20: 20px;
-
-      /* Spacing Scale (8px grid) */
-      --s1: 8px;
-      --s2: 12px;
-      --s3: 16px;
-      --s4: 24px;
-      --s5: 32px;
-      --s6: 48px;
-
-      /* Fonts */
-      --font-body: 'Inter', ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-      --font-display: 'Playfair Display', ui-serif, Georgia, serif;
-      --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-
-      /* Motion */
-      --ease: cubic-bezier(0.2, 0.9, 0.2, 1);
-      --ease2: cubic-bezier(0.16, 1, 0.3, 1);
+      --card: rgba(255, 255, 255, .02);
+      --border: rgba(255, 255, 255, .08);
+      --txt: rgba(235, 235, 235, .9);
+      --muted: rgba(235, 235, 235, .5);
+      --mono: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+      --sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+      --accent: 142 70% 50%;
+      /* Signal Green */
+      --danger: 0 85% 60%;
+      /* Alert Red */
+      --warn: 30 80% 55%;
+      /* Amber */
+      --max: 1180px;
     }
 
-    * { box-sizing: border-box; }
-    html, body { height: 100%; margin: 0; }
+    * {
+      box-sizing: border-box
+    }
+
+    html,
+    body {
+      height: 100%
+    }
 
     body {
-      color: var(--ink);
-      font-family: var(--font-body);
-      font-weight: 300;
-      letter-spacing: 0.2px;
-      background:
-        radial-gradient(1200px 700px at 16% 18%, rgba(255, 255, 255, 0.06), transparent 58%),
-        radial-gradient(900px 500px at 82% 30%, rgba(140, 210, 255, 0.07), transparent 55%),
-        radial-gradient(800px 700px at 68% 88%, rgba(86, 255, 184, 0.04), transparent 62%),
-        linear-gradient(180deg, var(--bg1), var(--bg0));
+      margin: 0;
+      font-family: var(--sans);
+      color: var(--txt);
+      background: var(--bg);
       overflow-x: hidden;
     }
 
-    /* Film grain + vignette */
-    body::before {
-      content: "";
+    /* --- DEEP VOID ATMOSPHERE --- */
+    .noise {
       position: fixed;
       inset: 0;
       pointer-events: none;
-      opacity: 0.12;
-      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='260' height='260'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='260' height='260' filter='url(%23n)' opacity='.55'/%3E%3C/svg%3E");
-      mix-blend-mode: overlay;
-      z-index: 1;
+      z-index: 90;
+      opacity: .04;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
     }
-    body::after {
-      content: "";
+
+    .grid-layer {
       position: fixed;
-      inset: -2px;
+      inset: 0;
       pointer-events: none;
-      background:
-        radial-gradient(1200px 700px at 50% 10%, transparent 35%, rgba(0, 0, 0, 0.55) 90%),
-        radial-gradient(1200px 700px at 50% 110%, transparent 30%, rgba(0, 0, 0, 0.55) 88%);
-      opacity: 0.72;
-      z-index: 1;
+      z-index: 0;
+      opacity: .08;
+      background-size: 60px 60px;
+      background-image: linear-gradient(to right, rgba(255, 255, 255, .05) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(255, 255, 255, .05) 1px, transparent 1px);
+      mask-image: radial-gradient(circle at center, black 40%, transparent 100%);
     }
 
-    a { color: inherit; text-decoration: none; }
-    a:hover { text-decoration: underline; text-underline-offset: 3px; }
+    a {
+      color: inherit;
+      text-decoration: none;
+      transition: color .2s
+    }
 
-    /* Top protocol line */
-    .topline {
-      position: relative;
-      z-index: 2;
-      padding: 14px 22px;
+    a:hover {
+      color: #fff
+    }
+
+    .container {
+      max-width: var(--max);
+      margin: 0 auto;
+      padding: 0 24px
+    }
+
+    /* --- TYPOGRAPHY --- */
+    h1,
+    h2,
+    h3 {
+      margin: 0;
+      font-weight: 500;
+      letter-spacing: -0.03em
+    }
+
+    .mono {
+      font-family: var(--mono);
+      letter-spacing: 0.05em;
+      text-transform: uppercase
+    }
+
+    /* --- NAV --- */
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      border-bottom: 1px solid var(--border);
+      backdrop-filter: blur(12px);
+      background: rgba(5, 5, 5, 0.7);
+    }
+
+    .nav-inner {
+      height: 70px;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 12px;
-      border-bottom: 1px solid rgba(237, 237, 237, 0.06);
-      background: linear-gradient(180deg, rgba(0, 0, 0, 0.22), rgba(0, 0, 0, 0));
-    }
-    .topline .left {
-      font-family: var(--font-mono);
-      font-size: 12px;
-      letter-spacing: 0.22em;
-      text-transform: uppercase;
-      color: rgba(237, 237, 237, 0.70);
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-    .topline .right {
-      display: flex;
-      gap: 10px;
-      align-items: center;
-      flex-shrink: 0;
-    }
-    .ghost {
-      font: inherit;
-      font-size: 12px;
-      letter-spacing: 0.18em;
-      text-transform: uppercase;
-      color: rgba(237, 237, 237, 0.70);
-      background: transparent;
-      border: 1px solid rgba(237, 237, 237, 0.10);
-      border-radius: 999px;
-      padding: 10px 12px;
-      cursor: pointer;
-      transition: border-color 180ms var(--ease), color 180ms var(--ease), background 180ms var(--ease);
-    }
-    .ghost:hover { 
-      border-color: rgba(237, 237, 237, 0.20); 
-      color: rgba(237, 237, 237, 0.86); 
-      background: rgba(255, 255, 255, 0.02); 
-    }
-    .ghost:focus-visible { 
-      outline: 2px solid rgba(140, 210, 255, 0.5); 
-      outline-offset: 2px; 
     }
 
-    /* Main layout */
-    .shell {
-      position: relative;
-      z-index: 2;
-      max-width: 1240px;
-      margin: 0 auto;
-      padding: 34px 22px 44px;
-      display: grid;
-      grid-template-columns: 1.15fr 0.85fr;
-      gap: 34px;
-      align-items: center;
-      min-height: calc(100vh - 58px);
-    }
-    @media (max-width: 980px) {
-      .shell { 
-        grid-template-columns: 1fr; 
-        min-height: auto; 
-        padding-top: 26px; 
-      }
-    }
-
-    /* Left panel */
-    .hero { padding: 8px 6px; }
     .brand {
+      font-family: var(--mono);
+      font-weight: 700;
+      letter-spacing: 0.1em;
       display: flex;
       align-items: center;
       gap: 12px;
-      margin-bottom: 18px;
-    }
-    .mark {
-      width: 34px; 
-      height: 34px;
-      border-radius: 10px;
-      border: 1px solid rgba(237, 237, 237, 0.10);
-      display: grid;
-      place-items: center;
-      background: rgba(255, 255, 255, 0.02);
-    }
-    .brand .name {
-      font-family: var(--font-display);
-      font-weight: 600;
-      letter-spacing: 0.02em;
-      font-size: 18px;
-      line-height: 1;
-    }
-    .brand .meta {
-      margin-top: 4px;
-      font-size: 11px;
-      letter-spacing: 0.22em;
-      text-transform: uppercase;
-      color: rgba(237, 237, 237, 0.60);
-      font-family: var(--font-mono);
+      font-size: 14px;
     }
 
-    .kicker {
+    .brand-dot {
+      width: 8px;
+      height: 8px;
+      background: hsl(var(--accent));
+      box-shadow: 0 0 10px hsl(var(--accent));
+      border-radius: 50%;
+    }
+
+    /* --- HERO --- */
+    header {
+      padding: 100px 0 60px;
+      text-align: center
+    }
+
+    .pre-head {
+      color: hsl(var(--accent));
+      font-size: 11px;
+      margin-bottom: 24px;
       display: inline-flex;
       align-items: center;
-      gap: 10px;
-      border: 1px solid rgba(237, 237, 237, 0.10);
-      background: rgba(255, 255, 255, 0.02);
-      padding: 10px 12px;
-      border-radius: 999px;
-      font-size: 11px;
-      letter-spacing: 0.22em;
-      text-transform: uppercase;
-      color: rgba(237, 237, 237, 0.72);
-    }
-    .kicker .chip {
-      width: 8px; 
-      height: 8px;
-      border-radius: 50%;
-      background: rgba(255, 210, 120, 0.45);
+      gap: 8px;
+      border: 1px solid rgba(255, 255, 255, .1);
+      padding: 6px 12px;
+      border-radius: 100px;
     }
 
     h1 {
-      margin: 18px 0 10px;
-      font-family: var(--font-display);
-      font-weight: 600;
-      font-size: clamp(44px, 5vw, 76px);
-      line-height: 0.98;
-      letter-spacing: 0.01em;
+      font-size: clamp(40px, 6vw, 72px);
+      line-height: 1;
+      background: linear-gradient(to bottom, #fff, #888);
+      -webkit-background-clip: text;
+      color: transparent;
+      margin-bottom: 24px;
     }
-    h1 em {
-      font-style: italic;
-      font-weight: 500;
-      color: rgba(237, 237, 237, 0.88);
-    }
+
     .lead {
-      margin: 14px 0 0;
-      max-width: 66ch;
-      font-size: 15px;
-      line-height: 1.68;
-      color: rgba(237, 237, 237, 0.72);
-    }
-
-    .steps {
-      margin: 22px 0 0;
-      padding: 0;
-      list-style: none;
-      display: grid;
-      gap: 10px;
-      max-width: 560px;
-    }
-    .step {
-      display: flex;
-      align-items: flex-start;
-      gap: 12px;
-      padding: 12px 14px;
-      border: 1px solid rgba(237, 237, 237, 0.08);
-      background: rgba(255, 255, 255, 0.02);
-      border-radius: 14px;
-    }
-    .step b {
-      font-weight: 500;
-      letter-spacing: 0.18em;
-      font-size: 11px;
-      text-transform: uppercase;
-      color: rgba(237, 237, 237, 0.72);
-      min-width: 34px;
-      padding-top: 2px;
-      font-family: var(--font-mono);
-    }
-    .step span {
-      color: rgba(237, 237, 237, 0.74);
-      font-size: 13px;
-      line-height: 1.52;
-    }
-    .step strong { 
-      font-weight: 500; 
-      color: rgba(237, 237, 237, 0.86); 
-    }
-
-    .policy {
-      margin-top: 22px;
-      border: 1px solid rgba(237, 237, 237, 0.10);
-      border-radius: var(--r16);
-      background: rgba(255, 255, 255, 0.02);
-      padding: 14px 16px;
-      display: grid;
-      gap: 10px;
-      max-width: 660px;
-    }
-    .row {
-      display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
-      gap: 16px;
-    }
-    .row .label {
-      font-size: 11px;
-      letter-spacing: 0.22em;
-      text-transform: uppercase;
-      color: rgba(237, 237, 237, 0.55);
-      min-width: 108px;
-      font-family: var(--font-mono);
-    }
-    .row .value {
-      font-size: 13px;
-      color: rgba(237, 237, 237, 0.72);
-      text-align: right;
-      line-height: 1.45;
-    }
-    .row .value .dot {
-      display: inline-block;
-      width: 6px;
-      height: 6px;
-      border-radius: 50%;
-      background: rgba(86, 255, 184, 0.55);
-      margin-right: 8px;
-      transform: translateY(-1px);
-    }
-
-    /* Right panel */
-    .auth { 
-      display: flex; 
-      flex-direction: column; 
-      align-items: flex-end; 
-      gap: 12px; 
-    }
-    .card {
-      width: min(520px, 100%);
-      border-radius: var(--r20);
-      border: 1px solid rgba(237, 237, 237, 0.10);
-      background: linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.02));
-      padding: 16px;
-      position: relative;
-      backdrop-filter: blur(20px);
-    }
-    .scan {
-      position: absolute;
-      inset: 0;
-      pointer-events: none;
-      border-radius: var(--r20);
-      background:
-        repeating-linear-gradient(
-          180deg,
-          rgba(255, 255, 255, 0.00) 0px,
-          rgba(255, 255, 255, 0.00) 12px,
-          rgba(255, 255, 255, 0.015) 13px
-        );
-      opacity: 0.18;
-      mask-image: radial-gradient(120% 110% at 50% 10%, #000 40%, transparent 78%);
-    }
-
-    .cardTop {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 10px;
-      padding: 6px 6px 12px;
-      border-bottom: 1px solid rgba(237, 237, 237, 0.08);
-      margin-bottom: 12px;
-      position: relative;
-      z-index: 2;
-    }
-    .signal {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      min-width: 0;
-    }
-    .signal .dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: rgba(237, 237, 237, 0.18);
-      transition: background 0.3s var(--ease);
-    }
-    .signal .txt {
-      font-family: var(--font-mono);
-      font-size: 12px;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-      color: rgba(237, 237, 237, 0.70);
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    .stepper {
-      display: flex;
-      gap: 8px;
-      align-items: center;
-      flex-shrink: 0;
-    }
-    .pillStep {
-      width: 30px; 
-      height: 26px;
-      border-radius: 8px;
-      border: 1px solid rgba(237, 237, 237, 0.10);
-      background: rgba(255, 255, 255, 0.02);
-      color: rgba(237, 237, 237, 0.55);
-      display: grid;
-      place-items: center;
-      font-size: 12px;
-      letter-spacing: 0.08em;
-      font-family: var(--font-mono);
-      transition: all 0.3s var(--ease);
-    }
-    .pillStep.isOn {
-      border-color: rgba(86, 255, 184, 0.30);
-      color: rgba(86, 255, 184, 0.92);
-      background: rgba(86, 255, 184, 0.06);
-    }
-    .pillStep.isDone {
-      border-color: rgba(140, 210, 255, 0.32);
-      color: rgba(140, 210, 255, 0.90);
-      background: rgba(140, 210, 255, 0.06);
-    }
-
-    .tabs {
-      display: grid;
-      grid-template-columns: 1fr 1fr 1fr;
-      gap: 8px;
-      padding: 0 6px 10px;
-      position: relative;
-      z-index: 2;
-    }
-    .tab {
-      appearance: none;
-      border: 1px solid rgba(237, 237, 237, 0.10);
-      background: rgba(255, 255, 255, 0.02);
-      border-radius: 12px;
-      padding: 10px 10px;
-      cursor: pointer;
-      font: inherit;
-      font-size: 12px;
-      letter-spacing: 0.18em;
-      text-transform: uppercase;
-      color: rgba(237, 237, 237, 0.70);
-      transition: border-color 180ms var(--ease), background 180ms var(--ease), color 180ms var(--ease);
-    }
-    .tab[aria-selected="true"] {
-      border-color: rgba(140, 210, 255, 0.32);
-      background: rgba(140, 210, 255, 0.06);
-      color: rgba(237, 237, 237, 0.90);
-    }
-    .tab:focus-visible { 
-      outline: 2px solid rgba(140, 210, 255, 0.50); 
-      outline-offset: 2px; 
-    }
-
-    form { 
-      padding: 6px; 
-      display: grid; 
-      gap: 12px; 
-      position: relative;
-      z-index: 2;
-    }
-
-    .panel { display: none; }
-    .panel.isActive { display: block; }
-
-    .field {
-      border-radius: var(--r14);
-      border: 1px solid rgba(237, 237, 237, 0.10);
-      background: rgba(0, 0, 0, 0.12);
-      padding: 12px 12px 10px;
-      transition: border-color 160ms var(--ease), background 160ms var(--ease);
-      position: relative;
-    }
-    .field:focus-within {
-      border-color: rgba(140, 210, 255, 0.30);
-      background: rgba(140, 210, 255, 0.03);
-    }
-    .field[data-state="danger"] { 
-      border-color: rgba(255, 100, 100, 0.55); 
-      background: rgba(255, 100, 100, 0.03); 
-    }
-    .field[data-state="ok"] { 
-      border-color: rgba(86, 255, 184, 0.42); 
-      background: rgba(86, 255, 184, 0.03); 
-    }
-
-    .metaLine {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-      margin-bottom: 8px;
-    }
-    .label2 {
-      font-size: 11px;
-      letter-spacing: 0.22em;
-      text-transform: uppercase;
-      color: rgba(237, 237, 237, 0.58);
-      font-family: var(--font-mono);
-    }
-    .assist {
-      font-size: 11px;
-      letter-spacing: 0.18em;
-      text-transform: uppercase;
-      color: rgba(237, 237, 237, 0.52);
-      font-family: var(--font-mono);
-    }
-    .assist a { opacity: 0.9; }
-    .assist a:hover { opacity: 1; }
-
-    input {
-      width: 100%;
-      border: 0;
-      background: transparent;
-      color: rgba(237, 237, 237, 0.92);
-      font: inherit;
-      font-size: 14px;
-      letter-spacing: 0.02em;
-      outline: none;
-      padding: 2px 0 4px;
-    }
-    input::placeholder { color: rgba(237, 237, 237, 0.30); }
-
-    .hint {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-      margin-top: 6px;
-      min-height: 16px;
-      font-size: 12px;
-      color: rgba(237, 237, 237, 0.46);
-    }
-    .hint .status {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-family: var(--font-mono);
-      letter-spacing: 0.10em;
-      text-transform: uppercase;
-      font-size: 11px;
-      color: rgba(237, 237, 237, 0.48);
-      white-space: nowrap;
-    }
-    .hint .status .mini {
-      width: 6px;
-      height: 6px;
-      border-radius: 50%;
-      background: rgba(237, 237, 237, 0.18);
-    }
-    .hint .status.ok { color: rgba(86, 255, 184, 0.90); }
-    .hint .status.ok .mini { background: rgba(86, 255, 184, 0.70); }
-    .hint .status.bad { color: rgba(255, 100, 100, 0.88); }
-    .hint .status.bad .mini { background: rgba(255, 100, 100, 0.70); }
-    .hint .status.warn { color: rgba(255, 210, 120, 0.90); }
-    .hint .status.warn .mini { background: rgba(255, 210, 120, 0.70); }
-
-    .row2 {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      padding: 4px 6px 0;
-    }
-    .check {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      color: rgba(237, 237, 237, 0.62);
-      font-size: 13px;
-      user-select: none;
-    }
-    .check input {
-      width: 16px;
-      height: 16px;
-      accent-color: rgba(140, 210, 255, 0.80);
-    }
-
-    .primary {
-      margin-top: 4px;
-      width: 100%;
-      height: 48px;
-      border-radius: var(--r14);
-      border: 1px solid rgba(237, 237, 237, 0.10);
-      background: rgba(140, 210, 255, 0.18);
-      color: rgba(237, 237, 237, 0.92);
-      font: inherit;
-      letter-spacing: 0.18em;
-      text-transform: uppercase;
-      font-size: 12px;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 10px;
-      transition: transform 160ms var(--ease2), background 160ms var(--ease), border-color 160ms var(--ease);
-      font-family: var(--font-mono);
-    }
-    .primary:hover {
-      background: rgba(140, 210, 255, 0.24);
-      border-color: rgba(140, 210, 255, 0.34);
-      transform: translateY(-1px);
-    }
-    .primary:active { transform: translateY(0px); }
-    .primary:focus-visible { 
-      outline: 2px solid rgba(140, 210, 255, 0.55); 
-      outline-offset: 2px; 
-    }
-    .primary:disabled {
-      opacity: 0.4;
-      cursor: not-allowed;
-      transform: none;
-    }
-
-    .arrow {
-      display: inline-block;
-      transition: transform 220ms var(--ease2);
-      transform: translateY(1px);
-    }
-    .primary:hover:not(:disabled) .arrow { transform: translate(2px, 1px); }
-
-    .divider {
-      margin: 10px 6px 0;
-      border-top: 1px solid rgba(237, 237, 237, 0.08);
-    }
-    .miniFooter {
-      padding: 10px 6px 2px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      color: rgba(237, 237, 237, 0.46);
-      font-size: 12px;
-    }
-    .mono {
-      font-family: var(--font-mono);
-      letter-spacing: 0.10em;
-      text-transform: uppercase;
-      font-size: 11px;
-    }
-
-    .badgeLine {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      justify-content: flex-end;
-    }
-    .chip2 {
-      border: 1px solid rgba(237, 237, 237, 0.10);
-      background: rgba(255, 255, 255, 0.02);
-      border-radius: 999px;
-      padding: 8px 10px;
-      font-size: 11px;
-      letter-spacing: 0.18em;
-      text-transform: uppercase;
-      color: rgba(237, 237, 237, 0.62);
-      font-family: var(--font-mono);
-    }
-    .chip2 strong { font-weight: 500; color: rgba(237, 237, 237, 0.82); }
-    .chip2 .b {
-      display: inline-block;
-      width: 7px;
-      height: 7px;
-      border-radius: 50%;
-      margin-right: 8px;
-      transform: translateY(-1px);
-      background: rgba(237, 237, 237, 0.18);
-    }
-    .chip2.ok .b { background: rgba(86, 255, 184, 0.70); }
-    .chip2.warn .b { background: rgba(255, 210, 120, 0.70); }
-    .chip2.danger .b { background: rgba(255, 100, 100, 0.70); }
-
-    .ssoBox, .helpBox {
-      padding: 6px;
-      display: grid;
-      gap: 12px;
-    }
-    .ssoBtn {
-      height: 48px;
-      border-radius: var(--r14);
-      border: 1px solid rgba(237, 237, 237, 0.10);
-      background: rgba(255, 255, 255, 0.02);
-      color: rgba(237, 237, 237, 0.86);
-      font: inherit;
-      font-size: 12px;
-      letter-spacing: 0.18em;
-      text-transform: uppercase;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 0 14px;
-      transition: border-color 160ms var(--ease), background 160ms var(--ease), transform 160ms var(--ease2);
-      font-family: var(--font-mono);
-    }
-    .ssoBtn:hover {
-      border-color: rgba(237, 237, 237, 0.18);
-      background: rgba(255, 255, 255, 0.03);
-      transform: translateY(-1px);
-    }
-    .ssoBtn:active { transform: translateY(0px); }
-    .ssoBtn:focus-visible { 
-      outline: 2px solid rgba(140, 210, 255, 0.55); 
-      outline-offset: 2px; 
-    }
-
-    .callout {
-      border: 1px solid rgba(237, 237, 237, 0.10);
-      border-radius: var(--r14);
-      background: rgba(255, 255, 255, 0.02);
-      padding: 12px 12px;
-      color: rgba(237, 237, 237, 0.72);
-      font-size: 13px;
+      font-size: 18px;
+      color: var(--muted);
+      max-width: 680px;
+      margin: 0 auto 40px;
       line-height: 1.6;
     }
-    .callout .h {
-      font-size: 11px;
-      letter-spacing: 0.22em;
-      text-transform: uppercase;
-      color: rgba(237, 237, 237, 0.62);
-      margin-bottom: 6px;
-      font-family: var(--font-mono);
+
+    /* --- THE MIRROR (TRANSMUTATION ENGINE) --- */
+    .mirror-section {
+      margin: 80px 0;
+      border: 1px solid var(--border);
+      background: rgba(10, 10, 12, 0.6);
+      border-radius: 12px;
+      overflow: hidden;
+      position: relative;
     }
 
-    .authFoot {
-      width: min(520px, 100%);
+    .mirror-header {
       text-align: center;
-      color: rgba(237, 237, 237, 0.42);
-      font-size: 11px;
-      letter-spacing: 0.18em;
-      text-transform: uppercase;
-      padding: 6px 4px 0;
-      font-family: var(--font-mono);
+      padding: 40px 20px 20px;
+      border-bottom: 1px solid var(--border);
     }
 
-    /* Motion safety */
-    @media (prefers-reduced-motion: reduce) {
-      * { 
-        transition: none !important; 
-        animation: none !important; 
-        scroll-behavior: auto !important; 
+    .mirror-grid {
+      display: grid;
+      grid-template-columns: 1fr 2px 1fr;
+    }
+
+    .mirror-spine {
+      background: linear-gradient(to bottom, transparent, hsl(var(--accent)), transparent);
+      width: 1px;
+      height: 100%;
+      opacity: 0.5;
+      box-shadow: 0 0 15px hsl(var(--accent));
+      position: relative;
+    }
+
+    .mirror-spine::after {
+      content: "KERNEL";
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) rotate(90deg);
+      background: #000;
+      color: hsl(var(--accent));
+      font-family: var(--mono);
+      font-size: 10px;
+      padding: 4px 10px;
+      border: 1px solid hsl(var(--accent));
+    }
+
+    /* SIDE: CHAOS */
+    .side-chaos {
+      padding: 40px;
+      background: radial-gradient(circle at top left, rgba(255, 50, 50, 0.03), transparent);
+      color: var(--muted);
+    }
+
+    .chaos-tag {
+      color: hsl(var(--danger));
+      font-size: 10px;
+      margin-bottom: 12px;
+      display: block;
+    }
+
+    .chat-bubble {
+      font-family: var(--mono);
+      font-size: 12px;
+      background: rgba(255, 255, 255, 0.03);
+      padding: 12px;
+      border-radius: 8px;
+      margin-bottom: 12px;
+      border-left: 2px solid hsl(var(--danger));
+      color: rgba(255, 255, 255, 0.6);
+    }
+
+    .chat-bubble b {
+      color: #fff;
+      display: block;
+      margin-bottom: 4px;
+      font-size: 10px;
+      opacity: 0.5;
+    }
+
+    /* SIDE: ORDER */
+    .side-order {
+      padding: 40px;
+      background: radial-gradient(circle at top right, rgba(50, 255, 100, 0.03), transparent);
+    }
+
+    .order-tag {
+      color: hsl(var(--accent));
+      font-size: 10px;
+      margin-bottom: 12px;
+      display: block;
+      text-align: right;
+    }
+
+    .data-row {
+      font-family: var(--mono);
+      font-size: 12px;
+      display: flex;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border);
+      padding: 8px 0;
+      color: rgba(255, 255, 255, 0.8);
+    }
+
+    .data-row span:first-child {
+      color: var(--muted);
+    }
+
+    .status-pill {
+      background: rgba(0, 255, 100, 0.1);
+      color: hsl(var(--accent));
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 10px;
+    }
+
+    /* --- DOCTRINE GRID --- */
+    .doctrine-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 24px;
+      margin: 60px 0;
+    }
+
+    .doctrine-card {
+      background: linear-gradient(145deg, rgba(255, 255, 255, 0.03), transparent);
+      border: 1px solid var(--border);
+      padding: 32px;
+      border-radius: 12px;
+      transition: border-color 0.3s;
+    }
+
+    .doctrine-card:hover {
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    .num {
+      font-family: var(--mono);
+      color: var(--muted);
+      font-size: 12px;
+      opacity: 0.5;
+      margin-bottom: 16px;
+      display: block;
+    }
+
+    .card-title {
+      font-size: 20px;
+      color: #fff;
+      margin-bottom: 12px;
+    }
+
+    .card-body {
+      font-size: 14px;
+      line-height: 1.6;
+      color: var(--muted);
+    }
+
+    /* --- FOOTER --- */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 60px 0;
+      margin-top: 80px;
+      text-align: center;
+    }
+
+    .footer-sig {
+      font-family: var(--mono);
+      font-size: 12px;
+      letter-spacing: 0.3em;
+      color: rgba(255, 255, 255, 1);
+      opacity: 1;
+    }
+
+    /* RESPONSIVE */
+    @media(max-width: 768px) {
+      .mirror-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .mirror-spine {
+        height: 1px;
+        width: 100%;
+        margin: 20px 0;
+      }
+
+      .mirror-spine::after {
+        transform: translate(-50%, -50%);
       }
     }
   </style>
 </head>
 
 <body>
-  <header class="topline">
-    <div class="left">GO-LIVE // 2025-12-22 // VMP_2.0.1 // EVIDENCE-FIRST</div>
-    <div class="right">
-      <button class="ghost" type="button">Docs</button>
-      <button class="ghost" type="button">Status</button>
+
+  <div class="noise"></div>
+  <div class="grid-layer"></div>
+
+  <nav>
+    <div class="container nav-inner">
+      <div class="brand">
+        <div class="brand-dot"></div>
+        NEXUSCANON
+      </div>
+      <div style="font-family:var(--mono); font-size:10px; color:var(--muted)">
+        V2.0.1 • SYSTEM ONLINE
+      </div>
     </div>
+  </nav>
+
+  <header class="container">
+    <div class="pre-head mono">Manifesto v2.0</div>
+    <h1>Governance is not a policy.<br>It is code.</h1>
+    <p class="lead">
+      We believe the way companies pay suppliers is fundamentally broken.
+      It isn’t broken because of the ERP. It is broken because of the <strong>WhatsApp Gap</strong>—the chaotic void
+      between the supplier’s phone and your ledger.
+    </p>
   </header>
 
-  <main class="shell" role="main">
-    <!-- LEFT: Fortune-500 Narrative -->
-    <section class="hero" aria-label="Governance introduction">
-      <div class="brand">
-        <div class="mark" aria-hidden="true">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-            <path d="M12 3 3 7.5 12 12l9-4.5L12 3Z" stroke="rgba(237,237,237,.78)" stroke-width="1.2"/>
-            <path d="M3 12l9 4.5 9-4.5" stroke="rgba(237,237,237,.58)" stroke-width="1.2"/>
-            <path d="M3 16.5 12 21l9-4.5" stroke="rgba(237,237,237,.40)" stroke-width="1.2"/>
-          </svg>
-        </div>
-        <div>
-          <div class="name">NexusCanon</div>
-          <div class="meta">EVIDENCE-FIRST · PAYMENT GOVERNANCE</div>
-        </div>
+  <section class="container">
+    <div class="mirror-section">
+      <div class="mirror-header">
+        <h2 class="mono" style="font-size:14px; color:var(--muted)">THE TRANSMUTATION ENGINE</h2>
+        <p style="font-size:13px; color:rgba(255,255,255,0.4); margin-top:8px">We translate supplier entropy into
+          financial signal.</p>
       </div>
 
-      <div class="kicker"><span class="chip" aria-hidden="true"></span> Restricted Access · Controlled Workflow</div>
+      <div class="mirror-grid">
+        <div class="side-chaos">
+          <span class="chaos-tag mono">/// INPUT: UNSTRUCTURED ENTROPY</span>
 
-      <h1>Governed<br><em>Settlement.</em></h1>
-
-      <p class="lead">
-        A single, audit-ready workspace for vendor claims and payment exceptions—
-        structured evidence, accountable decisions, and end-to-end settlement visibility.
-      </p>
-
-      <ul class="steps" aria-label="Governance workflow">
-        <li class="step">
-          <b>01</b>
-          <span><strong>Authenticate</strong> (assigned identity or SSO) to open your case lane.</span>
-        </li>
-        <li class="step">
-          <b>02</b>
-          <span><strong>Submit an evidence pack</strong> (order confirmation, receipt confirmation, billing document).</span>
-        </li>
-        <li class="step">
-          <b>03</b>
-          <span><strong>Observe disposition</strong> (in review → approved → released / settled).</span>
-        </li>
-      </ul>
-
-      <div class="policy" role="note" aria-label="Controls and assurance">
-        <div class="row">
-          <div class="label">Controls</div>
-          <div class="value">Evidence gates · Three-way verification · Role-based approval</div>
-        </div>
-        <div class="row">
-          <div class="label">Assurance</div>
-          <div class="value"><span class="dot" aria-hidden="true"></span>Tamper-evident log · Full audit trail · Dispute-ready history</div>
-        </div>
-      </div>
-    </section>
-
-    <!-- RIGHT: Auth Card -->
-    <section class="auth" aria-label="Authentication">
-      <div class="card" aria-live="polite">
-        <div class="scan" aria-hidden="true"></div>
-
-        <div class="cardTop">
-          <div class="signal">
-            <span class="dot" id="sigDot" aria-hidden="true"></span>
-            <span class="txt" id="stateText">IDENTITY GATE · STANDBY</span>
+          <div class="chat-bubble">
+            <b>[Supplier_WA]:</b> "Hey, forgot to attach the new bank details to the invoice I sent yesterday. Can you
+            update? Urgent!!"
           </div>
-
-          <div class="stepper" aria-label="Gate steps">
-            <div class="pillStep isOn" id="st1" title="Identity">01</div>
-            <div class="pillStep" id="st2" title="Credential">02</div>
-            <div class="pillStep" id="st3" title="Session">03</div>
+          <div class="chat-bubble">
+            <b>[Supplier_Email]:</b> "Why is inv #9902 unpaid? Payment run was today right?"
+          </div>
+          <div class="chat-bubble" style="opacity:0.6">
+            <b>[System]:</b> Error: 3-way match failed. PO variance > 5%.
           </div>
         </div>
 
-        <div class="tabs" role="tablist" aria-label="Login methods">
-          <button class="tab" type="button" role="tab" aria-selected="true" aria-controls="panel-email" id="tab-email">Email</button>
-          <button class="tab" type="button" role="tab" aria-selected="false" aria-controls="panel-sso" id="tab-sso">SSO</button>
-          <button class="tab" type="button" role="tab" aria-selected="false" aria-controls="panel-support" id="tab-support">Support</button>
-        </div>
+        <div class="mirror-spine"></div>
 
-        <!-- EMAIL -->
-        <div class="panel isActive" id="panel-email" role="tabpanel" aria-labelledby="tab-email">
-          <form id="loginForm" novalidate>
-            <div class="field" id="emailField" data-state="danger">
-              <div class="metaLine">
-                <div class="label2">Assigned Identity</div>
-                <div class="assist"><span class="mono">PORTAL</span></div>
-              </div>
+        <div class="side-order">
+          <span class="order-tag mono">/// OUTPUT: GOVERNED TRUTH</span>
 
-              <input
-                id="email"
-                name="email"
-                type="email"
-                inputmode="email"
-                autocomplete="username"
-                placeholder="name@company.com"
-                aria-describedby="emailHint"
-                required
-              />
-
-              <div class="hint" id="emailHint">
-                <div class="status bad" id="emailStatus"><span class="mini" aria-hidden="true"></span>UNVERIFIED</div>
-                <div>Use the mailbox provisioned for settlement cases.</div>
-              </div>
-            </div>
-
-            <div class="field" id="passField" data-state="danger">
-              <div class="metaLine">
-                <div class="label2">Passkey</div>
-                <div class="assist">
-                  <a href="#" id="requestAccess">Request access</a>
-                </div>
-              </div>
-
-              <input
-                id="password"
-                name="password"
-                type="password"
-                autocomplete="current-password"
-                placeholder="••••••••"
-                aria-describedby="passHint"
-                required
-                minlength="8"
-              />
-
-              <div class="hint" id="passHint">
-                <div class="status bad" id="passStatus"><span class="mini" aria-hidden="true"></span>LOCKED</div>
-                <div style="display:flex; gap:10px; align-items:center;">
-                  <button class="ghost" type="button" id="togglePw" style="padding:8px 10px;">Show</button>
-                  <span id="capsWarn" style="display:none; color: rgba(255,210,120,.90); letter-spacing:.10em;" class="mono">CAPS</span>
-                </div>
-              </div>
-            </div>
-
-            <div class="row2">
-              <label class="check">
-                <input type="checkbox" id="remember" name="remember" />
-                Remember identity
-              </label>
-
-              <div class="badgeLine" aria-label="Security posture">
-                <span class="chip2 ok"><span class="b" aria-hidden="true"></span><strong>Audit</strong>-ready</span>
-                <span class="chip2 warn"><span class="b" aria-hidden="true"></span>Restricted</span>
-              </div>
-            </div>
-
-            <button class="primary" id="submitBtn" type="submit">
-              Initiate session <span class="arrow" aria-hidden="true">→</span>
-            </button>
-
-            <div class="divider" role="separator" aria-hidden="true"></div>
-
-            <div class="miniFooter">
-              <div class="mono">TAMPER-EVIDENT LOGGING</div>
-              <div>All actions are recorded for audit.</div>
-            </div>
-          </form>
-        </div>
-
-        <!-- SSO -->
-        <div class="panel" id="panel-sso" role="tabpanel" aria-labelledby="tab-sso">
-          <div class="ssoBox">
-            <button class="ssoBtn" type="button">
-              Continue with Enterprise SSO
-              <span aria-hidden="true">→</span>
-            </button>
-            <button class="ssoBtn" type="button">
-              Continue with Microsoft Entra
-              <span aria-hidden="true">→</span>
-            </button>
-            <button class="ssoBtn" type="button">
-              Continue with Google Workspace
-              <span aria-hidden="true">→</span>
-            </button>
-
-            <div class="callout">
-              <div class="h">Note</div>
-              SSO is recommended for internal teams. Vendors should use Email access unless explicitly provisioned.
-            </div>
+          <div class="data-row">
+            <span>CASE_ID</span>
+            <span style="color:#fff">#CS-2049</span>
           </div>
-        </div>
-
-        <!-- SUPPORT -->
-        <div class="panel" id="panel-support" role="tabpanel" aria-labelledby="tab-support">
-          <div class="helpBox">
-            <div class="callout">
-              <div class="h">Access & Provisioning</div>
-              If you don't have access, request provisioning from AP Operations. Your request will be logged as a case.
-            </div>
-
-            <div class="callout">
-              <div class="h">Evidence Standards</div>
-              Submissions require a complete evidence pack. Incomplete artifacts will remain in review until resolved.
-            </div>
-
-            <div class="callout">
-              <div class="h">Contact</div>
-              Email: <a href="#" onclick="return false;">ops@nexuscanon.example</a><br/>
-              Include: supplier name, billing reference, and company code.
-            </div>
+          <div class="data-row">
+            <span>INTENT</span>
+            <span style="color:#fff">PAYMENT_DETAILS_UPDATE</span>
+          </div>
+          <div class="data-row">
+            <span>RISK_LEVEL</span>
+            <span style="color:hsl(var(--danger))">CRITICAL</span>
+          </div>
+          <div class="data-row">
+            <span>ACTION</span>
+            <span class="status-pill">EVIDENCE_REQUIRED</span>
+          </div>
+          <div class="data-row" style="margin-top:10px; border:none">
+            <span style="color:hsl(var(--accent))">> PROTOCOL_ENFORCED</span>
           </div>
         </div>
       </div>
+    </div>
+  </section>
 
-      <div class="authFoot">Protected by NexusCanon VMP · Authorized Personnel Only</div>
-    </section>
-  </main>
+  <section class="container">
+    <div class="doctrine-grid">
 
-  <script>
-    // Tabs
-    const tabs = [
-      { btn: document.getElementById('tab-email'), panel: document.getElementById('panel-email'), label: 'IDENTITY GATE · STANDBY' },
-      { btn: document.getElementById('tab-sso'), panel: document.getElementById('panel-sso'), label: 'SSO HANDSHAKE · READY' },
-      { btn: document.getElementById('tab-support'), panel: document.getElementById('panel-support'), label: 'SUPPORT · RECOVERY' },
-    ];
+      <div class="doctrine-card">
+        <span class="num">01 // THE ATOMICITY OF TRUTH</span>
+        <h3 class="card-title">Everything is a Case.</h3>
+        <p class="card-body">
+          There are no "loose threads." If a supplier asks a question, it is a Case. If they dispute a payment, it is a
+          Case. We replace the "black hole" of general inquiry with an immutable, tracked object.
+        </p>
+      </div>
 
-    function activateTab(index) {
-      tabs.forEach((t, i) => {
-        const on = i === index;
-        t.btn.setAttribute('aria-selected', on ? 'true' : 'false');
-        t.panel.classList.toggle('isActive', on);
-      });
-      document.getElementById('stateText').textContent = tabs[index].label;
-    }
-    tabs.forEach((t, i) => t.btn.addEventListener('click', () => activateTab(i)));
+      <div class="doctrine-card">
+        <span class="num">02 // THE SILICON SHIELD</span>
+        <h3 class="card-title">The AI is the Gatekeeper.</h3>
+        <p class="card-body">
+          Your AP team is not a helpdesk. They are guardians of capital. Our AI Agent intercepts noise, validates data,
+          and demands missing evidence <em>before</em> a human ever sees it.
+        </p>
+      </div>
 
-    // Gate validation + stepper
-    const email = document.getElementById('email');
-    const password = document.getElementById('password');
-    const emailField = document.getElementById('emailField');
-    const passField = document.getElementById('passField');
-    const emailStatus = document.getElementById('emailStatus');
-    const passStatus = document.getElementById('passStatus');
-    const st1 = document.getElementById('st1');
-    const st2 = document.getElementById('st2');
-    const st3 = document.getElementById('st3');
-    const sigDot = document.getElementById('sigDot');
+      <div class="doctrine-card">
+        <span class="num">03 // BRIDGES, NOT WALLS</span>
+        <h3 class="card-title">Don't kill WhatsApp. Bridge it.</h3>
+        <p class="card-body">
+          Suppliers live in chat apps. We do not force them to leave. We build Ports that ingest their chaotic messages
+          and transmute them into our Evidence Vault.
+        </p>
+      </div>
 
-    function setSig(mode) {
-      if (mode === 'ok') { 
-        sigDot.style.background = 'rgba(86, 255, 184, 0.70)'; 
-      } else if (mode === 'warn') { 
-        sigDot.style.background = 'rgba(255, 210, 120, 0.70)'; 
-      } else if (mode === 'danger') { 
-        sigDot.style.background = 'rgba(255, 100, 100, 0.70)'; 
-      } else { 
-        sigDot.style.background = 'rgba(237, 237, 237, 0.18)'; 
-      }
-    }
+      <div class="doctrine-card">
+        <span class="num">04 // THE SHADOW LEDGER</span>
+        <h3 class="card-title">Truth is Independent.</h3>
+        <p class="card-body">
+          NexusCanon maintains the "Supplier Truth" independently of your ERP. Even if SAP is down, or you are migrating
+          systems, the settlement governance remains active and visible.
+        </p>
+      </div>
 
-    function validateEmail() {
-      const v = (email.value || '').trim();
-      const ok = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
-      emailField.dataset.state = ok ? 'ok' : 'danger';
-      emailStatus.className = 'status ' + (ok ? 'ok' : 'bad');
-      emailStatus.innerHTML = `<span class="mini" aria-hidden="true"></span>${ok ? 'VERIFIED' : 'UNVERIFIED'}`;
-      st1.classList.toggle('isDone', ok);
-      st1.classList.toggle('isOn', !ok);
-      return ok;
-    }
+      <div class="doctrine-card">
+        <span class="num">05 // SETTLEMENT GOVERNANCE</span>
+        <h3 class="card-title">No Evidence, No Coin.</h3>
+        <p class="card-body">
+          We replace "trust" with "proof." A payment cycle cannot proceed unless the evidence pack (Invoice + GRN +
+          Approvals) is cryptographically linked and complete.
+        </p>
+      </div>
 
-    function validatePassword() {
-      const v = (password.value || '');
-      const ok = v.length >= 8;
-      passField.dataset.state = ok ? 'ok' : 'danger';
-      passStatus.className = 'status ' + (ok ? 'ok' : 'bad');
-      passStatus.innerHTML = `<span class="mini" aria-hidden="true"></span>${ok ? 'READY' : 'LOCKED'}`;
-      st2.classList.toggle('isDone', ok);
-      st2.classList.toggle('isOn', ok && (email.value || '').trim().length > 0);
-      return ok;
-    }
+      <div class="doctrine-card">
+        <span class="num">06 // ARCHAEOLOGY VS. RECALL</span>
+        <h3 class="card-title">Instant Audit.</h3>
+        <p class="card-body">
+          When the auditors come, you do not dig through emails. You simply export the Case Log. Every decision, every
+          override, every document is timestamped and user-stamped.
+        </p>
+      </div>
 
-    function updateGlobalState() {
-      const eok = validateEmail();
-      const pok = validatePassword();
+    </div>
+  </section>
 
-      if (!email.value && !password.value) {
-        document.getElementById('stateText').textContent = 'IDENTITY GATE · STANDBY';
-        setSig('idle');
-        st2.classList.remove('isOn', 'isDone');
-        st3.classList.remove('isOn', 'isDone');
-        return;
-      }
+  <footer>
+    <div class="container">
+      <div class="footer-sig">PROTECT • DETECT • REACT</div>
+      <div style="margin-top:20px; font-size:10px; color:rgba(255,255,255,0.6)">
+        KERNEL: AI-BOS // ARCHITECTURE: CANON
+      </div>
+    </div>
+  </footer>
 
-      if (eok && pok) {
-        document.getElementById('stateText').textContent = 'GATE CLEARED · SESSION READY';
-        setSig('ok');
-        st3.classList.add('isDone');
-        st3.classList.remove('isOn');
-      } else if (eok && !pok) {
-        document.getElementById('stateText').textContent = 'IDENTITY VERIFIED · CREDENTIAL REQUIRED';
-        setSig('warn');
-        st3.classList.remove('isDone');
-        st3.classList.add('isOn');
-      } else {
-        document.getElementById('stateText').textContent = 'IDENTITY GATE · ACTION REQUIRED';
-        setSig('danger');
-        st3.classList.remove('isDone');
-        st3.classList.remove('isOn');
-      }
-    }
-
-    email.addEventListener('input', updateGlobalState);
-    password.addEventListener('input', updateGlobalState);
-
-    // CAPS warning
-    const capsWarn = document.getElementById('capsWarn');
-    password.addEventListener('keyup', (e) => {
-      if (typeof e.getModifierState === 'function' && e.getModifierState('CapsLock')) {
-        capsWarn.style.display = 'inline';
-      } else {
-        capsWarn.style.display = 'none';
-      }
-    });
-
-    // Show/hide password
-    const togglePw = document.getElementById('togglePw');
-    togglePw.addEventListener('click', () => {
-      const isPw = password.type === 'password';
-      password.type = isPw ? 'text' : 'password';
-      togglePw.textContent = isPw ? 'Hide' : 'Show';
-      password.focus();
-    });
-
-    // Request access (demo)
-    document.getElementById('requestAccess').addEventListener('click', (e) => {
-      e.preventDefault();
-      alert('Provisioning request (demo): contact ops@nexuscanon.example with supplier + billing reference + company code.');
-    });
-
-    // Submit (demo)
-    document.getElementById('loginForm').addEventListener('submit', (e) => {
-      e.preventDefault();
-      updateGlobalState();
-      const eok = validateEmail();
-      const pok = validatePassword();
-      if (!eok || !pok) {
-        alert('Session blocked: verify identity and passkey.');
-        return;
-      }
-      alert('Session initiated (demo). Wire to your POST /login.');
-    });
-
-    // Boot
-    updateGlobalState();
-  </script>
 </body>
-</html>
 
+</html>

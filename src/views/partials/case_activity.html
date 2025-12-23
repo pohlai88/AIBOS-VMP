@@ -1,63 +1,52 @@
-<!-- Case Activity Feed Partial (Sprint 8.1) -->
-<div class="p-5 border-t vmp-border-color">
-    <div class="vmp-label-kicker vmp-label-kicker-strong mb-4">ACTIVITY FEED</div>
+<div class="flex flex-col h-full text-white/80">
     
-    {% if error %}
-    <div class="vmp-panel p-3 border vmp-border-color vmp-signal-danger">
-        <div class="vmp-caption vmp-signal-danger">{{ error }}</div>
-    </div>
-    {% elif activities and activities|length > 0 %}
-    <div class="space-y-3 max-h-64 overflow-y-auto">
-        {% for activity in activities %}
-        <div class="flex gap-3 items-start">
-            <!-- Timeline dot -->
-            <div class="flex flex-col items-center shrink-0">
-                <div class="w-2 h-2 rounded-full 
-                    {% if activity.type == 'message' %} vmp-bg-ok
-                    {% elif activity.type == 'decision' %} vmp-bg-warn
-                    {% elif activity.type == 'evidence' %} vmp-bg-ok
-                    {% else %} vmp-bg-muted
-                    {% endif %} mt-1.5"></div>
-                {% if not loop.last %}
-                <div class="w-px h-full vmp-bg-border min-h-8 mt-1"></div>
-                {% endif %}
-            </div>
-            
-            <!-- Activity content -->
-            <div class="flex-1 min-w-0">
-                <div class="flex items-center gap-2 mb-1">
-                    <span class="vmp-caption font-medium">
-                        {% if activity.actor == 'vendor' %}Vendor
-                        {% elif activity.actor == 'internal' %}Internal Team
-                        {% else %}{{ activity.actor }}
-                        {% endif %}
-                    </span>
-                    <span class="vmp-caption vmp-muted">
-                        {{ activity.action }}
-                    </span>
-                </div>
-                {% if activity.details %}
-                <div class="vmp-body-small vmp-muted mb-1">
-                    {{ activity.details | truncate(100) }}
-                </div>
-                {% endif %}
-                {% if activity.reason %}
-                <div class="vmp-caption vmp-muted italic">
-                    Reason: {{ activity.reason }}
-                </div>
-                {% endif %}
-                <div class="vmp-caption vmp-muted mt-1">
-                    {{ activity.timestamp | date('%b %d, %Y at %I:%M %p') if activity.timestamp else '—' }}
-                </div>
-            </div>
+    <div class="px-6 py-4 shrink-0 border-b border-white/5 flex justify-between items-center">
+        <div class="font-mono text-[10px] uppercase tracking-widest text-white/40">Flight Recorder // Audit Log</div>
+        <div class="flex items-center gap-2">
+            <div class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
+            <span class="font-mono text-[10px] text-emerald-500">LIVE</span>
         </div>
-        {% endfor %}
     </div>
-    {% else %}
-    <!-- Empty State -->
-    <div class="text-center py-8">
-        <div class="vmp-body-small vmp-muted">No activity yet</div>
-    </div>
-    {% endif %}
-</div>
 
+    <div class="flex-1 overflow-y-auto p-6">
+        {% if activities and activities|length > 0 %}
+            <div class="space-y-6 border-l border-white/10 ml-3 pl-8 relative">
+                
+                {% for activity in activities %}
+                <div class="relative group">
+                    <div class="absolute -left-[37px] top-1.5 w-2.5 h-2.5 rounded-full border border-[#050505] ring-1 ring-white/20 bg-[#0A0A0A] group-hover:bg-emerald-500 group-hover:ring-emerald-500/50 transition-all"></div>
+
+                    <div class="flex flex-col gap-1">
+                        <div class="flex items-baseline justify-between">
+                            <span class="font-mono text-xs text-white/90">
+                                {{ activity.action or activity.type | replace('_', ' ') | upper }}
+                            </span>
+                            <span class="font-mono text-[10px] text-white/30">
+                                {{ activity.timestamp | date('%H:%M:%S') if activity.timestamp else '--:--:--' }}
+                            </span>
+                        </div>
+
+                        {% if activity.details %}
+                        <div class="font-mono text-xs text-white/50 leading-relaxed">
+                             {{ activity.details }}
+                        </div>
+                        {% endif %}
+
+                        <div class="mt-1 flex items-center gap-2">
+                             <span class="px-1.5 py-0.5 rounded border border-white/10 bg-white/5 font-mono text-[9px] text-white/40 uppercase">
+                                 {{ activity.actor or 'SYSTEM' }}
+                             </span>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+
+            </div>
+        {% else %}
+            <div class="h-full flex flex-col items-center justify-center opacity-30 font-mono">
+                <span class="text-4xl mb-4">∅</span>
+                <span class="text-xs uppercase tracking-widest">Log Empty</span>
+            </div>
+        {% endif %}
+    </div>
+</div>

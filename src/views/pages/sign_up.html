@@ -1,0 +1,1038 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Sign Up — NexusCanon VMP</title>
+  <meta name="description"
+    content="Request access to NexusCanon VMP. Enterprise settlement governance operating system for finance teams." />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+
+  <style>
+    /* Optimized Design System - Harmonious Spacing & Hierarchy */
+    :root {
+      --bg: #060607;
+      --bg2: #050506;
+
+      --panel: rgba(255, 255, 255, .03);
+      --panel2: rgba(255, 255, 255, .015);
+      --border: rgba(255, 255, 255, .10);
+      --border2: rgba(255, 255, 255, .14);
+
+      --text: #ededed;
+      --soft: rgba(237, 237, 237, .76);
+      --muted: rgba(237, 237, 237, .60);
+      --subtle: rgba(237, 237, 237, .40);
+
+      --accent: hsl(155, 100%, 69%);
+      --accentSoft: rgba(96, 255, 198, .10);
+      --danger: rgba(255, 85, 85, .92);
+      --dangerSoft: rgba(255, 85, 85, .08);
+
+      --max-w: 1280px;
+
+      --r-lg: 24px;
+      --r-md: 14px;
+      --r-sm: 12px;
+
+      /* Harmonious Spacing Scale */
+      --space-xs: 8px;
+      --space-sm: 12px;
+      --space-md: 16px;
+      --space-lg: 24px;
+      --space-xl: 32px;
+      --space-2xl: 40px;
+      --space-3xl: 48px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+      background: radial-gradient(1000px 800px at 50% -100px, rgba(96, 255, 198, .06), transparent 55%),
+        radial-gradient(800px 600px at 85% 20%, rgba(255, 255, 255, .03), transparent 60%),
+        linear-gradient(to bottom, var(--bg), var(--bg2));
+      color: var(--text);
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      overflow-x: hidden;
+      line-height: 1.6;
+      text-rendering: geometricPrecision;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      min-height: 100vh;
+    }
+
+    /* Subtle grain */
+    body:before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      opacity: .05;
+      mix-blend-mode: overlay;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='260' height='260'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='260' height='260' filter='url(%23n)' opacity='.55'/%3E%3C/svg%3E");
+      transform: translateZ(0);
+    }
+
+    .container {
+      max-width: var(--max-w);
+      margin: 0 auto;
+      padding: 0 2rem;
+    }
+
+    .mono {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+    }
+
+    .kicker {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--space-xs);
+      margin-bottom: var(--space-lg);
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-size: 11px;
+      letter-spacing: 0.15em;
+      color: rgba(255, 255, 255, .5);
+      text-transform: uppercase;
+    }
+
+    .kicker .dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 8px var(--accent);
+      animation: pulse 3s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% {
+        opacity: 1;
+        box-shadow: 0 0 8px var(--accent);
+      }
+      50% {
+        opacity: 0.5;
+        box-shadow: 0 0 2px var(--accent);
+      }
+    }
+
+    .hero {
+      padding: var(--space-3xl) 0 var(--space-2xl) 0;
+      text-align: center;
+      position: relative;
+    }
+
+    .hero h1 {
+      font-size: 28px;
+      line-height: 1.3;
+      margin: 0 0 var(--space-sm) 0;
+      color: #fff;
+      font-weight: 500;
+      letter-spacing: -0.02em;
+    }
+
+    .hero p {
+      font-size: 14px;
+      max-width: 640px;
+      margin: 0 auto;
+      color: var(--muted);
+      line-height: 1.6;
+      font-weight: 400;
+    }
+
+    /* Mirror Layout - Harmonious Spacing */
+    .signup-mirror {
+      max-width: 1200px;
+      margin: var(--space-3xl) auto 0 auto;
+      position: relative;
+    }
+
+    .signup-panes {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0;
+      min-height: 640px;
+      position: relative;
+    }
+
+    .signup-seam {
+      position: absolute;
+      left: 50%;
+      top: var(--space-2xl);
+      bottom: var(--space-2xl);
+      width: 1px;
+      transform: translateX(-.5px);
+      background: linear-gradient(to bottom, transparent, rgba(255, 255, 255, .15), transparent);
+      pointer-events: none;
+      z-index: 3;
+    }
+
+    .signup-pane {
+      padding: var(--space-2xl);
+      position: relative;
+    }
+
+    .signup-pane-left {
+      border-right: 1px solid rgba(255, 255, 255, .06);
+    }
+
+    .signup-pane-right {
+      border-left: 1px solid rgba(255, 255, 255, .06);
+    }
+
+    .pane-content {
+      height: 100%;
+      border-radius: var(--r-lg);
+      border: 1px solid rgba(255, 255, 255, .10);
+      background: linear-gradient(to bottom, rgba(255, 255, 255, .035), rgba(255, 255, 255, .014));
+      box-shadow: 0 24px 64px rgba(0, 0, 0, .45), inset 0 1px 0 rgba(255, 255, 255, .05);
+      padding: var(--space-2xl);
+      overflow: hidden;
+      position: relative;
+      backdrop-filter: blur(12px);
+    }
+
+    .pane-content:before {
+      content: "";
+      position: absolute;
+      inset: -1px;
+      border-radius: var(--r-lg);
+      pointer-events: none;
+      background:
+        radial-gradient(600px 240px at 30% 0%, rgba(96, 255, 198, .10), transparent 60%),
+        radial-gradient(520px 220px at 90% 20%, rgba(255, 255, 255, .06), transparent 65%);
+      opacity: .5;
+      mask: linear-gradient(#000, #000);
+    }
+
+    .pane-inner {
+      position: relative;
+      z-index: 1;
+      height: 100%;
+      overflow: auto;
+      padding-right: var(--space-xs);
+      text-align: left;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* TITLES - Harmonious Alignment */
+    .panel-title {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: var(--space-sm);
+      margin-bottom: var(--space-2xl);
+      min-height: 48px;
+      text-align: left;
+    }
+
+    .panel-title h2 {
+      margin: 0;
+      font-size: 22px;
+      letter-spacing: -0.02em;
+      font-weight: 500;
+      color: #fff;
+      text-align: left;
+      line-height: 1.3;
+    }
+
+    .panel-title .meta {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-size: 10px;
+      letter-spacing: 0.12em;
+      color: rgba(255, 255, 255, .5);
+      white-space: nowrap;
+      text-transform: uppercase;
+      font-weight: 500;
+    }
+
+    .protocol {
+      border-top: 1px solid rgba(255, 255, 255, .08);
+      padding-top: var(--space-2xl);
+      text-align: left;
+      flex-grow: 1;
+    }
+
+    .step {
+      display: grid;
+      grid-template-columns: 40px 1fr;
+      gap: var(--space-md);
+      padding: var(--space-lg) 0;
+      border-bottom: 1px solid rgba(255, 255, 255, .06);
+      text-align: left;
+    }
+
+    .step:last-child {
+      border-bottom: none;
+    }
+
+    .step .num {
+      width: 40px;
+      height: 40px;
+      border-radius: 12px;
+      display: grid;
+      place-items: center;
+      border: 1px solid rgba(255, 255, 255, .08);
+      background: rgba(255, 255, 255, .02);
+      color: var(--accent);
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-size: 12px;
+      letter-spacing: 0.08em;
+      font-weight: 500;
+    }
+
+    .step .label {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-size: 10px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, .5);
+      margin-bottom: var(--space-xs);
+      text-align: left;
+      font-weight: 500;
+    }
+
+    .step p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.5;
+      font-weight: 300;
+      text-align: left;
+    }
+
+    .example {
+      margin-top: var(--space-lg);
+      padding: var(--space-lg);
+      border-radius: 16px;
+      border: 1px solid rgba(255, 255, 255, .08);
+      background: rgba(0, 0, 0, .3);
+    }
+
+    .example .cap {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-size: 10px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, .5);
+      margin-bottom: var(--space-sm);
+      font-weight: 500;
+    }
+
+    .kv {
+      display: grid;
+      grid-template-columns: 150px 1fr;
+      gap: var(--space-xs) var(--space-sm);
+      font-size: 13px;
+      color: var(--soft);
+    }
+
+    .kv b {
+      font-weight: 600;
+      color: #fff;
+    }
+
+    .kv code {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      color: rgba(96, 255, 198, .95);
+      background: rgba(96, 255, 198, .08);
+      border: 1px solid rgba(96, 255, 198, .15);
+      padding: 2px var(--space-xs);
+      border-radius: 8px;
+      font-weight: 500;
+    }
+
+    .timeline {
+      margin-top: var(--space-lg);
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: var(--space-sm);
+    }
+
+    .tcard {
+      border-radius: 16px;
+      border: 1px solid rgba(255, 255, 255, .08);
+      background: rgba(255, 255, 255, .02);
+      padding: var(--space-md);
+      text-align: left;
+    }
+
+    .tcard .tcap {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-size: 10px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, .5);
+      margin-bottom: var(--space-xs);
+      font-weight: 500;
+    }
+
+    .tcard .tmain {
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.5;
+      margin: 0;
+      font-weight: 300;
+    }
+
+    /* RIGHT: Form - Parallel structure */
+    .form-head {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: var(--space-sm);
+      margin-bottom: var(--space-2xl);
+      min-height: 48px;
+      text-align: left;
+    }
+
+    .form-head h2 {
+      margin: 0;
+      font-size: 22px;
+      letter-spacing: -0.02em;
+      font-weight: 500;
+      color: #fff;
+      text-align: left;
+      line-height: 1.3;
+    }
+
+    .form-head .meta {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-size: 10px;
+      letter-spacing: 0.12em;
+      color: rgba(255, 255, 255, .5);
+      white-space: nowrap;
+      text-transform: uppercase;
+      font-weight: 500;
+    }
+
+    .notice {
+      padding: var(--space-md);
+      margin: 0 0 var(--space-lg) 0;
+      border-radius: 10px;
+      border: 1px solid transparent;
+      font-size: 13px;
+      line-height: 1.5;
+      text-align: left;
+    }
+
+    .notice--error {
+      border-color: rgba(255, 85, 85, .25);
+      background: rgba(255, 85, 85, .08);
+      color: rgba(255, 125, 125, .95);
+    }
+
+    .notice--success {
+      border-color: rgba(96, 255, 198, .25);
+      background: rgba(96, 255, 198, .06);
+      color: rgba(96, 255, 198, .95);
+    }
+
+    form {
+      margin: 0;
+    }
+
+    .form-grid {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-xl);
+      border-top: 1px solid rgba(255, 255, 255, .08);
+      padding-top: var(--space-2xl);
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: var(--space-md);
+    }
+
+    .field {
+      text-align: left;
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-xs);
+    }
+
+    .label {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: var(--space-sm);
+    }
+
+    .label span {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-size: 10px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, .5);
+      font-weight: 500;
+    }
+
+    .label .required {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-size: 14px;
+      color: var(--accent);
+      font-weight: 500;
+    }
+
+    .label .optional {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-size: 10px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, .4);
+      font-weight: 500;
+    }
+
+    .hint {
+      margin: var(--space-xs) 0 0 0;
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.5;
+      font-weight: 300;
+    }
+
+    .input {
+      width: 100%;
+      height: 48px;
+      background: rgba(0, 0, 0, .4);
+      border: 1px solid rgba(255, 255, 255, .08);
+      padding: 0 var(--space-md);
+      border-radius: 10px;
+      color: #fff;
+      font-size: 14px;
+      font-weight: 400;
+      box-shadow: inset 0 2px 4px rgba(0, 0, 0, .1);
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      transition: all 0.2s ease;
+    }
+
+    .input::placeholder {
+      color: rgba(255, 255, 255, .2);
+    }
+
+    .input:focus {
+      outline: none;
+      border-color: var(--accent);
+      background: rgba(0, 0, 0, .6);
+      box-shadow: 0 0 0 1px rgba(96, 255, 198, .15), inset 0 2px 4px rgba(0, 0, 0, .2);
+    }
+
+    textarea.input {
+      resize: vertical;
+      min-height: 100px;
+      height: auto;
+      padding: var(--space-md);
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      padding: 13px 18px;
+      border-radius: 999px;
+      font-size: .92rem;
+      font-weight: 520;
+      cursor: pointer;
+      transition: transform .18s ease, background .18s ease, border-color .18s ease;
+      border: 1px solid transparent;
+      user-select: none;
+      text-decoration: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .btn-primary {
+      width: 100%;
+      height: 48px;
+      background: var(--accent);
+      border: none;
+      color: #050506;
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      border-radius: 999px;
+      box-shadow: 0 0 20px rgba(96, 255, 198, .12);
+      cursor: pointer;
+      margin-top: var(--space-md);
+      transition: all .2s ease;
+      display: grid;
+      place-items: center;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-1px);
+      background: #5fffc4;
+      box-shadow: 0 0 32px rgba(96, 255, 198, .25);
+    }
+
+    .form-foot {
+      margin-top: var(--space-md);
+      padding-top: var(--space-md);
+      border-top: 1px solid rgba(255, 255, 255, .08);
+      text-align: left;
+    }
+
+    .form-foot p {
+      margin: 0;
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.5;
+      font-weight: 300;
+    }
+
+    .back-link {
+      text-align: center;
+      margin-top: var(--space-2xl);
+    }
+
+    .back-link a {
+      color: rgba(255, 255, 255, .4);
+      text-decoration: none;
+      font-size: 12px;
+      transition: color .2s ease;
+      padding: var(--space-xs);
+    }
+
+    .back-link a:hover {
+      color: rgba(255, 255, 255, .7);
+    }
+
+    /* Tier Selector */
+    .tier-selector {
+      margin-bottom: var(--space-lg);
+    }
+
+    .tier-buttons {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: var(--space-md);
+    }
+
+    .tier-btn {
+      background: rgba(255, 255, 255, .02);
+      border: 1px solid rgba(255, 255, 255, .08);
+      border-radius: 16px;
+      padding: var(--space-lg);
+      cursor: pointer;
+      transition: all 0.2s ease;
+      text-align: left;
+      display: flex;
+      align-items: flex-start;
+      gap: var(--space-sm);
+    }
+
+    .tier-btn:hover {
+      background: rgba(255, 255, 255, .04);
+      border-color: rgba(255, 255, 255, .12);
+    }
+
+    .tier-btn.active {
+      background: rgba(96, 255, 198, .08);
+      border-color: hsl(155, 100%, 69%);
+      box-shadow: 0 0 20px rgba(96, 255, 198, .1);
+    }
+
+    .tier-btn.active[data-tier="independent"] .tier-icon {
+      animation: pulse-activate 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse-activate {
+      0%, 100% {
+        transform: scale(1);
+        opacity: 1;
+      }
+      50% {
+        transform: scale(1.1);
+        opacity: 0.9;
+      }
+    }
+
+    .tier-icon {
+      font-size: 24px;
+      flex-shrink: 0;
+      line-height: 1;
+    }
+
+    .tier-content {
+      flex: 1;
+    }
+
+    .tier-label {
+      display: block;
+      font-weight: 600;
+      font-size: 14px;
+      margin-bottom: var(--space-xs);
+      color: #fff;
+    }
+
+    .tier-desc {
+      display: block;
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.5;
+      font-weight: 300;
+    }
+
+    .forensic-notice {
+      background: rgba(255, 193, 7, .08);
+      border: 1px solid rgba(255, 193, 7, .2);
+      border-radius: 12px;
+      padding: var(--space-md);
+      margin-bottom: var(--space-lg);
+      display: flex;
+      gap: var(--space-sm);
+      text-align: left;
+    }
+
+    .forensic-notice .notice-icon {
+      font-size: 20px;
+      flex-shrink: 0;
+    }
+
+    .forensic-notice .notice-content strong {
+      display: block;
+      color: #ffc107;
+      margin-bottom: var(--space-xs);
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .forensic-notice .notice-content p {
+      margin: 0;
+      font-size: 12px;
+      color: rgba(255, 255, 255, .7);
+      line-height: 1.5;
+      font-weight: 300;
+    }
+
+    /* Responsive */
+    @media (max-width: 980px) {
+      .hero {
+        padding: var(--space-2xl) 0 var(--space-xl) 0;
+      }
+
+      .signup-mirror {
+        margin-top: var(--space-xl);
+      }
+
+      .signup-panes {
+        grid-template-columns: 1fr;
+        gap: var(--space-lg);
+        min-height: auto;
+      }
+
+      .signup-seam {
+        display: none;
+      }
+
+      .signup-pane {
+        padding: var(--space-lg);
+      }
+
+      .signup-pane-left {
+        border-right: none;
+        border-bottom: 1px solid rgba(255, 255, 255, .08);
+      }
+
+      .signup-pane-right {
+        border-left: none;
+      }
+
+      .pane-content {
+        padding: var(--space-xl);
+      }
+
+      .form-row {
+        grid-template-columns: 1fr;
+      }
+
+      .timeline {
+        grid-template-columns: 1fr;
+      }
+
+      .kv {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <header class="hero container">
+    <div class="kicker mono">
+      <span class="dot" aria-hidden="true"></span>
+      NexusCanon VMP • REQUEST ACCESS
+    </div>
+
+    <h1>Vendor Access Request</h1>
+
+    <p>
+      Request an invitation from your customer’s finance team.
+      NexusCanon will verify scope and issue a secure account link upon approval.
+    </p>
+
+    <div class="signup-mirror">
+      <div class="signup-panes">
+        <div class="signup-seam" aria-hidden="true"></div>
+
+        <!-- LEFT: Instructions (kept) -->
+        <div class="signup-pane signup-pane-left">
+          <div class="pane-content">
+            <div class="pane-inner">
+              <div class="panel-title">
+                <h2>Protocol Checklist</h2>
+                <div class="meta mono">SUPPLIER ONBOARDING</div>
+              </div>
+
+              <div class="protocol">
+                <div class="step">
+                  <div class="num mono">01</div>
+                  <div>
+                    <div class="label">Identity</div>
+                    <p>Use your work email. This becomes the invitation target and your audit identity.</p>
+                  </div>
+                </div>
+
+                <div class="step">
+                  <div class="num mono">02</div>
+                  <div>
+                    <div class="label">Your Company</div>
+                    <p>Enter your vendor name as it appears on invoices and bank documents.</p>
+                  </div>
+                </div>
+
+                <div class="step">
+                  <div class="num mono">03</div>
+                  <div>
+                    <div class="label">Customer Context</div>
+                    <p>If you know the customer entity, provide it. If not, leave it blank—your customer can map you.
+                    </p>
+                  </div>
+                </div>
+
+                <div class="step">
+                  <div class="num mono">04</div>
+                  <div>
+                    <div class="label">Message</div>
+                    <p>Optional, but helpful: state purpose (invoice submission, missing GRN, payment inquiry).</p>
+                  </div>
+                </div>
+
+                <div class="example">
+                  <div class="cap mono">Example submission</div>
+                  <div class="kv">
+                    <b>Email</b> <span><code>ap@vendorco.com</code></span>
+                    <b>Vendor</b> <span>VendorCo Sdn. Bhd.</span>
+                    <b>Name</b> <span>Nur Aisyah</span>
+                    <b>Customer</b> <span>Retail Division (Fashion Co.)</span>
+                    <b>Note</b> <span>“Need access to submit invoices and respond to evidence requests.”</span>
+                  </div>
+                </div>
+
+                <div class="timeline">
+                  <div class="tcard">
+                    <div class="tcap mono">Received</div>
+                    <p class="tmain">Your request is logged and routed to the customer’s finance owner.</p>
+                  </div>
+                  <div class="tcard">
+                    <div class="tcap mono">Reviewed</div>
+                    <p class="tmain">Scope is confirmed (which entities you serve, what you can upload).</p>
+                  </div>
+                  <div class="tcard">
+                    <div class="tcap mono">Invited</div>
+                    <p class="tmain">You receive a secure link to create your NexusCanon account.</p>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+
+        <!-- RIGHT: Form - Parallel structure -->
+        <div class="signup-pane signup-pane-right">
+          <div class="pane-content">
+            <div class="pane-inner">
+              <div class="form-head">
+                <h2>Request Invitation</h2>
+                <div class="meta mono">FORM SUBMISSION</div>
+              </div>
+
+              {% if error %}
+              <div class="notice notice--error">{{ error }}</div>
+              {% endif %}
+
+              {% if success %}
+              <div class="notice notice--success">{{ success }}</div>
+              {% endif %}
+
+              {% if not success %}
+              <form method="POST" action="/sign-up" id="sign-up-form">
+                <input type="hidden" name="user_tier" id="user_tier_input" value="institutional">
+                
+                <!-- Tier Selector -->
+                <div class="tier-selector">
+                  <div class="tier-buttons">
+                    <button type="button" class="tier-btn active" id="tier-institutional" data-tier="institutional" onclick="setTier('institutional')">
+                      <span class="tier-icon">🏢</span>
+                      <div class="tier-content">
+                        <span class="tier-label">Institutional Node</span>
+                        <span class="tier-desc">Organization-based access</span>
+                      </div>
+                    </button>
+                    <button type="button" class="tier-btn" id="tier-independent" data-tier="independent" onclick="setTier('independent')">
+                      <span class="tier-icon">🔬</span>
+                      <div class="tier-content">
+                        <span class="tier-label">Independent Investigator</span>
+                        <span class="tier-desc">Immediate access, no approval</span>
+                      </div>
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Independent User Notice -->
+                <div id="independent-notice" class="forensic-notice" style="display: none;">
+                  <div class="notice-icon">⚠️</div>
+                  <div class="notice-content">
+                    <strong>Sandbox Node Designation</strong>
+                    <p>Independent accounts are designated as <strong>Sandbox Nodes</strong>. All forensic reasoning is stored locally and cannot be used for multi-party financial settlement without Institutional Verification.</p>
+                  </div>
+                </div>
+
+                <div class="form-grid">
+
+                  <div class="field">
+                    <div class="label">
+                      <span>Your work email <span class="required">*</span></span>
+                    </div>
+                    <input class="input" type="email" name="email" id="email" placeholder="ap@vendorco.com" required>
+                  </div>
+
+                  <div class="form-row">
+                    <div class="field">
+                      <div class="label">
+                        <span>Your full name <span class="required">*</span></span>
+                      </div>
+                      <input class="input" type="text" name="name" id="name" placeholder="Nur Aisyah" required>
+                    </div>
+
+                    <div class="field" id="org-container">
+                      <div class="label">
+                        <span>Vendor company <span class="required">*</span></span>
+                      </div>
+                      <input class="input" type="text" name="company" id="company" placeholder="VendorCo Sdn. Bhd." required>
+                    </div>
+                  </div>
+
+                  <div class="field">
+                    <div class="label">
+                      <span>Customer company</span>
+                      <span class="optional">optional</span>
+                    </div>
+                    <input class="input" type="text" name="customer_company"
+                      placeholder="e.g., Retail Division / Fashion Co.">
+                  </div>
+
+                  <div class="field">
+                    <div class="label">
+                      <span>Message</span>
+                      <span class="optional">optional</span>
+                    </div>
+                    <textarea class="input" name="message" rows="4"
+                      placeholder="e.g., Need access to submit invoices and respond to missing document requests."></textarea>
+                  </div>
+
+                  <button class="btn btn-primary" type="submit" id="signup-submit-btn">
+                    <span id="signup-submit-text">Request Access</span>
+                    <span id="signup-submit-loading" style="display:none;">Submitting...</span>
+                  </button>
+
+                </div>
+              </form>
+              
+              <script>
+                // Add loading state to signup form
+                (function() {
+                  const form = document.querySelector('form[method="POST"][action="/sign-up"]');
+                  const submitBtn = document.getElementById('signup-submit-btn');
+                  const submitText = document.getElementById('signup-submit-text');
+                  const submitLoading = document.getElementById('signup-submit-loading');
+                  
+                  if (form && submitBtn) {
+                    form.addEventListener('submit', function() {
+                      submitBtn.disabled = true;
+                      if (submitText) submitText.style.display = 'none';
+                      if (submitLoading) submitLoading.style.display = 'inline';
+                    });
+                  }
+                })();
+              </script>
+              {% endif %}
+
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="back-link">
+      <a href="/">← Back to Home</a> | <a href="/login">Already have access? Sign In</a>
+    </div>
+  </header>
+
+  <script>
+    function setTier(tier) {
+      const isInstitutional = (tier === 'institutional');
+      
+      // Update button states
+      const institutionalBtn = document.getElementById('tier-institutional');
+      const independentBtn = document.getElementById('tier-independent');
+      
+      institutionalBtn.classList.toggle('active', isInstitutional);
+      independentBtn.classList.toggle('active', !isInstitutional);
+      
+      // Update hidden input
+      document.getElementById('user_tier_input').value = tier;
+      
+      // Toggle organization field
+      const orgContainer = document.getElementById('org-container');
+      const orgInput = document.getElementById('company');
+      const independentNotice = document.getElementById('independent-notice');
+      
+      if (isInstitutional) {
+        orgContainer.style.display = 'block';
+        orgInput.setAttribute('required', 'required');
+        independentNotice.style.display = 'none';
+      } else {
+        orgContainer.style.display = 'none';
+        orgInput.removeAttribute('required');
+        orgInput.value = '';
+        independentNotice.style.display = 'block';
+      }
+    }
+
+    // Initialize on page load
+    document.addEventListener('DOMContentLoaded', function() {
+      setTier('institutional'); // Default to institutional
+    });
+  </script>
+</body>
+
+</html>

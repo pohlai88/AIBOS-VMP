@@ -1,0 +1,99 @@
+<div class="vmp-card flex flex-col h-full shadow-2xl">
+    <div class="flex-1 overflow-auto">
+        <table class="vmp-table w-full relative">
+            <thead class="sticky top-0 z-10">
+                <tr>
+                    <th class="w-12">
+                        <input type="checkbox" class="vmp-checkbox">
+                    </th>
+                    <th class="w-32">INVOICE #</th>
+                    <th>VENDOR</th>
+                    <th class="w-32 text-right">AMOUNT</th>
+                    <th class="w-32 text-center">PO REF</th>
+                    <th class="w-32 text-center">MATCH</th>
+                    <th class="w-32 text-right">DUE DATE</th>
+                    <th class="w-16"></th>
+                </tr>
+            </thead>
+            <tbody class="divide-y" style="divide-color: var(--vmp-border);">
+                {% if invoices and invoices|length > 0 %}
+                    {% for inv in invoices %}
+                    <tr class="group hover:bg-[var(--vmp-panel)] transition-colors cursor-pointer"
+                        onclick="window.location.href='/invoices/{{ inv.id }}'">
+                        
+                        <td onclick="event.stopPropagation()">
+                            <input type="checkbox" class="vmp-checkbox">
+                        </td>
+                        
+                        <td>
+                            <div class="vmp-code-small font-bold">{{ inv.invoice_num }}</div>
+                            {% if inv.has_attachment %}
+                            <div class="flex items-center gap-1 mt-1 opacity-50">
+                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path></svg>
+                                <span class="text-[10px]">PDF</span>
+                            </div>
+                            {% endif %}
+                        </td>
+                        
+                        <td>
+                            <div class="vmp-body-small">{{ inv.vendor_name }}</div>
+                            <div class="vmp-caption opacity-50">{{ inv.entity_name }}</div>
+                        </td>
+                        
+                        <td class="text-right">
+                            <div class="vmp-code-small text-[var(--vmp-text)]">
+                                {{ inv.currency }} {{ inv.total_amount | number_format(2) }}
+                            </div>
+                        </td>
+                        
+                        <td class="text-center">
+                            {% if inv.po_number %}
+                                <span class="vmp-code-small opacity-70">{{ inv.po_number }}</span>
+                            {% else %}
+                                <span class="vmp-caption opacity-30">—</span>
+                            {% endif %}
+                        </td>
+                        
+                        <td class="text-center">
+                            {% if inv.match_status == 'matched' %}
+                                <span class="vmp-pill vmp-pill-matched">3-WAY</span>
+                            {% elif inv.match_status == 'exception' %}
+                                <span class="vmp-pill vmp-pill-disputed">VARIANCE</span>
+                            {% else %}
+                                <span class="vmp-pill vmp-pill-pending">PENDING</span>
+                            {% endif %}
+                        </td>
+                        
+                        <td class="text-right">
+                            <div class="vmp-code-small {{ 'text-[var(--vmp-danger)]' if inv.is_overdue else 'opacity-60' }}">
+                                {{ inv.due_date | date('M d') }}
+                            </div>
+                        </td>
+                        
+                        <td class="text-right pr-4">
+                            <svg class="w-4 h-4 opacity-0 group-hover:opacity-50 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="8" class="p-12 text-center">
+                            <div class="vmp-empty">
+                                <div class="vmp-empty-title">NO INVOICES</div>
+                                <div class="vmp-empty-description">No records found matching your criteria.</div>
+                            </div>
+                        </td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+    
+    <div class="vmp-card-footer flex justify-between items-center shrink-0">
+        <div class="vmp-caption opacity-60">Showing 1-50 of 1,204</div>
+        <div class="flex gap-2">
+            <button class="vmp-btn vmp-btn-outline vmp-btn-sm" disabled>Prev</button>
+            <button class="vmp-btn vmp-btn-outline vmp-btn-sm">Next</button>
+        </div>
+    </div>
+</div>

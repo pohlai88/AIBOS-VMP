@@ -1,31 +1,66 @@
 {% extends "layout.html" %}
-{% block title %}Data Ingest — NexusCanon VMP{% endblock %}
+{% block title %}Data Ingest — NexusCanon Ops{% endblock %}
 
 {% block content %}
-<div class="h-full overflow-y-auto">
-    <div class="vmp-container max-w-4xl mx-auto p-6">
-        <header class="mb-6">
-            <h1 class="vmp-h1 mb-2">Data Ingest</h1>
-            <p class="vmp-body vmp-muted">Upload CSV files to populate the Shadow Ledger</p>
-        </header>
+<div class="w-full max-w-7xl mx-auto space-y-8">
+    
+    <header class="border-b border-white/10 pb-6">
+        <div class="vmp-label mb-2 opacity-70">
+            {% if scopeType == 'group' %}DIRECTOR VIEW
+            {% elif scopeType == 'company' %}MANAGER VIEW
+            {% else %}TENANT ADMIN{% endif %}
+        </div>
+        <h1 class="vmp-h1 leading-none mb-2">Data Ingest</h1>
+        <p class="vmp-body max-w-[60ch] opacity-80">
+            Upload and process CSV files for invoices, payments, and remittances.
+        </p>
+    </header>
 
-        <!-- Target Selector -->
-        <div id="target-selector-container"
-             hx-get="/partials/ingest-target-selector.html"
-             hx-trigger="load"
-             hx-target="this"
-             hx-swap="innerHTML">
-            <div class="flex items-center justify-center h-32">
-                <div class="vmp-label-kicker animate-pulse opacity-60">Loading target selector...</div>
+    {% if dashboardMetrics %}
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        <div class="vmp-panel p-5 border shadow-sm" style="border-color: var(--vmp-border);">
+            <div class="vmp-label opacity-60 mb-2">ACTION ITEMS</div>
+            <div class="vmp-h2 font-mono leading-none mb-1 text-[var(--vmp-warn)]">
+                {{ dashboardMetrics.metrics.actionItems }}
             </div>
+            <div class="vmp-caption opacity-50">High Priority Cases</div>
         </div>
 
-        <div id="ingest-forms-container" class="space-y-6">
-            {% include "partials/invoice_ingest_form.html" %}
-            {% include "partials/payment_ingest_form.html" %}
-            {% include "partials/remittance_drop_form.html" %}
+        <div class="vmp-panel p-5 border shadow-sm" style="border-color: var(--vmp-border);">
+            <div class="vmp-label opacity-60 mb-2">PENDING VOLUME</div>
+            <div class="vmp-h2 font-mono leading-none mb-1">
+                {{ "%.2f"|format(dashboardMetrics.metrics.pendingInvoiceVolume) if dashboardMetrics.metrics.pendingInvoiceVolume else '0.00' }}
+            </div>
+            <div class="vmp-caption opacity-50">Total AP Exposure</div>
+        </div>
+
+        <div class="vmp-panel p-5 border shadow-sm" style="border-color: var(--vmp-border);">
+            <div class="vmp-label opacity-60 mb-2">PENDING INVITES</div>
+            <div class="vmp-h2 font-mono leading-none mb-1">
+                {{ dashboardMetrics.metrics.pendingInvites }}
+            </div>
+            <div class="vmp-caption opacity-50">Awaiting Response</div>
+        </div>
+
+        <div class="vmp-panel p-5 border shadow-sm" style="border-color: var(--vmp-border);">
+            <div class="vmp-label opacity-60 mb-2">ACTIVE VENDORS</div>
+            <div class="vmp-h2 font-mono leading-none mb-1 text-[var(--vmp-ok)]">
+                {{ dashboardMetrics.metrics.activeVendors }}
+            </div>
+            <div class="vmp-caption opacity-50">Onboarded Suppliers</div>
+        </div>
+    </div>
+    {% endif %}
+
+    <div id="scoped-dashboard-container"
+         hx-get="/partials/scoped-dashboard.html?scope_type={{ scopeType }}&scope_id={{ scopeId }}"
+         hx-trigger="load"
+         hx-swap="innerHTML"
+         class="min-h-[400px]">
+        <div class="flex flex-col items-center justify-center h-64 gap-4 opacity-50">
+            <div class="vmp-spinner w-8 h-8"></div>
+            <div class="vmp-label animate-pulse">Loading dashboard metrics...</div>
         </div>
     </div>
 </div>
 {% endblock %}
-

@@ -103,9 +103,14 @@ export function getChecklistStepsForException(exceptionType) {
  * Get checklist steps for a case type
  * @param {string} caseType - Case type: 'invoice', 'payment', 'onboarding', 'soa', 'general'
  * @param {string} exceptionType - Optional exception type to add exception-specific steps
+ * @param {Object} vendorAttributes - Optional vendor attributes for conditional logic
+ * @param {string} vendorAttributes.vendorType - Vendor type: 'domestic', 'international', 'individual', 'corporate'
+ * @param {string} vendorAttributes.countryCode - ISO country code (e.g., 'US', 'GB', 'MY')
  * @returns {Array} Array of checklist step definitions
  */
-export function getChecklistStepsForCaseType(caseType, exceptionType = null) {
+export function getChecklistStepsForCaseType(caseType, exceptionType = null, vendorAttributes = {}) {
+    const { vendorType = null, countryCode = null } = vendorAttributes;
+    
     const rules = {
         invoice: [
             {
@@ -140,7 +145,9 @@ export function getChecklistStepsForCaseType(caseType, exceptionType = null) {
             {
                 label: 'Company Registration Certificate',
                 required_evidence_type: 'company_registration',
-                description: 'Official company registration document'
+                description: 'Official company registration document',
+                // Conditional: Required for all corporate vendors
+                condition: (attrs) => attrs.vendorType !== 'individual'
             },
             {
                 label: 'Bank Letter / Account Details',
@@ -150,7 +157,50 @@ export function getChecklistStepsForCaseType(caseType, exceptionType = null) {
             {
                 label: 'Tax ID / VAT Certificate',
                 required_evidence_type: 'tax_id',
-                description: 'Tax identification number or VAT certificate'
+                description: 'Tax identification number or VAT certificate',
+                // Conditional: Required for all countries
+                condition: () => true
+            },
+            // Conditional steps based on country
+            {
+                label: 'GST Registration (Malaysia)',
+                required_evidence_type: 'tax_certificate',
+                description: 'Malaysian GST registration certificate',
+                condition: (attrs) => attrs.countryCode === 'MY'
+            },
+            {
+                label: 'VAT Certificate (EU)',
+                required_evidence_type: 'vat_certificate',
+                description: 'EU VAT registration certificate',
+                condition: (attrs) => {
+                    const euCountries = ['AT', 'BE', 'BG', 'HR', 'CY', 'CZ', 'DK', 'EE', 'FI', 'FR', 'DE', 'GR', 'HU', 'IE', 'IT', 'LV', 'LT', 'LU', 'MT', 'NL', 'PL', 'PT', 'RO', 'SK', 'SI', 'ES', 'SE'];
+                    return euCountries.includes(attrs.countryCode);
+                }
+            },
+            {
+                label: 'EIN Certificate (USA)',
+                required_evidence_type: 'ein_certificate',
+                description: 'US Employer Identification Number certificate',
+                condition: (attrs) => attrs.countryCode === 'US'
+            },
+            {
+                label: 'W-9 Form (USA)',
+                required_evidence_type: 'w9_form',
+                description: 'US W-9 tax form for vendor payments',
+                condition: (attrs) => attrs.countryCode === 'US'
+            },
+            // Conditional steps based on vendor type
+            {
+                label: 'International Trade License',
+                required_evidence_type: 'trade_license',
+                description: 'International trade license for cross-border transactions',
+                condition: (attrs) => attrs.vendorType === 'international'
+            },
+            {
+                label: 'Import/Export Permit',
+                required_evidence_type: 'import_export_permit',
+                description: 'Import/export permit for international vendors',
+                condition: (attrs) => attrs.vendorType === 'international' && attrs.countryCode !== null
             }
         ],
         soa: [
@@ -174,7 +224,19 @@ export function getChecklistStepsForCaseType(caseType, exceptionType = null) {
         ]
     };
 
-    const baseSteps = rules[caseType] || rules.general;
+    let baseSteps = rules[caseType] || rules.general;
+    
+    // Apply conditional logic for onboarding case type
+    if (caseType === 'onboarding' && (vendorType || countryCode)) {
+        baseSteps = baseSteps.filter(step => {
+            // If step has a condition function, evaluate it
+            if (step.condition && typeof step.condition === 'function') {
+                return step.condition({ vendorType, countryCode });
+            }
+            // If step has no condition, include it
+            return true;
+        });
+    }
     
     // If exception type is provided, merge exception-specific steps
     if (exceptionType) {

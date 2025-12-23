@@ -1,71 +1,103 @@
-<!-- Data Ingest History Partial -->
-<div class="space-y-6">
-    {% if error %}
-    <div class="p-4 mb-4 rounded-lg border vmp-border-warn vmp-bg-warn vmp-opacity-30">
-        <div class="vmp-label vmp-text-warn">{{ error }}</div>
-    </div>
-    {% endif %}
-
-    <div class="vmp-label-kicker vmp-label-kicker-strong mb-4">INGEST HISTORY</div>
-
-    {% if history and history|length > 0 %}
-    <div class="divide-y vmp-border-color">
-        {% for entry in history %}
-        <div class="p-4 hover:bg-white/[0.02] transition-colors">
-            <div class="flex items-start justify-between gap-4">
-                <div class="flex-1 min-w-0">
-                    <div class="flex items-center gap-3 mb-2">
-                        <span class="vmp-code">{{ entry.ingest_type | upper }}</span>
-                        <span class="vmp-body-small font-medium truncate">{{ entry.filename }}</span>
-                    </div>
-                    <div class="vmp-caption vmp-muted mb-2">
-                        <span class="vmp-label-kicker opacity-50">Records:</span>
-                        {{ entry.records_count }}
-                        {% if entry.scope_type %}
-                        <span class="vmp-label-kicker opacity-50 ml-3">Scope:</span>
-                        {{ entry.scope_type | upper }}
-                        {% endif %}
-                    </div>
-                    <div class="vmp-caption vmp-muted">
-                        {% if entry.vmp_vendor_users %}
-                        Uploaded by: {{ entry.vmp_vendor_users.display_name or entry.vmp_vendor_users.email }}
-                        {% endif %}
-                        <span class="ml-3">
-                            {{ entry.created_at | date('%b %d, %Y %H:%M') if entry.created_at else '—' }}
-                        </span>
-                    </div>
-                    {% if entry.metadata and (entry.metadata.errors or entry.metadata.failures) %}
-                    <div class="mt-2">
-                        {% if entry.metadata.errors and entry.metadata.errors|length > 0 %}
-                        <div class="vmp-caption vmp-text-warn">
-                            {{ entry.metadata.errors|length }} error(s)
-                        </div>
-                        {% endif %}
-                        {% if entry.metadata.failures and entry.metadata.failures|length > 0 %}
-                        <div class="vmp-caption vmp-text-warn">
-                            {{ entry.metadata.failures|length }} failure(s)
-                        </div>
-                        {% endif %}
-                    </div>
-                    {% endif %}
-                </div>
-                <div class="shrink-0">
-                    <span class="vmp-tag vmp-tag-mono text-xs">
-                        {{ entry.ingest_type | upper }}
-                    </span>
-                </div>
-            </div>
+<div class="vmp-card shadow-lg flex flex-col h-full border" style="border-color: var(--vmp-border);">
+    
+    <div class="p-4 border-b flex justify-between items-center bg-[var(--vmp-panel)]" style="border-color: var(--vmp-border);">
+        <div class="flex items-center gap-2">
+            <h3 class="vmp-h6">Ingest History</h3>
+            {% if history %}
+            <span class="vmp-badge opacity-50">{{ history|length }} BATCHES</span>
+            {% endif %}
         </div>
-        {% endfor %}
+        
+        <div class="flex gap-2" x-data="{ type: '' }">
+            <select x-model="type" 
+                    @change="$dispatch('filter-log', { type: type })"
+                    class="vmp-select h-8 py-0 text-xs w-32">
+                <option value="">All Types</option>
+                <option value="invoice">Invoices</option>
+                <option value="payment">Payments</option>
+            </select>
+            <button class="vmp-btn vmp-btn-ghost vmp-btn-sm h-8" onclick="location.reload()">Refresh</button>
+        </div>
     </div>
-    {% else %}
-    <div class="vmp-body vmp-muted text-center py-8">
-        {% if error %}
-        {{ error }}
-        {% else %}
-        No ingest history found.
-        {% endif %}
-    </div>
-    {% endif %}
-</div>
 
+    <div class="flex-1 overflow-auto max-h-[600px]">
+        <table class="vmp-table w-full">
+            <thead class="sticky top-0 z-10 bg-[var(--vmp-panel)]">
+                <tr>
+                    <th class="w-40">TIMESTAMP</th>
+                    <th class="w-32">TYPE</th>
+                    <th>FILENAME / METADATA</th>
+                    <th class="w-32 text-center">RESULT</th>
+                    <th class="w-32 text-right">USER</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y" style="divide-color: var(--vmp-border);">
+                {% if history and history|length > 0 %}
+                    {% for entry in history %}
+                    <tr class="group hover:bg-[var(--vmp-panel)] transition-colors">
+                        
+                        <td>
+                            <div class="vmp-body-small font-medium">{{ entry.created_at | date('%b %d, %Y') }}</div>
+                            <div class="vmp-caption opacity-50">{{ entry.created_at | date('%H:%M:%S') }}</div>
+                        </td>
+
+                        <td>
+                            <span class="vmp-tag vmp-tag-mono text-[10px] uppercase">{{ entry.ingest_type }}</span>
+                        </td>
+
+                        <td>
+                            <div class="vmp-body-small font-medium truncate max-w-[300px]" title="{{ entry.filename }}">
+                                {{ entry.filename }}
+                            </div>
+                            <div class="flex gap-3 mt-1">
+                                <span class="vmp-caption opacity-60">{{ entry.records_count }} records</span>
+                                {% if entry.scope_type %}
+                                <span class="vmp-caption opacity-40 border-l pl-3" style="border-color: var(--vmp-border);">
+                                    Scope: {{ entry.scope_type | upper }}
+                                </span>
+                                {% endif %}
+                            </div>
+                            
+                            {% if entry.metadata and (entry.metadata.errors or entry.metadata.failures) %}
+                            <div class="mt-1 flex gap-2">
+                                {% if entry.metadata.errors %}
+                                <span class="vmp-caption text-[var(--vmp-danger)]">{{ entry.metadata.errors|length }} Err</span>
+                                {% endif %}
+                                {% if entry.metadata.failures %}
+                                <span class="vmp-caption text-[var(--vmp-warn)]">{{ entry.metadata.failures|length }} Fail</span>
+                                {% endif %}
+                            </div>
+                            {% endif %}
+                        </td>
+
+                        <td class="text-center">
+                            {% if entry.metadata.errors and entry.metadata.errors|length > 0 %}
+                                <span class="vmp-badge vmp-badge-danger text-[9px]">ERRORS</span>
+                            {% elif entry.metadata.failures and entry.metadata.failures|length > 0 %}
+                                <span class="vmp-badge vmp-badge-warn text-[9px]">PARTIAL</span>
+                            {% else %}
+                                <span class="vmp-badge vmp-badge-ok text-[9px]">SUCCESS</span>
+                            {% endif %}
+                        </td>
+
+                        <td class="text-right">
+                            <div class="vmp-caption opacity-60 truncate max-w-[120px]">
+                                {{ entry.vmp_vendor_users.display_name or entry.vmp_vendor_users.email or 'System' }}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="5" class="p-12 text-center">
+                            <div class="vmp-empty">
+                                <div class="vmp-empty-title">NO HISTORY</div>
+                                <div class="vmp-empty-description">No data ingestion records found.</div>
+                            </div>
+                        </td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>

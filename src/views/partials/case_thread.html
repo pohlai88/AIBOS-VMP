@@ -1,79 +1,72 @@
-<!-- Case Thread Cell - Displays messages for a case -->
-<div class="flex flex-col h-full">
+<div class="flex flex-col h-full relative" x-data>
+    
     {% if error %}
-    <div class="p-3 m-4 rounded-lg border vmp-border-warn vmp-bg-warn vmp-opacity-30">
-        <div class="vmp-caption vmp-text-warn">{{ error }}</div>
+    <div class="px-6 pt-4 shrink-0">
+        <div class="p-3 rounded border border-rose-500/30 bg-rose-500/10 text-rose-400 font-mono text-xs">
+            ERROR: {{ error }}
+        </div>
     </div>
     {% endif %}
-    <!-- Thread Messages Area -->
-    <div class="flex-1 overflow-y-auto p-6 space-y-8 relative">
-        <div class="absolute left-9 top-6 bottom-6 w-px vmp-bg-panel"></div>
 
+    <div class="flex-1 overflow-y-auto p-6 space-y-6 flex flex-col-reverse" id="thread-scroll-area">
+        
         {% if messages and messages|length > 0 %}
-        {% for msg in messages %}
-        <div class="relative pl-10 group">
-            <div
-                class="absolute left-[9px] top-1.5 w-[7px] h-[7px] rounded-full bg-black border transition-colors z-10 vmp-border-color-2 group-hover:vmp-border-color">
-            </div>
+            {% for msg in messages %}
+            
+            <div class="group flex flex-col {{ 'items-end' if msg.sender_party == 'internal' else 'items-start' }}">
+                
+                <div class="flex items-center gap-3 mb-2 px-1 opacity-40 group-hover:opacity-100 transition-opacity">
+                    <span class="font-mono text-[10px] uppercase tracking-widest {{ 'text-emerald-400' if msg.sender_party == 'AI Assistant' else 'text-white' }}">
+                        {{ msg.sender_party or 'SYSTEM' }}
+                    </span>
+                    <span class="text-[10px] font-mono text-white/50">
+                        {{ msg.created_at | date('%H:%M') if msg.created_at else 'NOW' }}
+                    </span>
+                </div>
 
-            <div class="flex items-baseline justify-between mb-1">
-                <span class="vmp-label">
-                    {{ msg.sender_party if msg.sender_party else 'SYSTEM' }}
-                    <span class="vmp-subtle mx-1">via</span>
-                    {{ msg.channel_source if msg.channel_source else 'PORTAL' }}
-                </span>
-                <span class="vmp-caption">
-                    {% if msg.created_at %}
-                    {{ msg.created_at | date('%H:%M') }}
-                    {% else %}
-                    —
-                    {% endif %}
-                </span>
-            </div>
+                <div class="max-w-[85%] p-4 rounded-xl border backdrop-blur-md 
+                            {{ 'rounded-tr-none border-emerald-500/20 bg-emerald-500/5 text-emerald-100' if msg.sender_party == 'internal' 
+                            else 'rounded-tl-none border-emerald-500/30 bg-emerald-500/10 text-emerald-100' if msg.sender_party == 'AI Assistant'
+                            else 'rounded-tl-none border-white/10 bg-white/5 text-white/80' }}">
+                    <div class="font-sans text-sm leading-relaxed whitespace-pre-wrap">
+                        {{ msg.body or '—' }}
+                    </div>
+                </div>
 
-            <div class="vmp-body-small leading-relaxed vmp-panel p-3 rounded-lg rounded-tl-none">
-                {{ msg.body if msg.body else '—' }}
             </div>
-        </div>
-        {% endfor %}
+            {% endfor %}
+            
         {% else %}
-        <!-- Empty State -->
-        <div class="relative pl-10 opacity-50">
-            <div class="absolute left-[9px] top-1.5 w-[7px] h-[7px] rounded-full vmp-bg-panel"></div>
-            <div class="vmp-empty">
-                <div class="font-serif text-4xl italic opacity-20 mb-2">N</div>
-                <div class="vmp-empty-title">NO MESSAGES</div>
-                <div class="vmp-empty-description">
-                    Case initialized. No messages yet. Start the conversation below.
+            <div class="flex h-full items-center justify-center opacity-30">
+                <div class="text-center">
+                    <div class="font-serif text-3xl italic mb-2">Null Stream</div>
+                    <div class="font-mono text-xs uppercase tracking-widest">No communications logged</div>
                 </div>
             </div>
-        </div>
         {% endif %}
+
     </div>
 
-    <!-- Message Input Form -->
-    <div class="p-4 border-t vmp-border-color vmp-bg-veil">
-        <form class="relative group" hx-post="/cases/{{ caseId }}/messages" hx-target="#case-thread-container"
-            hx-swap="innerHTML" hx-indicator="#thread-loading" hx-trigger="submit"
-            hx-on::after-request="if(event.detail.successful) { this.querySelector('input[name=body]').value = ''; }">
-            <input type="text" name="body" id="message-input-{{ caseId }}"
-                placeholder="Type a message or paste evidence..." class="vmp-form-input w-full pr-12" required
-                autocomplete="off">
+    <div class="shrink-0 p-4 border-t border-white/10 bg-[#050505]/80 backdrop-blur-xl">
+        <form class="relative" 
+              hx-post="/cases/{{ caseId }}/messages" 
+              hx-target="#case-thread-container"
+              hx-swap="innerHTML" 
+              hx-on::after-request="if(event.detail.successful) { this.reset(); }">
+            
+            <input type="text" 
+                   name="body" 
+                   placeholder="Inject message to stream..." 
+                   class="w-full bg-[#0A0A0A] border border-white/10 rounded-lg py-4 pl-4 pr-12 text-sm text-white placeholder-white/20 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/50 transition-all font-mono"
+                   required
+                   autocomplete="off">
 
             <button type="submit"
-                class="absolute right-2 top-2 p-1.5 rounded-lg hover:bg-white/10 vmp-subtle hover:text-white transition-colors">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                    class="absolute right-2 top-2 bottom-2 aspect-square flex items-center justify-center rounded bg-white/5 hover:bg-emerald-500/20 text-white/40 hover:text-emerald-400 transition-all">
+                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 5l7 7-7 7M5 12h14" />
                 </svg>
             </button>
         </form>
-        <div class="flex justify-between mt-2 px-1">
-            <span class="vmp-caption">Markdown supported</span>
-            <span class="vmp-caption">Enter to send</span>
-        </div>
-        <div id="thread-loading" class="htmx-indicator mt-2">
-            <div class="vmp-label-kicker animate-pulse opacity-60">Sending...</div>
-        </div>
     </div>
 </div>

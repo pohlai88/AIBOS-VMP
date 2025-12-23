@@ -1,83 +1,73 @@
-<!-- Invite Form Partial -->
-<div class="vmp-panel p-6 border vmp-border-color">
-    {% if success %}
-    <div class="p-4 mb-4 rounded-lg border vmp-border-ok vmp-bg-ok vmp-opacity-30">
-        <div class="vmp-label vmp-text-ok mb-2">Invite Created Successfully!</div>
-        <div class="vmp-body-small mb-2">
-            <strong>Email:</strong> {{ inviteEmail }}
-        </div>
-        <div class="vmp-body-small mb-3">
-            <strong>Invite URL:</strong> 
-            <a href="{{ inviteUrl }}" target="_blank" class="vmp-link">{{ inviteUrl }}</a>
-        </div>
-        <button onclick="location.reload()" class="vmp-btn-outline text-sm">Create Another Invite</button>
-    </div>
-    {% endif %}
+<div class="vmp-panel p-6 border shadow-lg" style="border-color: var(--vmp-border);">
+    
+    <div id="invite-feedback"></div>
 
-    {% if error %}
-    <div class="p-4 mb-4 rounded-lg border vmp-border-warn vmp-bg-warn vmp-opacity-30">
-        <div class="vmp-label vmp-text-warn">{{ error }}</div>
+    <div class="mb-6 border-b pb-4" style="border-color: var(--vmp-border);">
+        <h3 class="vmp-h4 mb-1">Invite Supplier</h3>
+        <p class="vmp-caption opacity-60">Generate a secure onboarding token for a new vendor.</p>
     </div>
-    {% endif %}
-
-    <div class="vmp-label-kicker vmp-label-kicker-strong mb-4">SUPPLIER INVITE</div>
 
     <form hx-post="/ops/invites"
           hx-target="#invite-result"
           hx-swap="innerHTML"
+          hx-indicator="#invite-loading"
           class="space-y-6">
-        <!-- Vendor Name -->
-        <div>
-            <label class="vmp-label-kicker mb-2 block">Supplier Name</label>
-            <input type="text" 
-                   name="vendor_name" 
-                   required 
-                   class="vmp-form-input w-full"
-                   placeholder="Enter supplier company name">
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <div>
+                <label class="vmp-label mb-2 block opacity-70">Company Name</label>
+                <input type="text" 
+                       name="vendor_name" 
+                       required 
+                       class="vmp-input w-full"
+                       placeholder="e.g. Acme Logistics Ltd.">
+            </div>
+            <div>
+                <label class="vmp-label mb-2 block opacity-70">Contact Email</label>
+                <input type="email" 
+                       name="email" 
+                       required 
+                       class="vmp-input w-full"
+                       placeholder="vendor@acme.com">
+            </div>
         </div>
 
-        <!-- Email -->
-        <div>
-            <label class="vmp-label-kicker mb-2 block">Supplier Email</label>
-            <input type="email" 
-                   name="email" 
-                   required 
-                   class="vmp-form-input w-full"
-                   placeholder="supplier@example.com">
-        </div>
-
-        <!-- Company Selection -->
         {% if orgTree %}
         <div>
-            <label class="vmp-label-kicker mb-3 block">Companies to Serve</label>
-            <div class="space-y-4">
-                <!-- Groups -->
+            <div class="flex justify-between items-end mb-3">
+                <label class="vmp-label opacity-70">Authorization Scope</label>
+                <span class="vmp-code-small opacity-40 text-[10px]">SELECT ENTITIES</span>
+            </div>
+            
+            <div class="space-y-3 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+                
                 {% if orgTree.groups and orgTree.groups|length > 0 %}
-                <div class="space-y-2">
-                    <div class="vmp-label-kicker opacity-60 mb-2">GROUPS</div>
+                <div class="space-y-3">
                     {% for group in orgTree.groups %}
-                    <div class="p-3 rounded-lg border vmp-border-color vmp-bg-panel">
-                        <label class="flex items-center gap-2 cursor-pointer">
+                    <div class="p-3 rounded-lg border transition-colors hover:bg-[var(--vmp-bg)]" 
+                         style="border-color: var(--vmp-border); background: var(--vmp-panel);">
+                        
+                        <label class="flex items-center gap-3 cursor-pointer mb-2">
                             <input type="checkbox" 
-                                   class="group-checkbox"
+                                   class="vmp-checkbox group-checkbox"
                                    data-group-id="{{ group.id }}"
                                    onchange="toggleGroupCompanies(this, '{{ group.id }}')">
-                            <span class="vmp-body-small font-medium">{{ group.name }}</span>
-                            <span class="vmp-caption vmp-muted">({{ group.companies|length }} companies)</span>
+                            <div>
+                                <div class="vmp-body-small font-medium">{{ group.name }}</div>
+                                <div class="vmp-caption opacity-50">{{ group.companies|length }} linked entities</div>
+                            </div>
                         </label>
+
                         {% if group.companies and group.companies|length > 0 %}
-                        <div class="ml-6 mt-2 space-y-1">
+                        <div class="ml-7 pl-3 border-l space-y-2 pt-1" style="border-color: var(--vmp-border);">
                             {% for company in group.companies %}
-                            <label class="flex items-center gap-2 cursor-pointer">
+                            <label class="flex items-center gap-3 cursor-pointer opacity-80 hover:opacity-100 transition-opacity">
                                 <input type="checkbox" 
                                        name="company_ids" 
                                        value="{{ company.id }}"
-                                       class="company-checkbox"
+                                       class="vmp-checkbox company-checkbox"
                                        data-group-id="{{ group.id }}">
                                 <span class="vmp-body-small">{{ company.name }}</span>
-                                {% if company.legal_name %}
-                                <span class="vmp-caption vmp-muted">({{ company.legal_name }})</span>
-                                {% endif %}
                             </label>
                             {% endfor %}
                         </div>
@@ -87,61 +77,59 @@
                 </div>
                 {% endif %}
 
-                <!-- Ungrouped Companies -->
                 {% if orgTree.ungroupedCompanies and orgTree.ungroupedCompanies|length > 0 %}
-                <div class="space-y-2">
-                    <div class="vmp-label-kicker opacity-60 mb-2">COMPANIES</div>
-                    {% for company in orgTree.ungroupedCompanies %}
-                    <label class="flex items-center gap-2 cursor-pointer p-2 rounded border vmp-border-color hover:vmp-bg-panel">
-                        <input type="checkbox" 
-                               name="company_ids" 
-                               value="{{ company.id }}"
-                               class="company-checkbox">
-                        <span class="vmp-body-small">{{ company.name }}</span>
-                        {% if company.legal_name %}
-                        <span class="vmp-caption vmp-muted">({{ company.legal_name }})</span>
-                        {% endif %}
-                    </label>
-                    {% endfor %}
+                <div class="pt-2">
+                    <div class="vmp-caption opacity-40 mb-2 uppercase tracking-widest text-[10px]">Ungrouped</div>
+                    <div class="space-y-2">
+                        {% for company in orgTree.ungroupedCompanies %}
+                        <label class="flex items-center gap-3 p-2 rounded border cursor-pointer hover:bg-[var(--vmp-panel)] transition-colors"
+                               style="border-color: var(--vmp-border);">
+                            <input type="checkbox" 
+                                   name="company_ids" 
+                                   value="{{ company.id }}"
+                                   class="vmp-checkbox company-checkbox">
+                            <span class="vmp-body-small">{{ company.name }}</span>
+                        </label>
+                        {% endfor %}
+                    </div>
                 </div>
                 {% endif %}
             </div>
         </div>
         {% endif %}
 
-        <!-- Submit Button -->
-        <div class="flex justify-end">
-            <button type="submit" class="vmp-btn-primary">Create Invite</button>
+        <div class="pt-4 border-t flex justify-end items-center gap-4" style="border-color: var(--vmp-border);">
+            <div id="invite-loading" class="htmx-indicator flex items-center gap-2">
+                <div class="vmp-spinner w-4 h-4"></div>
+                <span class="vmp-caption opacity-60">Generating keys...</span>
+            </div>
+            <button type="submit" class="vmp-btn vmp-btn-primary">
+                <span class="vmp-label text-[var(--vmp-bg)]">Generate Invite</span>
+            </button>
         </div>
-
-        <!-- Result -->
-        <div id="invite-result"></div>
     </form>
+
+    <div id="invite-result" class="mt-6 empty:hidden animate-in fade-in slide-in-from-top-4 duration-300"></div>
 </div>
 
 <script>
 function toggleGroupCompanies(groupCheckbox, groupId) {
-    const companyCheckboxes = document.querySelectorAll(`.company-checkbox[data-group-id="${groupId}"]`);
-    companyCheckboxes.forEach(checkbox => {
-        checkbox.checked = groupCheckbox.checked;
-    });
+    const checkboxes = document.querySelectorAll(`.company-checkbox[data-group-id="${groupId}"]`);
+    checkboxes.forEach(cb => cb.checked = groupCheckbox.checked);
 }
 
-// Also handle reverse: if all companies in a group are checked, check the group
-document.addEventListener('change', function(e) {
+// Auto-check parent group if all children are checked
+document.addEventListener('change', (e) => {
     if (e.target.classList.contains('company-checkbox')) {
         const groupId = e.target.dataset.groupId;
         if (groupId) {
-            const groupCheckbox = document.querySelector(`.group-checkbox[data-group-id="${groupId}"]`);
-            const companyCheckboxes = Array.from(document.querySelectorAll(`.company-checkbox[data-group-id="${groupId}"]`));
-            const allChecked = companyCheckboxes.every(cb => cb.checked);
-            const someChecked = companyCheckboxes.some(cb => cb.checked);
-            if (groupCheckbox) {
-                groupCheckbox.checked = allChecked;
-                groupCheckbox.indeterminate = someChecked && !allChecked;
+            const groupCb = document.querySelector(`.group-checkbox[data-group-id="${groupId}"]`);
+            const siblings = Array.from(document.querySelectorAll(`.company-checkbox[data-group-id="${groupId}"]`));
+            if (groupCb) {
+                groupCb.checked = siblings.every(cb => cb.checked);
+                groupCb.indeterminate = siblings.some(cb => cb.checked) && !groupCb.checked;
             }
         }
     }
 });
 </script>
-

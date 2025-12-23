@@ -24,13 +24,27 @@ export default defineConfig({
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
     },
+    {
+      name: 'Mobile Chrome',
+      use: { ...devices['Pixel 5'] }, // 393x851 viewport
+    },
+    {
+      name: 'Mobile Safari',
+      use: { ...devices['iPhone 12'] }, // 390x844 viewport
+    },
+    {
+      name: 'Tablet',
+      use: { ...devices['iPad Pro'] }, // 1024x1366 viewport
+    },
   ],
 
   webServer: {
     command: 'npm run dev',
-    url: 'http://localhost:9000',
+    url: 'http://localhost:9000/health',
     reuseExistingServer: !process.env.CI,
     timeout: 120 * 1000,
+    stdout: 'ignore',
+    stderr: 'pipe',
   },
 });
 

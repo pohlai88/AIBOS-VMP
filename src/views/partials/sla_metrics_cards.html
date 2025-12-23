@@ -1,0 +1,53 @@
+<!-- SLA Metrics Cards Partial -->
+{% if slaMetrics %}
+<div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+    <!-- Compliance Rate Card -->
+    <div class="vmp-panel p-4 border vmp-border-color">
+        <div class="vmp-label-kicker opacity-50 mb-1">COMPLIANCE RATE</div>
+        <div class="vmp-h3 {% if slaMetrics.complianceRate >= 90 %}vmp-signal-ok{% elif slaMetrics.complianceRate >= 70 %}vmp-signal-warn{% else %}vmp-signal-danger{% endif %}">
+            {{ "%.1f"|format(slaMetrics.complianceRate) }}%
+        </div>
+        <div class="vmp-caption vmp-muted mt-1">
+            {{ slaMetrics.casesWithinSLA }} of {{ slaMetrics.totalCases }} cases within SLA
+        </div>
+    </div>
+
+    <!-- Average Response Time Card -->
+    <div class="vmp-panel p-4 border vmp-border-color">
+        <div class="vmp-label-kicker opacity-50 mb-1">AVG RESPONSE TIME</div>
+        <div class="vmp-h3 {% if slaMetrics.averageResponseTime <= 2 %}vmp-signal-ok{% elif slaMetrics.averageResponseTime <= 4 %}vmp-signal-warn{% else %}vmp-signal-danger{% endif %}">
+            {{ "%.1f"|format(slaMetrics.averageResponseTime) }}h
+        </div>
+        <div class="vmp-caption vmp-muted mt-1">
+            Target: 2 hours
+        </div>
+    </div>
+
+    <!-- Total Cases Card -->
+    <div class="vmp-panel p-4 border vmp-border-color">
+        <div class="vmp-label-kicker opacity-50 mb-1">TOTAL CASES</div>
+        <div class="vmp-h3">
+            {{ slaMetrics.totalCases }}
+        </div>
+        <div class="vmp-caption vmp-muted mt-1">
+            Cases in period
+        </div>
+    </div>
+
+    <!-- SLA Breaches Card -->
+    <div class="vmp-panel p-4 border vmp-border-color">
+        <div class="vmp-label-kicker opacity-50 mb-1">SLA BREACHES</div>
+        <div class="vmp-h3 {% if slaMetrics.casesBreached == 0 %}vmp-signal-ok{% else %}vmp-signal-danger{% endif %}">
+            {{ slaMetrics.casesBreached }}
+        </div>
+        <div class="vmp-caption vmp-muted mt-1">
+            Cases exceeding 2h SLA
+        </div>
+    </div>
+</div>
+{% else %}
+<div class="vmp-panel p-6 border vmp-border-color">
+    <div class="vmp-body vmp-muted text-center">No metrics data available.</div>
+</div>
+{% endif %}
+

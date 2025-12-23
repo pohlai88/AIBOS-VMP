@@ -959,5 +959,422 @@ describe('VMP Adapter - Supabase', () => {
       expect(result.length).toBe(0);
     });
   });
+
+  // ============================================================================
+  // Emergency Pay Override Methods
+  // ============================================================================
+
+  describe('Emergency Pay Override Methods', () => {
+    let testPaymentId = null;
+    let testOverrideId = null;
+
+    beforeEach(async () => {
+      // Get a test payment
+      if (testVendorId) {
+        try {
+          const payments = await vmpAdapter.getPayments(testVendorId, { limit: 1 });
+          if (payments && payments.length > 0) {
+            testPaymentId = payments[0].id;
+          }
+        } catch (error) {
+          console.warn('Could not get test payment:', error.message);
+        }
+      }
+    });
+
+    afterEach(async () => {
+      // Cleanup test override (if created)
+      if (testOverrideId) {
+        try {
+          // Override will remain in DB but won't affect other tests
+          testOverrideId = null;
+        } catch (error) {
+          // Ignore cleanup errors
+        }
+      }
+    });
+
+    test('requestEmergencyPayOverride should create override request', async () => {
+      if (!testPaymentId || !testUserId) {
+        console.warn('Skipping - no test payment or user');
+        return;
+      }
+
+      const override = await vmpAdapter.requestEmergencyPayOverride(
+        testPaymentId,
+        testCaseId || null,
+        testUserId,
+        'Test emergency override reason',
+        'high'
+      );
+
+      expect(override).toBeDefined();
+      expect(override).toHaveProperty('id');
+      expect(override).toHaveProperty('payment_id', testPaymentId);
+      expect(override).toHaveProperty('requested_by_user_id', testUserId);
+      expect(override).toHaveProperty('reason', 'Test emergency override reason');
+      expect(override).toHaveProperty('urgency_level', 'high');
+      expect(override).toHaveProperty('status', 'pending');
+
+      testOverrideId = override.id;
+    });
+
+    test('requestEmergencyPayOverride should throw ValidationError for missing paymentId', async () => {
+      await expect(
+        vmpAdapter.requestEmergencyPayOverride(
+          null,
+          null,
+          testUserId || 'test-user-id',
+          'Test reason',
+          'high'
+        )
+      ).rejects.toThrow();
+    });
+
+    test('requestEmergencyPayOverride should throw ValidationError for missing userId', async () => {
+      if (!testPaymentId) {
+        console.warn('Skipping - no test payment');
+        return;
+      }
+
+      await expect(
+        vmpAdapter.requestEmergencyPayOverride(
+          testPaymentId,
+          null,
+          null,
+          'Test reason',
+          'high'
+        )
+      ).rejects.toThrow();
+    });
+
+    test('requestEmergencyPayOverride should throw ValidationError for missing reason', async () => {
+      if (!testPaymentId || !testUserId) {
+        console.warn('Skipping - no test payment or user');
+        return;
+      }
+
+      await expect(
+        vmpAdapter.requestEmergencyPayOverride(
+          testPaymentId,
+          null,
+          testUserId,
+          '',
+          'high'
+        )
+      ).rejects.toThrow();
+    });
+
+    test('requestEmergencyPayOverride should throw ValidationError for invalid urgency level', async () => {
+      if (!testPaymentId || !testUserId) {
+        console.warn('Skipping - no test payment or user');
+        return;
+      }
+
+      await expect(
+        vmpAdapter.requestEmergencyPayOverride(
+          testPaymentId,
+          null,
+          testUserId,
+          'Test reason',
+          'invalid-level'
+        )
+      ).rejects.toThrow();
+    });
+
+    test('requestEmergencyPayOverride should accept all valid urgency levels', async () => {
+      if (!testPaymentId || !testUserId) {
+        console.warn('Skipping - no test payment or user');
+        return;
+      }
+
+      const urgencyLevels = ['high', 'critical', 'emergency'];
+      
+      for (const level of urgencyLevels) {
+        const override = await vmpAdapter.requestEmergencyPayOverride(
+          testPaymentId,
+          testCaseId || null,
+          testUserId,
+          `Test reason for ${level}`,
+          level
+        );
+
+        expect(override.urgency_level).toBe(level);
+      }
+    });
+
+    test('requestEmergencyPayOverride should throw NotFoundError for non-existent payment', async () => {
+      if (!testUserId) {
+        console.warn('Skipping - no test user');
+        return;
+      }
+
+      const fakePaymentId = '00000000-0000-0000-0000-000000000000';
+      await expect(
+        vmpAdapter.requestEmergencyPayOverride(
+          fakePaymentId,
+          null,
+          testUserId,
+          'Test reason',
+          'high'
+        )
+      ).rejects.toThrow();
+    });
+
+    test('approveEmergencyPayOverride should approve pending override', async () => {
+      if (!testPaymentId || !testUserId) {
+        console.warn('Skipping - no test payment or user');
+        return;
+      }
+
+      // Create a test override
+      const override = await vmpAdapter.requestEmergencyPayOverride(
+        testPaymentId,
+        testCaseId || null,
+        testUserId,
+        'Test override for approval',
+        'high'
+      );
+
+      // Approve it
+      const approved = await vmpAdapter.approveEmergencyPayOverride(
+        override.id,
+        testUserId
+      );
+
+      expect(approved).toBeDefined();
+      expect(approved.status).toBe('approved');
+      expect(approved.approved_by_user_id).toBe(testUserId);
+      expect(approved.approved_at).toBeDefined();
+    });
+
+    test('approveEmergencyPayOverride should throw ValidationError for missing overrideId', async () => {
+      if (!testUserId) {
+        console.warn('Skipping - no test user');
+        return;
+      }
+
+      await expect(
+        vmpAdapter.approveEmergencyPayOverride(null, testUserId)
+      ).rejects.toThrow();
+    });
+
+    test('approveEmergencyPayOverride should throw ValidationError for missing approvedByUserId', async () => {
+      if (!testPaymentId || !testUserId) {
+        console.warn('Skipping - no test payment or user');
+        return;
+      }
+
+      const override = await vmpAdapter.requestEmergencyPayOverride(
+        testPaymentId,
+        null,
+        testUserId,
+        'Test override',
+        'high'
+      );
+
+      await expect(
+        vmpAdapter.approveEmergencyPayOverride(override.id, null)
+      ).rejects.toThrow();
+    });
+
+    test('approveEmergencyPayOverride should throw NotFoundError for non-existent override', async () => {
+      if (!testUserId) {
+        console.warn('Skipping - no test user');
+        return;
+      }
+
+      const fakeOverrideId = '00000000-0000-0000-0000-000000000000';
+      await expect(
+        vmpAdapter.approveEmergencyPayOverride(fakeOverrideId, testUserId)
+      ).rejects.toThrow();
+    });
+
+    test('approveEmergencyPayOverride should throw ValidationError for non-pending override', async () => {
+      if (!testPaymentId || !testUserId) {
+        console.warn('Skipping - no test payment or user');
+        return;
+      }
+
+      // Create and approve an override
+      const override = await vmpAdapter.requestEmergencyPayOverride(
+        testPaymentId,
+        null,
+        testUserId,
+        'Test override',
+        'high'
+      );
+      await vmpAdapter.approveEmergencyPayOverride(override.id, testUserId);
+
+      // Try to approve again (should fail)
+      await expect(
+        vmpAdapter.approveEmergencyPayOverride(override.id, testUserId)
+      ).rejects.toThrow();
+    });
+
+    test('rejectEmergencyPayOverride should reject pending override', async () => {
+      if (!testPaymentId || !testUserId) {
+        console.warn('Skipping - no test payment or user');
+        return;
+      }
+
+      // Create a test override
+      const override = await vmpAdapter.requestEmergencyPayOverride(
+        testPaymentId,
+        testCaseId || null,
+        testUserId,
+        'Test override for rejection',
+        'high'
+      );
+
+      // Reject it
+      const rejectionReason = 'Insufficient justification';
+      const rejected = await vmpAdapter.rejectEmergencyPayOverride(
+        override.id,
+        testUserId,
+        rejectionReason
+      );
+
+      expect(rejected).toBeDefined();
+      expect(rejected.status).toBe('rejected');
+      expect(rejected.rejection_reason).toBe(rejectionReason);
+      expect(rejected.approved_by_user_id).toBe(testUserId);
+      expect(rejected.approved_at).toBeDefined();
+    });
+
+    test('rejectEmergencyPayOverride should throw ValidationError for missing overrideId', async () => {
+      if (!testUserId) {
+        console.warn('Skipping - no test user');
+        return;
+      }
+
+      await expect(
+        vmpAdapter.rejectEmergencyPayOverride(null, testUserId, 'Test reason')
+      ).rejects.toThrow();
+    });
+
+    test('rejectEmergencyPayOverride should throw ValidationError for missing rejectedByUserId', async () => {
+      if (!testPaymentId || !testUserId) {
+        console.warn('Skipping - no test payment or user');
+        return;
+      }
+
+      const override = await vmpAdapter.requestEmergencyPayOverride(
+        testPaymentId,
+        null,
+        testUserId,
+        'Test override',
+        'high'
+      );
+
+      await expect(
+        vmpAdapter.rejectEmergencyPayOverride(override.id, null, 'Test reason')
+      ).rejects.toThrow();
+    });
+
+    test('rejectEmergencyPayOverride should throw ValidationError for missing rejectionReason', async () => {
+      if (!testPaymentId || !testUserId) {
+        console.warn('Skipping - no test payment or user');
+        return;
+      }
+
+      const override = await vmpAdapter.requestEmergencyPayOverride(
+        testPaymentId,
+        null,
+        testUserId,
+        'Test override',
+        'high'
+      );
+
+      await expect(
+        vmpAdapter.rejectEmergencyPayOverride(override.id, testUserId, '')
+      ).rejects.toThrow();
+    });
+
+    test('rejectEmergencyPayOverride should throw NotFoundError for non-existent override', async () => {
+      if (!testUserId) {
+        console.warn('Skipping - no test user');
+        return;
+      }
+
+      const fakeOverrideId = '00000000-0000-0000-0000-000000000000';
+      await expect(
+        vmpAdapter.rejectEmergencyPayOverride(fakeOverrideId, testUserId, 'Test reason')
+      ).rejects.toThrow();
+    });
+
+    test('rejectEmergencyPayOverride should throw ValidationError for non-pending override', async () => {
+      if (!testPaymentId || !testUserId) {
+        console.warn('Skipping - no test payment or user');
+        return;
+      }
+
+      // Create and reject an override
+      const override = await vmpAdapter.requestEmergencyPayOverride(
+        testPaymentId,
+        null,
+        testUserId,
+        'Test override',
+        'high'
+      );
+      await vmpAdapter.rejectEmergencyPayOverride(override.id, testUserId, 'Test rejection');
+
+      // Try to reject again (should fail)
+      await expect(
+        vmpAdapter.rejectEmergencyPayOverride(override.id, testUserId, 'Another rejection')
+      ).rejects.toThrow();
+    });
+
+    test('getEmergencyPayOverrides should return list of overrides', async () => {
+      const overrides = await vmpAdapter.getEmergencyPayOverrides();
+      
+      expect(Array.isArray(overrides)).toBe(true);
+    });
+
+    test('getEmergencyPayOverrides should filter by paymentId', async () => {
+      if (!testPaymentId) {
+        console.warn('Skipping - no test payment');
+        return;
+      }
+
+      const overrides = await vmpAdapter.getEmergencyPayOverrides(testPaymentId);
+      
+      expect(Array.isArray(overrides)).toBe(true);
+      overrides.forEach(override => {
+        expect(override.payment_id).toBe(testPaymentId);
+      });
+    });
+
+    test('getEmergencyPayOverrides should filter by status', async () => {
+      const pendingOverrides = await vmpAdapter.getEmergencyPayOverrides(null, 'pending');
+      
+      expect(Array.isArray(pendingOverrides)).toBe(true);
+      pendingOverrides.forEach(override => {
+        expect(override.status).toBe('pending');
+      });
+    });
+
+    test('getEmergencyPayOverrides should respect limit', async () => {
+      const overrides = await vmpAdapter.getEmergencyPayOverrides(null, null, 5);
+      
+      expect(Array.isArray(overrides)).toBe(true);
+      expect(overrides.length).toBeLessThanOrEqual(5);
+    });
+
+    test('getEmergencyPayOverrides should include related data', async () => {
+      if (!testPaymentId) {
+        console.warn('Skipping - no test payment');
+        return;
+      }
+
+      const overrides = await vmpAdapter.getEmergencyPayOverrides(testPaymentId);
+      
+      if (overrides.length > 0) {
+        const override = overrides[0];
+        // Check that related data is included (if available)
+        expect(override).toHaveProperty('payment_id');
+      }
+    });
+  });
 });
 

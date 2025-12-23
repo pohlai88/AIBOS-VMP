@@ -25,13 +25,28 @@
                     <div class="vmp-label-kicker opacity-50 mb-0.5">STATUS</div>
                     {% set st = (invoice.status or 'pending') | lower %}
                     {% if st == 'paid' %}
-                        <span class="vmp-badge vmp-badge-ok" style="font-size: var(--vmp-font-base); padding: var(--vmp-space-2) var(--vmp-space-4);">PAID</span>
+                        <span class="vmp-badge vmp-badge-ok" style="font-size: var(--vmp-font-base); padding: var(--vmp-space-2) var(--vmp-space-4);" role="status" aria-label="Invoice status: Paid">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                            </svg>
+                            PAID
+                        </span>
                     {% elif st == 'pending' %}
-                        <span class="vmp-badge vmp-badge-warn" style="font-size: var(--vmp-font-base); padding: var(--vmp-space-2) var(--vmp-space-4);">PENDING</span>
+                        <span class="vmp-badge vmp-badge-warn" style="font-size: var(--vmp-font-base); padding: var(--vmp-space-2) var(--vmp-space-4);" role="status" aria-label="Invoice status: Pending">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                            PENDING
+                        </span>
                     {% elif st == 'disputed' %}
-                        <span class="vmp-badge vmp-badge-danger" style="font-size: var(--vmp-font-base); padding: var(--vmp-space-2) var(--vmp-space-4);">DISPUTED</span>
+                        <span class="vmp-badge vmp-badge-danger" style="font-size: var(--vmp-font-base); padding: var(--vmp-space-2) var(--vmp-space-4);" role="status" aria-label="Invoice status: Disputed">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                            </svg>
+                            DISPUTED
+                        </span>
                     {% else %}
-                        <span class="vmp-badge" style="font-size: var(--vmp-font-base); padding: var(--vmp-space-2) var(--vmp-space-4);">{{ st | upper }}</span>
+                        <span class="vmp-badge" style="font-size: var(--vmp-font-base); padding: var(--vmp-space-2) var(--vmp-space-4);" role="status" aria-label="Invoice status: {{ st | upper }}">{{ st | upper }}</span>
                     {% endif %}
                 </div>
             </div>
@@ -66,9 +81,9 @@
         </div>
     </header>
 
-    <div class="flex-1 overflow-hidden grid lg:grid-cols-[1fr_380px]">
+    <div class="flex-1 overflow-hidden flex flex-col lg:grid lg:grid-cols-[1fr_380px] gap-6">
         <!-- Left Column: Invoice Details -->
-        <div class="flex flex-col border-r h-full vmp-border-color p-6">
+        <div class="flex flex-col border-r-0 lg:border-r h-full vmp-border-color p-6 border-b lg:border-b-0 pb-6 lg:pb-6">
             <div class="vmp-label-kicker vmp-label-kicker-strong mb-4">INVOICE DETAILS</div>
 
             <div class="space-y-4">
@@ -105,7 +120,7 @@
         </div>
 
         <!-- Right Column: Matching Status + Actions -->
-        <div class="flex flex-col h-full overflow-y-auto vmp-bg-panel">
+        <div class="flex flex-col h-full overflow-y-auto vmp-bg-panel border-t lg:border-t-0 lg:border-l vmp-border-color pt-6 lg:pt-0">
             <!-- Matching Status -->
             <div id="matching-status-container" hx-get="/partials/matching-status.html?invoice_id={{ invoice.id }}"
                 hx-trigger="load" hx-target="this" hx-swap="innerHTML" class="shrink-0">
@@ -121,11 +136,11 @@
                     hx-swap="innerHTML" class="space-y-3">
                     {% set st = (invoice.status or 'pending') | lower %}
                     {% if st != 'paid' %}
-                        <button type="submit" class="vmp-btn-primary w-full">
+                        <button type="submit" class="vmp-btn-primary w-full" aria-label="Open case for invoice {{ invoice.invoice_num or invoice.id }}">
                             Open Case for This Invoice
                         </button>
                     {% else %}
-                        <button type="submit" class="vmp-btn vmp-btn-ghost w-full">
+                        <button type="submit" class="vmp-btn vmp-btn-ghost w-full" aria-label="Open case for invoice {{ invoice.invoice_num or invoice.id }}">
                             Open Case for This Invoice
                         </button>
                     {% endif %}

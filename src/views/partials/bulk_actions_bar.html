@@ -215,7 +215,7 @@ function bulkActions() {
         progressData.action = actionLabels[action] || action;
 
         try {
-          // Execute bulk action
+          // Execute bulk action with incremental progress tracking
           const response = await fetch(`/api/bulk-actions/${this.listType}/${action}`, {
             method: 'POST',
             headers: {
@@ -225,13 +225,29 @@ function bulkActions() {
           });
 
           if (!response.ok) {
-            throw new Error('Bulk action failed');
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.message || 'Bulk action failed');
           }
 
           const result = await response.json();
           
-          // Update progress
-          progressData.current = selectedIds.length;
+          // Update progress incrementally
+          if (result.results && Array.isArray(result.results)) {
+            for (let i = 0; i < result.results.length; i++) {
+              progressData.current = i + 1;
+              await new Promise(resolve => setTimeout(resolve, 50)); // Small delay for visual feedback
+            }
+          } else {
+            progressData.current = selectedIds.length;
+          }
+          
+          // Show success toast
+          if (window.vmpToast) {
+            window.vmpToast.success(
+              'Bulk Action Complete',
+              `Successfully ${actionLabels[action] || action} ${result.processed || selectedIds.length} item(s)`
+            );
+          }
           
           // Close progress modal after a short delay
           setTimeout(() => {
@@ -251,7 +267,16 @@ function bulkActions() {
         } catch (error) {
           console.error('Bulk action error:', error);
           progressData.isOpen = false;
-          alert('Failed to execute bulk action. Please try again.');
+          
+          // Show error toast
+          if (window.vmpToast) {
+            window.vmpToast.error(
+              'Bulk Action Failed',
+              error.message || 'Failed to execute bulk action. Please try again.'
+            );
+          } else {
+            alert(error.message || 'Failed to execute bulk action. Please try again.');
+          }
         }
       };
     }

@@ -6,6 +6,7 @@
 const CACHE_NAME = 'vmp-v1';
 const OFFLINE_PAGE = '/offline.html';
 const RUNTIME_CACHE = 'vmp-runtime-v1';
+const STATIC_CACHE_VERSION = 'v1';
 
 // Assets to cache on install
 const STATIC_ASSETS = [
@@ -35,15 +36,18 @@ self.addEventListener('activate', (event) => {
     caches.keys().then((cacheNames) => {
       return Promise.all(
         cacheNames.map((cacheName) => {
-          if (cacheName !== CACHE_NAME && cacheName !== RUNTIME_CACHE) {
+          // Delete old caches that don't match current version
+          if (cacheName !== CACHE_NAME && cacheName !== RUNTIME_CACHE && !cacheName.includes(STATIC_CACHE_VERSION)) {
             console.log('[Service Worker] Deleting old cache:', cacheName);
             return caches.delete(cacheName);
           }
         })
       );
+    }).then(() => {
+      // Claim all clients immediately
+      return self.clients.claim();
     })
   );
-  return self.clients.claim(); // Take control of all pages
 });
 
 // Fetch event - Network First strategy
@@ -108,6 +112,79 @@ self.addEventListener('fetch', (event) => {
           });
         });
       })
+  );
+});
+
+// Push event - Handle push notifications (Sprint 12.3)
+self.addEventListener('push', (event) => {
+  console.log('[Service Worker] Push notification received');
+  
+  let notificationData = {
+    title: 'NexusCanon VMP',
+    body: 'You have a new notification',
+    icon: '/icon-192.png',
+    badge: '/icon-192.png',
+    tag: 'vmp-notification',
+    data: {}
+  };
+
+  // Parse push data if available
+  if (event.data) {
+    try {
+      const data = event.data.json();
+      notificationData = {
+        ...notificationData,
+        ...data,
+        data: data.data || {}
+      };
+    } catch (e) {
+      // If not JSON, use as text
+      notificationData.body = event.data.text() || notificationData.body;
+    }
+  }
+
+  // Show notification
+  event.waitUntil(
+    self.registration.showNotification(notificationData.title, {
+      body: notificationData.body,
+      icon: notificationData.icon,
+      badge: notificationData.badge,
+      tag: notificationData.tag,
+      data: notificationData.data,
+      requireInteraction: notificationData.requireInteraction || false,
+      vibrate: [200, 100, 200],
+      actions: notificationData.actions || []
+    })
+  );
+});
+
+// Notification click event - Handle notification clicks (Sprint 12.3)
+self.addEventListener('notificationclick', (event) => {
+  console.log('[Service Worker] Notification clicked:', event.notification.data);
+  
+  event.notification.close();
+
+  // Get URL from notification data or default to home
+  const urlToOpen = event.notification.data?.url || '/home';
+  
+  event.waitUntil(
+    clients.matchAll({
+      type: 'window',
+      includeUncontrolled: true
+    }).then((clientList) => {
+      // Check if there's already a window/tab open with the target URL
+      for (let i = 0; i < clientList.length; i++) {
+        const client = clientList[i];
+        if (client.url === urlToOpen && 'focus' in client) {
+          return client.focus();
+        }
+      }
+      
+      // If no matching window, open a new one
+      if (clients.openWindow) {
+        return clients.openWindow(urlToOpen);
+      }
+    })
   );
 });
 

@@ -14,11 +14,12 @@ import multer from 'multer';
 import bcrypt from 'bcrypt';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { randomUUID } from 'crypto';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 import { vmpAdapter } from './src/adapters/supabase.js';
-import { createErrorResponse, logError, NotFoundError, ValidationError } from './src/utils/errors.js';
+import { createErrorResponse, logError, NotFoundError, ValidationError, VMPError, DatabaseError } from './src/utils/errors.js';
 import { requireAuth, requireInternal, validateUUIDParam, validateRequired, validateRequiredQuery, handleRouteError, handlePartialError } from './src/utils/route-helpers.js';
 import { parseEmailWebhook, extractCaseReference, extractVendorIdentifier } from './src/utils/email-parser.js';
 import { parseWhatsAppWebhook, extractCaseReferenceFromWhatsApp, extractVendorIdentifierFromWhatsApp } from './src/utils/whatsapp-parser.js';
@@ -27,28 +28,72 @@ import { validateCaseData, generateValidationResponse } from './src/utils/ai-dat
 import { performAISearch, parseSearchIntent, generateSearchSuggestions } from './src/utils/ai-search.js';
 import { checkAndSendSLAReminders, getSLAReminderStats } from './src/utils/sla-reminders.js';
 import { generatePDF, generateExcel, getExportFields } from './src/utils/export-utils.js';
+import { sendPasswordResetEmail, sendInviteEmail } from './src/utils/notifications.js';
+
+// Timeout wrapper for async operations (local helper)
+const withTimeout = async (promise, timeoutMs = 10000, operationName = 'operation') => {
+  let timeoutId;
+  const timeoutPromise = new Promise((_, reject) => {
+    timeoutId = setTimeout(() => {
+      reject(new Error(`Operation ${operationName} timed out after ${timeoutMs}ms`));
+    }, timeoutMs);
+  });
+
+  try {
+    const result = await Promise.race([promise, timeoutPromise]);
+    clearTimeout(timeoutId);
+    return result;
+  } catch (error) {
+    clearTimeout(timeoutId);
+    logError(error, { operation: operationName, timeoutMs });
+    throw error;
+  }
+};
+
+// Helper to safely extract string from query/param (handles string | string[])
+const getStringParam = (value) => {
+  if (Array.isArray(value)) return value[0] || '';
+  return typeof value === 'string' ? value : '';
+};
 
 // Environment validation
 dotenv.config();
 const env = cleanEnv(process.env, {
   SUPABASE_URL: url({ default: '' }),
   SUPABASE_SERVICE_ROLE_KEY: str({ default: '' }),
+  SUPABASE_ANON_KEY: str({ default: '' }), // For Supabase Auth client operations
   DEMO_VENDOR_ID: str({ default: '' }),
   SESSION_SECRET: str({ default: 'dev-secret-change-in-production' }),
   PORT: str({ default: '9000' }),
   NODE_ENV: str({ default: 'development', choices: ['development', 'production', 'test'] }),
+  BASE_URL: str({ default: 'http://localhost:9000' }), // For password reset redirects
   // Rollback switch for home page (allows quick rollback without code changes)
   // Note: Login route is LOCKED to login3.html (no rollback switch)
-  VMP_HOME_PAGE: str({ default: 'home5' }),
+  VMP_HOME_PAGE: str({ default: 'home' }),
   // VAPID keys for push notifications (optional)
   VAPID_PUBLIC_KEY: str({ default: '' }),
   VAPID_PRIVATE_KEY: str({ default: '' }),
 });
 
-// Create Supabase client for direct queries (used in notification routes)
+// Create Supabase client for admin operations (database queries, admin auth)
 const supabase = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, {
-  db: { schema: 'public' }
+  db: { schema: 'public' },
+  auth: {
+    autoRefreshToken: false,
+    persistSession: false
+  }
 });
+
+// Create Supabase client for Auth operations (uses anon key for client-side auth)
+// Falls back to service role if anon key not provided (for admin auth operations)
+const supabaseAuth = env.SUPABASE_ANON_KEY
+  ? createClient(env.SUPABASE_URL, env.SUPABASE_ANON_KEY, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
+    }
+  })
+  : supabase; // Fallback to service role client if anon key not set
 
 const app = express();
 
@@ -74,6 +119,8 @@ const upload = multer({
     if (allowedMimes.includes(file.mimetype)) {
       cb(null, true);
     } else {
+      // Multer FileFilterCallback accepts Error | null as first parameter
+      // @ts-expect-error - Multer types are correctly defined but TypeScript inference is incorrect
       cb(new Error(`File type ${file.mimetype} not allowed. Allowed types: PDF, images, Word, Excel`), false);
     }
   }
@@ -86,10 +133,11 @@ app.use(helmet({
       defaultSrc: ["'self'"],
       styleSrc: ["'self'", "'unsafe-inline'", "https://cdn.tailwindcss.com", "https://fonts.googleapis.com"],
       styleSrcElem: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
-      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://unpkg.com", "https://cdn.tailwindcss.com"],
-      fontSrc: ["'self'", "data:", "https://fonts.gstatic.com", "https://cdn.jsdelivr.net", "https://raw.githubusercontent.com"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://unpkg.com", "https://cdn.tailwindcss.com", "https://cdn.jsdelivr.net"],
+      scriptSrcAttr: ["'unsafe-hashes'"], // Allow inline event handlers (onclick, etc.)
+      fontSrc: ["'self'", "data:", "https://fonts.gstatic.com", "https://cdn.jsdelivr.net", "https://raw.githubusercontent.com", "https://fonts.googleapis.com"],
       imgSrc: ["'self'", "data:", "https:"],
-      connectSrc: ["'self'", env.SUPABASE_URL],
+      connectSrc: ["'self'", env.SUPABASE_URL, "https://fonts.googleapis.com", "https://fonts.gstatic.com"],
     },
   },
 }));
@@ -136,6 +184,8 @@ const nunjucksEnv = nunjucks.configure('src/views', {
 
 // Add global variables for templates
 nunjucksEnv.addGlobal('vapid_public_key', env.VAPID_PUBLIC_KEY || '');
+nunjucksEnv.addGlobal('supabase_url', env.SUPABASE_URL || '');
+nunjucksEnv.addGlobal('supabase_anon_key', env.SUPABASE_ANON_KEY || '');
 
 // Add custom filters
 nunjucksEnv.addFilter('upper', (str) => {
@@ -166,15 +216,20 @@ nunjucksEnv.addFilter('date', (date, format) => {
     if (isNaN(d.getTime())) return '';
 
     // Format patterns
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     const patterns = {
       '%b %d': () => {
-        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
         return `${months[d.getMonth()]} ${d.getDate()}`;
       },
       '%H:%M': () => {
         const hours = String(d.getHours()).padStart(2, '0');
         const minutes = String(d.getMinutes()).padStart(2, '0');
         return `${hours}:${minutes}`;
+      },
+      '%b %d %H:%M': () => {
+        const hours = String(d.getHours()).padStart(2, '0');
+        const minutes = String(d.getMinutes()).padStart(2, '0');
+        return `${months[d.getMonth()]} ${d.getDate()} ${hours}:${minutes}`;
       },
       '%Y-%m-%d': () => {
         const year = d.getFullYear();
@@ -193,6 +248,57 @@ nunjucksEnv.addFilter('date', (date, format) => {
   } catch (error) {
     logError(error, { operation: 'dateFilter', input: date });
     return '';
+  }
+});
+
+// File size formatting filter (human-readable bytes)
+nunjucksEnv.addFilter('filesizeformat', (bytes) => {
+  if (!bytes || bytes === 0) return '0 B';
+
+  try {
+    const kb = 1024;
+    const mb = kb * 1024;
+    const gb = mb * 1024;
+
+    if (bytes >= gb) {
+      return `${(bytes / gb).toFixed(2)} GB`;
+    } else if (bytes >= mb) {
+      return `${(bytes / mb).toFixed(2)} MB`;
+    } else if (bytes >= kb) {
+      return `${(bytes / kb).toFixed(2)} KB`;
+    } else {
+      return `${bytes} B`;
+    }
+  } catch (error) {
+    logError(error, { operation: 'filesizeformatFilter', input: bytes });
+    return String(bytes);
+  }
+});
+
+// Format filter (Python-style string formatting)
+nunjucksEnv.addFilter('format', (value, formatStr) => {
+  if (value === null || value === undefined) return '';
+
+  try {
+    // Handle %.2f pattern (decimal formatting)
+    if (formatStr === '%.2f' || formatStr === '%0.2f') {
+      const num = parseFloat(value);
+      if (isNaN(num)) return '0.00';
+      return num.toFixed(2);
+    }
+
+    // Handle %d pattern (integer formatting)
+    if (formatStr === '%d' || formatStr === '%i') {
+      const num = parseInt(value, 10);
+      if (isNaN(num)) return '0';
+      return String(num);
+    }
+
+    // Default: return value as string
+    return String(value);
+  } catch (error) {
+    logError(error, { operation: 'formatFilter', input: value, format: formatStr });
+    return String(value);
   }
 });
 
@@ -240,7 +346,7 @@ if (process.env.SESSION_DB_URL) {
   sessionStore = undefined; // Will use MemoryStore (express-session default)
 } else {
   // Production without SESSION_DB_URL: Error
-  throw new Error('SESSION_DB_URL must be set for production session store. See DEPLOYMENT_GUIDE.md for setup instructions.');
+  throw new Error('SESSION_DB_URL must be set for production session store. See docs/development/DEPLOYMENT_GUIDE.md for setup instructions.');
 }
 
 app.use(
@@ -259,10 +365,10 @@ app.use(
   })
 );
 
-// --- MIDDLEWARE: Real Auth (Session Lookup) ---
+// --- MIDDLEWARE: Supabase Auth (Session Lookup) ---
 app.use(async (req, res, next) => {
   // Skip auth for public routes
-  const publicRoutes = ['/login', '/', '/health'];
+  const publicRoutes = ['/login', '/', '/health', '/manifesto', '/accept', '/sign-up', '/forgot-password', '/reset-password'];
   if (publicRoutes.includes(req.path) || req.path.startsWith('/partials/login-')) {
     return next();
   }
@@ -273,42 +379,300 @@ app.use(async (req, res, next) => {
     const testVendorId = req.headers['x-test-vendor-id'] || env.DEMO_VENDOR_ID;
     const isInternal = req.headers['x-test-is-internal'] === 'true';
 
+    // Ensure testUserId and testVendorId are strings (not string[])
+    const userId = Array.isArray(testUserId) ? testUserId[0] : testUserId;
+    const vendorId = Array.isArray(testVendorId) ? testVendorId[0] : testVendorId;
+
     req.user = {
-      id: testUserId,
+      id: userId,
       email: 'test@example.com',
       displayName: 'Test User',
-      vendorId: testVendorId,
-      vendor: { id: testVendorId, name: 'Test Vendor' },
+      vendorId: vendorId,
+      vendor: { id: vendorId, name: 'Test Vendor', tenant_id: '' },
       isInternal: isInternal || false
     };
     return next();
   }
 
-  // Check if user is stored in session (express-session stores data in req.session)
-  if (!req.session.userId) {
+  // Check if user is stored in session FIRST (before dev mode bypass)
+  // This ensures logged-in users use their actual session, not dev mode
+  if (!req.session.userId || !req.session.authToken) {
+    // Only apply dev mode bypass when there's NO session
+    // Development mode: Auto-bypass authentication (for development when password is not configured)
+    if (env.NODE_ENV === 'development') {
+      const devVendorId = env.DEMO_VENDOR_ID;
+
+      // Try to get vendor from database if DEMO_VENDOR_ID is set
+      let vendor = null;
+      if (devVendorId) {
+        try {
+          vendor = await vmpAdapter.getVendorById(devVendorId);
+        } catch (error) {
+          // If vendor lookup fails, use fallback
+          logError(error, { operation: 'devBypass', vendorId: devVendorId });
+        }
+      }
+
+      // Use vendor from DB or create fallback
+      if (!vendor) {
+        vendor = {
+          id: devVendorId || 'dev-vendor-id',
+          name: 'Development Vendor'
+        };
+      }
+
+      // Use a well-known dev UUID for authId (required for getVendorContext calls)
+      // This UUID is reserved for development mode and will be handled specially
+      const DEV_AUTH_UUID = '00000000-0000-0000-0000-000000000000';
+
+      req.user = {
+        id: 'dev-user-id', // vendor_user ID (for database operations)
+        authId: DEV_AUTH_UUID, // Supabase Auth UUID (for getVendorContext calls)
+        email: 'dev@example.com',
+        displayName: 'Development User',
+        vendorId: vendor.id,
+        vendor: vendor,
+        isInternal: false,
+        user_tier: 'institutional',
+        is_active: true
+      };
+      return next();
+    }
+
+    // No session and not in dev mode - redirect to login
     return res.redirect('/login');
   }
 
   try {
-    // Load user context from database (session stores userId, we fetch fresh user data)
-    const userContext = await vmpAdapter.getVendorContext(req.session.userId);
+    // Verify session token with Supabase Auth
+    // Use supabaseAuth (anon key) to verify tokens created during login
+    // Implement automatic token refresh before expiration
+    let user = null;
+    let error = null;
+    let sessionSet = false;
+    let refreshedSession = false;
 
-    if (!userContext || !userContext.is_active) {
-      // User not found or inactive - destroy session
+    // Try setSession if we have a refresh token
+    if (req.session.refreshToken) {
+      const { data: sessionData, error: sessionError } = await supabaseAuth.auth.setSession({
+        access_token: req.session.authToken,
+        refresh_token: req.session.refreshToken
+      });
+
+      if (!sessionError && sessionData?.session) {
+        // Session set successfully, get user from session
+        sessionSet = true;
+        const getUserResult = await supabaseAuth.auth.getUser();
+        user = getUserResult.data?.user || null;
+        error = getUserResult.error || null;
+
+        // If session was refreshed, update stored tokens
+        if (sessionData.session.access_token !== req.session.authToken) {
+          refreshedSession = true;
+          req.session.authToken = sessionData.session.access_token;
+          if (sessionData.session.refresh_token) {
+            req.session.refreshToken = sessionData.session.refresh_token;
+          }
+          // Save updated session
+          req.session.save((err) => {
+            if (err) logError(err, { operation: 'authMiddleware-saveRefreshedSession', path: req.path });
+          });
+        }
+      } else {
+        // setSession failed, try to refresh token if error indicates expiration
+        if (sessionError?.message?.includes('expired') || sessionError?.message?.includes('invalid')) {
+          // Try to refresh using refresh token
+          const { data: refreshData, error: refreshError } = await supabaseAuth.auth.refreshSession({
+            refresh_token: req.session.refreshToken
+          });
+
+          if (!refreshError && refreshData?.session) {
+            // Token refreshed successfully
+            refreshedSession = true;
+            req.session.authToken = refreshData.session.access_token;
+            if (refreshData.session.refresh_token) {
+              req.session.refreshToken = refreshData.session.refresh_token;
+            }
+            req.session.save((err) => {
+              if (err) logError(err, { operation: 'authMiddleware-saveRefreshedSession', path: req.path });
+            });
+
+            // Set the new session and get user
+            const { data: newSessionData, error: newSessionError } = await supabaseAuth.auth.setSession({
+              access_token: refreshData.session.access_token,
+              refresh_token: refreshData.session.refresh_token
+            });
+
+            if (!newSessionError && newSessionData?.session) {
+              sessionSet = true;
+              const getUserResult = await supabaseAuth.auth.getUser();
+              user = getUserResult.data?.user || null;
+              error = getUserResult.error || null;
+            }
+          } else {
+            // Refresh failed, fall through to getUser(token) fallback
+            logError(refreshError || new Error('Token refresh failed'), {
+              operation: 'authMiddleware-refreshToken',
+              path: req.path,
+              willTryFallback: true
+            });
+          }
+        } else {
+          // setSession failed for other reasons, fall through to getUser(token) fallback
+          logError(sessionError || new Error('setSession failed'), {
+            operation: 'authMiddleware-setSession',
+            path: req.path,
+            willTryFallback: true
+          });
+        }
+      }
+    }
+
+    // Fallback: Use getUser(token) directly if setSession failed or no refresh token
+    if (!user) {
+      const getUserResult = await supabaseAuth.auth.getUser(req.session.authToken);
+      user = getUserResult.data?.user || null;
+      error = getUserResult.error || null;
+
+      // If token is expired and we have refresh token, try to refresh
+      if (error && error.message?.includes('expired') && req.session.refreshToken) {
+        const { data: refreshData, error: refreshError } = await supabaseAuth.auth.refreshSession({
+          refresh_token: req.session.refreshToken
+        });
+
+        if (!refreshError && refreshData?.session) {
+          // Token refreshed, update session and retry
+          refreshedSession = true;
+          req.session.authToken = refreshData.session.access_token;
+          if (refreshData.session.refresh_token) {
+            req.session.refreshToken = refreshData.session.refresh_token;
+          }
+          req.session.save((err) => {
+            if (err) logError(err, { operation: 'authMiddleware-saveRefreshedSession', path: req.path });
+          });
+
+          // Retry getUser with new token
+          const retryResult = await supabaseAuth.auth.getUser(refreshData.session.access_token);
+          user = retryResult.data?.user || null;
+          error = retryResult.error || null;
+        }
+      }
+    }
+
+    if (error || !user) {
+      // Invalid token - destroy session
+      logError(error || new Error('User not found from token'), {
+        operation: 'authMiddleware-getUser',
+        path: req.path,
+        hasToken: !!req.session.authToken,
+        hasRefreshToken: !!req.session.refreshToken,
+        sessionSet: sessionSet,
+        refreshedSession: refreshedSession
+      });
       req.session.destroy((err) => {
         if (err) logError(err, { operation: 'authMiddleware', path: req.path });
       });
       return res.redirect('/login');
     }
 
-    // Set user on request
+    // Validate user.id is a valid UUID (required for getVendorContext)
+    if (!user.id || typeof user.id !== 'string') {
+      logError(new Error('Invalid user.id from Supabase Auth'), {
+        userId: user.id,
+        path: req.path,
+        userEmail: user.email
+      });
+      req.session.destroy((err) => {
+        if (err) logError(err, { operation: 'authMiddleware', path: req.path });
+      });
+      return res.redirect('/login');
+    }
+
+    // Validate UUID format
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(user.id)) {
+      logError(new Error('user.id is not a valid UUID format'), {
+        userId: user.id,
+        path: req.path,
+        userEmail: user.email
+      });
+      req.session.destroy((err) => {
+        if (err) logError(err, { operation: 'authMiddleware', path: req.path });
+      });
+      return res.redirect('/login');
+    }
+
+    // Check if user is active (stored in user_metadata)
+    const isActive = user.user_metadata?.is_active !== false;
+    if (!isActive) {
+      req.session.destroy((err) => {
+        if (err) logError(err, { operation: 'authMiddleware', path: req.path });
+      });
+      return res.redirect('/login');
+    }
+
+    // Get user context (handles both institutional and independent users)
+    // Skip getVendorContext for dev mode placeholder UUID (handled by getVendorContext internally)
+    let userContext;
+    try {
+      userContext = await vmpAdapter.getVendorContext(user.id);
+    } catch (contextError) {
+      // Check if this is a dev mode UUID that should be handled gracefully
+      const DEV_AUTH_UUID = '00000000-0000-0000-0000-000000000000';
+      if (user.id === DEV_AUTH_UUID && env.NODE_ENV === 'development') {
+        // Dev mode - getVendorContext should handle this, but if it fails, use fallback
+        userContext = {
+          id: 'dev-user-id',
+          email: 'dev@example.com',
+          display_name: 'Development User',
+          vendor_id: env.DEMO_VENDOR_ID || null,
+          tenant_id: null,
+          vmp_vendors: null,
+          user_tier: 'institutional',
+          is_internal: false,
+          is_active: true
+        };
+      } else {
+        logError(contextError, {
+          operation: 'authMiddleware-getVendorContext',
+          userId: user.id,
+          userEmail: user.email,
+          path: req.path
+        });
+        req.session.destroy((err) => {
+          if (err) logError(err, { operation: 'authMiddleware', path: req.path });
+        });
+        return res.redirect('/login');
+      }
+    }
+
+    if (!userContext) {
+      logError(new Error('User context not found'), {
+        userId: user.id,
+        userEmail: user.email,
+        path: req.path
+      });
+      req.session.destroy((err) => {
+        if (err) logError(err, { operation: 'authMiddleware', path: req.path });
+      });
+      return res.redirect('/login');
+    }
+
+    // Set user on request (includes user_tier for independent users)
+    // IMPORTANT: Store both authUserId (Supabase Auth UUID) and vendorUserId (vmp_vendor_users ID)
+    // Use authUserId when calling getVendorContext, use vendorUserId for other operations
+    const isInternal = userContext.is_internal === true || false;
     req.user = {
-      id: userContext.id,
+      id: userContext.id, // vendor_user ID (for database operations)
+      authId: user.id, // Supabase Auth UUID (for getVendorContext calls)
       email: userContext.email,
       displayName: userContext.display_name || userContext.email,
-      vendorId: userContext.vendor_id,
-      vendor: userContext.vmp_vendors,
-      isInternal: userContext.is_internal === true || userContext.is_internal === 'true' || false
+      vendorId: userContext.vendor_id || null,
+      vendor: userContext.vmp_vendors || null,
+      user_tier: (userContext.user_tier === 'independent' ? 'independent' : 'institutional'),
+      isInternal: isInternal,
+      role: isInternal ? 'admin' : 'operator', // For UI display (ADMIN/OPERATOR badge)
+      is_active: userContext.is_active !== false
     };
 
     next();
@@ -343,7 +707,581 @@ app.get('/health', (req, res) => {
 // DO NOT CHANGE: This route is locked to landing.html. Any experimental landing pages
 // should be archived to src/views/pages/.archive/ before making changes.
 app.get('/', (req, res) => {
+  // Check if this is a password reset redirect from Supabase
+  // Supabase may redirect to Site URL with token in hash or query
+  const accessToken = getStringParam(req.query.access_token);
+  const tokenHash = getStringParam(req.query.token_hash);
+  const type = getStringParam(req.query.type);
+  const hash = req.url.split('#')[1] || '';
+
+  // If recovery token is present, redirect to reset-password page
+  if (type === 'recovery' && (accessToken || tokenHash || hash.includes('access_token') || hash.includes('token_hash'))) {
+    // Preserve the token in the redirect
+    if (accessToken) {
+      return res.redirect(`/reset-password?access_token=${encodeURIComponent(accessToken)}&type=recovery`);
+    }
+    if (tokenHash) {
+      return res.redirect(`/reset-password?token_hash=${encodeURIComponent(tokenHash)}&type=recovery`);
+    }
+    // If token is in hash, redirect with hash preserved
+    if (hash) {
+      return res.redirect(`/reset-password#${hash}`);
+    }
+  }
+
+  // Redirect authenticated internal users to dashboard, otherwise show landing
+  if (req.user && req.user.isInternal) {
+    return res.redirect('/ops/dashboard');
+  }
   res.render('pages/landing.html');
+});
+
+// ==========================================
+// 📄 PUBLIC PAGES
+// ==========================================
+
+// Manifesto Page (Public)
+app.get('/manifesto', (req, res) => {
+  res.render('pages/manifesto.html');
+});
+
+// GET: Sign-Up Page (Public Route - No Auth Required)
+app.get('/sign-up', (req, res) => {
+  // If already logged in, redirect to home
+  if (req.session?.userId) {
+    return res.redirect('/home');
+  }
+  res.render('pages/sign_up.html', { error: null, success: null });
+});
+
+// GET: Forgot Password (Public Route - No Auth Required)
+app.get('/forgot-password', (req, res) => {
+  // If already logged in, redirect to home
+  if (req.session?.userId) {
+    return res.redirect('/home');
+  }
+  res.render('pages/forgot_password.html', { error: null, success: null });
+});
+
+// POST: Forgot Password - Request Password Reset (Supabase Auth)
+// Rate limit: 60 seconds between requests (following Supabase best practices)
+const passwordResetLimiter = rateLimit({
+  windowMs: 60 * 1000, // 60 seconds
+  max: 1, // 1 request per window
+  message: 'Please wait 60 seconds before requesting another password reset.',
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+app.post('/forgot-password', passwordResetLimiter, async (req, res) => {
+  try {
+    // If already logged in, redirect to home
+    if (req.session?.userId) {
+      return res.redirect('/home');
+    }
+
+    const { email } = req.body;
+
+    // Input validation
+    if (!validateRequired(email, 'email')) {
+      return res.render('pages/forgot_password.html', {
+        error: 'Email is required',
+        success: null
+      });
+    }
+
+    // Email format validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.render('pages/forgot_password.html', {
+        error: 'Please enter a valid email address',
+        success: null
+      });
+    }
+
+    // Use Supabase Auth password reset (handles email sending automatically)
+    const { error } = await supabaseAuth.auth.resetPasswordForEmail(
+      email.toLowerCase().trim(),
+      {
+        redirectTo: `${env.BASE_URL}/reset-password`
+      }
+    );
+
+    // Always show success (security best practice - don't reveal if email exists)
+    // Supabase Auth handles email sending automatically via configured SMTP
+    res.render('pages/forgot_password.html', {
+      error: null,
+      success: 'If an account with that email exists, a password reset link has been sent. Please check your email.'
+    });
+  } catch (error) {
+    logError(error, { path: req.path, operation: 'forgot-password' });
+    res.render('pages/forgot_password.html', {
+      error: 'An error occurred. Please try again later.',
+      success: null
+    });
+  }
+});
+
+// GET: Reset Password (Supabase Auth)
+// Note: Supabase Auth sends token_hash and type in URL hash (#), not query params (?)
+// Hash fragments are NOT sent to the server - they're client-side only
+// Client-side JavaScript will extract the token_hash from the hash and display the form
+// For PKCE flow, we need to verify token_hash with verifyOtp to get a session
+app.get('/reset-password', async (req, res) => {
+  // If already logged in, redirect to home
+  if (req.session?.userId) {
+    return res.redirect('/home');
+  }
+
+  // Check if access_token is in query params (Supabase sometimes sends it this way)
+  const { access_token, token_hash, type } = req.query;
+
+  // If access_token is in query params (implicit flow), use it directly
+  if (type === 'recovery' && access_token) {
+    return res.render('pages/reset_password.html', {
+      error: null,
+      success: null,
+      token: access_token,
+      supabase_url: env.SUPABASE_URL,
+      supabase_anon_key: env.SUPABASE_ANON_KEY
+    });
+  }
+
+  // Check if token_hash is in query params (for server-side verification)
+  // Supabase may redirect with token_hash in query after /verify endpoint
+
+  // If token_hash is in query params, verify it server-side and exchange for session
+  if (type === 'recovery' && token_hash) {
+    try {
+      // Verify the token_hash to get a session
+      // Ensure token_hash is a string (not string[])
+      let tokenHash = '';
+      if (Array.isArray(token_hash)) {
+        tokenHash = String(token_hash[0] || '');
+      } else if (typeof token_hash === 'string') {
+        tokenHash = token_hash;
+      } else {
+        tokenHash = String(token_hash || '');
+      }
+
+      if (!tokenHash) {
+        return res.status(400).render('pages/reset_password.html', {
+          error: 'Invalid or missing reset token',
+          token: null,
+          supabase_url: env.SUPABASE_URL,
+          supabase_anon_key: env.SUPABASE_ANON_KEY
+        });
+      }
+
+      const { data: { session }, error: verifyError } = await supabaseAuth.auth.verifyOtp({
+        token_hash: tokenHash,
+        type: 'recovery'
+      });
+
+      if (verifyError || !session) {
+        logError(verifyError || new Error('No session returned'), {
+          path: req.path,
+          operation: 'reset-password-get',
+          errorMessage: verifyError?.message,
+          errorStatus: verifyError?.status
+        });
+
+        // Provide more specific error messages
+        let errorMessage = 'Invalid or expired reset link. Please request a new password reset.';
+        if (verifyError?.message) {
+          if (verifyError.message.includes('expired') || verifyError.message.includes('invalid')) {
+            errorMessage = 'This reset link has expired or is invalid. Please request a new password reset.';
+          } else if (verifyError.message.includes('token')) {
+            errorMessage = 'Invalid reset token. Please request a new password reset.';
+          }
+        }
+
+        return res.render('pages/reset_password.html', {
+          error: errorMessage,
+          success: null,
+          token: null,
+          supabase_url: env.SUPABASE_URL,
+          supabase_anon_key: env.SUPABASE_ANON_KEY
+        });
+      }
+
+      // Session obtained - use access_token for password update
+      // Token is valid - show reset form with access_token
+      return res.render('pages/reset_password.html', {
+        error: null,
+        success: null,
+        token: session.access_token,
+        supabase_url: env.SUPABASE_URL,
+        supabase_anon_key: env.SUPABASE_ANON_KEY
+      });
+    } catch (error) {
+      logError(error, { path: req.path, operation: 'reset-password-get' });
+      return res.render('pages/reset_password.html', {
+        error: 'An error occurred while verifying the reset token.',
+        success: null,
+        token: null,
+        supabase_url: env.SUPABASE_URL,
+        supabase_anon_key: env.SUPABASE_ANON_KEY
+      });
+    }
+  }
+
+  // No token in query params - this is normal for Supabase Auth
+  // Supabase redirects through /verify endpoint which then redirects here with hash fragment
+  // Client-side JavaScript will extract access_token or token_hash from hash
+  // Format: #access_token=...&type=recovery (implicit flow)
+  // or: #token_hash=...&type=recovery (PKCE flow)
+  // Don't show error initially - let JavaScript check the hash first
+  res.render('pages/reset_password.html', {
+    error: null, // No error initially - JavaScript will check hash
+    success: null,
+    token: null, // Will be extracted from hash by client-side JS
+    supabase_url: env.SUPABASE_URL,
+    supabase_anon_key: env.SUPABASE_ANON_KEY
+  });
+});
+
+// POST: Reset Password - Update Password (Public Route - No Auth Required)
+app.post('/reset-password', async (req, res) => {
+  // If already logged in, redirect to home
+  if (req.session?.userId) {
+    return res.redirect('/home');
+  }
+
+  try {
+    const { token, password, password_confirm } = req.body;
+
+    // Input validation
+    if (!validateRequired(token, 'token')) {
+      return res.render('pages/reset_password.html', {
+        error: 'Reset token is required',
+        success: null,
+        token: null,
+        supabase_url: env.SUPABASE_URL,
+        supabase_anon_key: env.SUPABASE_ANON_KEY
+      });
+    }
+
+    if (!validateRequired(password, 'password')) {
+      return res.render('pages/reset_password.html', {
+        error: 'Password is required',
+        success: null,
+        token: token,
+        supabase_url: env.SUPABASE_URL,
+        supabase_anon_key: env.SUPABASE_ANON_KEY
+      });
+    }
+
+    if (password.length < 8) {
+      return res.render('pages/reset_password.html', {
+        error: 'Password must be at least 8 characters long',
+        success: null,
+        token: token,
+        supabase_url: env.SUPABASE_URL,
+        supabase_anon_key: env.SUPABASE_ANON_KEY
+      });
+    }
+
+    if (password !== password_confirm) {
+      return res.render('pages/reset_password.html', {
+        error: 'Passwords do not match',
+        success: null,
+        token: token,
+        supabase_url: env.SUPABASE_URL,
+        supabase_anon_key: env.SUPABASE_ANON_KEY
+      });
+    }
+
+    // Update password using Supabase Auth
+    // For password reset, we need to set the session first using the access_token
+    // Then update the password
+    const { data: { session }, error: sessionError } = await supabaseAuth.auth.setSession({
+      access_token: token,
+      refresh_token: '' // Not needed for password reset
+    });
+
+    if (sessionError || !session) {
+      logError(sessionError || new Error('No session created'), {
+        path: req.path,
+        operation: 'reset-password-session',
+        errorMessage: sessionError?.message,
+        errorStatus: sessionError?.status
+      });
+
+      return res.render('pages/reset_password.html', {
+        error: 'Invalid or expired reset link. Please request a new password reset.',
+        success: null,
+        token: null,
+        supabase_url: env.SUPABASE_URL,
+        supabase_anon_key: env.SUPABASE_ANON_KEY
+      });
+    }
+
+    // Now update the password with the active session
+    const { data, error } = await supabaseAuth.auth.updateUser({
+      password: password
+    });
+
+    if (error) {
+      logError(error, {
+        path: req.path,
+        operation: 'reset-password-update',
+        errorMessage: error.message,
+        errorStatus: error.status
+      });
+
+      // Provide more specific error messages
+      let errorMessage = 'Invalid or expired reset link. Please request a new password reset.';
+      if (error.message) {
+        if (error.message.includes('expired') || error.message.includes('invalid')) {
+          errorMessage = 'This reset link has expired or is invalid. Please request a new password reset.';
+        } else if (error.message.includes('token')) {
+          errorMessage = 'Invalid reset token. Please request a new password reset.';
+        } else {
+          errorMessage = `Unable to reset password: ${error.message}`;
+        }
+      }
+
+      return res.render('pages/reset_password.html', {
+        error: errorMessage,
+        success: null,
+        token: null,
+        supabase_url: env.SUPABASE_URL,
+        supabase_anon_key: env.SUPABASE_ANON_KEY
+      });
+    }
+
+    // Verify the update was successful
+    if (!data || !data.user) {
+      logError(new Error('Password update returned no user data'), {
+        path: req.path,
+        operation: 'reset-password-update'
+      });
+      return res.render('pages/reset_password.html', {
+        error: 'Password update completed but verification failed. Please try logging in or request a new reset.',
+        success: null,
+        token: null,
+        supabase_url: env.SUPABASE_URL,
+        supabase_anon_key: env.SUPABASE_ANON_KEY
+      });
+    }
+
+    // Success - show success message on reset page, then redirect to login
+    res.render('pages/reset_password.html', {
+      error: null,
+      success: 'Password reset successful! Redirecting to login...',
+      token: null,
+      supabase_url: env.SUPABASE_URL,
+      supabase_anon_key: env.SUPABASE_ANON_KEY
+    });
+
+    // Redirect after showing success message (client-side will handle this)
+    // Set a meta refresh or use JavaScript to redirect after 2 seconds
+  } catch (error) {
+    logError(error, { path: req.path, operation: 'reset-password-post' });
+
+    // Check if it's a validation error (invalid token)
+    if (error instanceof ValidationError) {
+      return res.render('pages/reset_password.html', {
+        error: error.message || 'Invalid or expired reset token. Please request a new password reset.',
+        success: null,
+        token: null,
+        supabase_url: env.SUPABASE_URL,
+        supabase_anon_key: env.SUPABASE_ANON_KEY
+      });
+    }
+
+    res.render('pages/reset_password.html', {
+      error: 'An error occurred while resetting your password. Please try again.',
+      success: null,
+      token: req.body.token || null,
+      supabase_url: env.SUPABASE_URL,
+      supabase_anon_key: env.SUPABASE_ANON_KEY
+    });
+  }
+});
+
+// POST: Sign-Up Request (Public Route - No Auth Required)
+app.post('/sign-up', async (req, res) => {
+  try {
+    const {
+      email,
+      company,
+      name,
+      customer_company,
+      message,
+      user_tier = 'institutional' // Default to institutional
+    } = req.body;
+
+    // Validate tier
+    if (!['institutional', 'independent'].includes(user_tier)) {
+      return res.render('pages/sign_up.html', {
+        error: 'Invalid access tier selected',
+        success: null
+      });
+    }
+
+    // Input validation
+    if (!validateRequired(email, 'email')) {
+      return res.render('pages/sign_up.html', {
+        error: 'Email is required',
+        success: null
+      });
+    }
+
+    if (!validateRequired(name, 'name')) {
+      return res.render('pages/sign_up.html', {
+        error: 'Your name is required',
+        success: null
+      });
+    }
+
+    // Conditional validation based on tier
+    if (user_tier === 'institutional') {
+      if (!validateRequired(company, 'company')) {
+        return res.render('pages/sign_up.html', {
+          error: 'Organization name is required for Institutional Nodes',
+          success: null
+        });
+      }
+    }
+
+    // Email format validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.render('pages/sign_up.html', {
+        error: 'Please enter a valid email address',
+        success: null
+      });
+    }
+
+    // Handle Independent Investigator track
+    if (user_tier === 'independent') {
+      try {
+        // Create Supabase Auth user with admin client (service role key)
+        // Generate a temporary secure password for immediate access
+        const tempPassword = randomUUID().replace(/-/g, '').substring(0, 16) + 'A1!';
+
+        const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+          email: email.toLowerCase().trim(),
+          email_confirm: true,
+          password: tempPassword,
+          user_metadata: {
+            display_name: name.trim(),
+            user_tier: 'independent',
+            is_active: true
+          }
+        });
+
+        if (authError || !authData.user) {
+          // Check if it's a permissions error
+          if (authError?.message?.includes('permission') || authError?.message?.includes('admin')) {
+            logError(authError, {
+              path: req.path,
+              operation: 'create-independent-user',
+              error_type: 'permissions',
+              hint: 'Check SUPABASE_SERVICE_ROLE_KEY configuration'
+            });
+            return res.render('pages/sign_up.html', {
+              error: 'System configuration error. Please contact support.',
+              success: null
+            });
+          }
+
+          logError(authError, { path: req.path, operation: 'create-independent-user' });
+          return res.render('pages/sign_up.html', {
+            error: 'Failed to create account. Please try again.',
+            success: null
+          });
+        }
+
+        // Create vendor_user record (without vendor_id)
+        const vendorUser = await vmpAdapter.createIndependentUser(
+          authData.user.id,
+          email.toLowerCase().trim(),
+          name.trim()
+        );
+
+        // Sign in the user to get a session
+        const { data: signInData, error: signInError } = await supabaseAuth.auth.signInWithPassword({
+          email: email.toLowerCase().trim(),
+          password: tempPassword
+        });
+
+        if (signInError || !signInData.session) {
+          logError(signInError, { path: req.path, operation: 'sign-in-independent' });
+          // Clean up Supabase Auth user if sign-in fails
+          await supabase.auth.admin.deleteUser(authData.user.id).catch(cleanupError => {
+            logError(cleanupError, { path: req.path, operation: 'cleanup-auth-user' });
+          });
+          return res.render('pages/sign_up.html', {
+            error: 'Account created but failed to log in. Please try logging in.',
+            success: null
+          });
+        }
+
+        // Create session and log user in immediately
+        req.session.userId = vendorUser.id;
+        req.session.authToken = signInData.session.access_token;
+        if (signInData.session.refresh_token) {
+          req.session.refreshToken = signInData.session.refresh_token;
+        }
+
+        req.session.save((err) => {
+          if (err) {
+            logError(err, { path: req.path, operation: 'createSession-independent' });
+            return res.render('pages/sign_up.html', {
+              error: 'Account created but failed to log in. Please try logging in.',
+              success: null
+            });
+          }
+          // Redirect to home immediately
+          res.redirect('/home?welcome=independent');
+        });
+        return;
+      } catch (error) {
+        logError(error, { path: req.path, operation: 'independent-sign-up' });
+        return res.render('pages/sign_up.html', {
+          error: 'An error occurred while creating your account. Please try again.',
+          success: null
+        });
+      }
+    }
+
+    // Institutional track (existing flow)
+    // Store access request
+    try {
+      const { error: insertError } = await supabase
+        .from('vmp_access_requests')
+        .insert({
+          email: email.toLowerCase().trim(),
+          name: name.trim(),
+          company: company.trim(),
+          customer_company: customer_company?.trim() || null,
+          message: message?.trim() || null,
+          status: 'pending',
+          user_tier: 'institutional'
+        });
+
+      if (insertError) {
+        logError(insertError, { path: req.path, operation: 'store-access-request' });
+      }
+    } catch (dbError) {
+      logError(dbError, { path: req.path, operation: 'store-access-request' });
+    }
+
+    // Render success message
+    res.render('pages/sign_up.html', {
+      error: null,
+      success: 'Your access request has been submitted. An administrator will review your request and send an invitation email if approved.'
+    });
+  } catch (error) {
+    logError(error, { path: req.path, operation: 'sign-up' });
+    res.render('pages/sign_up.html', {
+      error: 'An error occurred. Please try again later.',
+      success: null
+    });
+  }
 });
 
 // ==========================================
@@ -351,9 +1289,22 @@ app.get('/', (req, res) => {
 // ==========================================
 
 // 2. Home (Production - Unified Console v7)
-// LOCKED to home5.html - No rollback switches
+// LOCKED to home.html - No rollback switches
 async function renderHomePage(req, res) {
   try {
+    // Handle independent users (no vendor context needed)
+    if (req.user?.user_tier === 'independent') {
+      return res.render('pages/home.html', {
+        user: req.user,
+        actionCount: 0,
+        openCount: 0,
+        soaCount: 0,
+        paidCount: 0,
+        welcomeMessage: req.query.welcome === 'independent' ? 'Welcome! Your Independent Investigator account is ready.' : null,
+        isIndependent: true
+      });
+    }
+
     const VENDOR_ID_HARDCODED = env.DEMO_VENDOR_ID;
 
     let actionCount = 0;
@@ -375,27 +1326,151 @@ async function renderHomePage(req, res) {
       }
     }
 
-    res.render('pages/home5.html', {
+    res.render('pages/home.html', {
       user: req.user,
       actionCount: actionCount,
       openCount: openCount,
       soaCount: soaCount,
-      paidCount: paidCount
+      paidCount: paidCount,
+      isIndependent: false
     });
   } catch (error) {
     logError(error, { path: '/home', operation: 'renderHomePage' });
-    res.status(500).render('pages/home5.html', {
+    res.status(500).render('pages/home.html', {
       user: req.user,
       actionCount: 0,
       openCount: 0,
       soaCount: 0,
       paidCount: 0,
-      error: error.message
+      error: error.message,
+      isIndependent: req.user?.user_tier === 'independent'
     });
   }
 }
 
 app.get('/home', renderHomePage);
+
+// ==========================================
+// 📄 CASE DASHBOARD PAGE
+// ==========================================
+
+// Case Dashboard Page
+app.get('/case-dashboard', async (req, res) => {
+  try {
+    // 1. Authentication
+    if (!requireAuth(req, res)) return;
+
+    // 2. Input validation
+    const posture = getStringParam(req.query.posture);
+    const validPostures = ['action', 'open', 'soa', 'paid'];
+    const selectedPosture = posture && validPostures.includes(posture) ? posture : 'action';
+
+    // 3. Business logic
+    const vendorId = req.user.vendorId || env.DEMO_VENDOR_ID;
+    if (!vendorId) {
+      return res.status(500).render('pages/error.html', {
+        error: {
+          status: 500,
+          message: 'Vendor ID not available. Please ensure you are logged in or DEMO_VENDOR_ID is configured.'
+        }
+      });
+    }
+
+    // 4. Render response
+    res.render('pages/case_dashboard.html', {
+      title: 'Case Dashboard',
+      user: req.user,
+      posture: selectedPosture,
+      isInternal: req.user?.isInternal || false
+    });
+  } catch (error) {
+    handleRouteError(error, req, res);
+  }
+});
+
+// ==========================================
+// 📄 NEW CASE PAGE
+// ==========================================
+
+// New Case Page (Modal/Form)
+app.get('/new-case', async (req, res) => {
+  try {
+    // 1. Authentication
+    if (!requireAuth(req, res)) return;
+
+    // 2. Render response (new_case.html is a modal component)
+    res.render('pages/new_case.html', {
+      user: req.user,
+      isInternal: req.user?.isInternal || false
+    });
+  } catch (error) {
+    handleRouteError(error, req, res);
+  }
+});
+
+// ==========================================
+// 📄 SCANNER/LIVE FEED PAGE
+// ==========================================
+
+// Scanner/Live Feed Page
+app.get('/scanner', async (req, res) => {
+  try {
+    // 1. Authentication
+    if (!requireAuth(req, res)) return;
+
+    // 2. Business logic - Fetch recent activity/events
+    const vendorId = req.user.vendorId || env.DEMO_VENDOR_ID;
+    let activities = [];
+
+    if (vendorId) {
+      try {
+        // Fetch recent case activities, payments, invoices
+        const cases = await vmpAdapter.getInbox(vendorId);
+        const recentCases = cases.slice(0, 10).map(c => ({
+          type: 'case',
+          id: c.id,
+          title: `Case ${c.case_number}`,
+          status: c.status,
+          timestamp: c.updated_at || c.created_at
+        }));
+        activities = [...recentCases];
+      } catch (error) {
+        logError(error, { path: '/scanner', operation: 'loadActivities' });
+      }
+    }
+
+    // 3. Render response
+    res.render('pages/scanner.html', {
+      title: 'Live Feed',
+      user: req.user,
+      activities: activities,
+      isInternal: req.user?.isInternal || false
+    });
+  } catch (error) {
+    handleRouteError(error, req, res);
+  }
+});
+
+// ==========================================
+// 📄 HELP/SUPPORT PAGE
+// ==========================================
+
+// Help/Support Page
+app.get('/help', async (req, res) => {
+  try {
+    // 1. Authentication
+    if (!requireAuth(req, res)) return;
+
+    // 2. Render response
+    res.render('pages/help.html', {
+      title: 'Help & Support',
+      user: req.user,
+      isInternal: req.user?.isInternal || false
+    });
+  } catch (error) {
+    handleRouteError(error, req, res);
+  }
+});
 
 // ==========================================
 // 📄 CASE DETAIL PAGE (Direct Route)
@@ -428,7 +1503,7 @@ app.get('/cases/:id', async (req, res) => {
 
       // Verify vendor has access to this case
       if (caseDetail && caseDetail.vendor_id !== vendorId && !req.user?.isInternal) {
-        return res.status(403).render('pages/error.html', {
+        return res.status(403).render('pages/403.html', {
           error: {
             status: 403,
             message: 'Access denied to this case'
@@ -504,7 +1579,7 @@ app.get('/partials/case-inbox.html', async (req, res) => {
     }
 
     const cases = await vmpAdapter.getInbox(vendorId);
-    
+
     // 3. Render response
     res.render('partials/case_inbox.html', { cases });
   } catch (error) {
@@ -530,7 +1605,7 @@ app.get('/partials/case-detail.html', async (req, res) => {
     }
 
     // Validate UUID if provided
-    if (!validateUUIDParam(caseId, res, 'partials/case_detail.html')) return;
+    if (!validateUUIDParam(getStringParam(caseId), res, 'partials/case_detail.html')) return;
 
     // 3. Business logic
     const vendorId = req.user.vendorId || env.DEMO_VENDOR_ID;
@@ -599,7 +1674,7 @@ app.get('/partials/case-thread.html', async (req, res) => {
     }
 
     // Validate UUID if provided
-    if (!validateUUIDParam(caseId, res, 'partials/case_thread.html')) return;
+    if (!validateUUIDParam(getStringParam(caseId), res, 'partials/case_thread.html')) return;
 
     // 3. Business logic
     let messages = [];
@@ -638,7 +1713,7 @@ app.get('/partials/case-activity.html', async (req, res) => {
     }
 
     // Validate UUID if provided
-    if (!validateUUIDParam(caseId, res, 'partials/case_activity.html')) return;
+    if (!validateUUIDParam(getStringParam(caseId), res, 'partials/case_activity.html')) return;
 
     // 3. Business logic
     let activities = [];
@@ -678,7 +1753,7 @@ app.get('/partials/case-checklist.html', async (req, res) => {
     }
 
     // Validate UUID if provided
-    if (!validateUUIDParam(caseId, res, 'partials/case_checklist.html')) return;
+    if (!validateUUIDParam(getStringParam(caseId), res, 'partials/case_checklist.html')) return;
 
     // 3. Business logic
     const vendorId = req.user.vendorId || env.DEMO_VENDOR_ID;
@@ -748,14 +1823,14 @@ app.get('/partials/case-evidence.html', async (req, res) => {
 
     // 2. Input validation (case_id is optional for partials - can render empty state)
     const caseId = req.query.case_id;
-    const defaultData = { caseId: null, evidence: [] };
+    const defaultData = { caseId: null, documents: [] };
 
     if (!caseId) {
       return res.render('partials/case_evidence.html', defaultData);
     }
 
     // Validate UUID if provided
-    if (!validateUUIDParam(caseId, res, 'partials/case_evidence.html')) return;
+    if (!validateUUIDParam(getStringParam(caseId), res, 'partials/case_evidence.html')) return;
 
     // 3. Business logic
     let evidence = [];
@@ -785,12 +1860,22 @@ app.get('/partials/case-evidence.html', async (req, res) => {
       logError(adapterError, { path: req.path, caseId, operation: 'getEvidence' });
     }
 
-    // 4. Render response
-    res.render('partials/case_evidence.html', { caseId, evidence });
+    // 4. Map evidence to documents format for the new UI
+    const documents = evidence.map(ev => ({
+      id: ev.id,
+      original_name: ev.original_filename || 'Unknown',
+      mime_type: ev.mime_type || 'application/octet-stream',
+      size: ev.size_bytes || 0,
+      created_at: ev.created_at,
+      url: ev.download_url || '#'
+    }));
+
+    // 5. Render response
+    res.render('partials/case_evidence.html', { caseId, documents });
   } catch (error) {
     handlePartialError(error, req, res, 'partials/case_evidence.html', {
       caseId: req.query.case_id || null,
-      evidence: []
+      documents: []
     });
   }
 });
@@ -804,7 +1889,7 @@ app.get('/templates/:type-template.pdf', async (req, res) => {
     // 2. Input validation
     const templateType = req.params.type;
     const validTypes = ['po_number', 'grn', 'invoice_pdf', 'contract', 'certificate', 'misc'];
-    
+
     if (!validTypes.includes(templateType)) {
       return res.status(400).render('pages/error.html', {
         error: {
@@ -865,7 +1950,7 @@ app.get('/partials/escalation.html', async (req, res) => {
     }
 
     // Validate UUID if provided
-    if (!validateUUIDParam(caseId, res, 'partials/escalation.html')) return;
+    if (!validateUUIDParam(getStringParam(caseId), res, 'partials/escalation.html')) return;
 
     // 3. Business logic
     let caseDetail = null;
@@ -921,7 +2006,7 @@ app.get('/partials/case-row.html', async (req, res) => {
     }
 
     // Validate UUID format
-    if (!validateUUIDParam(caseId, res, 'partials/case_row.html')) return;
+    if (!validateUUIDParam(getStringParam(caseId), res, 'partials/case_row.html')) return;
 
     // 3. Business logic
     let caseData = null;
@@ -973,16 +2058,20 @@ app.post('/cases/:id/messages', async (req, res) => {
       }
     }
 
-    // 3. Business logic
+    // 3. Determine sender type
+    const senderType = req.user.isInternal ? 'internal' : 'vendor';
+    const senderUserId = req.user.id;
+
+    // 4. Business logic - Create the human/vendor message
     let messageCreated = false;
     try {
       await vmpAdapter.createMessage(
         caseId,
         body.trim(),
-        'vendor', // sender_type
-        'portal', // channel_source
-        req.user.id, // sender_user_id
-        false // is_internal_note
+        senderType,
+        'portal',
+        senderUserId,
+        false
       );
       messageCreated = true;
     } catch (createError) {
@@ -990,7 +2079,65 @@ app.post('/cases/:id/messages', async (req, res) => {
       logError(createError, { path: req.path, caseId, userId: req.user.id, operation: 'createMessage' });
     }
 
-    // 4. Return refreshed thread with new message
+    // 5. AI AP ENFORCER - Trigger AI analysis for vendor messages
+    if (senderType === 'vendor' && messageCreated) {
+      try {
+        // Classify message intent
+        const intentAnalysis = await classifyMessageIntent(body.trim(), 'portal');
+
+        // Extract structured data
+        const extractedData = await extractStructuredData(body.trim(), '');
+
+        // AI Enforcer Logic: Detect data-poor requests and inject system guidance
+        const needsInvoiceNumber = (
+          (intentAnalysis.intent === 'payment_inquiry' ||
+            intentAnalysis.intent === 'invoice_inquiry' ||
+            intentAnalysis.intent === 'general_inquiry') &&
+          (!extractedData.invoiceNumbers || extractedData.invoiceNumbers.length === 0)
+        );
+
+        const needsPONumber = (
+          intentAnalysis.intent === 'invoice_inquiry' &&
+          (!extractedData.poNumbers || extractedData.poNumbers.length === 0) &&
+          (!extractedData.invoiceNumbers || extractedData.invoiceNumbers.length === 0)
+        );
+
+        // Inject AI system message if data is missing
+        if (needsInvoiceNumber) {
+          try {
+            await vmpAdapter.createMessage(
+              caseId,
+              "AI_ENFORCER: I noticed you're asking about a payment or invoice but haven't provided an Invoice Number. Please provide the Invoice # to speed up resolution.",
+              'ai', // sender_type
+              'portal', // channel_source
+              null, // sender_user_id (system message)
+              false // is_internal_note
+            );
+          } catch (aiMessageError) {
+            // Log but don't fail the request if AI message creation fails
+            logError(aiMessageError, { path: req.path, caseId, operation: 'aiEnforcerMessage' });
+          }
+        } else if (needsPONumber) {
+          try {
+            await vmpAdapter.createMessage(
+              caseId,
+              "AI_ENFORCER: To help resolve this inquiry, please provide either an Invoice Number or PO Number for reference.",
+              'ai',
+              'portal',
+              null,
+              false
+            );
+          } catch (aiMessageError) {
+            logError(aiMessageError, { path: req.path, caseId, operation: 'aiEnforcerMessage' });
+          }
+        }
+      } catch (aiError) {
+        // Don't fail the request if AI analysis fails - graceful degradation
+        logError(aiError, { path: req.path, caseId, operation: 'aiEnforcerAnalysis' });
+      }
+    }
+
+    // 6. Return refreshed thread with new message(s)
     try {
       const messages = await vmpAdapter.getMessages(caseId);
       return res.render('partials/case_thread.html', { caseId, messages });
@@ -1148,6 +2295,132 @@ app.post('/cases/:id/evidence', upload.single('file'), async (req, res) => {
   }
 });
 
+// POST: Upload Document (Simplified - for Evidence Locker)
+app.post('/cases/:id/documents', upload.single('document'), async (req, res) => {
+  try {
+    const caseId = req.params.id;
+    const file = req.file;
+
+    // 1. Authentication
+    if (!requireAuth(req, res)) return;
+
+    // 2. Input validation
+    if (!caseId) {
+      return res.status(400).render('partials/case_evidence.html', {
+        caseId: null,
+        documents: [],
+        error: 'Case ID is required'
+      });
+    }
+
+    if (!validateUUIDParam(caseId, res, 'partials/case_evidence.html')) return;
+
+    if (!file) {
+      return res.status(400).render('partials/case_evidence.html', {
+        caseId,
+        documents: [],
+        error: 'File is required'
+      });
+    }
+
+    // 3. Verify case access (security check)
+    const user = req.user;
+    if (!user) {
+      return res.status(401).render('partials/case_evidence.html', {
+        caseId,
+        documents: [],
+        error: 'Authentication required'
+      });
+    }
+
+    const VENDOR_ID_HARDCODED = env.DEMO_VENDOR_ID;
+    if (VENDOR_ID_HARDCODED) {
+      try {
+        const caseDetail = await vmpAdapter.getCaseDetail(caseId, VENDOR_ID_HARDCODED);
+        if (!caseDetail) {
+          return res.status(404).render('partials/case_evidence.html', {
+            caseId,
+            documents: [],
+            error: 'Case not found'
+          });
+        }
+      } catch (checkError) {
+        return res.status(403).render('partials/case_evidence.html', {
+          caseId,
+          documents: [],
+          error: 'Access denied to this case'
+        });
+      }
+    }
+
+    // 4. Upload document (use 'general' as default evidence_type for simple document uploads)
+    try {
+      await vmpAdapter.uploadEvidence(
+        caseId,
+        {
+          buffer: file.buffer,
+          originalname: file.originalname,
+          mimetype: file.mimetype,
+          size: file.size
+        },
+        'general', // Default evidence type for simple document uploads
+        null, // No checklist step required
+        'vendor',
+        user.id
+      );
+    } catch (uploadError) {
+      logError(uploadError, { path: req.path, userId: req.user?.id, caseId, operation: 'uploadDocument' });
+      return res.status(500).render('partials/case_evidence.html', {
+        caseId,
+        documents: [],
+        error: `Failed to upload document: ${uploadError.message}`
+      });
+    }
+
+    // 5. Return refreshed evidence list
+    try {
+      let evidence = await vmpAdapter.getEvidence(caseId);
+
+      // Generate signed URLs for each evidence file
+      const urlPromises = evidence.map(async (ev) => {
+        try {
+          ev.download_url = await vmpAdapter.getEvidenceSignedUrl(ev.storage_path, 3600);
+        } catch (urlError) {
+          logError(urlError, { path: req.path, caseId, storagePath: ev.storage_path, operation: 'getEvidenceSignedUrl' });
+          ev.download_url = '#';
+        }
+      });
+      await Promise.allSettled(urlPromises);
+
+      // Map evidence to documents format
+      const documents = evidence.map(ev => ({
+        id: ev.id,
+        original_name: ev.original_filename || 'Unknown',
+        mime_type: ev.mime_type || 'application/octet-stream',
+        size: ev.size_bytes || 0,
+        created_at: ev.created_at,
+        url: ev.download_url || '#'
+      }));
+
+      return res.render('partials/case_evidence.html', { caseId, documents });
+    } catch (refreshError) {
+      logError(refreshError, { path: req.path, userId: req.user?.id, caseId, operation: 'refreshDocumentsAfterUpload' });
+      return res.status(500).render('partials/case_evidence.html', {
+        caseId,
+        documents: [],
+        error: 'Document uploaded but failed to refresh list'
+      });
+    }
+  } catch (error) {
+    logError(error, { path: req.path, userId: req.user?.id, caseId: req.params.id, operation: 'postDocument' });
+    res.status(500).render('partials/case_evidence.html', {
+      caseId: req.params.id || null,
+      documents: [],
+      error: error.message
+    });
+  }
+});
+
 // Day 9: Internal Ops - Verify Evidence
 app.post('/cases/:id/verify-evidence', async (req, res) => {
   try {
@@ -1179,14 +2452,14 @@ app.post('/cases/:id/verify-evidence', async (req, res) => {
     // 3. Business logic - Verify evidence
     try {
       await vmpAdapter.verifyEvidence(checklist_step_id, req.user.id, null);
-      
+
       // Log decision
       try {
         const step = await vmpAdapter.getChecklistStep(checklist_step_id);
         await vmpAdapter.logDecision(
           caseId,
           'evidence_verified',
-          req.user.display_name || req.user.email,
+          req.user.displayName || req.user.email,
           `Verified evidence for: ${step?.label || 'checklist step'}`,
           'Evidence meets requirements and has been approved'
         );
@@ -1195,8 +2468,10 @@ app.post('/cases/:id/verify-evidence', async (req, res) => {
         logError(logError, { path: req.path, caseId, operation: 'logDecision-verify' });
       }
     } catch (verifyError) {
-      const wrappedError = new Error('Failed to verify evidence');
-      wrappedError.statusCode = verifyError.statusCode || 500;
+      // Use VMPError for proper statusCode support
+      const wrappedError = verifyError instanceof VMPError
+        ? verifyError
+        : new DatabaseError('Failed to verify evidence', verifyError, { caseId });
       return handlePartialError(wrappedError, req, res, 'partials/case_checklist.html', defaultData, true);
     }
 
@@ -1235,8 +2510,7 @@ app.post('/cases/:id/verify-evidence', async (req, res) => {
 
       return res.render('partials/case_checklist.html', { caseId, checklistSteps, isInternal: req.user.isInternal });
     } catch (error) {
-      const wrappedError = new Error('Evidence verified but failed to refresh checklist');
-      wrappedError.statusCode = 500;
+      const wrappedError = new DatabaseError('Evidence verified but failed to refresh checklist', error, { caseId });
       return handlePartialError(wrappedError, req, res, 'partials/case_checklist.html', defaultData, true);
     }
   } catch (error) {
@@ -1279,7 +2553,7 @@ app.post('/cases/:id/reject-evidence', async (req, res) => {
     // 3. Business logic - Reject evidence
     try {
       await vmpAdapter.rejectEvidence(checklist_step_id, req.user.id, reason.trim());
-      
+
       // Log decision
       try {
         const steps = await vmpAdapter.getChecklistSteps(caseId);
@@ -1287,7 +2561,7 @@ app.post('/cases/:id/reject-evidence', async (req, res) => {
         await vmpAdapter.logDecision(
           caseId,
           'evidence_rejected',
-          req.user.display_name || req.user.email,
+          req.user.displayName || req.user.email,
           `Rejected evidence for: ${step?.label || 'checklist step'}`,
           reason.trim()
         );
@@ -1296,8 +2570,9 @@ app.post('/cases/:id/reject-evidence', async (req, res) => {
         logError(logError, { path: req.path, caseId, operation: 'logDecision-reject' });
       }
     } catch (rejectError) {
-      const wrappedError = new Error('Failed to reject evidence');
-      wrappedError.statusCode = rejectError.statusCode || 500;
+      const wrappedError = rejectError instanceof VMPError
+        ? rejectError
+        : new DatabaseError('Failed to reject evidence', rejectError, { caseId });
       return handlePartialError(wrappedError, req, res, 'partials/case_checklist.html', defaultData, true);
     }
 
@@ -1336,8 +2611,7 @@ app.post('/cases/:id/reject-evidence', async (req, res) => {
 
       return res.render('partials/case_checklist.html', { caseId, checklistSteps, isInternal: req.user.isInternal });
     } catch (error) {
-      const wrappedError = new Error('Evidence rejected but failed to refresh checklist');
-      wrappedError.statusCode = 500;
+      const wrappedError = new DatabaseError('Evidence rejected but failed to refresh checklist', error, { caseId });
       return handlePartialError(wrappedError, req, res, 'partials/case_checklist.html', defaultData, true);
     }
   } catch (error) {
@@ -1376,13 +2650,13 @@ app.post('/cases/:id/reassign', async (req, res) => {
     // 3. Business logic - Reassign case
     try {
       await vmpAdapter.reassignCase(caseId, owner_team, req.user.id);
-      
+
       // Log decision
       try {
         await vmpAdapter.logDecision(
           caseId,
           'case_reassigned',
-          req.user.display_name || req.user.email,
+          req.user.displayName || req.user.email,
           `Reassigned case to ${owner_team} team`,
           `Case ownership transferred to ${owner_team} team`
         );
@@ -1391,8 +2665,9 @@ app.post('/cases/:id/reassign', async (req, res) => {
         logError(logError, { path: req.path, caseId, operation: 'logDecision-reassign' });
       }
     } catch (reassignError) {
-      const wrappedError = new Error('Failed to reassign case');
-      wrappedError.statusCode = reassignError.statusCode || 500;
+      const wrappedError = reassignError instanceof VMPError
+        ? reassignError
+        : new DatabaseError('Failed to reassign case', reassignError, { caseId });
       return handlePartialError(wrappedError, req, res, 'partials/case_detail.html', defaultData, true);
     }
 
@@ -1407,8 +2682,7 @@ app.post('/cases/:id/reassign', async (req, res) => {
 
       return res.render('partials/case_detail.html', { caseId, caseDetail, isInternal: req.user.isInternal });
     } catch (error) {
-      const wrappedError = new Error('Case reassigned but failed to refresh detail');
-      wrappedError.statusCode = 500;
+      const wrappedError = new DatabaseError('Case reassigned but failed to refresh detail', error, { caseId });
       return handlePartialError(wrappedError, req, res, 'partials/case_detail.html', defaultData, true);
     }
   } catch (error) {
@@ -1447,8 +2721,9 @@ app.post('/cases/:id/update-status', async (req, res) => {
     try {
       await vmpAdapter.updateCaseStatus(caseId, status, req.user.id);
     } catch (updateError) {
-      const wrappedError = new Error('Failed to update case status');
-      wrappedError.statusCode = updateError.statusCode || 500;
+      const wrappedError = updateError instanceof VMPError
+        ? updateError
+        : new DatabaseError('Failed to update case status', updateError, { caseId });
       return handlePartialError(wrappedError, req, res, 'partials/case_detail.html', defaultData, true);
     }
 
@@ -1463,8 +2738,7 @@ app.post('/cases/:id/update-status', async (req, res) => {
 
       return res.render('partials/case_detail.html', { caseId, caseDetail, isInternal: req.user.isInternal });
     } catch (error) {
-      const wrappedError = new Error('Case status updated but failed to refresh detail');
-      wrappedError.statusCode = 500;
+      const wrappedError = new DatabaseError('Case status updated but failed to refresh detail', error, { caseId });
       return handlePartialError(wrappedError, req, res, 'partials/case_detail.html', defaultData, true);
     }
   } catch (error) {
@@ -1551,13 +2825,13 @@ app.post('/cases/:id/escalate', async (req, res) => {
         req.user.id,
         reason || null
       );
-      
+
       // Log decision
       try {
         await vmpAdapter.logDecision(
           caseId,
           'case_escalated',
-          req.user.display_name || req.user.email,
+          req.user.displayName || req.user.email,
           `Escalated case to level ${escalationLevel}`,
           reason || `Case escalated to level ${escalationLevel} for urgent attention`
         );
@@ -1759,7 +3033,8 @@ app.post('/ops/ingest/remittances', upload.array('remittance_files', 50), async 
     }
 
     // Validate all files are PDFs
-    const invalidFiles = req.files.filter(file =>
+    const filesArray = Array.isArray(req.files) ? req.files : (req.files ? Object.values(req.files).flat() : []);
+    const invalidFiles = filesArray.filter(file =>
       file.mimetype !== 'application/pdf' && !file.originalname.endsWith('.pdf')
     );
 
@@ -1880,7 +3155,7 @@ app.get('/payments/:id', async (req, res) => {
 
       // Verify vendor has access to this payment
       if (paymentDetail && paymentDetail.vendor_id !== req.user.vendorId && !req.user?.isInternal) {
-        return res.status(403).render('pages/error.html', {
+        return res.status(403).render('pages/403.html', {
           error: {
             status: 403,
             message: 'Access denied to this payment'
@@ -1964,7 +3239,7 @@ app.get('/partials/payment-history.html', async (req, res) => {
     const sortedPayments = (payments || []).sort((a, b) => {
       const dateA = new Date(a.payment_date || a.created_at);
       const dateB = new Date(b.payment_date || b.created_at);
-      return dateA - dateB; // Ascending order (oldest first)
+      return dateA.getTime() - dateB.getTime(); // Ascending order (oldest first)
     });
 
     // 3. Render response
@@ -2067,7 +3342,7 @@ app.get('/payments/history/export', async (req, res) => {
 
     // 3. Generate CSV
     const csvRows = [];
-    
+
     // CSV Header
     csvRows.push([
       'Payment Date',
@@ -2116,6 +3391,22 @@ app.get('/payments/history/export', async (req, res) => {
 // ============================================================================
 
 // GET: Profile Page
+app.get('/settings', async (req, res) => {
+  try {
+    // 1. Authentication
+    if (!requireAuth(req, res)) return;
+
+    // 2. Render settings page
+    res.render('pages/settings.html', {
+      title: 'Settings & Configuration',
+      user: req.user,
+      isInternal: req.user?.isInternal || false
+    });
+  } catch (error) {
+    handleRouteError(error, req, res);
+  }
+});
+
 app.get('/profile', async (req, res) => {
   try {
     // 1. Authentication
@@ -2281,9 +3572,255 @@ app.post('/profile/bank-details', async (req, res) => {
   }
 });
 
+// GET: Supplier Dashboard (Canvas OS)
+app.get('/supplier/dashboard', async (req, res) => {
+  try {
+    // 1. Authentication
+    if (!requireAuth(req, res)) return;
+
+    // 2. Authorization - Only vendors can access
+    if (!req.user.vendorId) {
+      return res.status(403).render('pages/403.html', {
+        title: 'Access Denied',
+        user: req.user,
+        error: {
+          status: 403,
+          message: 'Supplier dashboard is only available to vendors'
+        }
+      });
+    }
+
+    // 3. Business logic - Fetch cases and calculate metrics for Posture Rail
+    let cases = [];
+    let readyCount = 0;
+    let actionCount = 0;
+    let blockedCount = 0;
+    let openCount = 0;
+    let payments = [];
+    let recentPayment = null;
+    let pendingPayments = [];
+
+    try {
+      // Fetch cases from Shadow Ledger
+      cases = await vmpAdapter.getInbox(req.user.vendorId);
+
+      // Calculate Posture Rail counts (per Supplier HUD specification)
+      // READY: Cases that are resolved (supplier has completed action)
+      readyCount = cases.filter(c => c.status === 'resolved').length;
+
+      // ACTION REQUIRED: Cases waiting for supplier response
+      actionCount = cases.filter(c => c.status === 'waiting_supplier').length;
+
+      // BLOCKED: Cases that are blocked
+      blockedCount = cases.filter(c => c.status === 'blocked').length;
+
+      // OPEN: Cases that are open (not resolved, not waiting, not blocked)
+      openCount = cases.filter(c => c.status === 'open').length;
+    } catch (adapterError) {
+      logError(adapterError, { path: req.path, userId: req.user?.id, vendorId: req.user.vendorId });
+      // Continue with empty data rather than failing
+    }
+
+    // 4. Fetch Financial 'Carrot' Data (Payments from Shadow Ledger)
+    try {
+      payments = await vmpAdapter.getPayments(req.user.vendorId);
+      if (payments && payments.length > 0) {
+        recentPayment = payments[0] || null;
+        pendingPayments = payments.slice(1, 6); // Next 5 payments
+      }
+    } catch (paymentError) {
+      logError(paymentError, { path: req.path, userId: req.user?.id, vendorId: req.user.vendorId, operation: 'getPayments' });
+      // Continue without payment data
+    }
+
+    // 5. Render response
+    res.render('pages/supplier_dashboard.html', {
+      title: 'Supplier Dashboard',
+      user: req.user,
+      readyCount,
+      actionCount,
+      blockedCount,
+      openCount,
+      cases, // Pass cases directly for server-side rendering
+      recent_payment: recentPayment,
+      pending_payments: pendingPayments
+    });
+  } catch (error) {
+    handleRouteError(error, req, res);
+  }
+});
+
+// GET: Supplier Case List Partial
+app.get('/partials/supplier-case-list.html', async (req, res) => {
+  try {
+    // 1. Authentication
+    if (!requireAuth(req, res)) return;
+
+    // 2. Authorization - Only vendors can access
+    if (!req.user.vendorId) {
+      return handlePartialError(
+        new ValidationError('Supplier case list is only available to vendors'),
+        req,
+        res,
+        'partials/supplier_case_list.html',
+        { cases: [] }
+      );
+    }
+
+    // 3. Business logic - Fetch cases
+    const { status } = req.query;
+    let cases = [];
+
+    try {
+      cases = await vmpAdapter.getInbox(req.user.vendorId);
+
+      // Filter by status if provided
+      if (status) {
+        if (status === 'action_required') {
+          cases = cases.filter(c => c.status === 'blocked' || c.status === 'waiting_supplier');
+        } else {
+          cases = cases.filter(c => c.status === status);
+        }
+      }
+    } catch (adapterError) {
+      logError(adapterError, { path: req.path, userId: req.user?.id, vendorId: req.user.vendorId });
+      // Continue with empty array
+    }
+
+    // 4. Render response
+    res.render('partials/supplier_case_list.html', {
+      cases
+    });
+  } catch (error) {
+    handlePartialError(error, req, res, 'partials/supplier_case_list.html', {
+      cases: []
+    });
+  }
+});
+
+// GET: Supplier Financial Radar Partial
+app.get('/supplier/radar', async (req, res) => {
+  try {
+    // 1. Authentication
+    if (!requireAuth(req, res)) return;
+
+    // 2. Authorization - Only vendors can access
+    if (!req.user.vendorId) {
+      return handlePartialError(
+        new ValidationError('Supplier financial radar is only available to vendors'),
+        req,
+        res,
+        'partials/supplier_financial_radar.html',
+        { last_payment: null, pending_invoices: [] }
+      );
+    }
+
+    // 3. Business logic - Fetch payment and invoice data
+    let lastPayment = null;
+    let pendingInvoices = [];
+
+    try {
+      // Get the most recent payment
+      const payments = await vmpAdapter.getPayments(req.user.vendorId, null, {});
+      if (payments && payments.length > 0) {
+        lastPayment = payments[0]; // Already sorted by payment_date descending
+      }
+
+      // Get pending invoices (not paid, not cancelled)
+      const allInvoices = await vmpAdapter.getInvoices(req.user.vendorId, null, {});
+      pendingInvoices = (allInvoices || []).filter(inv => {
+        const status = inv.status?.toLowerCase() || '';
+        return status !== 'paid' && status !== 'cancelled' && status !== 'void';
+      }).slice(0, 5); // Limit to 5 most recent
+    } catch (adapterError) {
+      logError(adapterError, { path: req.path, userId: req.user?.id, vendorId: req.user.vendorId });
+      // Continue with empty data
+    }
+
+    // 4. Render response
+    res.render('partials/supplier_financial_radar.html', {
+      last_payment: lastPayment,
+      pending_invoices: pendingInvoices
+    });
+  } catch (error) {
+    handlePartialError(error, req, res, 'partials/supplier_financial_radar.html', {
+      last_payment: null,
+      pending_invoices: []
+    });
+  }
+});
+
 // ============================================================================
 // SPRINT 6: Command Center (Internal Ops + Org Tree)
 // ============================================================================
+
+// === HELPER: BUILD ORG TREE ===
+async function getOrgTopology(tenantId) {
+  try {
+    // 1. Fetch the Tenant Details
+    const { data: tenant, error: tenantError } = await supabase
+      .from('vmp_tenants')
+      .select('id, name')
+      .eq('id', tenantId)
+      .single();
+
+    if (tenantError || !tenant) {
+      logError(tenantError || new Error('Tenant not found'), { tenantId, operation: 'getOrgTopology' });
+      return null;
+    }
+
+    // 2. Fetch All Groups
+    const { data: groups, error: groupsError } = await supabase
+      .from('vmp_groups')
+      .select('id, name, code')
+      .eq('tenant_id', tenantId)
+      .order('name', { ascending: true });
+
+    if (groupsError) {
+      logError(groupsError, { tenantId, operation: 'getOrgTopology-groups' });
+    }
+
+    // 3. Fetch All Companies (include code if it exists in the schema)
+    const { data: companies, error: companiesError } = await supabase
+      .from('vmp_companies')
+      .select('id, group_id, name, legal_name, country_code, currency_code')
+      .eq('tenant_id', tenantId)
+      .order('name', { ascending: true });
+
+    // Add code field for display (use country_code as fallback)
+    const companiesWithCode = (companies || []).map(company => ({
+      ...company,
+      code: company.country_code || 'ENT' // Use country_code as display code
+    }));
+
+    if (companiesError) {
+      logError(companiesError, { tenantId, operation: 'getOrgTopology-companies' });
+    }
+
+    // 4. Stitch the Tree
+    // Map companies to their groups
+    const groupsWithCompanies = (groups || []).map(group => {
+      return {
+        ...group,
+        companies: companiesWithCode.filter(c => c.group_id === group.id)
+      };
+    });
+
+    // Find "Orphan" companies (Ungrouped)
+    const knownGroupIds = new Set((groups || []).map(g => g.id));
+    const ungroupedCompanies = companiesWithCode.filter(c => !c.group_id || !knownGroupIds.has(c.group_id));
+
+    return {
+      tenant: tenant || { name: 'NexusCanon Global' },
+      groups: groupsWithCompanies,
+      ungroupedCompanies: ungroupedCompanies
+    };
+
+  } catch (err) {
+    logError(err, { tenantId, operation: 'getOrgTopology' });
+    return null; // Return null to trigger the "No Topology" state
+  }
+}
 
 // GET: Command Center Home (Internal Only)
 app.get('/ops', async (req, res) => {
@@ -2305,24 +3842,80 @@ app.get('/ops', async (req, res) => {
 // GET: Org Tree Sidebar Partial
 app.get('/partials/org-tree-sidebar.html', async (req, res) => {
   try {
-    // 1. Authentication & Authorization
-    if (!requireInternal(req, res, 'partials/org_tree_sidebar.html')) return;
+    // 1. Authentication & Authorization (HTMX-friendly: return error in template, not redirect)
+    if (!req.user) {
+      return res.status(200).render('partials/org_tree_sidebar.html', {
+        orgTree: null,
+        error: 'Authentication required. Please log in.',
+        user: null,
+        currentScope: { type: null, id: null }
+      });
+    }
 
-    // 2. Business logic
-    const orgTree = await vmpAdapter.getOrgTree(req.user.id);
+    // 2. Get tenant ID from user context (also used for debug if not internal)
+    // Use authId (Supabase Auth UUID) not id (vendor_user ID)
+    const authUserId = req.user.authId || req.user.id;
+    const userContext = await vmpAdapter.getVendorContext(authUserId);
 
-    // 3. Render response
+    if (!req.user.isInternal) {
+      // Debug: Log user context to help diagnose the issue
+      logError(new Error('User is not marked as internal'), {
+        userId: req.user.id,
+        userEmail: req.user.email,
+        vendorId: req.user.vendorId,
+        isInternal: req.user.isInternal,
+        userContextIsInternal: userContext?.is_internal,
+        path: req.path
+      });
+
+      return res.status(200).render('partials/org_tree_sidebar.html', {
+        orgTree: null,
+        error: `Access denied. Internal users only. (User: ${req.user.email}, isInternal: ${req.user.isInternal})`,
+        user: req.user,
+        currentScope: { type: null, id: null }
+      });
+    }
+    const tenantId = userContext.vmp_vendors?.tenant_id || '00000000-0000-0000-0000-000000000001'; // Fallback to seed tenant
+
+    // 3. Fetch the Tree using the helper function
+    const orgTree = await getOrgTopology(tenantId);
+
+    // 4. Determine current scope from query params
+    const scopeId = req.query.scope_id;
+    let currentScope = { type: null, id: null };
+
+    if (scopeId && orgTree) {
+      // Check if ID belongs to a Group or Company
+      const isGroup = orgTree.groups?.some(g => g.id === scopeId);
+      const isCompany = orgTree.groups?.some(g => g.companies?.some(c => c.id === scopeId)) ||
+        orgTree.ungroupedCompanies?.some(c => c.id === scopeId);
+
+      if (isGroup) {
+        currentScope = { type: 'group', id: scopeId };
+      } else if (isCompany) {
+        currentScope = { type: 'company', id: scopeId };
+      }
+    }
+
+    // 5. Render response
     res.render('partials/org_tree_sidebar.html', {
       orgTree,
       error: null,
-      currentScope: {
-        type: req.query.scope_type || null,
-        id: req.query.scope_id || null
-      }
+      user: req.user,
+      currentScope
     });
   } catch (error) {
+    // Enhanced error logging
+    logError(error, {
+      operation: 'getOrgTree',
+      userId: req.user?.id,
+      userEmail: req.user?.email,
+      path: req.path
+    });
+
     handlePartialError(error, req, res, 'partials/org_tree_sidebar.html', {
       orgTree: null,
+      user: req.user || null,
       currentScope: {
         type: req.query.scope_type || null,
         id: req.query.scope_id || null
@@ -2552,7 +4145,7 @@ app.get('/partials/decision-log.html', async (req, res) => {
     }
 
     // Validate UUID if provided
-    if (!validateUUIDParam(case_id, res, 'partials/decision_log.html')) return;
+    if (!validateUUIDParam(getStringParam(case_id), res, 'partials/decision_log.html')) return;
 
     // 3. Business logic
     let decisions = [];
@@ -2639,7 +4232,7 @@ app.get('/ops/cases/:id', async (req, res) => {
     let caseDetail = null;
     try {
       caseDetail = await vmpAdapter.getCaseDetailForOps(caseId, req.user.id);
-      
+
       if (!caseDetail) {
         return res.status(404).render('pages/error.html', {
           error: {
@@ -2686,6 +4279,7 @@ app.post('/ops/sla-reminders/check', async (req, res) => {
     // 3. Business logic - Run SLA reminder check
     const summary = await checkAndSendSLAReminders({
       warningThresholdHours: parseInt(warningThresholdHours, 10),
+      overdueCheckHours: 0,
       sendToVendors: sendToVendors !== false,
       sendToInternal: sendToInternal !== false,
     });
@@ -2726,6 +4320,132 @@ app.get('/ops/sla-reminders/stats', async (req, res) => {
       success: false,
       error: 'Failed to get SLA reminder statistics',
       message: error.message,
+    });
+  }
+});
+
+// ============================================================================
+// SPRINT: RECOMMENDATIONS - SLA ANALYTICS DASHBOARD
+// ============================================================================
+
+// GET: SLA Analytics Dashboard (Internal Only)
+app.get('/ops/sla-analytics', async (req, res) => {
+  try {
+    // 1. Authentication & Authorization
+    if (!requireInternal(req, res)) return;
+
+    // 2. Get user context to determine tenant and default scope
+    const userContext = await vmpAdapter.getVendorContext(req.user.id);
+    const tenantId = userContext.vmp_vendors?.tenant_id;
+    if (!tenantId) {
+      return res.status(400).render('pages/error.html', {
+        error: { status: 400, message: 'User must be associated with a tenant' }
+      });
+    }
+
+    // 3. Business logic - Determine scope from query params or user context
+    const { scope_type, scope_id, start_date, end_date } = req.query;
+    let userScope = null;
+
+    if (scope_id) {
+      userScope = scope_id;
+    } else {
+      if (userContext.scope_group_id) {
+        userScope = userContext.scope_group_id;
+      } else if (userContext.scope_company_id) {
+        userScope = userContext.scope_company_id;
+      }
+    }
+
+    // 4. Fetch SLA metrics
+    const dateRange = {
+      startDate: start_date || null,
+      endDate: end_date || null
+    };
+
+    // Get pagination options from query params
+    const paginationOptions = {
+      limit: req.query.limit ? parseInt(getStringParam(req.query.limit)) : undefined,
+      offset: req.query.offset ? parseInt(getStringParam(req.query.offset)) : undefined,
+      forceRefresh: req.query.refresh === 'true'
+    };
+
+    const slaMetrics = await vmpAdapter.getSLAMetrics(tenantId, userScope, dateRange, paginationOptions);
+
+    // 5. Determine scope type for UI display
+    let finalScopeType = slaMetrics.scope.type || 'tenant';
+    let finalScopeId = slaMetrics.scope.id || null;
+
+    // 6. Render response
+    res.render('pages/sla_analytics.html', {
+      title: 'SLA Analytics',
+      scopeType: finalScopeType,
+      scopeId: finalScopeId,
+      slaMetrics,
+      dateRange: slaMetrics.dateRange,
+      user: req.user,
+      isInternal: true
+    });
+  } catch (error) {
+    handleRouteError(error, req, res);
+  }
+});
+
+// GET: SLA Analytics Partial (Internal Only)
+app.get('/partials/sla-analytics.html', async (req, res) => {
+  try {
+    // 1. Authentication & Authorization
+    if (!requireInternal(req, res)) return;
+
+    // 2. Get user context
+    const userContext = await vmpAdapter.getVendorContext(req.user.id);
+    const tenantId = userContext.vmp_vendors?.tenant_id;
+    if (!tenantId) {
+      return res.status(400).json({
+        error: 'User must be associated with a tenant'
+      });
+    }
+
+    // 3. Business logic
+    const { scope_type, scope_id, start_date, end_date } = req.query;
+    let userScope = null;
+
+    if (scope_id) {
+      userScope = scope_id;
+    } else {
+      if (userContext.scope_group_id) {
+        userScope = userContext.scope_group_id;
+      } else if (userContext.scope_company_id) {
+        userScope = userContext.scope_company_id;
+      }
+    }
+
+    const dateRange = {
+      startDate: start_date || null,
+      endDate: end_date || null
+    };
+
+    // Get pagination options from query params
+    const paginationOptions = {
+      limit: req.query.limit ? parseInt(getStringParam(req.query.limit)) : undefined,
+      offset: req.query.offset ? parseInt(getStringParam(req.query.offset)) : undefined,
+      forceRefresh: req.query.refresh === 'true'
+    };
+
+    const slaMetrics = await vmpAdapter.getSLAMetrics(tenantId, userScope, dateRange, paginationOptions);
+
+    // 4. Render response
+    res.render('partials/sla_analytics.html', {
+      slaMetrics,
+      dateRange: slaMetrics.dateRange,
+      scopeType: slaMetrics.scope.type || 'tenant',
+      scopeId: slaMetrics.scope.id || null
+    });
+  } catch (error) {
+    logError(error, { path: req.path, userId: req.user?.id });
+    return res.status(500).json({
+      error: 'Failed to load SLA analytics',
+      message: error.message
     });
   }
 });
@@ -2931,14 +4651,14 @@ app.post('/ports/email', express.json({ limit: '10mb' }), async (req, res) => {
   try {
     // 1. Accept webhook from email providers (no auth required - webhook uses secret key)
     // In production, verify webhook signature here
-    
+
     // 2. Determine email provider from headers or query param
     const provider = req.query.provider || req.headers['x-email-provider'] || 'generic';
-    
+
     // 3. Parse email webhook payload
     let emailData;
     try {
-      emailData = parseEmailWebhook(req.body, provider);
+      emailData = parseEmailWebhook(req.body, getStringParam(provider));
     } catch (parseError) {
       logError(parseError, { path: req.path, provider, operation: 'parseEmailWebhook' });
       return res.status(400).json({
@@ -2978,7 +4698,40 @@ app.post('/ports/email', express.json({ limit: '10mb' }), async (req, res) => {
     // 6. Extract case reference from email (if replying to existing case)
     const caseReference = extractCaseReference(emailData);
 
-    // 7. Find or create case
+    // 7. AI Analysis (Sprint 13.1) - Extract intent and structured data
+    // Prepare message body for AI analysis
+    const messageBody = emailData.text || emailData.html || emailData.subject || 'Email received';
+
+    let aiAnalysis = null;
+    let extractedData = null;
+    let matchedCase = null;
+
+    try {
+      // Classify message intent
+      aiAnalysis = await classifyMessageIntent(messageBody, 'email');
+
+      // Extract structured data (invoice numbers, PO numbers, etc.)
+      extractedData = await extractStructuredData(messageBody, emailData.subject || '');
+
+      // Find best matching case if we have case candidates
+      // Note: getCasesByReference may not exist - skip if not available
+      if (caseReference && typeof vmpAdapter.getCasesByReference === 'function') {
+        try {
+          const candidateCases = await vmpAdapter.getCasesByReference(caseReference);
+          if (candidateCases && candidateCases.length > 0) {
+            matchedCase = await findBestMatchingCase(emailData, candidateCases, extractedData);
+          }
+        } catch (matchError) {
+          // Ignore case matching errors
+          logError(matchError, { path: req.path, operation: 'findBestMatchingCase' });
+        }
+      }
+    } catch (aiError) {
+      // Don't fail webhook processing if AI analysis fails
+      logError(aiError, { path: req.path, operation: 'aiAnalysis', emailFrom: emailData.from });
+    }
+
+    // 8. Find or create case
     let caseId;
     try {
       caseId = await vmpAdapter.findOrCreateCaseFromEmail(emailData, vendorInfo, caseReference);
@@ -2998,15 +4751,15 @@ app.post('/ports/email', express.json({ limit: '10mb' }), async (req, res) => {
         provider: emailData.provider,
         aiIntent: aiAnalysis?.intent,
         aiConfidence: aiAnalysis?.confidence,
-        matchedCase: matchedCase?.caseNum || null
-      }, caseId);
+        matchedCase: matchedCase?.caseNum || null,
+        caseId: caseId
+      });
     } catch (logError) {
       // Don't fail if logging fails
       console.warn('Failed to log port activity:', logError);
     }
 
     // 10. Create message from email (with AI-extracted metadata)
-    const messageBody = emailData.text || emailData.html || emailData.subject || 'Email received';
     const emailMetadata = {
       from: emailData.from,
       to: emailData.to,
@@ -3043,7 +4796,7 @@ app.post('/ports/email', express.json({ limit: '10mb' }), async (req, res) => {
       });
     } catch (messageError) {
       logError(messageError, { path: req.path, caseId, operation: 'createMessage' });
-      
+
       // Log error activity
       try {
         await vmpAdapter.logPortActivity('email', 'error', 'error', {
@@ -3054,7 +4807,7 @@ app.post('/ports/email', express.json({ limit: '10mb' }), async (req, res) => {
       } catch (logError) {
         // Don't fail if logging fails
       }
-      
+
       // Continue even if message creation fails - case was created
     }
 
@@ -3109,14 +4862,14 @@ app.post('/ports/whatsapp', express.json({ limit: '10mb' }), async (req, res) =>
   try {
     // 1. Accept webhook from WhatsApp providers (no auth required - webhook uses secret key)
     // In production, verify webhook signature here
-    
+
     // 2. Determine WhatsApp provider from headers or query param
     const provider = req.query.provider || req.headers['x-whatsapp-provider'] || 'whatsapp';
-    
+
     // 3. Parse WhatsApp webhook payload
     let whatsappData;
     try {
-      whatsappData = parseWhatsAppWebhook(req.body, provider);
+      whatsappData = parseWhatsAppWebhook(req.body, getStringParam(provider));
     } catch (parseError) {
       logError(parseError, { path: req.path, provider, operation: 'parseWhatsAppWebhook' });
       return res.status(400).json({
@@ -3240,7 +4993,7 @@ app.post('/ports/whatsapp', express.json({ limit: '10mb' }), async (req, res) =>
       });
     } catch (messageError) {
       logError(messageError, { path: req.path, caseId, operation: 'createMessage' });
-      
+
       // Log error activity
       try {
         await vmpAdapter.logPortActivity('whatsapp', 'error', 'error', {
@@ -3251,7 +5004,7 @@ app.post('/ports/whatsapp', express.json({ limit: '10mb' }), async (req, res) =>
       } catch (logError) {
         // Don't fail if logging fails
       }
-      
+
       // Continue even if message creation fails - case was created
     }
 
@@ -3279,7 +5032,7 @@ app.post('/ports/whatsapp', express.json({ limit: '10mb' }), async (req, res) =>
         id: media.id,
         filename: media.filename
       }));
-      
+
       logError(null, {
         path: req.path,
         caseId,
@@ -3419,7 +5172,7 @@ app.get('/partials/port-activity-log.html', async (req, res) => {
 
     // 2. Input validation
     const portType = req.query.port_type || null;
-    const limit = parseInt(req.query.limit || '100', 10);
+    const limit = parseInt(getStringParam(req.query.limit) || '100', 10);
 
     // 3. Business logic - Get activity log
     let activities = [];
@@ -3454,7 +5207,7 @@ app.get('/partials/remittance-viewer.html', async (req, res) => {
     }
 
     // Validate UUID format
-    if (!validateUUIDParam(payment_id, res, 'partials/remittance_viewer.html')) return;
+    if (!validateUUIDParam(getStringParam(payment_id), res, 'partials/remittance_viewer.html')) return;
 
     // 3. Business logic - Get payment detail to retrieve remittance URL
     const payment = await vmpAdapter.getPaymentDetail(payment_id, req.user.vendorId);
@@ -3550,7 +5303,7 @@ app.get('/partials/invoice-card-feed.html', async (req, res) => {
 
     // 2. Business logic - Pagination support
     const { status, search, company_id, page = 1 } = req.query;
-    const pageNum = parseInt(page, 10) || 1;
+    const pageNum = parseInt(getStringParam(page), 10) || 1;
     const pageSize = 12; // Cards per page
     const offset = (pageNum - 1) * pageSize;
 
@@ -3649,7 +5402,7 @@ app.get('/partials/invoice-detail.html', async (req, res) => {
     }
 
     // Validate UUID format
-    if (!validateUUIDParam(invoiceId, res, 'partials/invoice_detail.html')) return;
+    if (!validateUUIDParam(getStringParam(invoiceId), res, 'partials/invoice_detail.html')) return;
 
     // 3. Business logic
     const invoice = await vmpAdapter.getInvoiceDetail(invoiceId, req.user.vendorId);
@@ -3693,7 +5446,7 @@ app.get('/partials/matching-status.html', async (req, res) => {
     }
 
     // Validate UUID format
-    if (!validateUUIDParam(invoiceId, res, 'partials/matching_status.html')) return;
+    if (!validateUUIDParam(getStringParam(invoiceId), res, 'partials/matching_status.html')) return;
 
     // 3. Business logic - Verify invoice access
     const invoice = await vmpAdapter.getInvoiceDetail(invoiceId, req.user.vendorId);
@@ -3825,7 +5578,7 @@ app.post('/invoices/:id/dispute-amount', async (req, res) => {
     // Get matching status to get mismatch details
     const matchingStatus = await vmpAdapter.getMatchingStatus(invoiceId);
     const amountMismatches = matchingStatus.mismatches?.amount || [];
-    
+
     // Build dispute subject with mismatch details
     let disputeSubject = `Amount Dispute for Invoice ${invoice.invoice_num}`;
     if (amountMismatches.length > 0) {
@@ -3906,7 +5659,7 @@ app.post('/invoices/:id/report-exception', async (req, res) => {
       po_status: 'PO Status Issue',
       grn_status: 'GRN Status Issue'
     };
-    
+
     let caseSubject = `${exceptionLabels[exception_type]}: Invoice ${invoice.invoice_num}`;
     if (notes && notes.trim()) {
       caseSubject += ` - ${notes.trim()}`;
@@ -3974,6 +5727,150 @@ app.get('/partials/invite-form.html', async (req, res) => {
   } catch (error) {
     handlePartialError(error, req, res, 'partials/invite_form.html', {
       orgTree: null
+    });
+  }
+});
+
+// GET: Access Requests (Internal Only)
+app.get('/ops/access-requests', async (req, res) => {
+  try {
+    // 1. Authentication & Authorization
+    if (!requireInternal(req, res)) return;
+
+    // 2. Get filter status from query
+    const statusParam = getStringParam(req.query.status);
+    const statusFilter = statusParam && ['pending', 'approved', 'rejected', 'invited'].includes(statusParam) ? statusParam : null;
+
+    // 3. Business logic - Get access requests
+    const requests = await vmpAdapter.getAccessRequests(statusFilter, 100);
+
+    // 4. Render response
+    res.render('pages/ops_access_requests.html', {
+      title: 'Access Requests',
+      requests,
+      statusFilter,
+      user: req.user,
+      isInternal: true
+    });
+  } catch (error) {
+    handleRouteError(error, req, res);
+  }
+});
+
+// POST: Update Access Request Status (Internal Only)
+app.post('/ops/access-requests/:id/status', async (req, res) => {
+  try {
+    // 1. Authentication & Authorization
+    if (!requireInternal(req, res)) return;
+
+    // 2. Input validation
+    const requestId = req.params.id;
+    const { status, review_notes, create_invite } = req.body;
+
+    if (!validateUUIDParam(requestId, res, 'pages/ops_access_requests.html')) return;
+
+    if (!status || !['approved', 'rejected', 'invited'].includes(status)) {
+      return res.status(400).json({
+        error: 'Invalid status. Must be: approved, rejected, or invited'
+      });
+    }
+
+    // 3. Business logic - Update status
+    const updatedRequest = await vmpAdapter.updateAccessRequestStatus(
+      requestId,
+      status,
+      req.user.id,
+      review_notes?.trim() || null
+    );
+
+    // 4. If approved and create_invite is true, automatically create invite
+    if (status === 'approved' && create_invite === 'true') {
+      // Get tenant from user context
+      const userContext = await vmpAdapter.getVendorContext(req.user.id);
+      const tenantId = userContext.vmp_vendors?.tenant_id;
+
+      if (tenantId) {
+        try {
+          // Create or get vendor
+          let vendorId;
+          const existingVendorQuery = supabase
+            .from('vmp_vendors')
+            .select('id')
+            .eq('tenant_id', tenantId)
+            .eq('name', updatedRequest.company.trim())
+            .single();
+
+          const { data: existingVendor } = await withTimeout(existingVendorQuery, 5000, 'checkExistingVendor');
+
+          if (existingVendor) {
+            vendorId = existingVendor.id;
+          } else {
+            const newVendorQuery = supabase
+              .from('vmp_vendors')
+              .insert({
+                tenant_id: tenantId,
+                name: updatedRequest.company.trim(),
+                status: 'invited'
+              })
+              .select('id')
+              .single();
+
+            const { data: newVendor, error: vendorError } = await withTimeout(newVendorQuery, 5000, 'createVendor');
+            if (vendorError || !newVendor) {
+              throw new Error('Failed to create vendor');
+            }
+            vendorId = newVendor.id;
+          }
+
+          // Create invite
+          const invite = await vmpAdapter.createInvite(
+            vendorId,
+            updatedRequest.email,
+            [],
+            req.user.id
+          );
+
+          // Update request status to 'invited'
+          await vmpAdapter.updateAccessRequestStatus(
+            requestId,
+            'invited',
+            req.user.id,
+            `Invite created: ${invite.invite_url}`
+          );
+
+          // Send invite email
+          try {
+            const inviteUrl = `${req.protocol}://${req.get('host')}${invite.invite_url}`;
+            const vendorName = updatedRequest.company.trim();
+            const tenantName = userContext.vmp_vendors?.vmp_tenants?.name || 'Organization';
+            await sendInviteEmail(updatedRequest.email, inviteUrl, vendorName, tenantName);
+          } catch (emailError) {
+            logError(emailError, { path: req.path, operation: 'sendInviteEmail' });
+            // Don't fail - invite is created
+          }
+
+          return res.json({
+            success: true,
+            message: 'Access request approved and invite sent',
+            invite_url: invite.invite_url
+          });
+        } catch (inviteError) {
+          logError(inviteError, { path: req.path, operation: 'auto-create-invite' });
+          // Still return success for status update
+        }
+      }
+    }
+
+    // 5. Return success
+    res.json({
+      success: true,
+      message: `Access request ${status}`,
+      request: updatedRequest
+    });
+  } catch (error) {
+    logError(error, { path: req.path, userId: req.user?.id });
+    res.status(500).json({
+      error: error.message || 'Failed to update access request status'
     });
   }
 });
@@ -4077,6 +5974,20 @@ app.post('/ops/invites', async (req, res) => {
 
     const inviteUrl = `${req.protocol}://${req.get('host')}${invite.invite_url}`;
 
+    // Send invite email
+    let emailSent = false;
+    let emailError = null;
+    try {
+      const vendorName = vendor_name.trim();
+      const tenantName = userContext.vmp_vendors?.vmp_tenants?.name || 'Organization';
+      await sendInviteEmail(invite.email, inviteUrl, vendorName, tenantName);
+      emailSent = true;
+    } catch (emailErr) {
+      logError(emailErr, { path: req.path, operation: 'sendInviteEmail', inviteId: invite.id });
+      emailError = emailErr.message;
+      // Don't fail invite creation if email fails - invite link is still valid
+    }
+
     // 4. Return JSON response with invite link (for copy-paste)
     res.status(201).json({
       success: true,
@@ -4092,7 +6003,11 @@ app.post('/ops/invites', async (req, res) => {
         id: vendorId,
         name: vendor_name.trim()
       },
-      companies: companyIdsArray.length > 0 ? companyIdsArray : null
+      companies: companyIdsArray.length > 0 ? companyIdsArray : null,
+      email: {
+        sent: emailSent,
+        error: emailError || null
+      }
     });
   } catch (error) {
     logError(error, { path: req.path, userId: req.user?.id });
@@ -4102,9 +6017,166 @@ app.post('/ops/invites', async (req, res) => {
   }
 });
 
+// GET: Supabase Invite Handler (Public Route - No Auth Required)
+// Handles Supabase Auth invite links with tokens in URL hash
+// Hash fragments are client-side only, so we need a page that extracts them
+// 
+// IMPORTANT: Supabase Dashboard must be configured with correct redirect URLs:
+// - Site URL: http://localhost:9000 (or your BASE_URL)
+// - Redirect URLs: http://localhost:9000/supabase-invite, http://localhost:9000/accept
+// See: docs/development/SUPABASE_MPC_INVITATION_FIX.md
+app.get('/supabase-invite', async (req, res) => {
+  // This page will use client-side JavaScript to extract tokens from hash
+  // and redirect to /accept with tokens in query params
+  res.render('pages/supabase_invite_handler.html', {
+    supabase_url: env.SUPABASE_URL,
+    supabase_anon_key: env.SUPABASE_ANON_KEY
+  });
+});
+
 // GET: Accept Invite Page (Public Route - No Auth Required)
+// Handles both custom invites (token query param) and Supabase Auth invites (access_token in query)
 app.get('/accept', async (req, res) => {
   try {
+    // Check if this is a Supabase Auth invite (has access_token in query or hash)
+    const { access_token, refresh_token, type } = req.query;
+
+    // If Supabase invite link (type=invite with access_token)
+    if (type === 'invite' && access_token) {
+      try {
+        // Get user info from Supabase Auth using access_token
+        const accessTokenStr = getStringParam(access_token);
+        const { data: { user }, error: userError } = await supabaseAuth.auth.getUser(accessTokenStr);
+
+        if (userError || !user) {
+          logError(userError || new Error('No user returned'), { path: req.path, operation: 'supabase-invite-get-user' });
+          return res.render('pages/accept.html', {
+            error: 'Invalid or expired invite link. Please request a new invite.',
+            invite: null,
+            companies: [],
+            token: null,
+            vendorName: null,
+            tenantName: null,
+            supabaseInvite: false
+          });
+        }
+
+        // Validate user.id is a valid UUID
+        if (!user.id || typeof user.id !== 'string') {
+          logError(new Error('Invalid user.id from Supabase Auth'), {
+            userId: user.id,
+            path: req.path,
+            userEmail: user.email
+          });
+          return res.render('pages/accept.html', {
+            error: 'Invalid user data. Please contact support.',
+            invite: null,
+            companies: [],
+            token: null,
+            vendorName: null,
+            tenantName: null,
+            supabaseInvite: false
+          });
+        }
+
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        if (!uuidRegex.test(user.id)) {
+          logError(new Error('user.id is not a valid UUID format'), {
+            userId: user.id,
+            path: req.path,
+            userEmail: user.email
+          });
+          return res.render('pages/accept.html', {
+            error: 'Invalid user data. Please contact support.',
+            invite: null,
+            companies: [],
+            token: null,
+            vendorName: null,
+            tenantName: null,
+            supabaseInvite: false
+          });
+        }
+
+        // Check if user already exists in our system
+        const existingUser = await vmpAdapter.getUserByEmail(user.email);
+
+        if (existingUser) {
+          // User already exists - log them in
+          req.session.userId = existingUser.id;
+          req.session.authToken = getStringParam(access_token);
+          const refreshTokenStr = getStringParam(refresh_token);
+          if (refreshTokenStr) {
+            req.session.refreshToken = refreshTokenStr;
+          }
+          req.session.save((err) => {
+            if (err) {
+              logError(err, { path: req.path, operation: 'createSession' });
+            }
+            return res.redirect('/home');
+          });
+          return;
+        }
+
+        // New user - render sign-up form with Supabase invite info
+        // Note: We need to find which vendor/tenant this invite is for
+        // This requires matching the email to an invite in vmp_invites
+        const invite = await vmpAdapter.getInviteByEmail(user.email);
+
+        if (!invite) {
+          return res.render('pages/accept.html', {
+            error: 'No invite found for this email. Please contact your administrator.',
+            invite: null,
+            companies: [],
+            token: null,
+            vendorName: null,
+            tenantName: null,
+            supabaseInvite: true,
+            supabaseUser: {
+              email: user.email,
+              access_token: getStringParam(access_token),
+              refresh_token: getStringParam(refresh_token)
+            }
+          });
+        }
+
+        // Extract companies and vendor info
+        const companies = invite.vmp_vendor_company_links?.map(link => link.vmp_companies).filter(c => c) || [];
+        const vendorName = invite.vmp_vendors?.name || 'Vendor';
+        const tenantName = invite.vmp_vendors?.vmp_tenants?.name || 'Organization';
+
+        return res.render('pages/accept.html', {
+          error: null,
+          invite: {
+            id: invite.id,
+            email: invite.email,
+            vendor: invite.vmp_vendors,
+            companies: companies
+          },
+          token: null, // No custom token for Supabase invites
+          vendorName: vendorName,
+          tenantName: tenantName,
+          supabaseInvite: true,
+          supabaseUser: {
+            email: user.email,
+            access_token: access_token,
+            refresh_token: refresh_token
+          }
+        });
+      } catch (error) {
+        logError(error, { path: req.path, operation: 'supabase-invite-handler' });
+        return res.render('pages/accept.html', {
+          error: 'An error occurred while processing the invite. Please try again.',
+          invite: null,
+          companies: [],
+          token: null,
+          vendorName: null,
+          tenantName: null,
+          supabaseInvite: false
+        });
+      }
+    }
+
+    // Custom invite flow (existing implementation)
     // 1. Input validation - token is required for this route
     const { token } = req.query;
     const defaultData = {
@@ -4113,7 +6185,8 @@ app.get('/accept', async (req, res) => {
       companies: [],
       token: null,
       vendorName: null,
-      tenantName: null
+      tenantName: null,
+      supabaseInvite: false
     };
 
     // Use validateRequiredQuery helper for standardization
@@ -4147,7 +6220,7 @@ app.get('/accept', async (req, res) => {
 
     // Extract companies from vendor-company links
     const companies = invite.vmp_vendor_company_links?.map(link => link.vmp_companies).filter(c => c) || [];
-    
+
     // Extract vendor and tenant names
     const vendorName = invite.vmp_vendors?.name || 'Vendor';
     const tenantName = invite.vmp_vendors?.vmp_tenants?.name || 'Organization';
@@ -4190,6 +6263,145 @@ app.post('/accept', async (req, res) => {
       tenantName: null
     };
 
+    // Handle Supabase Auth invite (user already has access_token from Supabase)
+    const supabaseAccessToken = getStringParam(req.body.supabase_access_token);
+    const supabaseRefreshToken = getStringParam(req.body.supabase_refresh_token);
+
+    if (supabaseAccessToken) {
+      try {
+        // Get user info from Supabase
+        const { data: { user }, error: userError } = await supabaseAuth.auth.getUser(supabaseAccessToken);
+
+        if (userError || !user) {
+          logError(userError || new Error('No user returned'), { path: req.path, operation: 'supabase-invite-post' });
+          return res.status(400).render('pages/accept.html', {
+            ...defaultData,
+            error: 'Invalid or expired invite link. Please request a new invite.'
+          });
+        }
+
+        // Validate user.id is a valid UUID
+        if (!user.id || typeof user.id !== 'string') {
+          logError(new Error('Invalid user.id from Supabase Auth'), {
+            userId: user.id,
+            path: req.path,
+            userEmail: user.email
+          });
+          return res.status(400).render('pages/accept.html', {
+            ...defaultData,
+            error: 'Invalid user data. Please contact support.'
+          });
+        }
+
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        if (!uuidRegex.test(user.id)) {
+          logError(new Error('user.id is not a valid UUID format'), {
+            userId: user.id,
+            path: req.path,
+            userEmail: user.email
+          });
+          return res.status(400).render('pages/accept.html', {
+            ...defaultData,
+            error: 'Invalid user data. Please contact support.'
+          });
+        }
+
+        // Find invite by email
+        const invite = await vmpAdapter.getInviteByEmail(user.email);
+
+        if (!invite) {
+          return res.status(400).render('pages/accept.html', {
+            ...defaultData,
+            error: 'No invite found for this email. Please contact your administrator.'
+          });
+        }
+
+        // Validate password if provided
+        if (password) {
+          if (password.length < 8) {
+            const companies = invite.vmp_vendor_company_links?.map(link => link.vmp_companies).filter(c => c) || [];
+            return res.status(400).render('pages/accept.html', {
+              error: 'Password must be at least 8 characters long',
+              invite: { id: invite.id, email: invite.email, vendor: invite.vmp_vendors, companies },
+              token: null,
+              vendorName: invite.vmp_vendors?.name || 'Vendor',
+              tenantName: invite.vmp_vendors?.vmp_tenants?.name || 'Organization',
+              supabaseInvite: true,
+              supabaseUser: { email: user.email, access_token: supabaseAccessToken, refresh_token: supabaseRefreshToken }
+            });
+          }
+
+          if (password !== password_confirm) {
+            const companies = invite.vmp_vendor_company_links?.map(link => link.vmp_companies).filter(c => c) || [];
+            return res.status(400).render('pages/accept.html', {
+              error: 'Passwords do not match',
+              invite: { id: invite.id, email: invite.email, vendor: invite.vmp_vendors, companies },
+              token: null,
+              vendorName: invite.vmp_vendors?.name || 'Vendor',
+              tenantName: invite.vmp_vendors?.vmp_tenants?.name || 'Organization',
+              supabaseInvite: true,
+              supabaseUser: { email: user.email, access_token: supabaseAccessToken, refresh_token: supabaseRefreshToken }
+            });
+          }
+
+          // Update password in Supabase Auth
+          const { error: updateError } = await supabaseAuth.auth.updateUser({
+            password: password
+          });
+
+          if (updateError) {
+            logError(updateError, { path: req.path, operation: 'supabase-update-password' });
+            return res.status(400).render('pages/accept.html', {
+              ...defaultData,
+              error: 'Failed to set password. Please try again.'
+            });
+          }
+        }
+
+        // Create user in our system (link Supabase Auth user to vendor user)
+        const vendorUser = await vmpAdapter.createVendorUserFromSupabase(
+          invite.vendor_id,
+          user.id, // Supabase Auth user ID
+          user.email,
+          display_name || user.user_metadata?.display_name || null
+        );
+
+        // Mark invite as used
+        await vmpAdapter.markInviteAsUsed(invite.id, vendorUser.id);
+
+        // Create onboarding case
+        const companyId = invite.vmp_vendor_company_links?.[0]?.company_id || null;
+        const onboardingCase = await vmpAdapter.createOnboardingCase(
+          invite.vendor_id,
+          companyId
+        );
+
+        // Create session
+        req.session.userId = vendorUser.id;
+        req.session.authToken = supabaseAccessToken;
+        if (supabaseRefreshToken) {
+          req.session.refreshToken = supabaseRefreshToken;
+        }
+        req.session.save((err) => {
+          if (err) {
+            logError(err, { path: req.path, operation: 'createSession' });
+            return res.status(500).render('pages/error.html', {
+              error: { status: 500, message: 'Failed to create session' }
+            });
+          }
+          res.redirect(`/cases/${onboardingCase.id}`);
+        });
+        return;
+      } catch (error) {
+        logError(error, { path: req.path, operation: 'supabase-invite-accept' });
+        return res.status(500).render('pages/accept.html', {
+          ...defaultData,
+          error: 'An error occurred while accepting the invite. Please try again.'
+        });
+      }
+    }
+
+    // Custom invite flow (existing implementation)
     // Use validateRequired helper for standardization
     if (!validateRequired(token, 'token')) {
       return res.status(400).render('pages/accept.html', {
@@ -4326,7 +6538,14 @@ app.get('/login', (req, res) => {
   if (req.session?.userId) {
     return res.redirect('/home');
   }
-  res.render('pages/login3.html', { error: null });
+
+  // Check for password reset success message
+  const passwordReset = req.query.password_reset === 'success' ? 'success' : null;
+
+  res.render('pages/login.html', {
+    error: null,
+    password_reset: passwordReset
+  });
 });
 
 // Legacy login redirects (backward compatibility)
@@ -4345,43 +6564,60 @@ app.get('/login2', (req, res) => {
   res.redirect(302, '/login');
 });
 
-// 3a. Login POST Handler
+// 3a. Login POST Handler (Supabase Auth)
 app.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
 
     if (!email || !password) {
-      return res.render('pages/login3.html', {
-        error: 'Email and password are required'
+      return res.render('pages/login.html', {
+        error: 'Email and password are required',
+        password_reset: null
       });
     }
 
-    // Get user by email
-    const user = await vmpAdapter.getUserByEmail(email);
+    // Use Supabase Auth for authentication
+    const { data: authData, error: authError } = await supabaseAuth.auth.signInWithPassword({
+      email: email.toLowerCase().trim(),
+      password: password
+    });
 
-    if (!user) {
-      return res.render('pages/login3.html', {
-        error: 'Invalid email or password'
+    if (authError || !authData.user) {
+      // Provide more specific error messages
+      let errorMessage = 'Invalid email or password';
+      if (authError) {
+        if (authError.message?.includes('Invalid login credentials') || authError.message?.includes('Email not confirmed')) {
+          errorMessage = 'Invalid email or password. Please check your credentials and try again.';
+        } else if (authError.message?.includes('Email rate limit')) {
+          errorMessage = 'Too many login attempts. Please wait a few minutes and try again.';
+        } else if (authError.message?.includes('User not found')) {
+          errorMessage = 'No account found with this email address.';
+        } else {
+          // Log unexpected errors for debugging
+          logError(authError, { path: req.path, operation: 'login', email: email.toLowerCase().trim() });
+        }
+      }
+
+      return res.render('pages/login.html', {
+        error: errorMessage,
+        password_reset: null
       });
     }
 
-    if (!user.is_active) {
-      return res.render('pages/login3.html', {
-        error: 'Account is inactive. Please contact support.'
+    // Check if user is active (stored in user_metadata)
+    const isActive = authData.user.user_metadata?.is_active !== false;
+    if (!isActive) {
+      return res.render('pages/login.html', {
+        error: 'Account is inactive. Please contact support.',
+        password_reset: null
       });
     }
 
-    // Verify password
-    const isValid = await vmpAdapter.verifyPassword(user.id, password);
+    // Store auth session token in express-session
+    req.session.userId = authData.user.id;
+    req.session.authToken = authData.session.access_token;
+    req.session.refreshToken = authData.session.refresh_token;
 
-    if (!isValid) {
-      return res.render('pages/login3.html', {
-        error: 'Invalid email or password'
-      });
-    }
-
-    // Create session (express-session stores userId in session)
-    req.session.userId = user.id;
     req.session.save((err) => {
       if (err) {
         logError(err, { path: req.path, operation: 'createSession' });
@@ -4394,8 +6630,9 @@ app.post('/login', async (req, res) => {
     });
   } catch (error) {
     logError(error, { path: req.path, operation: 'login' });
-    res.render('pages/login3.html', {
-      error: 'An error occurred during login. Please try again.'
+    res.render('pages/login.html', {
+      error: 'An error occurred during login. Please try again.',
+      password_reset: null
     });
   }
 });
@@ -4557,14 +6794,14 @@ app.get('/api/command-palette/search', async (req, res) => {
     if (!requireAuth(req, res)) return;
 
     // 2. Input validation
-    const query = req.query.q || '';
+    const query = getStringParam(req.query.q) || '';
     if (!query || query.length < 2) {
       // Return suggestions for empty/short queries
       const suggestions = await generateSearchSuggestions(query, [], {
         vendorId: req.user.vendorId,
         isInternal: req.user.isInternal
       });
-      return res.json({ 
+      return res.json({
         results: [],
         suggestions,
         intent: { type: 'general', confidence: 0 }
@@ -4579,13 +6816,13 @@ app.get('/api/command-palette/search', async (req, res) => {
 
     // Parse search intent
     const intent = await parseSearchIntent(query);
-    
+
     const results = [];
     const searchTerm = query.toLowerCase().trim();
 
     // 4. Search Cases (with intent-based filtering)
     try {
-      const allCases = await vmpAdapter.getInbox(vendorId, {});
+      const allCases = await vmpAdapter.getInbox(vendorId);
       let filteredCases = allCases.filter(caseItem => {
         const subject = (caseItem.subject || '').toLowerCase();
         const caseNum = (caseItem.case_num || '').toLowerCase();
@@ -4747,7 +6984,7 @@ app.get('/api/command-palette/search', async (req, res) => {
     });
 
     // 9. Return enhanced results
-    return res.json({ 
+    return res.json({
       results: enhancedResults,
       intent,
       suggestions,
@@ -4811,7 +7048,7 @@ app.post('/api/bulk-actions/:listType/:action', async (req, res) => {
 
     // 3. Business logic - Execute bulk action
     let results = [];
-    
+
     try {
       switch (listType) {
         case 'cases':
@@ -4853,7 +7090,7 @@ app.post('/api/bulk-actions/:listType/:action', async (req, res) => {
 // Helper: Execute bulk case actions
 async function executeBulkCaseAction(action, caseIds, user) {
   const results = [];
-  
+
   for (const caseId of caseIds) {
     try {
       // Verify case access
@@ -4914,7 +7151,7 @@ async function executeBulkCaseAction(action, caseIds, user) {
 // Helper: Execute bulk invoice actions
 async function executeBulkInvoiceAction(action, invoiceIds, user) {
   const results = [];
-  
+
   for (const invoiceId of invoiceIds) {
     try {
       // Verify invoice access
@@ -4952,7 +7189,7 @@ async function executeBulkInvoiceAction(action, invoiceIds, user) {
 // Helper: Execute bulk payment actions
 async function executeBulkPaymentAction(action, paymentIds, user) {
   const results = [];
-  
+
   for (const paymentId of paymentIds) {
     try {
       // Verify payment access
@@ -4999,7 +7236,7 @@ app.post('/api/push/subscribe', async (req, res) => {
 
     // 2. Input validation
     const subscription = req.body;
-    
+
     if (!subscription || !subscription.endpoint) {
       return res.status(400).json({
         error: 'Invalid subscription',
@@ -5029,7 +7266,7 @@ app.post('/api/push/subscribe', async (req, res) => {
         message: 'Could not save push subscription to database'
       });
     }
-    
+
     // 4. Return success
     return res.json({
       success: true,
@@ -5057,7 +7294,7 @@ app.post('/api/push/unsubscribe', async (req, res) => {
 
     // 2. Input validation
     const { endpoint } = req.body;
-    
+
     if (!endpoint) {
       return res.status(400).json({
         error: 'Invalid request',
@@ -5067,14 +7304,14 @@ app.post('/api/push/unsubscribe', async (req, res) => {
 
     // 3. Remove subscription from database
     const removed = await vmpAdapter.removePushSubscription(req.user.id, endpoint);
-    
+
     if (!removed) {
       return res.status(404).json({
         error: 'Subscription not found',
         message: 'No active subscription found for this endpoint'
       });
     }
-    
+
     // 4. Return success
     return res.json({
       success: true,
@@ -5223,6 +7460,375 @@ app.post('/api/cases/:id/auto-respond', async (req, res) => {
   }
 });
 
+// ============================================================================
+// DEMO MODE API ROUTES (Flight Simulator)
+// ============================================================================
+
+// GET /api/demo/status - Check if user has demo data
+app.get('/api/demo/status', async (req, res) => {
+  try {
+    // 1. Authentication
+    if (!requireAuth(req, res)) return;
+
+    const vendorId = req.user.vendorId;
+    if (!vendorId) {
+      return res.json({ hasDemoData: false });
+    }
+
+    // 2. Check if this vendor has any demo-tagged cases using Supabase client
+    const { data, error } = await supabase
+      .from('vmp_cases')
+      .select('id')
+      .eq('vendor_id', vendorId)
+      .contains('tags', ['demo_data'])
+      .limit(1);
+
+    if (error) {
+      logError(error, { path: req.path, userId: req.user?.id });
+      return res.status(500).json({ error: 'Failed to check demo status' });
+    }
+
+    // 3. Return result
+    res.json({
+      hasDemoData: data && data.length > 0
+    });
+  } catch (error) {
+    logError(error, { path: req.path, userId: req.user?.id });
+    res.status(500).json({ error: 'Failed to check demo status' });
+  }
+});
+
+// POST /api/demo/seed - Generate user-specific demo data
+app.post('/api/demo/seed', async (req, res) => {
+  try {
+    // 1. Authentication
+    if (!requireAuth(req, res)) return;
+
+    const vendorId = req.user.vendorId;
+    const tenantId = req.user.vendor?.tenant_id;
+
+    if (!vendorId || !tenantId) {
+      return res.status(400).json({ error: 'Vendor ID and Tenant ID required' });
+    }
+
+    // 2. Generate dynamic UUIDs for this user's demo data
+    const demoCaseId = randomUUID();
+    const demoInvoiceId = randomUUID();
+    const demoMessageId = randomUUID();
+    const bankChangeCaseId = randomUUID();
+
+    // 3. Get user's first company using Supabase client
+    const { data: company, error: companyError } = await supabase
+      .from('vmp_companies')
+      .select('id')
+      .eq('tenant_id', tenantId)
+      .limit(1)
+      .single();
+
+    if (companyError || !company) {
+      return res.status(400).json({ error: 'No company found for tenant' });
+    }
+
+    const companyId = company.id;
+
+    // 4. Create demo data (sequential operations with error handling)
+    try {
+      // 4.1 Create Emergency Override test case
+      const { error: caseError } = await supabase
+        .from('vmp_cases')
+        .insert({
+          id: demoCaseId,
+          tenant_id: tenantId,
+          company_id: companyId,
+          vendor_id: vendorId,
+          case_type: 'invoice',
+          status: 'blocked',
+          subject: 'SIMULATION: URGENT - Stopped Shipment',
+          owner_team: 'ap',
+          sla_due_at: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(), // 1 day ago
+          escalation_level: 3,
+          tags: ['demo_data']
+        });
+
+      if (caseError) throw caseError;
+
+      // 4.2 Create linked invoice
+      const { error: invoiceError } = await supabase
+        .from('vmp_invoices')
+        .insert({
+          id: demoInvoiceId,
+          vendor_id: vendorId,
+          company_id: companyId,
+          invoice_num: 'SIM-INV-999',
+          invoice_date: new Date().toISOString().split('T')[0],
+          amount: 5000.00,
+          currency_code: 'USD',
+          status: 'disputed',
+          source_system: 'simulation',
+          description: 'Demo invoice for Emergency Override testing'
+        });
+
+      if (invoiceError) throw invoiceError;
+
+      // 4.3 Link case to invoice
+      const { error: linkError } = await supabase
+        .from('vmp_cases')
+        .update({ linked_invoice_id: demoInvoiceId })
+        .eq('id', demoCaseId);
+
+      if (linkError) throw linkError;
+
+      // 4.4 Create welcome message using adapter method
+      await vmpAdapter.createMessage(
+        demoCaseId,
+        'Welcome to Simulation Mode! This case is for testing Emergency Override functionality.',
+        'ai',
+        'portal',
+        null,
+        false,
+        { demo_mode: true }
+      );
+
+      // 4.5 Create Bank Change test case
+      const { error: bankCaseError } = await supabase
+        .from('vmp_cases')
+        .insert({
+          id: bankChangeCaseId,
+          tenant_id: tenantId,
+          company_id: companyId,
+          vendor_id: vendorId,
+          case_type: 'general',
+          status: 'waiting_internal',
+          subject: 'SIMULATION: Request to Update Bank Details',
+          owner_team: 'finance',
+          sla_due_at: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(), // 2 days from now
+          escalation_level: 0,
+          tags: ['demo_data']
+        });
+
+      if (bankCaseError) throw bankCaseError;
+
+      // 4.6 Create additional demo cases for variety
+      const demoCases = [
+        { type: 'onboarding', status: 'waiting_supplier', subject: 'SIMULATION: New Vendor Onboarding', team: 'procurement' },
+        { type: 'invoice', status: 'waiting_supplier', subject: 'SIMULATION: Missing GRN for Invoice', team: 'ap' },
+        { type: 'payment', status: 'open', subject: 'SIMULATION: Payment Status Inquiry', team: 'ap' }
+      ];
+
+      for (const demoCase of demoCases) {
+        const { error: additionalCaseError } = await supabase
+          .from('vmp_cases')
+          .insert({
+            tenant_id: tenantId,
+            company_id: companyId,
+            vendor_id: vendorId,
+            case_type: demoCase.type,
+            status: demoCase.status,
+            subject: demoCase.subject,
+            owner_team: demoCase.team,
+            sla_due_at: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(), // 3 days from now
+            escalation_level: 0,
+            tags: ['demo_data']
+          });
+
+        if (additionalCaseError) {
+          console.warn('Failed to create additional demo case:', additionalCaseError);
+          // Continue with other cases even if one fails
+        }
+      }
+
+      // 5. Return success
+      res.json({
+        success: true,
+        message: 'Demo data seeded successfully',
+        caseId: demoCaseId
+      });
+    } catch (dbError) {
+      // If any operation fails, attempt cleanup
+      // Attempt cleanup - wrap in try-catch since Supabase queries return promises
+      try {
+        await supabase.from('vmp_cases').delete().eq('id', demoCaseId);
+      } catch (cleanupError) {
+        // Ignore cleanup errors
+      }
+      try {
+        await supabase.from('vmp_invoices').delete().eq('id', demoInvoiceId);
+      } catch (cleanupError) {
+        // Ignore cleanup errors
+      }
+      throw dbError;
+    }
+  } catch (error) {
+    logError(error, { path: req.path, userId: req.user?.id });
+    res.status(500).json({ error: 'Failed to seed demo data: ' + error.message });
+  }
+});
+
+// POST /api/demo/reset - Clear and re-seed demo data
+app.post('/api/demo/reset', async (req, res) => {
+  try {
+    // 1. Authentication
+    if (!requireAuth(req, res)) return;
+
+    const vendorId = req.user.vendorId;
+    if (!vendorId) {
+      return res.status(400).json({ error: 'Vendor ID required' });
+    }
+
+    // 2. Get all demo case IDs for this vendor
+    const { data: demoCases, error: casesError } = await supabase
+      .from('vmp_cases')
+      .select('id')
+      .eq('vendor_id', vendorId)
+      .contains('tags', ['demo_data']);
+
+    if (casesError) throw casesError;
+
+    const caseIds = demoCases?.map(c => c.id) || [];
+
+    // 3. Delete existing demo data (respecting foreign key constraints)
+    if (caseIds.length > 0) {
+      // 3.1 Delete messages
+      await supabase
+        .from('vmp_messages')
+        .delete()
+        .in('case_id', caseIds);
+
+      // 3.2 Delete checklist steps
+      await supabase
+        .from('vmp_checklist_steps')
+        .delete()
+        .in('case_id', caseIds);
+
+      // 3.3 Delete evidence
+      await supabase
+        .from('vmp_evidence')
+        .delete()
+        .in('case_id', caseIds);
+
+      // 3.4 Delete cases
+      await supabase
+        .from('vmp_cases')
+        .delete()
+        .in('id', caseIds);
+    }
+
+    // 3.5 Delete demo invoices
+    await supabase
+      .from('vmp_invoices')
+      .delete()
+      .eq('vendor_id', vendorId)
+      .eq('source_system', 'simulation');
+
+    // 3.6 Delete demo payments
+    await supabase
+      .from('vmp_payments')
+      .delete()
+      .eq('vendor_id', vendorId)
+      .eq('source_system', 'simulation');
+
+    // 4. Re-seed by calling seed endpoint logic
+    // Note: For simplicity, we return a message asking user to seed again
+    // In production, you could extract seed logic to a shared function
+    res.json({
+      success: true,
+      message: 'Demo data cleared. Please click "Launch Simulator" again to re-seed.',
+      note: 'For full reset, clear first then seed separately'
+    });
+
+  } catch (error) {
+    logError(error, { path: req.path, userId: req.user?.id });
+    res.status(500).json({ error: 'Failed to reset demo data: ' + error.message });
+  }
+});
+
+// DELETE /api/demo/clear - Remove all demo data
+app.delete('/api/demo/clear', async (req, res) => {
+  try {
+    // 1. Authentication
+    if (!requireAuth(req, res)) return;
+
+    const vendorId = req.user.vendorId;
+    if (!vendorId) {
+      return res.status(400).json({ error: 'Vendor ID required' });
+    }
+
+    // 2. Get all demo case IDs for this vendor
+    const { data: demoCases, error: casesError } = await supabase
+      .from('vmp_cases')
+      .select('id')
+      .eq('vendor_id', vendorId)
+      .contains('tags', ['demo_data']);
+
+    if (casesError) throw casesError;
+
+    const caseIds = demoCases?.map(c => c.id) || [];
+
+    // 3. Delete related data first (respecting foreign key constraints)
+    if (caseIds.length > 0) {
+      // 3.1 Delete messages
+      const { error: msgError } = await supabase
+        .from('vmp_messages')
+        .delete()
+        .in('case_id', caseIds);
+
+      if (msgError) console.warn('Error deleting messages:', msgError);
+
+      // 3.2 Delete checklist steps
+      const { error: stepError } = await supabase
+        .from('vmp_checklist_steps')
+        .delete()
+        .in('case_id', caseIds);
+
+      if (stepError) console.warn('Error deleting checklist steps:', stepError);
+
+      // 3.3 Delete evidence
+      const { error: evidenceError } = await supabase
+        .from('vmp_evidence')
+        .delete()
+        .in('case_id', caseIds);
+
+      if (evidenceError) console.warn('Error deleting evidence:', evidenceError);
+
+      // 3.4 Delete cases
+      const { error: caseDeleteError } = await supabase
+        .from('vmp_cases')
+        .delete()
+        .in('id', caseIds);
+
+      if (caseDeleteError) throw caseDeleteError;
+    }
+
+    // 3.5 Delete demo invoices
+    const { error: invoiceError } = await supabase
+      .from('vmp_invoices')
+      .delete()
+      .eq('vendor_id', vendorId)
+      .eq('source_system', 'simulation');
+
+    if (invoiceError) console.warn('Error deleting invoices:', invoiceError);
+
+    // 3.6 Delete demo payments
+    const { error: paymentError } = await supabase
+      .from('vmp_payments')
+      .delete()
+      .eq('vendor_id', vendorId)
+      .eq('source_system', 'simulation');
+
+    if (paymentError) console.warn('Error deleting payments:', paymentError);
+
+    // 4. Return success
+    res.json({
+      success: true,
+      message: 'Demo data cleared successfully',
+      deletedCases: caseIds.length
+    });
+  } catch (error) {
+    logError(error, { path: req.path, userId: req.user?.id });
+    res.status(500).json({ error: 'Failed to clear demo data: ' + error.message });
+  }
+});
+
 app.use((err, req, res, next) => {
   // Log error with context
   logError(err, {
@@ -5240,7 +7846,7 @@ app.use((err, req, res, next) => {
       status: errorResponse.status,
       message: errorResponse.body.error.message,
       code: errorResponse.body.error.code,
-      ...(env.NODE_ENV !== 'production' && { details: errorResponse.body.error.details })
+      ...(env.NODE_ENV !== 'production' && 'details' in errorResponse.body.error && errorResponse.body.error.details ? { details: errorResponse.body.error.details } : {})
     },
   });
 });
@@ -5252,13 +7858,25 @@ export default app;
 // Keep listen for local development (skip in test environment)
 if (env.NODE_ENV !== 'production' && env.NODE_ENV !== 'test') {
   const PORT = parseInt(env.PORT, 10);
+  const BASE_URL_PORT = env.BASE_URL ? new URL(env.BASE_URL).port : null;
+
+  // Warn if BASE_URL port doesn't match server port
+  if (BASE_URL_PORT && BASE_URL_PORT !== PORT.toString()) {
+    console.warn(`\n⚠️  WARNING: BASE_URL port (${BASE_URL_PORT}) doesn't match server port (${PORT})`);
+    console.warn(`   This may cause Supabase Auth redirects to fail.`);
+    console.warn(`   Update BASE_URL in .env to: http://localhost:${PORT}\n`);
+  }
+
   const server = app.listen(PORT, () => {
     console.log(`NexusCanon VMP (Phase 0) running on http://localhost:${PORT}`);
     console.log(`Environment: ${env.NODE_ENV}`);
+    if (env.BASE_URL) {
+      console.log(`BASE_URL: ${env.BASE_URL}`);
+    }
   });
-  
+
   server.on('error', (err) => {
-    if (err.code === 'EADDRINUSE') {
+    if (err && typeof err === 'object' && 'code' in err && err.code === 'EADDRINUSE') {
       console.error(`\n❌ Port ${PORT} is already in use.`);
       console.error(`   Please stop the process using port ${PORT} or change PORT in .env`);
       console.error(`   To find the process: Get-NetTCPConnection -LocalPort ${PORT} | Select-Object OwningProcess\n`);

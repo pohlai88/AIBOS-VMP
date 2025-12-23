@@ -10,9 +10,11 @@ import {
     NotFoundError,
     ValidationError,
     UnauthorizedError,
+    ConflictError,
     handleSupabaseError,
     logError
 } from '../utils/errors.js';
+import { getCachedMetrics, setCachedMetrics, invalidateCache } from '../utils/sla-cache.js';
 dotenv.config();
 
 // Validate required environment variables
@@ -64,17 +66,50 @@ const withTimeout = async (promise, timeoutMs = 10000, operationName = 'operatio
 export const vmpAdapter = {
     // Auth: Get user by email
     async getUserByEmail(email) {
-        const queryPromise = supabase
+        // Try with all columns first (if migrations have been applied)
+        let queryPromise = supabase
             .from('vmp_vendor_users')
-            .select('id, email, password_hash, vendor_id, display_name, is_active')
+            .select('id, email, password_hash, vendor_id, display_name, is_active, phone, notification_preferences')
             .eq('email', email.toLowerCase().trim())
             .single();
 
-        const { data, error } = await withTimeout(
+        let { data, error } = await withTimeout(
             queryPromise,
             10000,
             `getUserByEmail(${email})`
         );
+
+        // If phone or notification_preferences columns don't exist, fall back to basic columns
+        const errorMessage = error?.message || error?.details || '';
+        const missingColumnError = error && (
+            error.code === '42703' ||
+            errorMessage.includes('phone') ||
+            errorMessage.includes('notification_preferences') ||
+            (errorMessage.includes('column') && errorMessage.includes('does not exist'))
+        );
+
+        if (missingColumnError) {
+            // Fall back to query with only columns that definitely exist
+            queryPromise = supabase
+                .from('vmp_vendor_users')
+                .select('id, email, password_hash, vendor_id, display_name, is_active')
+                .eq('email', email.toLowerCase().trim())
+                .single();
+
+            const result = await withTimeout(
+                queryPromise,
+                10000,
+                `getUserByEmail(${email})`
+            );
+            data = result.data;
+            error = result.error;
+
+            // Set default values for missing columns
+            if (data) {
+                data.phone = null;
+                data.notification_preferences = null;
+            }
+        }
 
         if (error) {
             const handledError = handleSupabaseError(error, 'getUserByEmail');
@@ -224,54 +259,319 @@ export const vmpAdapter = {
         }
     },
 
-    // Phase 1: Context Loading
-    async getVendorContext(userId) {
-        // Try with is_internal first (if migration 012 has been applied)
-        let queryPromise = supabase
-            .from('vmp_vendor_users')
-            .select(`
-                id, display_name, vendor_id, email, is_active, is_internal,
-                vmp_vendors ( id, name, tenant_id )
-            `)
-            .eq('id', userId)
+    // Auth: Create password reset token (following Supabase best practices)
+    // Token expires after 1 hour (3600 seconds) per Supabase default
+    async createPasswordResetToken(email) {
+        if (!email) {
+            throw new ValidationError('Email is required', 'email');
+        }
+
+        // 1. Find user by email
+        const user = await this.getUserByEmail(email);
+        if (!user) {
+            // Don't reveal if user exists (security best practice)
+            return null;
+        }
+
+        // 2. Invalidate any existing unused tokens for this user
+        await supabase
+            .from('vmp_password_reset_tokens')
+            .update({ used_at: new Date().toISOString() })
+            .eq('user_id', user.id)
+            .is('used_at', null);
+
+        // 3. Generate secure token (32 bytes = 64 hex characters)
+        const token = randomBytes(32).toString('hex');
+
+        // 4. Set expiration to 1 hour from now (following Supabase default)
+        const expiresAt = new Date();
+        expiresAt.setHours(expiresAt.getHours() + 1);
+
+        // 5. Create reset token
+        const queryPromise = supabase
+            .from('vmp_password_reset_tokens')
+            .insert({
+                user_id: user.id,
+                token: token,
+                expires_at: expiresAt.toISOString()
+            })
+            .select()
             .single();
 
-        let { data, error } = await withTimeout(
+        const { data, error } = await withTimeout(
             queryPromise,
             10000,
-            `getVendorContext(${userId})`
+            `createPasswordResetToken(${email})`
         );
 
-        // If is_internal column doesn't exist, fall back to query without it
-        if (error && error.message && error.message.includes('is_internal')) {
-            queryPromise = supabase
+        if (error) {
+            const handledError = handleSupabaseError(error, 'createPasswordResetToken');
+            if (handledError) throw handledError;
+            throw new DatabaseError('Failed to create password reset token', error);
+        }
+
+        return {
+            token: data.token,
+            expiresAt: data.expires_at,
+            userId: data.user_id,
+            email: user.email
+        };
+    },
+
+    // Auth: Verify password reset token
+    async verifyPasswordResetToken(token) {
+        if (!token) {
+            throw new ValidationError('Token is required', 'token');
+        }
+
+        const queryPromise = supabase
+            .from('vmp_password_reset_tokens')
+            .select('id, user_id, expires_at, used_at')
+            .eq('token', token)
+            .single();
+
+        const { data, error } = await withTimeout(
+            queryPromise,
+            10000,
+            'verifyPasswordResetToken()'
+        );
+
+        if (error) {
+            const handledError = handleSupabaseError(error, 'verifyPasswordResetToken');
+            if (handledError === null) {
+                // Token not found
+                return null;
+            }
+            throw handledError;
+        }
+
+        // Check if token is expired
+        if (new Date(data.expires_at) < new Date()) {
+            return null;
+        }
+
+        // Check if token has already been used
+        if (data.used_at) {
+            return null;
+        }
+
+        return {
+            tokenId: data.id,
+            userId: data.user_id,
+            expiresAt: data.expires_at
+        };
+    },
+
+    // Auth: Update password using reset token
+    async updatePasswordWithToken(token, newPassword) {
+        if (!token) {
+            throw new ValidationError('Token is required', 'token');
+        }
+        if (!newPassword || newPassword.length < 8) {
+            throw new ValidationError('Password must be at least 8 characters long', 'password');
+        }
+
+        // 1. Verify token
+        const tokenData = await this.verifyPasswordResetToken(token);
+        if (!tokenData) {
+            throw new ValidationError('Invalid or expired reset token', 'token');
+        }
+
+        // 2. Hash new password
+        const passwordHash = await bcrypt.hash(newPassword, 10);
+
+        // 3. Update user password (using transaction-like approach)
+        const updateUserPromise = supabase
+            .from('vmp_vendor_users')
+            .update({ password_hash: passwordHash })
+            .eq('id', tokenData.userId)
+            .select('id, email')
+            .single();
+
+        const { data: userData, error: updateError } = await withTimeout(
+            updateUserPromise,
+            10000,
+            'updatePasswordWithToken()'
+        );
+
+        if (updateError) {
+            const handledError = handleSupabaseError(updateError, 'updatePasswordWithToken');
+            if (handledError) throw handledError;
+            throw new DatabaseError('Failed to update password', updateError);
+        }
+
+        // 4. Mark token as used
+        await supabase
+            .from('vmp_password_reset_tokens')
+            .update({ used_at: new Date().toISOString() })
+            .eq('id', tokenData.tokenId);
+
+        // 5. Invalidate all user sessions (security best practice)
+        await supabase
+            .from('vmp_sessions')
+            .delete()
+            .eq('user_id', tokenData.userId);
+
+        return {
+            userId: userData.id,
+            email: userData.email
+        };
+    },
+
+    // Phase 1: Context Loading (Updated to use Supabase Auth)
+    async getVendorContext(authUserId) {
+        // Validate UUID format before calling Supabase
+        if (!authUserId || typeof authUserId !== 'string') {
+            throw new ValidationError('authUserId is required and must be a string', 'authUserId');
+        }
+
+        // Check UUID format (Supabase Auth user IDs are UUIDs)
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        if (!uuidRegex.test(authUserId)) {
+            throw new ValidationError(`authUserId must be a valid UUID format, got: ${authUserId}`, 'authUserId');
+        }
+
+        // Development mode: Handle special dev UUID (00000000-0000-0000-0000-000000000000)
+        // This allows dev mode to bypass Supabase Auth while still using getVendorContext
+        const DEV_AUTH_UUID = '00000000-0000-0000-0000-000000000000';
+        if (authUserId === DEV_AUTH_UUID && process.env.NODE_ENV === 'development') {
+            // Return mock context for development mode
+            // Try to get vendor from DEMO_VENDOR_ID if available
+            let vendor = null;
+            const devVendorId = process.env.DEMO_VENDOR_ID;
+            if (devVendorId) {
+                try {
+                    vendor = await this.getVendorById(devVendorId);
+                } catch (error) {
+                    // If vendor lookup fails, use fallback
+                    vendor = {
+                        id: devVendorId,
+                        name: 'Development Vendor',
+                        tenant_id: devVendorId
+                    };
+                }
+            }
+
+            return {
+                id: 'dev-user-id',
+                email: 'dev@example.com',
+                display_name: 'Development User',
+                vendor_id: vendor?.id || null,
+                tenant_id: vendor?.tenant_id || null,
+                vmp_vendors: vendor,
+                user_tier: 'institutional',
+                is_internal: false,
+                is_active: true
+            };
+        }
+
+        // Get user from Supabase Auth using admin client
+        // Note: Requires service role key for admin operations
+        const adminClient = createClient(supabaseUrl, supabaseKey, {
+            auth: {
+                autoRefreshToken: false,
+                persistSession: false
+            }
+        });
+
+        const { data: { user }, error: authError } = await adminClient.auth.admin.getUserById(authUserId);
+
+        if (authError || !user) {
+            const handledError = handleSupabaseError(authError || new Error('User not found'), 'getVendorContext');
+            if (handledError === null) {
+                return null;
+            }
+            throw handledError;
+        }
+
+        // Check user tier from metadata
+        const userTier = user.user_metadata?.user_tier || 'institutional';
+        const DEFAULT_INDEPENDENT_TENANT_ID = '00000000-0000-0000-0000-000000000001';
+
+        // Handle independent users (no vendor required)
+        if (userTier === 'independent') {
+            // Get vendor_user record (without vendor_id)
+            const { data: vendorUser, error: vendorUserError } = await supabase
                 .from('vmp_vendor_users')
-                .select(`
-                    id, display_name, vendor_id, email, is_active,
-                    vmp_vendors ( id, name, tenant_id )
-                `)
-                .eq('id', userId)
+                .select('*')
+                .eq('email', user.email)
+                .eq('user_tier', 'independent')
+                .is('vendor_id', null)
                 .single();
 
-            const result = await withTimeout(
-                queryPromise,
-                10000,
-                `getVendorContext(${userId})`
-            );
-            data = result.data;
-            error = result.error;
-            // Set default is_internal to false if column doesn't exist
-            if (data) {
-                data.is_internal = false;
+            if (vendorUserError || !vendorUser) {
+                const handledError = handleSupabaseError(vendorUserError || new Error('Vendor user not found'), 'getVendorContext-independent');
+                if (handledError === null) {
+                    return null;
+                }
+                throw handledError;
+            }
+
+            // Return context with default tenant for independent users
+            return {
+                id: vendorUser.id,
+                email: user.email,
+                display_name: user.user_metadata?.display_name || vendorUser.display_name || user.email,
+                vendor_id: null,
+                tenant_id: DEFAULT_INDEPENDENT_TENANT_ID,
+                vmp_vendors: null,
+                user_tier: 'independent',
+                is_internal: false,
+                is_active: vendorUser.is_active !== false
+            };
+        }
+
+        // Institutional users (existing logic)
+        const vendorId = user.user_metadata?.vendor_id;
+        if (!vendorId) {
+            throw new ValidationError('Institutional user missing vendor_id in metadata');
+        }
+
+        // Get vendor details
+        const vendor = await this.getVendorById(vendorId);
+        if (!vendor) {
+            throw new NotFoundError(`Vendor not found: ${vendorId}`);
+        }
+
+        // Get vendor_user record to check is_internal from database (fallback to user_metadata)
+        // IMPORTANT: Select 'id' to return the vendor_user ID, not the auth user ID
+        const { data: vendorUser, error: vendorUserError } = await supabase
+            .from('vmp_vendor_users')
+            .select('id, is_internal, is_active')
+            .eq('email', user.email)
+            .eq('vendor_id', vendorId)
+            .maybeSingle(); // Use maybeSingle() instead of single() to avoid throwing on no match
+
+        if (vendorUserError && vendorUserError.code !== 'PGRST116') {
+            // PGRST116 means no rows found, which is handled below
+            const handledError = handleSupabaseError(vendorUserError, 'getVendorContext-vendorUser');
+            if (handledError) {
+                throw handledError;
             }
         }
 
-        if (error) {
-            const handledError = handleSupabaseError(error, 'getVendorContext');
-            if (handledError) throw handledError;
-            throw new DatabaseError('Failed to get vendor context', error, { userId });
+        if (!vendorUser) {
+            // Vendor user not found - this is an error for institutional users
+            throw new NotFoundError(`Vendor user not found for email: ${user.email}, vendor_id: ${vendorId}`);
         }
-        return data;
+
+        // Check is_internal from database first, then fallback to user_metadata
+        const isInternal = vendorUser.is_internal === true || user.user_metadata?.is_internal === true || false;
+        const isActive = vendorUser.is_active !== false && user.user_metadata?.is_active !== false;
+
+        // Return context in same format as before for compatibility
+        // IMPORTANT: Return vendor_user.id, not auth user.id
+        return {
+            id: vendorUser.id, // vendor_user ID (for database operations)
+            email: user.email,
+            display_name: user.user_metadata?.display_name || user.email,
+            vendor_id: vendorId,
+            tenant_id: vendor.tenant_id,
+            is_active: isActive,
+            is_internal: isInternal,
+            user_tier: 'institutional',
+            vmp_vendors: vendor
+        };
     },
 
     // Phase 2: Inbox Cell Data
@@ -284,7 +584,8 @@ export const vmpAdapter = {
             .from('vmp_cases')
             .select(`
                 id, subject, status, sla_due_at, updated_at, case_type,
-                vmp_companies ( name )
+                vmp_companies ( name ),
+                evidence_count:vmp_evidence(count)
             `)
             .eq('vendor_id', vendorId)
             .order('updated_at', { ascending: false }); // WhatsApp sorting
@@ -300,7 +601,22 @@ export const vmpAdapter = {
             if (handledError) throw handledError;
             throw new DatabaseError('Failed to fetch inbox', error, { vendorId });
         }
-        return data || [];
+
+        // Normalize evidence_count from Supabase nested count format [{count: N}] to number
+        const normalizedData = (data || []).map(caseItem => {
+            if (caseItem.evidence_count && Array.isArray(caseItem.evidence_count) && caseItem.evidence_count.length > 0) {
+                return {
+                    ...caseItem,
+                    evidence_count: caseItem.evidence_count[0].count || 0
+                };
+            }
+            return {
+                ...caseItem,
+                evidence_count: 0
+            };
+        });
+
+        return normalizedData;
     },
 
     // Phase 2: Case Detail Cell Data
@@ -460,7 +776,7 @@ export const vmpAdapter = {
     },
 
     // Phase 3: Thread Cell - Get Messages
-    async getMessages(caseId) {
+    async getMessages(caseId, isInternal = false) {
         if (!caseId) {
             throw new ValidationError('getMessages requires a caseId parameter', 'caseId');
         }
@@ -493,9 +809,15 @@ export const vmpAdapter = {
             throw new DatabaseError('Failed to fetch messages', error, { caseId });
         }
 
+        // Privacy Shield: Filter out internal notes for non-internal users
+        let filteredMessages = data || [];
+        if (!isInternal) {
+            filteredMessages = filteredMessages.filter(msg => !msg.is_internal_note);
+        }
+
         // Transform data to match template expectations
         // Template expects: sender_party, channel_source, body, created_at
-        return (data || []).map(msg => ({
+        return filteredMessages.map(msg => ({
             id: msg.id,
             case_id: msg.case_id,
             sender_party: msg.sender_type === 'vendor'
@@ -630,9 +952,68 @@ export const vmpAdapter = {
             throw new ValidationError('ensureChecklistSteps requires caseId and caseType parameters', null, { caseId, caseType });
         }
 
+        // Get vendor information for conditional checklist logic
+        let vendorAttributes = {};
+        try {
+            // Get case to find vendor_id
+            const caseQuery = supabase
+                .from('vmp_cases')
+                .select('vendor_id, company_id')
+                .eq('id', caseId)
+                .single();
+
+            const { data: caseData } = await withTimeout(caseQuery, 5000, `getCaseForChecklist(${caseId})`);
+
+            if (caseData && caseData.vendor_id) {
+                // Get vendor information
+                const vendorQuery = supabase
+                    .from('vmp_vendors')
+                    .select('vendor_type, country_code')
+                    .eq('id', caseData.vendor_id)
+                    .single();
+
+                const { data: vendorData } = await withTimeout(vendorQuery, 5000, `getVendorForChecklist(${caseData.vendor_id})`);
+
+                if (vendorData) {
+                    vendorAttributes = {
+                        vendorType: vendorData.vendor_type || null,
+                        countryCode: vendorData.country_code || null
+                    };
+                }
+
+                // If no vendor_type in vendor, try to infer from company country_code
+                if (!vendorAttributes.vendorType && caseData.company_id) {
+                    const companyQuery = supabase
+                        .from('vmp_companies')
+                        .select('country_code')
+                        .eq('id', caseData.company_id)
+                        .single();
+
+                    const { data: companyData } = await withTimeout(companyQuery, 5000, `getCompanyForChecklist(${caseData.company_id})`);
+
+                    if (companyData && companyData.country_code) {
+                        // Infer vendor type: if vendor country != company country, it's international
+                        if (vendorAttributes.countryCode && vendorAttributes.countryCode !== companyData.country_code) {
+                            vendorAttributes.vendorType = 'international';
+                        } else if (!vendorAttributes.vendorType) {
+                            vendorAttributes.vendorType = 'domestic';
+                        }
+
+                        // Use company country_code if vendor doesn't have one
+                        if (!vendorAttributes.countryCode) {
+                            vendorAttributes.countryCode = companyData.country_code;
+                        }
+                    }
+                }
+            }
+        } catch (vendorError) {
+            // If vendor lookup fails, continue with empty attributes (non-blocking)
+            logError(vendorError, { operation: 'ensureChecklistSteps', caseId, step: 'vendorLookup' });
+        }
+
         // Import rules engine dynamically to avoid circular dependencies
         const { getChecklistStepsForCaseType } = await import('../utils/checklist-rules.js');
-        const requiredSteps = getChecklistStepsForCaseType(caseType);
+        const requiredSteps = getChecklistStepsForCaseType(caseType, null, vendorAttributes);
 
         // Get existing steps
         const existingSteps = await this.getChecklistSteps(caseId);
@@ -1104,6 +1485,66 @@ export const vmpAdapter = {
             }
         }
 
+        // VERIFY-04 Fix: Handle bank details change case resolution
+        // When a bank details change case is resolved, update vendor profile with new bank details
+        if (status === 'resolved' && data && data.metadata && data.metadata.bank_details_change && data.metadata.new_bank_details) {
+            try {
+                const newBankDetails = data.metadata.new_bank_details;
+                const vendorId = data.vendor_id;
+
+                if (vendorId && newBankDetails) {
+                    // Update vendor bank details
+                    const bankUpdateQuery = supabase
+                        .from('vmp_vendors')
+                        .update({
+                            bank_name: newBankDetails.bank_name || null,
+                            account_number: newBankDetails.account_number || null,
+                            swift_code: newBankDetails.swift_code || null,
+                            bank_address: newBankDetails.branch_address || null,
+                            account_holder_name: newBankDetails.account_name || null,
+                            updated_at: new Date().toISOString()
+                        })
+                        .eq('id', vendorId)
+                        .select()
+                        .single();
+
+                    const { data: updatedVendor, error: bankUpdateError } = await withTimeout(
+                        bankUpdateQuery,
+                        10000,
+                        `updateVendorBankDetails(${vendorId})`
+                    );
+
+                    if (bankUpdateError) {
+                        logError(bankUpdateError, {
+                            operation: 'updateCaseStatus.bankDetailsUpdate',
+                            caseId,
+                            vendorId
+                        });
+                        // Don't fail case status update if bank details update fails
+                    } else {
+                        // Log bank details update decision
+                        try {
+                            await this.logDecision(
+                                caseId,
+                                'bank_details_updated',
+                                updatedByUserId ? `User ${updatedByUserId}` : 'System',
+                                `Bank details updated for vendor ${vendorId} via case resolution`,
+                                `New bank: ${newBankDetails.bank_name}, Account: ${newBankDetails.account_number}`
+                            );
+                        } catch (logError) {
+                            logError(logError, { operation: 'logDecision-bankDetailsUpdate', caseId });
+                        }
+                    }
+                }
+            } catch (bankDetailsError) {
+                logError(bankDetailsError, {
+                    operation: 'updateCaseStatus.bankDetailsChange',
+                    caseId
+                });
+                // Don't fail case status update if bank details update fails
+            }
+        }
+
         return data;
     },
 
@@ -1216,7 +1657,7 @@ export const vmpAdapter = {
     async createNotificationWithPush(caseId, userId, notificationType, title, body = null, paymentId = null) {
         // Create in-app notification first
         const notification = await this.createNotification(caseId, userId, notificationType, title, body, paymentId);
-        
+
         // Send push notification if available
         if (notification) {
             try {
@@ -1234,7 +1675,7 @@ export const vmpAdapter = {
                 console.error('[Push] Failed to send push notification:', pushError);
             }
         }
-        
+
         return notification;
     },
 
@@ -1250,109 +1691,109 @@ export const vmpAdapter = {
         }
 
         try {
-            // Get all active vendor users for this vendor
-            const usersQuery = await supabase
-                .from('vmp_vendor_users')
-                .select('id, email, display_name')
-                .eq('vendor_id', vendorId)
-                .eq('is_active', true);
+            // Use the new notification service (Sprint 7.4)
+            const { sendPaymentNotification } = await import('../utils/notifications.js');
+            const results = await sendPaymentNotification(paymentId, vendorId, {
+                paymentRef,
+                amount,
+                currencyCode: currencyCode || 'USD',
+                invoiceNum
+            });
 
-            if (usersQuery.error || !usersQuery.data) {
-                console.error('Error fetching vendor users for payment notification:', usersQuery.error);
-                return [];
-            }
-
-            // Create notifications for all vendor users
-            const notifications = [];
-            const title = `Payment Received: ${paymentRef}`;
-            const body = invoiceNum 
-                ? `Payment of ${currencyCode || 'USD'} ${amount.toFixed(2)} received for Invoice ${invoiceNum}`
-                : `Payment of ${currencyCode || 'USD'} ${amount.toFixed(2)} received`;
-
-            for (const user of usersQuery.data) {
-                try {
-                    const notif = await this.createNotification(
-                        null, // No case_id for payment notifications
-                        user.id,
-                        'payment_received',
-                        title,
-                        body,
-                        paymentId
-                    );
-                    if (notif) {
-                        notifications.push(notif);
-                        
-                        // Send push notification (non-blocking)
-                        try {
-                            const { sendPaymentNotification } = await import('../utils/push-sender.js');
-                            await sendPaymentNotification(paymentId, user.id, {
-                                amount,
-                                currency_code: currencyCode,
-                                payment_ref: paymentRef,
-                                invoice_num: invoiceNum
-                            });
-                        } catch (pushError) {
-                            // Don't fail if push fails - in-app notification is primary
-                            console.error(`[Push] Failed to send push to user ${user.id}:`, pushError);
-                        }
-                        
-                        // Send email notification (non-blocking)
-                        try {
-                            await this.sendPaymentEmailNotification(user.email, user.display_name || user.email, {
-                                paymentRef,
-                                amount,
-                                currencyCode: currencyCode || 'USD',
-                                invoiceNum
-                            });
-                        } catch (emailError) {
-                            // Don't fail notification creation if email fails
-                            console.error(`Failed to send email to ${user.email}:`, emailError);
-                        }
-                    }
-                } catch (notifError) {
-                    console.error(`Failed to create notification for user ${user.id}:`, notifError);
-                }
-            }
-
-            return notifications;
+            // Return notification results for logging
+            return {
+                success: true,
+                results,
+                message: `Notifications sent: ${results.inApp.sent} in-app, ${results.email.sent} email, ${results.sms.sent} SMS, ${results.push.sent} push`
+            };
         } catch (error) {
-            console.error('Error in notifyVendorUsersForPayment:', error);
+            logError(error, { operation: 'notifyVendorUsersForPayment', paymentId, vendorId });
             // Don't throw - notifications are non-critical
-            return [];
+            return { success: false, error: error.message };
         }
     },
 
-    // Sprint 7.4: Send Payment Email Notification (Basic Implementation)
+    // Sprint 7.4: Get Vendor Users with Notification Preferences
+    async getVendorUsersWithPreferences(vendorId) {
+        if (!vendorId) {
+            throw new ValidationError('getVendorUsersWithPreferences requires vendorId', null, { vendorId });
+        }
+
+        try {
+            const usersQuery = supabase
+                .from('vmp_vendor_users')
+                .select('id, email, display_name, phone, notification_preferences')
+                .eq('vendor_id', vendorId)
+                .eq('is_active', true);
+
+            const { data, error } = await withTimeout(
+                usersQuery,
+                10000,
+                `getVendorUsersWithPreferences(${vendorId})`
+            );
+
+            if (error) {
+                const handledError = handleSupabaseError(error, 'getVendorUsersWithPreferences');
+                if (handledError === null) {
+                    return [];
+                }
+                throw handledError;
+            }
+
+            return data || [];
+        } catch (error) {
+            logError(error, { operation: 'getVendorUsersWithPreferences', vendorId });
+            throw new DatabaseError('Failed to fetch vendor users with preferences', error, { vendorId });
+        }
+    },
+
+    // Sprint 7.4: Update User Notification Preferences
+    async updateNotificationPreferences(userId, preferences) {
+        if (!userId) {
+            throw new ValidationError('updateNotificationPreferences requires userId', null, { userId });
+        }
+
+        if (!preferences || typeof preferences !== 'object') {
+            throw new ValidationError('updateNotificationPreferences requires preferences object', null, { hasPreferences: !!preferences });
+        }
+
+        try {
+            const updateQuery = supabase
+                .from('vmp_vendor_users')
+                .update({ notification_preferences: preferences })
+                .eq('id', userId)
+                .select('id, notification_preferences')
+                .single();
+
+            const { data, error } = await withTimeout(
+                updateQuery,
+                10000,
+                `updateNotificationPreferences(${userId})`
+            );
+
+            if (error) {
+                const handledError = handleSupabaseError(error, 'updateNotificationPreferences');
+                if (handledError === null) {
+                    return null;
+                }
+                throw handledError;
+            }
+
+            return data;
+        } catch (error) {
+            logError(error, { operation: 'updateNotificationPreferences', userId });
+            throw new DatabaseError('Failed to update notification preferences', error, { userId });
+        }
+    },
+
+    // Sprint 7.4: Send Payment Email Notification (Deprecated - use notifications.js service)
     async sendPaymentEmailNotification(userEmail, userName, paymentData) {
-        // Basic email notification stub
-        // In production, this would integrate with an email service (SendGrid, Resend, etc.)
-        // For now, we'll just log it - can be enhanced later with actual email service
-        
-        const emailContent = {
-            to: userEmail,
-            subject: `Payment Received: ${paymentData.paymentRef}`,
-            body: `
-Hello ${userName},
-
-A payment has been received:
-
-Payment Reference: ${paymentData.paymentRef}
-Amount: ${paymentData.currencyCode} ${paymentData.amount.toFixed(2)}
-${paymentData.invoiceNum ? `Invoice: ${paymentData.invoiceNum}` : ''}
-
-You can view the payment details in your VMP portal.
-
-Best regards,
-NexusCanon VMP
-            `.trim()
-        };
-
-        // Log email (in production, send via email service)
-        console.log('Payment email notification:', emailContent);
-        
-        // TODO: Integrate with email service (SendGrid, Resend, etc.)
-        // For now, return success (email will be sent in production)
-        return { success: true, emailContent };
+        // This method is kept for backward compatibility
+        // New code should use the notification service in src/utils/notifications.js
+        const { sendPaymentNotification } = await import('../utils/notifications.js');
+        // This is a simplified call - full implementation should use sendPaymentNotification
+        console.warn('[Deprecated] sendPaymentEmailNotification - use notification service instead');
+        return { success: true, emailContent: { to: userEmail } };
     },
 
     // Day 11: Notifications - Notify All Vendor Users for Case
@@ -2538,7 +2979,7 @@ NexusCanon VMP
             const blockingCases = [];
             if (payment.vmp_invoices && payment.vmp_invoices.length > 0) {
                 const invoice = Array.isArray(payment.vmp_invoices) ? payment.vmp_invoices[0] : payment.vmp_invoices;
-                
+
                 // Get cases linked to this invoice
                 const invoiceCasesQuery = supabase
                     .from('vmp_cases')
@@ -2582,7 +3023,7 @@ NexusCanon VMP
             let forecastDate = null;
 
             const invoice = payment.vmp_invoices && (Array.isArray(payment.vmp_invoices) ? payment.vmp_invoices[0] : payment.vmp_invoices);
-            
+
             if (invoice) {
                 if (invoice.status === 'disputed') {
                     statusExplanation = 'Payment is blocked due to invoice dispute. Please resolve the linked case to proceed.';
@@ -2750,7 +3191,7 @@ NexusCanon VMP
                 matchState = 'WARN';
                 exceptions.push(`PO ${invoice.po_ref} is ${poMatch.status}`);
             }
-            
+
             // Amount mismatch: Invoice vs PO
             if (poMatch.total_amount && invoice.amount) {
                 const amountDiff = Math.abs(Number(poMatch.total_amount) - Number(invoice.amount));
@@ -2932,11 +3373,11 @@ NexusCanon VMP
                 // Use exception-specific checklist steps
                 const { getChecklistStepsForException } = await import('../utils/checklist-rules.js');
                 const exceptionSteps = getChecklistStepsForException(exceptionType);
-                
+
                 // Also get base invoice steps and merge
                 const { getChecklistStepsForCaseType } = await import('../utils/checklist-rules.js');
                 const baseSteps = getChecklistStepsForCaseType('invoice');
-                
+
                 // Create all steps (exception steps first, then base steps)
                 for (const step of [...exceptionSteps, ...baseSteps]) {
                     try {
@@ -3143,6 +3584,142 @@ NexusCanon VMP
         return data;
     },
 
+    // Get Invite by Email (for Supabase Auth invites)
+    async getInviteByEmail(email) {
+        if (!email) {
+            throw new ValidationError('getInviteByEmail requires email', null, { email });
+        }
+
+        // Get the most recent non-expired, non-used invite for this email
+        const inviteQuery = supabase
+            .from('vmp_invites')
+            .select(`
+                *,
+                vmp_vendors (id, name, tenant_id)
+            `)
+            .eq('email', email.toLowerCase().trim())
+            .is('used_at', null)
+            .gt('expires_at', new Date().toISOString())
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .single();
+
+        const { data: inviteData, error: inviteError } = await withTimeout(
+            inviteQuery,
+            10000,
+            `getInviteByEmail(${email})`
+        );
+
+        if (inviteError) {
+            const handledError = handleSupabaseError(inviteError, 'getInviteByEmail');
+            if (handledError === null) {
+                return null; // Not found
+            }
+            throw handledError;
+        }
+
+        // Get tenant info
+        let tenantData = null;
+        if (inviteData.vmp_vendors?.tenant_id) {
+            const tenantQuery = supabase
+                .from('vmp_tenants')
+                .select('id, name')
+                .eq('id', inviteData.vmp_vendors.tenant_id)
+                .single();
+
+            const { data: tenant, error: tenantError } = await withTimeout(
+                tenantQuery,
+                5000,
+                'getTenantForInvite'
+            );
+
+            if (!tenantError && tenant) {
+                tenantData = tenant;
+            }
+        }
+
+        // Get vendor-company links
+        const linksQuery = supabase
+            .from('vmp_vendor_company_links')
+            .select(`
+                *,
+                vmp_companies (id, name, legal_name)
+            `)
+            .eq('vendor_id', inviteData.vendor_id);
+
+        const { data: linksData, error: linksError } = await withTimeout(
+            linksQuery,
+            10000,
+            'getVendorCompanyLinks'
+        );
+
+        const data = {
+            ...inviteData,
+            vmp_vendor_company_links: linksData || []
+        };
+
+        if (data.vmp_vendors && tenantData) {
+            data.vmp_vendors.vmp_tenants = tenantData;
+        }
+
+        return data;
+    },
+
+    // Create Vendor User from Supabase Auth (for Supabase invite flow)
+    async createVendorUserFromSupabase(vendorId, supabaseUserId, email, displayName = null) {
+        if (!vendorId || !supabaseUserId || !email) {
+            throw new ValidationError('createVendorUserFromSupabase requires vendorId, supabaseUserId, and email', null, {
+                vendorId,
+                supabaseUserId,
+                email
+            });
+        }
+
+        // Check if user already exists
+        const existingUserQuery = supabase
+            .from('vmp_vendor_users')
+            .select('id')
+            .eq('email', email.toLowerCase().trim())
+            .single();
+
+        const { data: existingUser, error: existingError } = await withTimeout(
+            existingUserQuery,
+            5000,
+            'checkExistingUserForSupabase'
+        );
+
+        if (existingUser) {
+            throw new ConflictError('User already exists', { email });
+        }
+
+        // Create vendor user linked to Supabase Auth user
+        const insertQuery = supabase
+            .from('vmp_vendor_users')
+            .insert({
+                vendor_id: vendorId,
+                email: email.toLowerCase().trim(),
+                display_name: displayName || email.split('@')[0],
+                supabase_user_id: supabaseUserId, // Link to Supabase Auth user
+                created_at: new Date().toISOString()
+            })
+            .select()
+            .single();
+
+        const { data: userData, error: insertError } = await withTimeout(
+            insertQuery,
+            10000,
+            'createVendorUserFromSupabase'
+        );
+
+        if (insertError) {
+            const handledError = handleSupabaseError(insertError, 'createVendorUserFromSupabase');
+            if (handledError) throw handledError;
+            throw new DatabaseError('Failed to create vendor user', insertError, { vendorId, email });
+        }
+
+        return userData;
+    },
+
     // Sprint 3.2: Create Vendor User
     async createVendorUser(vendorId, email, passwordHash, displayName = null) {
         if (!vendorId || !email || !passwordHash) {
@@ -3187,6 +3764,55 @@ NexusCanon VMP
             const handledError = handleSupabaseError(error, 'createVendorUser');
             if (handledError) throw handledError;
             throw new DatabaseError('Failed to create vendor user', error, { vendorId, email });
+        }
+
+        return data;
+    },
+
+    // Independent Investigator: Create Independent User (no vendor required)
+    async createIndependentUser(supabaseUserId, email, displayName = null) {
+        if (!supabaseUserId || !email) {
+            throw new ValidationError('createIndependentUser requires supabaseUserId and email', null, {
+                supabaseUserId,
+                email
+            });
+        }
+
+        // Validate email format
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+            throw new ValidationError('Invalid email format', 'email', { email });
+        }
+
+        // Check if user already exists
+        const existingUser = await this.getUserByEmail(email);
+        if (existingUser) {
+            throw new ValidationError('User with this email already exists', 'email', { email });
+        }
+
+        // Create independent vendor_user (vendor_id is null)
+        const insertQuery = supabase
+            .from('vmp_vendor_users')
+            .insert({
+                vendor_id: null,
+                email: email.toLowerCase().trim(),
+                display_name: displayName || email.split('@')[0],
+                user_tier: 'independent',
+                is_active: true
+            })
+            .select()
+            .single();
+
+        const { data, error } = await withTimeout(
+            insertQuery,
+            10000,
+            'createIndependentUser'
+        );
+
+        if (error) {
+            const handledError = handleSupabaseError(error, 'createIndependentUser');
+            if (handledError) throw handledError;
+            throw new DatabaseError('Failed to create independent user', error, { email });
         }
 
         return data;
@@ -5148,7 +5774,7 @@ NexusCanon VMP
         }
 
         const { vendorId, tenantId } = vendorInfo;
-        
+
         // Try to find existing case by reference
         if (caseReference) {
             try {
@@ -5181,7 +5807,7 @@ NexusCanon VMP
         // Create new case from email
         const subject = emailData.subject || 'Email Inquiry';
         const body = emailData.text || emailData.html || '';
-        
+
         // Extract first company (for now - could be enhanced to match by domain)
         const companyQuery = supabase
             .from('vmp_companies')
@@ -5378,6 +6004,658 @@ NexusCanon VMP
         }
 
         return data || [];
+    },
+
+    // Emergency Pay Override: Request Override
+    async requestEmergencyPayOverride(paymentId, caseId, userId, reason, urgencyLevel = 'high', metadata = null) {
+        if (!paymentId || !userId || !reason) {
+            throw new ValidationError('requestEmergencyPayOverride requires paymentId, userId, and reason', null, {
+                paymentId,
+                userId,
+                hasReason: !!reason
+            });
+        }
+
+        // Validate urgency level
+        const validUrgencyLevels = ['high', 'critical', 'emergency'];
+        if (!validUrgencyLevels.includes(urgencyLevel)) {
+            throw new ValidationError(
+                'urgencyLevel must be one of: high, critical, emergency',
+                'urgencyLevel',
+                { value: urgencyLevel, validValues: validUrgencyLevels }
+            );
+        }
+
+        // Verify payment exists and user has access
+        const payment = await this.getPaymentDetail(paymentId, null); // Get without vendor check for internal users
+        if (!payment) {
+            throw new NotFoundError('Payment not found', { paymentId });
+        }
+
+        // Create override request
+        const insertQuery = supabase
+            .from('vmp_emergency_pay_overrides')
+            .insert({
+                payment_id: paymentId,
+                case_id: caseId || null,
+                requested_by_user_id: userId,
+                reason: reason.trim(),
+                urgency_level: urgencyLevel,
+                status: 'pending',
+                metadata: metadata || {}
+            })
+            .select()
+            .single();
+
+        const { data, error } = await withTimeout(
+            insertQuery,
+            10000,
+            `requestEmergencyPayOverride(${paymentId})`
+        );
+
+        if (error) {
+            const handledError = handleSupabaseError(error, 'requestEmergencyPayOverride');
+            if (handledError) throw handledError;
+            throw new DatabaseError('Failed to create emergency pay override request', error, { paymentId });
+        }
+
+        // Log decision
+        try {
+            await this.logDecision(
+                caseId || paymentId, // Use case_id if available, otherwise payment_id
+                'emergency_pay_override_requested',
+                `User ${userId}`,
+                `Emergency pay override requested for payment ${payment.payment_ref}`,
+                reason
+            );
+        } catch (logError) {
+            // Don't fail if decision logging fails
+            logError(logError, { operation: 'logDecision-emergencyOverrideRequest', paymentId });
+        }
+
+        return data;
+    },
+
+    // Emergency Pay Override: Approve Override
+    async approveEmergencyPayOverride(overrideId, approvedByUserId, metadata = null) {
+        if (!overrideId || !approvedByUserId) {
+            throw new ValidationError('approveEmergencyPayOverride requires overrideId and approvedByUserId', null, {
+                overrideId,
+                approvedByUserId
+            });
+        }
+
+        // Get override request
+        const overrideQuery = supabase
+            .from('vmp_emergency_pay_overrides')
+            .select('*, vmp_payments(*), vmp_cases(*)')
+            .eq('id', overrideId)
+            .single();
+
+        const { data: overrideData, error: overrideError } = await withTimeout(
+            overrideQuery,
+            10000,
+            `getEmergencyPayOverride(${overrideId})`
+        );
+
+        if (overrideError || !overrideData) {
+            throw new NotFoundError('Emergency pay override request not found', { overrideId });
+        }
+
+        if (overrideData.status !== 'pending') {
+            throw new ValidationError('Override request is not pending', null, {
+                overrideId,
+                currentStatus: overrideData.status
+            });
+        }
+
+        // Update override status to approved
+        const updateQuery = supabase
+            .from('vmp_emergency_pay_overrides')
+            .update({
+                status: 'approved',
+                approved_by_user_id: approvedByUserId,
+                approved_at: new Date().toISOString(),
+                metadata: metadata || overrideData.metadata || {},
+                updated_at: new Date().toISOString()
+            })
+            .eq('id', overrideId)
+            .select()
+            .single();
+
+        const { data: updatedOverride, error: updateError } = await withTimeout(
+            updateQuery,
+            10000,
+            `approveEmergencyPayOverride(${overrideId})`
+        );
+
+        if (updateError) {
+            const handledError = handleSupabaseError(updateError, 'approveEmergencyPayOverride');
+            if (handledError) throw handledError;
+            throw new DatabaseError('Failed to approve emergency pay override', updateError, { overrideId });
+        }
+
+        // Log decision
+        try {
+            await this.logDecision(
+                overrideData.case_id || overrideData.payment_id,
+                'emergency_pay_override_approved',
+                `User ${approvedByUserId}`,
+                `Emergency pay override approved for payment ${overrideData.vmp_payments?.payment_ref || overrideId}`,
+                `Approved by: ${approvedByUserId}. Reason: ${overrideData.reason}`
+            );
+        } catch (logError) {
+            // Don't fail if decision logging fails
+            logError(logError, { operation: 'logDecision-emergencyOverrideApproval', overrideId });
+        }
+
+        return updatedOverride;
+    },
+
+    // Emergency Pay Override: Reject Override
+    async rejectEmergencyPayOverride(overrideId, rejectedByUserId, rejectionReason) {
+        if (!overrideId || !rejectedByUserId || !rejectionReason) {
+            throw new ValidationError('rejectEmergencyPayOverride requires overrideId, rejectedByUserId, and rejectionReason', null, {
+                overrideId,
+                rejectedByUserId,
+                hasRejectionReason: !!rejectionReason
+            });
+        }
+
+        // Get override request
+        const overrideQuery = supabase
+            .from('vmp_emergency_pay_overrides')
+            .select('*, vmp_payments(*)')
+            .eq('id', overrideId)
+            .single();
+
+        const { data: overrideData, error: overrideError } = await withTimeout(
+            overrideQuery,
+            10000,
+            `getEmergencyPayOverride(${overrideId})`
+        );
+
+        if (overrideError || !overrideData) {
+            throw new NotFoundError('Emergency pay override request not found', { overrideId });
+        }
+
+        if (overrideData.status !== 'pending') {
+            throw new ValidationError('Override request is not pending', null, {
+                overrideId,
+                currentStatus: overrideData.status
+            });
+        }
+
+        // Update override status to rejected
+        const updateQuery = supabase
+            .from('vmp_emergency_pay_overrides')
+            .update({
+                status: 'rejected',
+                approved_by_user_id: rejectedByUserId, // Store who rejected it
+                approved_at: new Date().toISOString(), // Store rejection time
+                rejection_reason: rejectionReason.trim(),
+                updated_at: new Date().toISOString()
+            })
+            .eq('id', overrideId)
+            .select()
+            .single();
+
+        const { data: updatedOverride, error: updateError } = await withTimeout(
+            updateQuery,
+            10000,
+            `rejectEmergencyPayOverride(${overrideId})`
+        );
+
+        if (updateError) {
+            const handledError = handleSupabaseError(updateError, 'rejectEmergencyPayOverride');
+            if (handledError) throw handledError;
+            throw new DatabaseError('Failed to reject emergency pay override', updateError, { overrideId });
+        }
+
+        // Log decision
+        try {
+            await this.logDecision(
+                overrideData.case_id || overrideData.payment_id,
+                'emergency_pay_override_rejected',
+                `User ${rejectedByUserId}`,
+                `Emergency pay override rejected for payment ${overrideData.vmp_payments?.payment_ref || overrideId}`,
+                `Rejection reason: ${rejectionReason}`
+            );
+        } catch (logError) {
+            // Don't fail if decision logging fails
+            logError(logError, { operation: 'logDecision-emergencyOverrideRejection', overrideId });
+        }
+
+        return updatedOverride;
+    },
+
+    // Emergency Pay Override: Get Override Requests
+    async getEmergencyPayOverrides(paymentId = null, status = null, limit = 50) {
+        let query = supabase
+            .from('vmp_emergency_pay_overrides')
+            .select(`
+                *,
+                vmp_payments (id, payment_ref, amount, payment_date),
+                vmp_cases (id, subject, case_type),
+                requested_by:requested_by_user_id (id, display_name, email),
+                approved_by:approved_by_user_id (id, display_name, email)
+            `)
+            .order('created_at', { ascending: false })
+            .limit(limit);
+
+        if (paymentId) {
+            query = query.eq('payment_id', paymentId);
+        }
+
+        if (status) {
+            query = query.eq('status', status);
+        }
+
+        const { data, error } = await withTimeout(
+            query,
+            10000,
+            `getEmergencyPayOverrides(${paymentId || 'all'}, ${status || 'all'})`
+        );
+
+        if (error) {
+            const handledError = handleSupabaseError(error, 'getEmergencyPayOverrides');
+            if (handledError) throw handledError;
+            throw new DatabaseError('Failed to fetch emergency pay override requests', error);
+        }
+
+        return data || [];
+    },
+
+    // Sprint: Recommendations - SLA Analytics Dashboard
+    async getSLAMetrics(tenantId, userScope, dateRange = { startDate: null, endDate: null }, options = {}) {
+        if (!tenantId) {
+            throw new ValidationError('getSLAMetrics requires tenantId', null, { tenantId });
+        }
+
+        // Check cache first (skip cache if forceRefresh is true)
+        if (!options.forceRefresh) {
+            const cached = getCachedMetrics(tenantId, userScope, dateRange, null);
+            if (cached) {
+                // Apply pagination to cached results if needed
+                if (options.limit || options.offset) {
+                    const paginated = {
+                        ...cached,
+                        trends: cached.trends.slice(options.offset || 0, (options.offset || 0) + (options.limit || cached.trends.length))
+                    };
+                    return paginated;
+                }
+                return cached;
+            }
+        }
+
+        // Determine scope type (same pattern as getOpsDashboardMetrics)
+        let scopeType = null;
+        let scopeId = null;
+
+        if (userScope) {
+            const groupQuery = supabase
+                .from('vmp_groups')
+                .select('id')
+                .eq('id', userScope)
+                .eq('tenant_id', tenantId)
+                .single();
+
+            const { data: groupData } = await withTimeout(groupQuery, 5000, 'checkGroupScope');
+            if (groupData) {
+                scopeType = 'group';
+                scopeId = userScope;
+            } else {
+                const companyQuery = supabase
+                    .from('vmp_companies')
+                    .select('id')
+                    .eq('id', userScope)
+                    .eq('tenant_id', tenantId)
+                    .single();
+
+                const { data: companyData } = await withTimeout(companyQuery, 5000, 'checkCompanyScope');
+                if (companyData) {
+                    scopeType = 'company';
+                    scopeId = userScope;
+                } else {
+                    throw new ValidationError('userScope must be a valid group_id or company_id', null, { userScope, tenantId });
+                }
+            }
+        }
+
+        // Set date range defaults (last 30 days if not provided)
+        const endDate = dateRange.endDate ? new Date(dateRange.endDate) : new Date();
+        const startDate = dateRange.startDate ? new Date(dateRange.startDate) : new Date(endDate.getTime() - (30 * 24 * 60 * 60 * 1000));
+
+        // Build base query for cases
+        let casesQuery = supabase
+            .from('vmp_cases')
+            .select(`
+                id,
+                case_type,
+                status,
+                created_at,
+                owner_team,
+                company_id,
+                vmp_companies (id, name, group_id)
+            `)
+            .eq('tenant_id', tenantId)
+            .gte('created_at', startDate.toISOString())
+            .lte('created_at', endDate.toISOString());
+
+        // Apply scope filtering
+        if (scopeType === 'group') {
+            casesQuery = casesQuery.eq('vmp_companies.group_id', scopeId);
+        } else if (scopeType === 'company') {
+            casesQuery = casesQuery.eq('company_id', scopeId);
+        }
+
+        const { data: cases, error: casesError } = await withTimeout(
+            casesQuery,
+            15000,
+            'getSLAMetrics-cases'
+        );
+
+        if (casesError) {
+            const handledError = handleSupabaseError(casesError, 'getSLAMetrics');
+            if (handledError) throw handledError;
+            throw new DatabaseError('Failed to fetch cases for SLA metrics', casesError);
+        }
+
+        if (!cases || cases.length === 0) {
+            return {
+                complianceRate: 0,
+                averageResponseTime: 0,
+                totalCases: 0,
+                casesWithinSLA: 0,
+                casesBreached: 0,
+                trends: [],
+                byTeam: {},
+                byCompany: {},
+                byCaseType: {}
+            };
+        }
+
+        // Get first message for each case to calculate response time
+        const caseIds = cases.map(c => c.id);
+        const messagesQuery = supabase
+            .from('vmp_messages')
+            .select('case_id, created_at')
+            .in('case_id', caseIds)
+            .order('created_at', { ascending: true });
+
+        const { data: allMessages, error: messagesError } = await withTimeout(
+            messagesQuery,
+            15000,
+            'getSLAMetrics-messages'
+        );
+
+        if (messagesError) {
+            logError(messagesError, { operation: 'getSLAMetrics-messages' });
+        }
+
+        // Group messages by case_id and get first message
+        const firstMessagesByCase = {};
+        if (allMessages) {
+            for (const msg of allMessages) {
+                if (!firstMessagesByCase[msg.case_id]) {
+                    firstMessagesByCase[msg.case_id] = msg;
+                }
+            }
+        }
+
+        // Calculate SLA metrics for each case
+        const SLA_TARGET_HOURS = 2;
+        const caseMetrics = [];
+        let totalResponseTime = 0;
+        let casesWithResponse = 0;
+        let casesWithinSLA = 0;
+        let casesBreached = 0;
+
+        const byTeam = {};
+        const byCompany = {};
+        const byCaseType = {};
+
+        for (const caseItem of cases) {
+            const caseCreated = new Date(caseItem.created_at);
+            const firstMessage = firstMessagesByCase[caseItem.id];
+
+            let responseHours = null;
+            let withinSLA = false;
+
+            if (firstMessage) {
+                const firstMessageTime = new Date(firstMessage.created_at);
+                responseHours = (firstMessageTime.getTime() - caseCreated.getTime()) / (1000 * 60 * 60);
+                withinSLA = responseHours <= SLA_TARGET_HOURS;
+                totalResponseTime += responseHours;
+                casesWithResponse++;
+            } else {
+                // No response yet - check if overdue
+                const now = new Date();
+                const hoursSinceCreated = (now.getTime() - caseCreated.getTime()) / (1000 * 60 * 60);
+                withinSLA = hoursSinceCreated <= SLA_TARGET_HOURS;
+                if (hoursSinceCreated > SLA_TARGET_HOURS) {
+                    casesBreached++;
+                }
+            }
+
+            if (withinSLA) {
+                casesWithinSLA++;
+            } else if (responseHours !== null && responseHours > SLA_TARGET_HOURS) {
+                casesBreached++;
+            }
+
+            caseMetrics.push({
+                caseId: caseItem.id,
+                caseType: caseItem.case_type,
+                ownerTeam: caseItem.owner_team,
+                companyId: caseItem.company_id,
+                companyName: caseItem.vmp_companies?.name || 'Unknown',
+                responseHours,
+                withinSLA,
+                created_at: caseItem.created_at
+            });
+
+            // Aggregate by team
+            const team = caseItem.owner_team || 'unknown';
+            if (!byTeam[team]) {
+                byTeam[team] = { total: 0, withinSLA: 0, breached: 0, totalResponseTime: 0, casesWithResponse: 0 };
+            }
+            byTeam[team].total++;
+            if (withinSLA) byTeam[team].withinSLA++;
+            if (!withinSLA && responseHours !== null) byTeam[team].breached++;
+            if (responseHours !== null) {
+                byTeam[team].totalResponseTime += responseHours;
+                byTeam[team].casesWithResponse++;
+            }
+
+            // Aggregate by company
+            const companyName = caseItem.vmp_companies?.name || 'Unknown';
+            if (!byCompany[companyName]) {
+                byCompany[companyName] = { total: 0, withinSLA: 0, breached: 0, totalResponseTime: 0, casesWithResponse: 0 };
+            }
+            byCompany[companyName].total++;
+            if (withinSLA) byCompany[companyName].withinSLA++;
+            if (!withinSLA && responseHours !== null) byCompany[companyName].breached++;
+            if (responseHours !== null) {
+                byCompany[companyName].totalResponseTime += responseHours;
+                byCompany[companyName].casesWithResponse++;
+            }
+
+            // Aggregate by case type
+            const caseType = caseItem.case_type || 'unknown';
+            if (!byCaseType[caseType]) {
+                byCaseType[caseType] = { total: 0, withinSLA: 0, breached: 0, totalResponseTime: 0, casesWithResponse: 0 };
+            }
+            byCaseType[caseType].total++;
+            if (withinSLA) byCaseType[caseType].withinSLA++;
+            if (!withinSLA && responseHours !== null) byCaseType[caseType].breached++;
+            if (responseHours !== null) {
+                byCaseType[caseType].totalResponseTime += responseHours;
+                byCaseType[caseType].casesWithResponse++;
+            }
+        }
+
+        // Calculate compliance rate
+        const totalCases = cases.length;
+        const complianceRate = totalCases > 0 ? (casesWithinSLA / totalCases) * 100 : 0;
+
+        // Calculate average response time
+        const averageResponseTime = casesWithResponse > 0 ? totalResponseTime / casesWithResponse : 0;
+
+        // Calculate compliance rates for breakdowns
+        const calculateCompliance = (item) => {
+            return item.total > 0 ? (item.withinSLA / item.total) * 100 : 0;
+        };
+
+        const calculateAvgResponseTime = (item) => {
+            return item.casesWithResponse > 0 ? item.totalResponseTime / item.casesWithResponse : 0;
+        };
+
+        // Format breakdowns with compliance rates and averages
+        const formatBreakdown = (breakdown) => {
+            const formatted = {};
+            for (const [key, value] of Object.entries(breakdown)) {
+                formatted[key] = {
+                    ...value,
+                    complianceRate: calculateCompliance(value),
+                    averageResponseTime: calculateAvgResponseTime(value)
+                };
+            }
+            return formatted;
+        };
+
+        // Generate daily trends (last 30 days or date range)
+        const trends = [];
+        const daysDiff = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+        const daysToShow = Math.min(daysDiff, 30);
+
+        for (let i = daysToShow - 1; i >= 0; i--) {
+            const date = new Date(endDate);
+            date.setDate(date.getDate() - i);
+            date.setHours(0, 0, 0, 0);
+            const nextDate = new Date(date);
+            nextDate.setDate(nextDate.getDate() + 1);
+
+            const dayCases = caseMetrics.filter(c => {
+                const caseDate = new Date(c.created_at);
+                return caseDate >= date && caseDate < nextDate;
+            });
+
+            const dayTotal = dayCases.length;
+            const dayWithinSLA = dayCases.filter(c => c.withinSLA).length;
+            const dayResponseTimes = dayCases.filter(c => c.responseHours !== null).map(c => c.responseHours);
+            const dayAvgResponseTime = dayResponseTimes.length > 0
+                ? dayResponseTimes.reduce((a, b) => a + b, 0) / dayResponseTimes.length
+                : 0;
+
+            trends.push({
+                date: date.toISOString().split('T')[0],
+                totalCases: dayTotal,
+                casesWithinSLA: dayWithinSLA,
+                complianceRate: dayTotal > 0 ? (dayWithinSLA / dayTotal) * 100 : 0,
+                averageResponseTime: dayAvgResponseTime
+            });
+        }
+
+        const limit = options.limit || 10000;
+        const result = {
+            complianceRate: Math.round(complianceRate * 100) / 100,
+            averageResponseTime: Math.round(averageResponseTime * 100) / 100,
+            totalCases,
+            casesWithinSLA,
+            casesBreached,
+            trends,
+            byTeam: formatBreakdown(byTeam),
+            byCompany: formatBreakdown(byCompany),
+            byCaseType: formatBreakdown(byCaseType),
+            dateRange: {
+                startDate: startDate.toISOString().split('T')[0],
+                endDate: endDate.toISOString().split('T')[0]
+            },
+            scope: {
+                type: scopeType || 'tenant',
+                id: scopeId || null
+            },
+            pagination: {
+                limit,
+                total: totalCases,
+                hasMore: totalCases >= limit
+            }
+        };
+
+        // Cache the result
+        setCachedMetrics(tenantId, userScope, dateRange, scopeType, result);
+
+        return result;
+    },
+
+    // Get Access Requests (for admin review)
+    async getAccessRequests(status = null, limit = 100) {
+        let query = supabase
+            .from('vmp_access_requests')
+            .select('*')
+            .order('created_at', { ascending: false })
+            .limit(limit);
+
+        if (status) {
+            query = query.eq('status', status);
+        }
+
+        const { data, error } = await withTimeout(
+            query,
+            10000,
+            'getAccessRequests'
+        );
+
+        if (error) {
+            const handledError = handleSupabaseError(error, 'getAccessRequests');
+            if (handledError) throw handledError;
+            throw new DatabaseError('Failed to get access requests', error);
+        }
+
+        return data || [];
+    },
+
+    // Update Access Request Status
+    async updateAccessRequestStatus(requestId, status, reviewedByUserId, reviewNotes = null) {
+        if (!requestId || !status) {
+            throw new ValidationError('updateAccessRequestStatus requires requestId and status', null, {
+                requestId,
+                status
+            });
+        }
+
+        const validStatuses = ['pending', 'approved', 'rejected', 'invited'];
+        if (!validStatuses.includes(status)) {
+            throw new ValidationError(`Invalid status. Must be one of: ${validStatuses.join(', ')}`, 'status', { status });
+        }
+
+        const updateData = {
+            status,
+            reviewed_by_user_id: reviewedByUserId || null,
+            reviewed_at: new Date().toISOString(),
+            review_notes: reviewNotes || null,
+            updated_at: new Date().toISOString()
+        };
+
+        const { data, error } = await withTimeout(
+            supabase
+                .from('vmp_access_requests')
+                .update(updateData)
+                .eq('id', requestId)
+                .select()
+                .single(),
+            10000,
+            'updateAccessRequestStatus'
+        );
+
+        if (error) {
+            const handledError = handleSupabaseError(error, 'updateAccessRequestStatus');
+            if (handledError) throw handledError;
+            throw new DatabaseError('Failed to update access request status', error, { requestId, status });
+        }
+
+        return data;
     }
 };
 

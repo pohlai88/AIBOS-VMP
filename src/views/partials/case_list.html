@@ -1,0 +1,60 @@
+{% if cases and cases|length > 0 %}
+    {% for case in cases %}
+    <tr class="cursor-pointer group transition-colors hover:bg-white/5" 
+        onclick="window.location.href='/cases/{{ case.id }}'">
+        
+        <td class="align-top">
+            <span class="vmp-code-small">{{ case.ref_id }}</span>
+        </td>
+        
+        <td class="align-top">
+            <div class="vmp-body-small font-medium mb-0.5">{{ case.subject }}</div>
+            <div class="vmp-caption opacity-60 line-clamp-1">{{ case.description }}</div>
+        </td>
+        
+        <td class="align-top">
+            <div class="flex items-center gap-2">
+                <div class="w-4 h-4 rounded-full border border-white/10 grid place-items-center">
+                    <span class="text-[8px] font-mono">{{ case.vendor_name|first }}</span>
+                </div>
+                <span class="vmp-body-small">{{ case.vendor_name }}</span>
+            </div>
+        </td>
+        
+        <td class="align-top">
+            {% if case.status == 'critical' %}
+                <span class="vmp-pill vmp-pill-blocked">CRITICAL</span>
+            {% elif case.status == 'review' %}
+                <span class="vmp-pill vmp-pill-pending">REVIEW</span>
+            {% elif case.status == 'resolved' %}
+                <span class="vmp-pill vmp-pill-paid">RESOLVED</span>
+            {% else %}
+                <span class="vmp-pill vmp-pill-matched">OPEN</span>
+            {% endif %}
+        </td>
+        
+        <td class="text-right align-top">
+            <span class="vmp-code-small opacity-60">{{ case.created_at_formatted }}</span>
+        </td>
+        
+        <td class="text-right align-middle">
+            <span class="opacity-0 group-hover:opacity-100 transition-opacity text-white/40">
+                →
+            </span>
+        </td>
+    </tr>
+    {% endfor %}
+
+{% else %}
+    <tr>
+        <td colspan="6" class="p-0">
+            <div class="vmp-empty py-12">
+                <div class="font-serif text-4xl italic opacity-20 mb-2">0</div>
+                <div class="vmp-empty-title">NO CASES FOUND</div>
+                <div class="vmp-empty-description max-w-xs mx-auto">
+                    No active cases match your filters. Try adjusting your search or create a new case.
+                </div>
+            </div>
+        </td>
+    </tr>
+{% endif %}

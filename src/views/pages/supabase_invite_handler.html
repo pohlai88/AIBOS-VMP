@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Processing Invite — NexusCanon VMP</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      margin: 0;
+      background: #060607;
+      color: #ededed;
+    }
+    .container {
+      text-align: center;
+      padding: 2rem;
+    }
+    .spinner {
+      border: 3px solid rgba(96, 255, 198, 0.1);
+      border-top: 3px solid hsl(155, 100%, 69%);
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 1rem;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    .error {
+      color: rgba(255, 85, 85, 0.92);
+      margin-top: 1rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="spinner"></div>
+    <p>Processing your invitation...</p>
+    <p class="error" id="error" style="display: none;"></p>
+  </div>
+
+  <script type="module">
+    // Extract tokens from URL hash
+    const hash = window.location.hash.substring(1); // Remove #
+    const params = new URLSearchParams(hash);
+    
+    const accessToken = params.get('access_token');
+    const refreshToken = params.get('refresh_token');
+    const type = params.get('type');
+    const expiresAt = params.get('expires_at');
+    const expiresIn = params.get('expires_in');
+
+    // Check if this is an invite link
+    if (type === 'invite' && accessToken) {
+      // Redirect to /accept with tokens in query params
+      const acceptUrl = new URL('/accept', window.location.origin);
+      acceptUrl.searchParams.set('access_token', accessToken);
+      if (refreshToken) {
+        acceptUrl.searchParams.set('refresh_token', refreshToken);
+      }
+      acceptUrl.searchParams.set('type', 'invite');
+      if (expiresAt) {
+        acceptUrl.searchParams.set('expires_at', expiresAt);
+      }
+      
+      window.location.href = acceptUrl.toString();
+    } else {
+      // Invalid or missing tokens
+      document.getElementById('error').textContent = 'Invalid invite link. Please check your email for a valid invitation.';
+      document.getElementById('error').style.display = 'block';
+      
+      // Redirect to login after 3 seconds
+      setTimeout(() => {
+        window.location.href = '/login';
+      }, 3000);
+    }
+  </script>
+</body>
+</html>

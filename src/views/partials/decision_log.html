@@ -1,50 +1,52 @@
-<!-- Decision Log Partial -->
-<div class="vmp-panel p-6 border vmp-border-color">
-    <div class="vmp-label-kicker vmp-label-kicker-strong mb-4">DECISION LOG</div>
+<div class="vmp-panel p-6 border" style="border-color: var(--vmp-border);">
+    
+    <div class="flex items-center justify-between mb-6">
+        <h3 class="vmp-h6">Decision Audit Trail</h3>
+        <span class="vmp-tag vmp-tag-mono opacity-50">IMMUTABLE</span>
+    </div>
 
     {% if error %}
-    <div class="p-3 mb-4 rounded-lg border vmp-border-warn vmp-bg-warn vmp-opacity-30">
-        <div class="vmp-caption vmp-text-warn">{{ error }}</div>
+    <div class="vmp-alert vmp-alert-warn mb-4">
+        <div class="vmp-caption">{{ error }}</div>
     </div>
     {% endif %}
 
     {% if decisions and decisions|length > 0 %}
-    <div class="space-y-3">
+    <div class="vmp-timeline">
         {% for decision in decisions %}
-        <div class="p-4 rounded-lg border vmp-border-color vmp-bg-panel">
-            <div class="flex items-start justify-between mb-2">
-                <div class="flex items-center gap-2">
-                    <span class="vmp-code text-xs">{{ decision.decision_type | upper }}</span>
-                    <span class="vmp-caption vmp-muted">
-                        {{ decision.created_at | date('%b %d, %Y %H:%M') if decision.created_at else '—' }}
-                    </span>
+        <div class="vmp-timeline-item {{ 'vmp-timeline-item-success' if 'approve' in decision.decision_type else 'vmp-timeline-item-warn' }}">
+            <div class="vmp-timeline-date">
+                {{ decision.created_at | date('%b %d') }}
+                <span class="block opacity-50 text-[10px] mt-0.5">{{ decision.created_at | date('%H:%M') }}</span>
+            </div>
+
+            <div class="vmp-timeline-content">
+                <div class="flex justify-between items-start">
+                    <div class="vmp-timeline-title mb-1">
+                        {{ decision.decision_type | replace('_', ' ') | title }}
+                    </div>
+                    <div class="vmp-caption opacity-50 font-mono text-[10px]">
+                        {{ decision.who or 'System' }}
+                    </div>
                 </div>
+                
+                <div class="vmp-timeline-description">
+                    {{ decision.what }}
+                </div>
+
+                {% if decision.why %}
+                <div class="mt-2 p-2 rounded bg-[var(--vmp-bg)] border flex gap-2 items-start" style="border-color: var(--vmp-border);">
+                    <span class="vmp-caption opacity-50 uppercase tracking-wider text-[9px] mt-0.5">Justification:</span>
+                    <span class="vmp-body-small italic opacity-80">{{ decision.why }}</span>
+                </div>
+                {% endif %}
             </div>
-            <div class="vmp-body-small mb-1">
-                <span class="vmp-label-kicker opacity-50">Who:</span>
-                {{ decision.who }}
-            </div>
-            <div class="vmp-body-small mb-1">
-                <span class="vmp-label-kicker opacity-50">What:</span>
-                {{ decision.what }}
-            </div>
-            {% if decision.why %}
-            <div class="vmp-body-small vmp-muted mt-2">
-                <span class="vmp-label-kicker opacity-50">Why:</span>
-                {{ decision.why }}
-            </div>
-            {% endif %}
         </div>
         {% endfor %}
     </div>
     {% else %}
-    <div class="vmp-body vmp-muted text-center py-8">
-        {% if error %}
-        {{ error }}
-        {% else %}
-        No decisions logged for this case.
-        {% endif %}
+    <div class="vmp-empty py-8 text-center bg-[var(--vmp-bg)] rounded-lg">
+        <div class="vmp-caption opacity-40">No decisions recorded yet.</div>
     </div>
     {% endif %}
 </div>
-

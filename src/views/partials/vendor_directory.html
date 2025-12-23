@@ -1,87 +1,92 @@
-<!-- Vendor Directory Partial -->
-<div class="space-y-6">
-    {% if error %}
-    <div class="p-4 mb-4 rounded-lg border vmp-border-warn vmp-bg-warn vmp-opacity-30">
-        <div class="vmp-label vmp-text-warn">{{ error }}</div>
-    </div>
-    {% endif %}
-
-    <!-- Filters -->
-    <div class="vmp-panel p-4 border vmp-border-color">
-        <form hx-get="/partials/vendor-directory.html?scope_type={{ scopeType }}&scope_id={{ scopeId }}"
+<div class="vmp-card shadow-lg flex flex-col h-full">
+    
+    <div class="p-4 border-b flex flex-wrap gap-4 justify-between items-center" style="border-color: var(--vmp-border);">
+        <form hx-get="/partials/vendor_directory.html"
               hx-target="#vendor-directory-container"
-              hx-swap="innerHTML"
-              class="flex gap-4 items-center flex-wrap">
-            <select name="status" class="vmp-form-input text-sm">
+              hx-include="[name='scope_type'],[name='scope_id']"
+              class="flex gap-3 flex-1 max-w-lg">
+            
+            <input type="hidden" name="scope_type" value="{{ scopeType }}">
+            <input type="hidden" name="scope_id" value="{{ scopeId }}">
+            
+            <div class="relative flex-1">
+                <svg class="absolute left-3 top-2.5 w-4 h-4 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                <input type="text" name="q" class="vmp-input pl-9 w-full h-9 text-sm" placeholder="Search vendors...">
+            </div>
+
+            <select name="status" class="vmp-select h-9 py-1 text-sm w-32">
                 <option value="">All Status</option>
-                <option value="invited" {% if filters.status == 'invited' %}selected{% endif %}>Invited</option>
-                <option value="active" {% if filters.status == 'active' %}selected{% endif %}>Active</option>
-                <option value="suspended" {% if filters.status == 'suspended' %}selected{% endif %}>Suspended</option>
+                <option value="active" {{ 'selected' if filters.status == 'active' }}>Active</option>
+                <option value="invited" {{ 'selected' if filters.status == 'invited' }}>Invited</option>
             </select>
-            <button type="submit" class="vmp-btn-outline text-sm">Filter</button>
+
+            <button type="submit" class="vmp-btn vmp-btn-ghost vmp-btn-sm h-9">Filter</button>
         </form>
     </div>
 
-    <!-- Vendor List -->
-    {% if vendors and vendors|length > 0 %}
-    <div class="space-y-4">
-        {% for vendorEntry in vendors %}
-        <div class="vmp-panel p-6 border vmp-border-color">
-            <div class="flex items-start justify-between mb-4">
-                <div class="flex-1">
-                    <div class="flex items-center gap-3 mb-2">
-                        <h3 class="vmp-h3">{{ vendorEntry.vendor.name }}</h3>
-                        <span class="vmp-tag vmp-tag-mono text-xs">
-                            {{ (vendorEntry.vendor.status or 'invited') | upper }}
-                        </span>
-                    </div>
-                    <div class="vmp-caption vmp-muted mb-3">
-                        Created: {{ vendorEntry.vendor.created_at | date('%b %d, %Y') if vendorEntry.vendor.created_at else '—' }}
-                    </div>
-                </div>
-                <div class="text-right">
-                    <div class="vmp-label-kicker opacity-50 mb-1">CASES</div>
-                    <div class="vmp-h3">{{ vendorEntry.caseCount or 0 }}</div>
-                </div>
-            </div>
-
-            <!-- Company Links -->
-            {% if vendorEntry.companies and vendorEntry.companies|length > 0 %}
-            <div class="border-t vmp-border-color pt-4">
-                <div class="vmp-label-kicker mb-3">LINKED COMPANIES</div>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    {% for company in vendorEntry.companies %}
-                    <div class="p-3 rounded-lg border vmp-border-color vmp-bg-panel">
-                        <div class="vmp-body-small font-medium mb-1">
-                            {{ company.name }}
-                        </div>
-                        {% if company.legal_name %}
-                        <div class="vmp-caption vmp-muted mb-2">
-                            {{ company.legal_name }}
-                        </div>
-                        {% endif %}
-                        {% if vendorEntry.erpCodes[company.id] %}
-                        <div class="vmp-caption">
-                            <span class="vmp-code text-xs">ERP Code:</span>
-                            <span class="vmp-code text-xs ml-1">{{ vendorEntry.erpCodes[company.id] }}</span>
-                        </div>
-                        {% endif %}
-                    </div>
+    <div class="flex-1 overflow-auto">
+        <table class="vmp-table w-full">
+            <thead class="sticky top-0 z-10">
+                <tr>
+                    <th class="w-1/3">VENDOR</th>
+                    <th>LINKED ENTITIES</th>
+                    <th class="text-center">STATUS</th>
+                    <th class="text-right">CASE VOL</th>
+                    <th class="w-16"></th>
+                </tr>
+            </thead>
+            <tbody class="divide-y" style="divide-color: var(--vmp-border);">
+                {% if vendors and vendors|length > 0 %}
+                    {% for entry in vendors %}
+                    <tr class="group hover:bg-[var(--vmp-panel)] transition-colors">
+                        <td>
+                            <div class="vmp-body-small font-medium">{{ entry.vendor.name }}</div>
+                            <div class="vmp-caption opacity-50">{{ entry.vendor.primary_email or 'No email' }}</div>
+                        </td>
+                        <td>
+                            <div class="flex flex-wrap gap-1">
+                                {% if entry.companies and entry.companies|length > 0 %}
+                                    {% for company in entry.companies | slice(0, 2) %}
+                                        <span class="vmp-tag text-[10px] py-0 px-1 opacity-70">{{ company.name }}</span>
+                                    {% endfor %}
+                                    {% if entry.companies|length > 2 %}
+                                        <span class="vmp-tag text-[10px] py-0 px-1 opacity-50">+{{ entry.companies|length - 2 }}</span>
+                                    {% endif %}
+                                {% else %}
+                                    <span class="vmp-caption opacity-30">—</span>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td class="text-center">
+                            {% if entry.vendor.onboarding_status == 'active' %}
+                                <span class="vmp-badge vmp-badge-ok">ACTIVE</span>
+                            {% elif entry.vendor.onboarding_status == 'invited' %}
+                                <span class="vmp-badge vmp-badge-warn">INVITED</span>
+                            {% else %}
+                                <span class="vmp-tag opacity-50">DRAFT</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-right">
+                            <div class="vmp-code-small">{{ entry.caseCount or 0 }}</div>
+                        </td>
+                        <td class="text-right pr-4">
+                            <button class="vmp-btn vmp-btn-ghost vmp-btn-sm opacity-0 group-hover:opacity-100 transition-opacity">
+                                Manage
+                            </button>
+                        </td>
+                    </tr>
                     {% endfor %}
-                </div>
-            </div>
-            {% endif %}
-        </div>
-        {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="5" class="p-12 text-center">
+                            <div class="vmp-empty">
+                                <div class="vmp-empty-title">NO VENDORS</div>
+                                <div class="vmp-empty-description">Try adjusting your filters or invite a new vendor.</div>
+                            </div>
+                        </td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
     </div>
-    {% else %}
-    <div class="vmp-body vmp-muted text-center py-8">
-        {% if error %}
-        {{ error }}
-        {% else %}
-        No vendors found for this scope.
-        {% endif %}
-    </div>
-    {% endif %}
 </div>
-

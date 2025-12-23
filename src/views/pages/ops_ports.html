@@ -1,54 +1,59 @@
 {% extends "layout.html" %}
-{% block title %}Port Configuration — NexusCanon VMP{% endblock %}
+{% block title %}Port Configuration — NexusCanon Ops{% endblock %}
 
 {% block content %}
 <div class="h-full overflow-y-auto">
-    <div class="vmp-container max-w-6xl mx-auto p-6">
-        <header class="mb-6">
-            <h1 class="vmp-h1 mb-2">Port Configuration</h1>
-            <p class="vmp-body vmp-muted">Configure email and WhatsApp webhook ports for omnichannel communication</p>
+    <div class="vmp-container py-8 max-w-5xl mx-auto">
+        
+        <header class="mb-8 border-b pb-6" style="border-color: var(--vmp-border);">
+            <div class="vmp-label mb-2 opacity-70">// INFRASTRUCTURE</div>
+            <h1 class="vmp-h1 leading-none mb-2">Omnichannel Ports</h1>
+            <p class="vmp-body max-w-[60ch] opacity-80">
+                Manage the ingress/egress bridges for Email and WhatsApp integrations.
+            </p>
         </header>
 
-        <!-- Port Configuration -->
         <div id="port-configuration-container"
              hx-get="/partials/port-configuration.html"
              hx-trigger="load"
              hx-target="this"
-             hx-swap="innerHTML">
-            <div class="flex items-center justify-center h-32">
-                <div class="vmp-label-kicker animate-pulse opacity-60">Loading port configuration...</div>
+             hx-swap="innerHTML"
+             class="mb-12 min-h-[200px]">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="vmp-skeleton h-64 w-full rounded-xl"></div>
+                <div class="vmp-skeleton h-64 w-full rounded-xl"></div>
             </div>
         </div>
 
-        <!-- Activity Log -->
-        <div class="mt-8">
+        <section>
             <div class="flex items-center justify-between mb-4">
-                <h2 class="vmp-h3">Activity Log</h2>
-                <div class="flex gap-2">
+                <h3 class="vmp-h4">Live Activity Stream</h3>
+                
+                <div class="vmp-panel p-1 flex items-center gap-1 rounded-lg border" style="border-color: var(--vmp-border);">
+                    <button onclick="filterActivityLog(null)" 
+                            class="vmp-btn vmp-btn-sm vmp-btn-ghost text-xs px-3 active-tab">
+                        ALL
+                    </button>
                     <button onclick="filterActivityLog('email')" 
-                            class="px-3 py-1.5 rounded border vmp-action-button vmp-action-button-ghost text-sm">
-                        Email
+                            class="vmp-btn vmp-btn-sm vmp-btn-ghost text-xs px-3">
+                        EMAIL
                     </button>
                     <button onclick="filterActivityLog('whatsapp')" 
-                            class="px-3 py-1.5 rounded border vmp-action-button vmp-action-button-ghost text-sm">
-                        WhatsApp
-                    </button>
-                    <button onclick="filterActivityLog(null)" 
-                            class="px-3 py-1.5 rounded border vmp-action-button vmp-action-button-ghost text-sm">
-                        All
+                            class="vmp-btn vmp-btn-sm vmp-btn-ghost text-xs px-3">
+                        WHATSAPP
                     </button>
                 </div>
             </div>
+
             <div id="port-activity-log-container"
                  hx-get="/partials/port-activity-log.html"
                  hx-trigger="load"
                  hx-target="this"
-                 hx-swap="innerHTML">
-                <div class="flex items-center justify-center h-32">
-                    <div class="vmp-label-kicker animate-pulse opacity-60">Loading activity log...</div>
-                </div>
+                 hx-swap="innerHTML"
+                 class="min-h-[300px]">
+                <div class="vmp-skeleton h-64 w-full rounded-xl"></div>
             </div>
-        </div>
+        </section>
     </div>
 </div>
 
@@ -58,7 +63,10 @@
             ? `/partials/port-activity-log.html?port_type=${portType}`
             : '/partials/port-activity-log.html';
         htmx.ajax('GET', url, { target: '#port-activity-log-container', swap: 'innerHTML' });
+        
+        // Simple tab active state logic
+        event.target.parentElement.querySelectorAll('button').forEach(b => b.classList.remove('bg-[var(--vmp-bg)]', 'shadow-sm'));
+        event.target.classList.add('bg-[var(--vmp-bg)]', 'shadow-sm');
     }
 </script>
 {% endblock %}
-

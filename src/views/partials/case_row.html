@@ -1,60 +1,74 @@
-<!-- Case Row Partial - Single case row for HTMX refresh -->
 {% if error %}
-<div class="p-3 m-4 rounded-lg border vmp-border-warn vmp-bg-warn vmp-opacity-30">
-    <div class="vmp-caption vmp-text-warn">{{ error }}</div>
+<div class="p-3 m-2 vmp-alert vmp-alert-warn">
+    <div class="vmp-caption">{{ error }}</div>
 </div>
 {% elif case %}
-<a href="/cases/{{ case.id }}" 
-   class="group block px-4 py-3.5 hover:bg-white/[0.02] active:bg-white/[0.04] transition-all relative overflow-hidden">
+{% set st = (case.status or '') | lower %}
+
+<a href="#" 
+   class="group block relative hover:bg-[var(--vmp-panel)] transition-colors duration-200"
+   style="padding: var(--vmp-space-3) var(--vmp-space-4);"
+   hx-get="/partials/case-detail.html?case_id={{ case.id }}" 
+   hx-target="#case-detail-panel" 
+   hx-swap="innerHTML"
+   hx-indicator="#detail-loading">
     
-    <div class="absolute left-0 top-0 bottom-0 w-[2px] bg-white opacity-0 transition-opacity"></div>
+    <div class="absolute left-0 top-0 bottom-0 w-[3px] bg-[var(--vmp-brand)] opacity-0 group-focus:opacity-100 transition-opacity"></div>
 
-    <div class="flex items-start justify-between gap-3">
+    <div class="flex items-start gap-3">
         
-        <div class="flex items-start gap-3 min-w-0">
-            <div class="mt-1.5 relative shrink-0">
-                {% set st = (case.status or '') | lower %}
-                {% if st == 'waiting_supplier' %}
-                    <div class="w-1.5 h-1.5 rounded-full vmp-fill-danger animate-pulse"></div>
-                    <div class="absolute inset-0 vmp-fill-danger blur-[4px] opacity-40"></div>
-                {% elif st == 'open' %}
-                     <div class="w-1.5 h-1.5 rounded-full vmp-fill-warn"></div>
-                {% elif st == 'resolved' %}
-                     <div class="w-1.5 h-1.5 rounded-full vmp-fill-ok opacity-50"></div>
-                {% else %}
-                     <div class="w-1.5 h-1.5 rounded-full vmp-bg-panel"></div>
-                {% endif %}
-            </div>
-
-            <div class="min-w-0">
-                <div class="flex items-center gap-2 mb-1">
-                    <span class="vmp-code">#{{ case.id|string|truncate(8, True, '') }}</span>
-                    <span class="vmp-caption vmp-muted truncate max-w-[140px]">{{ case.vmp_companies.name if case.vmp_companies else 'Unknown Entity' }}</span>
-                </div>
-                
-                <div class="vmp-body-small leading-snug truncate group-hover:text-white transition-colors">
-                    {{ case.subject }}
-                </div>
-                
-                <div class="mt-2 flex items-center gap-2">
-                     <span class="vmp-caption vmp-muted px-1.5 py-0.5 rounded vmp-bg-panel">{{ (case.case_type or 'General') }}</span>
-                     <span class="vmp-code">
-                        {% if case.updated_at %}
-                            {{ case.updated_at | date('%b %d') }}
-                        {% else %}
-                            2h ago
-                        {% endif %}
-                     </span>
-                </div>
-            </div>
+        <div class="mt-1 shrink-0" onclick="event.stopPropagation()">
+            <input type="checkbox" 
+                   class="vmp-checkbox"
+                   data-bulk-item-id="{{ case.id }}"
+                   @change="document.dispatchEvent(new CustomEvent('bulk-toggle', { detail: { id: '{{ case.id }}' } }))">
         </div>
 
-        {% if st == 'waiting_supplier' %}
-            <div class="shrink-0 px-1.5 py-0.5 rounded border vmp-status-badge-danger">
-                <span class="vmp-label vmp-signal-danger">ACT</span>
+        <div class="mt-1.5 shrink-0 relative">
+            {% if st == 'waiting_supplier' %}
+                <div class="w-2 h-2 rounded-full animate-pulse" style="background: var(--vmp-danger);"></div>
+                <div class="absolute inset-0 rounded-full blur-[4px] opacity-40" style="background: var(--vmp-danger);"></div>
+            {% elif st == 'open' %}
+                 <div class="w-2 h-2 rounded-full" style="background: var(--vmp-warn);"></div>
+            {% elif st == 'resolved' %}
+                 <div class="w-2 h-2 rounded-full opacity-40" style="background: var(--vmp-ok);"></div>
+            {% else %}
+                 <div class="w-2 h-2 rounded-full border" style="border-color: var(--vmp-border);"></div>
+            {% endif %}
+        </div>
+
+        <div class="min-w-0 flex-1">
+            <div class="flex items-center justify-between mb-0.5">
+                <div class="flex items-center gap-2 min-w-0">
+                    <span class="vmp-code-small opacity-60">#{{ case.id|string|truncate(8, True, '') }}</span>
+                    <span class="vmp-caption opacity-40 truncate max-w-[120px]">
+                        {{ case.vmp_companies.name if case.vmp_companies else 'Unknown Entity' }}
+                    </span>
+                </div>
+                
+                <span class="vmp-code-small opacity-40 shrink-0">
+                    {% if case.updated_at %}
+                        {{ case.updated_at | date('%b %d') }}
+                    {% else %}
+                        Just now
+                    {% endif %}
+                </span>
             </div>
-        {% endif %}
+            
+            <div class="vmp-body-small leading-snug truncate group-hover:text-[var(--vmp-text)] transition-colors mb-1.5 opacity-90">
+                {{ case.subject }}
+            </div>
+            
+            <div class="flex items-center justify-between">
+                 <span class="vmp-tag text-[9px] py-0 px-1.5 opacity-60 uppercase tracking-wider">
+                    {{ (case.case_type or 'General') }}
+                 </span>
+                 
+                 {% if st == 'waiting_supplier' %}
+                    <span class="vmp-badge vmp-badge-danger text-[9px] py-0 px-1.5">ACTION</span>
+                 {% endif %}
+            </div>
+        </div>
     </div>
 </a>
 {% endif %}
-

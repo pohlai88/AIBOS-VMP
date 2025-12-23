@@ -1,49 +1,53 @@
-<!-- Compliance Docs Partial -->
-<div class="vmp-panel p-6 border vmp-border-color">
-    <div class="vmp-label-kicker vmp-label-kicker-strong mb-4">COMPLIANCE DOCUMENTS</div>
-
-    {% if error %}
-    <div class="p-3 mb-4 rounded-lg border vmp-border-warn vmp-bg-warn vmp-opacity-30">
-        <div class="vmp-caption vmp-text-warn">{{ error }}</div>
+<div class="vmp-panel p-5 border" style="border-color: var(--vmp-border);">
+    
+    <div class="flex items-center justify-between mb-4">
+        <div>
+            <h3 class="vmp-h6">Compliance</h3>
+            <div class="vmp-caption opacity-60">Tax & Certifications</div>
+        </div>
+        <button class="vmp-btn vmp-btn-ghost vmp-btn-sm h-auto p-1" aria-label="Add Document">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+        </button>
     </div>
-    {% endif %}
 
-    {% if complianceDocs and complianceDocs|length > 0 %}
+    {% if documents and documents|length > 0 %}
     <div class="space-y-3">
-        {% for doc in complianceDocs %}
-        <div class="p-3 rounded-lg border vmp-border-color vmp-bg-panel">
-            <div class="flex items-start justify-between">
-                <div class="flex-1 min-w-0">
-                    <div class="vmp-body-small font-medium mb-1 truncate">
-                        {{ doc.filename }}
-                    </div>
-                    <div class="vmp-caption vmp-muted">
-                        {{ doc.evidence_type | upper }}
-                        {% if doc.case_subject %}
-                        • {{ doc.case_subject }}
-                        {% endif %}
-                    </div>
-                    <div class="vmp-caption vmp-muted mt-1">
-                        {{ doc.uploaded_at | date('%b %d, %Y') if doc.uploaded_at else '—' }}
-                    </div>
+        {% for doc in documents %}
+        {% set isExpiring = doc.days_to_expire < 30 %}
+        {% set isExpired = doc.days_to_expire < 0 %}
+        
+        <div class="p-3 rounded-lg border transition-colors hover:bg-[var(--vmp-bg)]"
+             style="border-color: {{ 'var(--vmp-danger)' if isExpired else ('var(--vmp-warn)' if isExpiring else 'var(--vmp-border)') }}; 
+                    background: {{ 'hsla(var(--vmp-danger-h), var(--vmp-danger-s), var(--vmp-danger-l), 0.05)' if isExpired else 'var(--vmp-panel)' }}">
+            
+            <div class="flex justify-between items-start mb-1">
+                <div class="vmp-body-small font-medium">{{ doc.type_label }}</div>
+                
+                {% if isExpired %}
+                    <span class="vmp-badge vmp-badge-danger text-[9px]">EXPIRED</span>
+                {% elif isExpiring %}
+                    <span class="vmp-badge vmp-badge-warn text-[9px]">EXPIRING</span>
+                {% else %}
+                    <span class="vmp-badge vmp-badge-ok text-[9px]">VALID</span>
+                {% endif %}
+            </div>
+
+            <div class="flex justify-between items-end">
+                <div class="vmp-caption opacity-60">
+                    Exp: {{ doc.expiry_date | date('M d, Y') }}
                 </div>
-                <div class="shrink-0 ml-3">
-                    <span class="vmp-tag vmp-tag-mono text-xs">
-                        {{ (doc.status or 'submitted') | upper }}
-                    </span>
-                </div>
+                <a href="{{ doc.download_url }}" target="_blank" class="vmp-link text-[10px] uppercase tracking-wider flex items-center gap-1">
+                    View <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+                </a>
             </div>
         </div>
         {% endfor %}
     </div>
+    
     {% else %}
-    <div class="vmp-body vmp-muted text-center py-8">
-        {% if error %}
-        {{ error }}
-        {% else %}
-        No compliance documents found. Documents will appear here after they are uploaded during onboarding.
-        {% endif %}
+    <div class="vmp-empty py-6 text-center border-t border-dashed" style="border-color: var(--vmp-border);">
+        <div class="vmp-caption opacity-50">No compliance documents on file.</div>
+        <button class="vmp-btn vmp-btn-primary vmp-btn-sm mt-3 w-full">Upload Tax Form</button>
     </div>
     {% endif %}
 </div>
-

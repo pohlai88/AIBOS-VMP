@@ -1,98 +1,201 @@
 {% extends "layout.html" %}
-{% block title %}Dashboard — NexusCanon VMP{% endblock %}
 
 {% block content %}
-<div class="h-full overflow-y-auto">
-    <div class="flex h-full">
-        <!-- Left Sidebar: Org Tree -->
-        <aside class="w-64 border-r vmp-border-color vmp-bg-panel shrink-0 overflow-y-auto">
-            <div id="org-tree-container"
-                 hx-get="/partials/org-tree-sidebar.html?scope_type={{ scopeType }}&scope_id={{ scopeId }}"
-                 hx-trigger="load"
-                 hx-target="this"
-                 hx-swap="innerHTML">
-                <div class="flex items-center justify-center h-64">
-                    <div class="vmp-label-kicker animate-pulse opacity-60">Loading org tree...</div>
-                </div>
+<div class="w-full max-w-7xl mx-auto space-y-8" x-data="{ range: '24h' }">
+
+    <header class="flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-white/10 pb-6">
+        <div>
+            <div class="flex items-center gap-3 mb-2">
+                <span class="font-mono text-xs text-emerald-400 tracking-widest uppercase">/ System_Online</span>
+                <span class="h-px w-12 bg-emerald-500/30"></span>
             </div>
-        </aside>
+            <h1 class="font-serif text-4xl text-white tracking-tight">
+                Operational Command
+            </h1>
+            <p class="font-sans text-white/50 mt-1 max-w-xl text-lg">
+                Real-time oversight of VMP integrity and case velocity.
+            </p>
+        </div>
 
-        <!-- Main Content Area -->
-        <main id="dashboard-main-content" class="flex-1 overflow-y-auto">
-            <div class="vmp-container max-w-7xl mx-auto p-6">
-                <header class="mb-6">
-                    <h1 class="vmp-h1 mb-2">Dashboard</h1>
-                    <p class="vmp-body vmp-muted">
-                        {% if scopeType == 'group' %}
-                        Director View: Group-wide metrics
-                        {% elif scopeType == 'company' %}
-                        Manager View: Company-specific metrics
-                        {% else %}
-                        Super Admin View: Tenant-wide metrics
-                        {% endif %}
-                    </p>
-                </header>
+        <div class="flex items-center p-1 bg-white/5 backdrop-blur-md border border-white/10 rounded-lg">
+            <button @click="range = '24h'"
+                :class="range === '24h' ? 'bg-white/10 text-white shadow-inner' : 'text-white/40 hover:text-white/70'"
+                class="px-4 py-1.5 font-mono text-xs rounded transition-all duration-300">
+                24H
+            </button>
+            <button @click="range = '7d'"
+                :class="range === '7d' ? 'bg-white/10 text-white shadow-inner' : 'text-white/40 hover:text-white/70'"
+                class="px-4 py-1.5 font-mono text-xs rounded transition-all duration-300">
+                07D
+            </button>
+            <button @click="range = '30d'"
+                :class="range === '30d' ? 'bg-white/10 text-white shadow-inner' : 'text-white/40 hover:text-white/70'"
+                class="px-4 py-1.5 font-mono text-xs rounded transition-all duration-300">
+                30D
+            </button>
+        </div>
+    </header>
 
-                <!-- Dashboard Metrics Cards -->
-                {% if dashboardMetrics %}
-                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                    <!-- Action Items Card -->
-                    <div class="vmp-panel p-4 border vmp-border-color">
-                        <div class="vmp-label-kicker opacity-50 mb-1">ACTION ITEMS</div>
-                        <div class="vmp-h3 vmp-text-warn">
-                            {{ dashboardMetrics.metrics.actionItems }}
+    <div class="grid grid-cols-1 md:grid-cols-12 gap-6">
+
+        <div
+            class="md:col-span-8 relative group overflow-hidden rounded-xl border border-emerald-500/20 bg-[#0A0A0A]/80 backdrop-blur-xl shadow-[0_0_40px_-15px_rgba(16,185,129,0.1)]">
+            <div class="absolute top-0 right-0 p-6 opacity-20">
+                <svg width="200" height="100" viewBox="0 0 200 100" fill="none" stroke="currentColor"
+                    class="text-emerald-500">
+                    <path d="M0 80 L40 75 L80 90 L120 40 L160 50 L200 10" stroke-width="1.5"
+                        vector-effect="non-scaling-stroke" />
+                </svg>
+            </div>
+
+            <div class="p-8 h-full flex flex-col justify-between relative z-10">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <h3 class="font-sans text-white/60 text-sm font-medium uppercase tracking-wider">Total AP
+                            Exposure</h3>
+                        <div class="mt-2 flex items-baseline gap-4">
+                            <span class="font-mono text-5xl text-white font-light tracking-tighter">$4,290,120.00</span>
+                            <span
+                                class="font-mono text-sm text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded flex items-center gap-1">
+                                ▲ 12.5%
+                            </span>
                         </div>
-                        <div class="vmp-caption vmp-muted mt-1">High Priority Cases</div>
-                    </div>
-
-                    <!-- Pending Invoice Volume Card -->
-                    <div class="vmp-panel p-4 border vmp-border-color">
-                        <div class="vmp-label-kicker opacity-50 mb-1">PENDING VOLUME</div>
-                        <div class="vmp-h3">
-                            {{ "%.2f"|format(dashboardMetrics.metrics.pendingInvoiceVolume) if dashboardMetrics.metrics.pendingInvoiceVolume else '0.00' }}
-                        </div>
-                        <div class="vmp-caption vmp-muted mt-1">Total AP Exposure</div>
-                    </div>
-
-                    <!-- Pending Invites Card -->
-                    <div class="vmp-panel p-4 border vmp-border-color">
-                        <div class="vmp-label-kicker opacity-50 mb-1">PENDING INVITES</div>
-                        <div class="vmp-h3">
-                            {{ dashboardMetrics.metrics.pendingInvites }}
-                        </div>
-                        <div class="vmp-caption vmp-muted mt-1">Awaiting Response</div>
-                    </div>
-
-                    <!-- Active Vendors Card -->
-                    <div class="vmp-panel p-4 border vmp-border-color">
-                        <div class="vmp-label-kicker opacity-50 mb-1">ACTIVE VENDORS</div>
-                        <div class="vmp-h3">
-                            {{ dashboardMetrics.metrics.activeVendors }}
-                        </div>
-                        <div class="vmp-caption vmp-muted mt-1">Onboarded Suppliers</div>
                     </div>
                 </div>
-                {% else %}
-                <div class="vmp-panel p-6 border vmp-border-color mb-6">
-                    <div class="vmp-body vmp-muted text-center">
-                        Loading dashboard metrics...
-                    </div>
-                </div>
-                {% endif %}
 
-                <!-- Scoped Dashboard Content (Detailed View) -->
-                <div id="scoped-dashboard-container"
-                     hx-get="/partials/scoped-dashboard.html?scope_type={{ scopeType }}&scope_id={{ scopeId }}"
-                     hx-trigger="load"
-                     hx-target="this"
-                     hx-swap="innerHTML">
-                    <div class="flex items-center justify-center h-64">
-                        <div class="vmp-label-kicker animate-pulse opacity-60">Loading dashboard...</div>
+                <div class="mt-8 grid grid-cols-3 gap-8 border-t border-white/5 pt-6">
+                    <div>
+                        <div class="font-mono text-xs text-white/40 mb-1">PENDING APPROVAL</div>
+                        <div class="font-serif text-xl text-white">142</div>
+                    </div>
+                    <div>
+                        <div class="font-mono text-xs text-white/40 mb-1">AVG CYCLE TIME</div>
+                        <div class="font-serif text-xl text-white">4.2 <span
+                                class="text-sm text-white/40 font-sans">Days</span></div>
+                    </div>
+                    <div>
+                        <div class="font-mono text-xs text-white/40 mb-1">VELOCITY</div>
+                        <div class="font-serif text-xl text-white">High</div>
                     </div>
                 </div>
             </div>
-        </main>
+        </div>
+
+        <div
+            class="md:col-span-4 rounded-xl border border-rose-500/20 bg-rose-950/10 backdrop-blur-xl relative overflow-hidden">
+            <div
+                class="absolute -top-10 -right-10 w-32 h-32 bg-rose-500/20 blur-[50px] rounded-full pointer-events-none">
+            </div>
+
+            <div class="p-8 h-full flex flex-col justify-center">
+                <div class="flex items-center gap-3 mb-4">
+                    <div class="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></div>
+                    <h3 class="font-sans text-rose-200/80 text-sm font-medium uppercase tracking-wider">Critical
+                        Attention</h3>
+                </div>
+
+                <div class="font-mono text-6xl text-rose-500 font-light tracking-tighter leading-none mb-2">
+                    08
+                </div>
+                <p class="font-sans text-white/50 text-sm leading-relaxed">
+                    Cases requiring immediate intervention within the next 4 hours to avoid SLA breach.
+                </p>
+
+                <div class="mt-6">
+                    <button
+                        class="w-full group flex items-center justify-center gap-2 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-400 px-4 py-3 rounded-lg transition-all duration-300">
+                        <span class="font-mono text-xs font-bold uppercase tracking-wider">Intercept Cases</span>
+                        <svg class="w-4 h-4 group-hover:translate-x-1 transition-transform" fill="none"
+                            stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                d="M17 8l4 4m0 0l-4 4m4-4H3"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="md:col-span-12 rounded-xl border border-white/10 bg-[#0A0A0A]/60 backdrop-blur-md">
+            <div class="p-6 border-b border-white/5 flex justify-between items-center">
+                <h3 class="font-serif text-xl text-white">Active Streams</h3>
+                <div class="flex gap-2">
+                    <button class="p-2 text-white/40 hover:text-white transition-colors">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z">
+                            </path>
+                        </svg>
+                    </button>
+                    <button class="p-2 text-white/40 hover:text-white transition-colors">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="border-b border-white/5 text-white/40 font-mono text-xs uppercase tracking-wider">
+                            <th class="p-6 font-medium">Case ID</th>
+                            <th class="p-6 font-medium">Entity</th>
+                            <th class="p-6 font-medium">Metric</th>
+                            <th class="p-6 font-medium">Status</th>
+                            <th class="p-6 font-medium text-right">Value</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-white/5 text-sm">
+                        <tr class="group hover:bg-white/[0.02] transition-colors cursor-pointer"
+                            onclick="window.location.href='/ops/cases/00000000-0000-0000-0000-000000009921'">
+                            <td class="p-6 font-mono text-emerald-400">#TRX-9921</td>
+                            <td class="p-6 font-sans text-white">Nexus Logistics Corp</td>
+                            <td class="p-6 text-white/60">Vendor Onboarding</td>
+                            <td class="p-6">
+                                <span
+                                    class="inline-flex items-center gap-1.5 px-2 py-1 rounded border border-yellow-500/30 bg-yellow-500/5 text-yellow-400 font-mono text-[10px] uppercase tracking-wide">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-yellow-500"></span> Review
+                                </span>
+                            </td>
+                            <td class="p-6 font-mono text-white text-right">$12,450.00</td>
+                        </tr>
+                        <tr class="group hover:bg-white/[0.02] transition-colors cursor-pointer"
+                            onclick="window.location.href='/ops/cases/00000000-0000-0000-0000-000000009920'">
+                            <td class="p-6 font-mono text-emerald-400">#TRX-9920</td>
+                            <td class="p-6 font-sans text-white">Aether Dynamics</td>
+                            <td class="p-6 text-white/60">Invoice Clearance</td>
+                            <td class="p-6">
+                                <span
+                                    class="inline-flex items-center gap-1.5 px-2 py-1 rounded border border-emerald-500/30 bg-emerald-500/5 text-emerald-400 font-mono text-[10px] uppercase tracking-wide">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Clear
+                                </span>
+                            </td>
+                            <td class="p-6 font-mono text-white text-right">$8,200.00</td>
+                        </tr>
+                        <tr class="group hover:bg-white/[0.02] transition-colors cursor-pointer"
+                            onclick="window.location.href='/ops/cases/00000000-0000-0000-0000-000000009919'">
+                            <td class="p-6 font-mono text-emerald-400">#TRX-9919</td>
+                            <td class="p-6 font-sans text-white">Void Systems Ltd</td>
+                            <td class="p-6 text-white/60">Contract Renewal</td>
+                            <td class="p-6">
+                                <span
+                                    class="inline-flex items-center gap-1.5 px-2 py-1 rounded border border-white/20 bg-white/5 text-white/60 font-mono text-[10px] uppercase tracking-wide">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-white/40"></span> Draft
+                                </span>
+                            </td>
+                            <td class="p-6 font-mono text-white text-right">$115,000.00</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="p-4 border-t border-white/5 flex justify-center">
+                <a href="/ops/cases"
+                    class="text-xs font-mono text-white/40 hover:text-white uppercase tracking-widest transition-colors">
+                    View All Operations →
+                </a>
+            </div>
+        </div>
     </div>
 </div>
 {% endblock %}
-

@@ -12,6 +12,7 @@ Design system specifications, component patterns, and utility references.
 - [Enterprise Implementation Guide](./design-system/ENTERPRISE_IMPLEMENTATION_GUIDE.md) - Baseline + Components
 - [Enterprise Design System Audit](./design-system/ENTERPRISE_DESIGN_SYSTEM_AUDIT.md)
 - [Utility Classes Reference](./design-system/UTILITY_CLASSES_REFERENCE.md) - SSOT for utility classes
+- [Logo Redesign Specification](./design-system/LOGO_REDESIGN_SPEC.md)
 
 ### [Integrations](./integrations/)
 Third-party integration guides, setup instructions, and evaluations.
@@ -40,6 +41,16 @@ Development guides, IDE setup, and project improvement documentation.
 - [Error Handling Guide](./development/ERROR_HANDLING.md)
 - [Error Handling Implementation](./development/ERROR_HANDLING_IMPLEMENTATION.md)
 - [Project Improvements & Dependencies](./development/PROJECT_IMPROVEMENTS_AND_DEPENDENCIES.md)
+- [Sprint Development Plan](./development/SPRINT_DEVELOPMENT_PLAN.md) - Active sprint planning
+- [Development Status](./development/DEVELOPMENT_STATUS.md) - Current implementation status
+- [Remaining Tasks Summary](./development/REMAINING_TASKS_SUMMARY.md) - Outstanding work items
+- [Test Coverage Plan](./development/TEST_COVERAGE_PLAN.md) - Testing strategy and coverage goals
+
+### [Archive](./archive/)
+Historical documentation, completed audits, and superseded plans.
+
+- Contains archived audit reports, implementation summaries, and historical sprint plans
+- Files moved here are no longer actively maintained but preserved for reference
 
 ### Standards & Meta
 - [Documentation Standards](./DOCUMENTATION_STANDARDS.md) - Rules and guidelines for documentation

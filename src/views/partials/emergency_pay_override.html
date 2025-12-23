@@ -1,0 +1,250 @@
+<!-- Emergency Pay Override Partial -->
+<div class="vmp-panel p-6 border vmp-border-color">
+    <div class="vmp-label-kicker vmp-label-kicker-strong mb-4">EMERGENCY PAY OVERRIDE</div>
+
+    {% if error %}
+    <div class="p-3 mb-4 rounded-lg border vmp-border-warn vmp-bg-warn vmp-opacity-30">
+        <div class="vmp-caption vmp-text-warn">{{ error }}</div>
+    </div>
+    {% endif %}
+
+    {% if overrideRequests and overrideRequests|length > 0 %}
+    <!-- Existing Override Requests -->
+    <div class="space-y-3 mb-4">
+        {% for override in overrideRequests %}
+        <div class="p-3 rounded-lg border vmp-border-color vmp-bg-panel">
+            <div class="flex items-start justify-between mb-2">
+                <div class="flex-1">
+                    <div class="flex items-center gap-2 mb-1">
+                        <span class="vmp-tag vmp-tag-mono text-xs">
+                            {{ override.status | upper }}
+                        </span>
+                        <span class="vmp-tag text-xs 
+                            {% if override.urgency_level == 'emergency' %}vmp-bg-warn vmp-text-warn
+                            {% elif override.urgency_level == 'critical' %}vmp-bg-warn vmp-opacity-70
+                            {% else %}vmp-bg-panel{% endif %}">
+                            {{ override.urgency_level | upper }}
+                        </span>
+                    </div>
+                    <div class="vmp-body-small mb-1">
+                        {{ override.reason }}
+                    </div>
+                    <div class="vmp-caption vmp-muted">
+                        Requested: {{ override.requested_at | date('%b %d, %Y %H:%M') if override.requested_at else '—' }}
+                        {% if override.approved_at %}
+                        | {{ 'Approved' if override.status == 'approved' else 'Rejected' }}: {{ override.approved_at | date('%b %d, %Y %H:%M') }}
+                        {% endif %}
+                    </div>
+                    {% if override.rejection_reason %}
+                    <div class="vmp-caption vmp-text-danger mt-1">
+                        Rejection reason: {{ override.rejection_reason }}
+                    </div>
+                    {% endif %}
+                </div>
+                {% if override.status == 'pending' and isInternal %}
+                <div class="shrink-0 ml-3 flex flex-col gap-2">
+                    <form hx-post="/payments/emergency-override/{{ override.id }}/approve" 
+                          hx-target="#emergency-override-container" 
+                          hx-swap="innerHTML"
+                          hx-confirm="Approve this emergency pay override? This will bypass evidence requirements."
+                          class="inline">
+                        <button type="submit" class="vmp-btn-primary text-xs">
+                            Approve
+                        </button>
+                    </form>
+                    <button type="button" 
+                            onclick="showRejectOverrideModal('{{ override.id }}')"
+                            class="vmp-btn-outline text-xs vmp-text-danger">
+                        Reject
+                    </button>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if isInternal %}
+    <!-- Request New Override Form -->
+    <div class="border-t vmp-border-color pt-4">
+        <div class="vmp-label-kicker mb-3">REQUEST EMERGENCY OVERRIDE</div>
+        <form hx-post="/payments/{{ paymentId }}/emergency-override" 
+              hx-target="#emergency-override-container" 
+              hx-swap="innerHTML"
+              class="space-y-3">
+            <input type="hidden" name="case_id" value="{{ caseId or '' }}">
+            
+            <div>
+                <label class="vmp-label text-sm mb-1 block">Urgency Level</label>
+                <select name="urgency_level" class="vmp-form-input text-sm" required>
+                    <option value="high">High - Business Impact</option>
+                    <option value="critical">Critical - Operational Risk</option>
+                    <option value="emergency">Emergency - Immediate Threat</option>
+                </select>
+            </div>
+
+            <div>
+                <label class="vmp-label text-sm mb-1 block">Justification *</label>
+                <textarea name="reason" 
+                          class="vmp-form-input text-sm" 
+                          rows="4" 
+                          placeholder="Explain why this payment requires emergency override (e.g., critical supplier relationship, operational continuity, etc.)"
+                          required></textarea>
+            </div>
+
+            <div class="flex gap-2">
+                <button type="submit" class="vmp-btn-primary text-sm">
+                    Request Override
+                </button>
+                <button type="button" 
+                        onclick="document.getElementById('emergency-override-container').innerHTML = ''; 
+                                 htmx.trigger('#emergency-override-container', 'load')"
+                        class="vmp-btn-outline text-sm">
+                    Cancel
+                </button>
+            </div>
+        </form>
+    </div>
+    {% endif %}
+
+    <!-- Reject Override Modal (Internal Only) -->
+    {% if isInternal %}
+    <div id="reject-override-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center vmp-bg-veil bg-black/50"
+         onclick="if(event.target === this) this.classList.add('hidden')">
+        <div class="vmp-panel p-6 rounded-lg border vmp-border-color max-w-md w-full mx-4">
+            <h3 class="vmp-h3 mb-4">Reject Emergency Pay Override</h3>
+            <p class="vmp-body-small mb-4 vmp-muted">Provide a reason for rejecting this override request.</p>
+            <form id="reject-override-form" 
+                  hx-target="#emergency-override-container" 
+                  hx-swap="innerHTML"
+                  hx-indicator="#reject-override-loading"
+                  hx-on::after-request="if(event.detail.successful) { document.getElementById('reject-override-modal').classList.add('hidden'); }"
+                  onsubmit="return validateRejectForm(event)">
+                <input type="hidden" name="override_id" id="reject-override-id">
+                <div class="mb-4">
+                    <label class="vmp-label-kicker mb-2 block">Rejection Reason *</label>
+                    <textarea name="rejection_reason" 
+                              id="reject-override-reason"
+                              class="vmp-form-input w-full" 
+                              rows="4" 
+                              placeholder="Explain why this override request is being rejected (minimum 20 characters required)..."
+                              minlength="20"
+                              maxlength="500"
+                              required
+                              oninput="updateRejectCharCount(this)"></textarea>
+                    <div class="flex justify-between items-center mt-1">
+                        <div id="reject-reason-error" class="vmp-caption vmp-text-danger hidden"></div>
+                        <div class="vmp-caption vmp-muted">
+                            <span id="reject-char-count">0</span>/500 characters
+                        </div>
+                    </div>
+                </div>
+                <div class="flex justify-end gap-3">
+                    <button type="button" 
+                            class="vmp-action-button vmp-action-button-ghost"
+                            onclick="document.getElementById('reject-override-modal').classList.add('hidden')"
+                            id="reject-cancel-btn">
+                        Cancel
+                    </button>
+                    <button type="submit" 
+                            class="vmp-action-button vmp-action-button-primary"
+                            id="reject-submit-btn">
+                        Reject Override
+                    </button>
+                </div>
+                <div id="reject-override-loading" class="htmx-indicator mt-3">
+                    <div class="vmp-label-kicker animate-pulse opacity-60">Processing rejection...</div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        function showRejectOverrideModal(overrideId) {
+            document.getElementById('reject-override-id').value = overrideId;
+            const reasonField = document.getElementById('reject-override-reason');
+            reasonField.value = '';
+            updateRejectCharCount(reasonField);
+            hideRejectError();
+            const form = document.getElementById('reject-override-form');
+            form.setAttribute('hx-post', `/payments/emergency-override/${overrideId}/reject`);
+            document.getElementById('reject-override-modal').classList.remove('hidden');
+            reasonField.focus();
+        }
+
+        function updateRejectCharCount(textarea) {
+            const count = textarea.value.length;
+            const charCountEl = document.getElementById('reject-char-count');
+            const minLength = parseInt(textarea.getAttribute('minlength')) || 20;
+            
+            charCountEl.textContent = count;
+            
+            if (count < minLength) {
+                charCountEl.classList.add('vmp-text-warn');
+                charCountEl.classList.remove('vmp-muted');
+            } else if (count > 450) {
+                charCountEl.classList.add('vmp-text-warn');
+                charCountEl.classList.remove('vmp-muted');
+            } else {
+                charCountEl.classList.remove('vmp-text-warn');
+                charCountEl.classList.add('vmp-muted');
+            }
+            
+            validateRejectField(textarea);
+        }
+
+        function validateRejectField(textarea) {
+            const errorEl = document.getElementById('reject-reason-error');
+            const minLength = parseInt(textarea.getAttribute('minlength')) || 20;
+            const value = textarea.value.trim();
+            
+            if (value.length > 0 && value.length < minLength) {
+                showRejectError(`Rejection reason must be at least ${minLength} characters (${value.length}/${minLength})`);
+                textarea.classList.add('vmp-border-warn');
+                return false;
+            } else if (value.length === 0) {
+                hideRejectError();
+                textarea.classList.remove('vmp-border-warn');
+                return false;
+            } else {
+                hideRejectError();
+                textarea.classList.remove('vmp-border-warn');
+                return true;
+            }
+        }
+
+        function showRejectError(message) {
+            const errorEl = document.getElementById('reject-reason-error');
+            errorEl.textContent = message;
+            errorEl.classList.remove('hidden');
+        }
+
+        function hideRejectError() {
+            const errorEl = document.getElementById('reject-reason-error');
+            errorEl.classList.add('hidden');
+            errorEl.textContent = '';
+        }
+
+        function validateRejectForm(event) {
+            const reasonField = document.getElementById('reject-override-reason');
+            const isValid = validateRejectField(reasonField);
+            
+            if (!isValid) {
+                event.preventDefault();
+                reasonField.focus();
+                return false;
+            }
+            
+            const confirmed = confirm('Are you sure you want to reject this emergency pay override request? This action cannot be undone.');
+            if (!confirmed) {
+                event.preventDefault();
+                return false;
+            }
+            
+            return true;
+        }
+    </script>
+    {% endif %}
+</div>
+

@@ -1,13 +1,18 @@
-<!-- Notification Badge Partial (Sprint 7.4) -->
 {% if unreadCount and unreadCount > 0 %}
 <a href="/notifications" 
-   class="vmp-btn vmp-btn-ghost w-full relative">
-    <span>Notifications</span>
-    <span class="vmp-badge vmp-badge-danger ml-2">{{ unreadCount }}</span>
+   class="vmp-btn vmp-btn-ghost w-full justify-between group relative overflow-hidden"
+   title="{{ unreadCount }} unread notifications">
+    <span class="vmp-body-small opacity-80 group-hover:opacity-100">Notifications</span>
+    
+    <div class="flex items-center gap-2">
+        <span class="vmp-badge vmp-badge-brand px-1.5 py-0.5 min-w-[20px] text-center">
+            {{ unreadCount }}
+        </span>
+        <span class="absolute right-3 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-[var(--vmp-brand)] animate-ping opacity-75 pointer-events-none"></span>
+    </div>
 </a>
 {% else %}
-<div class="vmp-caption vmp-muted text-center py-2">
-    No new notifications
-</div>
+<a href="/notifications" class="vmp-btn vmp-btn-ghost w-full justify-start opacity-60 hover:opacity-100">
+    <span class="vmp-body-small">Notifications</span>
+</a>
 {% endif %}
-

@@ -1,0 +1,86 @@
+<!-- Truth Panel Partial (Sprint 8) -->
+<div class="vmp-truth-panel">
+    <div class="vmp-h6 mb-4">Transaction Context</div>
+    
+    {% if invoice %}
+    <div class="vmp-truth-item">
+        <div class="vmp-truth-item-header">
+            <div class="vmp-truth-item-title">Invoice</div>
+            <span class="vmp-truth-item-type">INV</span>
+        </div>
+        <div class="vmp-truth-item-body">
+            <div class="vmp-body-small">
+                <a href="/invoices/{{ invoice.id }}" class="vmp-truth-item-link">{{ invoice.invoice_num or invoice.id }}</a>
+            </div>
+            <div class="vmp-truth-item-meta">
+                {% if invoice.amount %}<span>Amount: {{ invoice.currency_code or 'USD' }} {{ invoice.amount.toFixed(2) }}</span>{% endif %}
+                {% if invoice.invoice_date %}<span>Date: {{ invoice.invoice_date }}</span>{% endif %}
+                {% if invoice.status %}<span class="vmp-pill vmp-pill-{{ invoice.status }}">{{ invoice.status }}</span>{% endif %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if purchaseOrder %}
+    <div class="vmp-truth-item">
+        <div class="vmp-truth-item-header">
+            <div class="vmp-truth-item-title">Purchase Order</div>
+            <span class="vmp-truth-item-type">PO</span>
+        </div>
+        <div class="vmp-truth-item-body">
+            <div class="vmp-body-small">
+                <span>{{ purchaseOrder.po_number or purchaseOrder.id }}</span>
+            </div>
+            <div class="vmp-truth-item-meta">
+                {% if purchaseOrder.amount %}<span>Amount: {{ purchaseOrder.currency_code or 'USD' }} {{ purchaseOrder.amount.toFixed(2) }}</span>{% endif %}
+                {% if purchaseOrder.po_date %}<span>Date: {{ purchaseOrder.po_date }}</span>{% endif %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if grn %}
+    <div class="vmp-truth-item">
+        <div class="vmp-truth-item-header">
+            <div class="vmp-truth-item-title">Goods Received Note</div>
+            <span class="vmp-truth-item-type">GRN</span>
+        </div>
+        <div class="vmp-truth-item-body">
+            <div class="vmp-body-small">
+                <span>{{ grn.grn_number or grn.id }}</span>
+            </div>
+            <div class="vmp-truth-item-meta">
+                {% if grn.received_date %}<span>Received: {{ grn.received_date }}</span>{% endif %}
+                {% if grn.status %}<span class="vmp-pill vmp-pill-{{ grn.status }}">{{ grn.status }}</span>{% endif %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if payment %}
+    <div class="vmp-truth-item">
+        <div class="vmp-truth-item-header">
+            <div class="vmp-truth-item-title">Payment</div>
+            <span class="vmp-truth-item-type">PAY</span>
+        </div>
+        <div class="vmp-truth-item-body">
+            <div class="vmp-body-small">
+                <a href="/payments/{{ payment.id }}" class="vmp-truth-item-link">{{ payment.payment_ref or payment.id }}</a>
+            </div>
+            <div class="vmp-truth-item-meta">
+                {% if payment.amount %}<span>Amount: {{ payment.currency_code or 'USD' }} {{ payment.amount.toFixed(2) }}</span>{% endif %}
+                {% if payment.payment_date %}<span>Date: {{ payment.payment_date }}</span>{% endif %}
+                {% if payment.status %}<span class="vmp-pill vmp-pill-{{ payment.status }}">{{ payment.status }}</span>{% endif %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if not invoice and not purchaseOrder and not grn and not payment %}
+    <div class="vmp-empty">
+        <div class="vmp-empty-title">No Transaction Context</div>
+        <div class="vmp-empty-description">This case is not linked to any invoice, PO, GRN, or payment.</div>
+    </div>
+    {% endif %}
+</div>
+

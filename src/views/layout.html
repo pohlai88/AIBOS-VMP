@@ -1,294 +1,230 @@
-<!doctype html>
-<html lang="en" data-surface="vmp" class="h-full transition-colors duration-300" 
-  x-data="{ theme: localStorage.getItem('vmp-theme') || 'dark' }"
-  x-init="
-    const initialTheme = localStorage.getItem('vmp-theme') || 'dark';
-    document.documentElement.setAttribute('data-theme', initialTheme);
-    document.documentElement.setAttribute('data-color-scheme', initialTheme);
+<!DOCTYPE html>
+<html lang="en" data-surface="vmp" class="h-full antialiased"
+  x-data="{ 
+    theme: localStorage.getItem('vmp-theme') || 'dark',
+    mobileMenuOpen: false
+  }" x-init="
     $watch('theme', val => { 
       document.documentElement.setAttribute('data-theme', val); 
-      document.documentElement.setAttribute('data-color-scheme', val);
       localStorage.setItem('vmp-theme', val);
-      // Smooth transition
-      document.documentElement.style.transition = 'background-color 0.3s ease, color 0.3s ease';
     });
+    document.documentElement.setAttribute('data-theme', theme);
   ">
 
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <meta name="color-scheme" content="dark light" />
-  <meta name="theme-color" content="#00D9FF" />
-  <meta name="description" content="Vendor Management Portal - Streamline your AP operations" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#050505" />
+  <meta name="description" content="NexusCanon VMP - Settlement Governance Operating System" />
+
   {% if vapid_public_key %}
   <meta name="vapid-public-key" content="{{ vapid_public_key }}" />
   {% endif %}
+
   <title>{% block title %}NexusCanon VMP{% endblock %}</title>
 
-  <!-- PWA Manifest (Sprint 12.2) -->
   <link rel="manifest" href="/manifest.json" />
-  <link rel="apple-touch-icon" href="/icon-192.png" />
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
 
-  {% block head %}{% endblock %}
-  
-  <!-- Command Palette (Sprint 10.1) -->
-  {% if user %}
-  {% include "partials/command_palette.html" %}
-  {% endif %}
-  
-  <!-- Keyboard Shortcuts Modal (Sprint 10.2) -->
-  {% if user %}
-  {% include "partials/keyboard_shortcuts_modal.html" %}
-  {% endif %}
-  
-  <!-- Export Modal (Sprint 11.2) -->
-  {% if user %}
-  {% include "partials/export_modal.html" %}
-  {% endif %}
-
-  <!-- Theme Initialization (Prevents FOUC) -->
-  <script>
-    (function () {
-      const theme = localStorage.getItem('vmp-theme') || 'dark';
-      document.documentElement.setAttribute('data-theme', theme);
-      document.documentElement.setAttribute('data-color-scheme', theme);
-    })();
-  </script>
-
-  <!-- Favicon -->
-  <link rel="icon"
-    href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90' font-family='serif' font-style='italic'>N</text></svg>" />
-
-  <!-- AHA Stack -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://unpkg.com/htmx.org@1.9.10"></script>
-  <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
-
-  <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <!-- Liter font loaded via globals.css -->
-  <!-- JetBrains Mono and Playfair Display -->
   <link
-    href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300&family=Playfair+Display:wght@300&display=swap"
+    href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Liter:opsz,wght@7..72,300;400;500&family=Playfair+Display:ital,wght@0,400;0,600;1,400&display=swap"
     rel="stylesheet">
 
-  <!-- Design System SSOT (v2.0.0) -->
-  <link rel="stylesheet" href="/globals.css" />
+  <link rel="stylesheet" href="/globals.css">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.3/dist/cdn.min.js"></script>
+  <script src="/toast.js"></script>
+
+  <style>
+    /* GLOBAL ATMOSPHERE (The "Deep Void" Physics) */
+    :root {
+      --shell-bg: #050505;
+      --shell-glass: rgba(255, 255, 255, 0.02);
+      --shell-border: rgba(255, 255, 255, 0.06);
+      --shell-accent: #60ffc6;
+    }
+
+    body {
+      background-color: var(--shell-bg);
+      color: #ededed;
+      font-family: 'Liter', serif;
+      /* Editorial feel for body text */
+    }
+
+    /* The Cinematic Grain Layer */
+    .vmp-atmosphere {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+      mix-blend-mode: overlay;
+    }
+
+    /* The Ambient Light Source (Top Center) */
+    .vmp-ambient-light {
+      position: fixed;
+      top: -40%;
+      left: 0;
+      right: 0;
+      height: 80%;
+      background: radial-gradient(ellipse at center, rgba(96, 255, 198, 0.04), transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* SCROLLBAR: Sleek & Invisible until hovered */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 99px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(255, 255, 255, 0.15);
+    }
+
+    /* UTILITIES for Art Direction */
+    .font-mono {
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .font-serif {
+      font-family: 'Playfair Display', serif;
+    }
+
+    .text-accent {
+      color: var(--shell-accent);
+    }
+  </style>
+  {% block head %}{% endblock %}
 </head>
 
-<body class="h-full flex">
-  <!-- Sidebar -->
-  <aside class="hidden md:flex w-64 flex-none vmp-sidebar p-4 z-10">
-    <div class="flex flex-col w-full">
+<body class="h-full flex overflow-hidden selection:bg-[#60ffc6]/20 selection:text-[#60ffc6]" hx-boost="true">
 
-      <!-- Brand -->
-      <div class="flex items-center gap-3 p-3 vmp-panel">
-        <div class="w-9 h-9 rounded-lg border border-opacity-10 grid place-items-center" style="background: rgba(255, 255, 255, 0.02); border-color: rgba(237, 237, 237, 0.10);">
-          <svg width="18" height="18" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-            <defs>
-              <pattern id="gridPatternLayout" x="0" y="0" width="4" height="4" patternUnits="userSpaceOnUse">
-                <path d="M 4 0 L 0 0 0 4" fill="none" stroke="rgba(237,237,237,0.04)" stroke-width="0.5"/>
-              </pattern>
-              <linearGradient id="bgGradLayout" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stop-color="rgba(255,255,255,0.03)" />
-                <stop offset="100%" stop-color="rgba(255,255,255,0.01)" />
-              </linearGradient>
-            </defs>
-            <rect width="24" height="24" fill="url(#bgGradLayout)" />
-            <rect width="24" height="24" fill="url(#gridPatternLayout)" />
-            <path d="M 12 20 L 4 4 L 20 4 Z" fill="none" stroke="rgba(237,237,237,0.25)" stroke-width="1" stroke-linejoin="miter"/>
-            <path d="M 12 16 L 6.5 6 L 17.5 6 Z" fill="none" stroke="rgba(237,237,237,0.45)" stroke-width="1.2" stroke-linejoin="miter"/>
-            <path d="M 12 12 L 8 6 L 16 6 Z" fill="rgba(237,237,237,0.85)" stroke="rgba(237,237,237,1)" stroke-width="1.2" stroke-linejoin="miter"/>
-            <line x1="12" y1="12" x2="12" y2="20" stroke="rgba(237,237,237,0.35)" stroke-width="0.8" stroke-linecap="round"/>
-            <line x1="8" y1="6" x2="4" y2="4" stroke="rgba(237,237,237,0.25)" stroke-width="0.6" stroke-linecap="round"/>
-            <line x1="16" y1="6" x2="20" y2="4" stroke="rgba(237,237,237,0.25)" stroke-width="0.6" stroke-linecap="round"/>
-            <circle cx="12" cy="12" r="1" fill="rgba(237,237,237,1)"/>
-            <circle cx="12" cy="16" r="0.6" fill="rgba(237,237,237,0.65)"/>
-            <circle cx="12" cy="20" r="0.6" fill="rgba(237,237,237,0.45)"/>
-            <circle cx="8" cy="6" r="0.5" fill="rgba(237,237,237,0.75)"/>
-            <circle cx="16" cy="6" r="0.5" fill="rgba(237,237,237,0.75)"/>
-          </svg>
-        </div>
-        <div class="min-w-0">
-          <div class="vmp-label-kicker vmp-label-kicker-strong truncate" style="font-family: 'Playfair Display', serif; font-weight: 600; font-size: 18px; letter-spacing: 0.02em;">NexusCanon</div>
-          <div class="vmp-caption truncate" style="font-size: 11px; letter-spacing: 0.22em; text-transform: uppercase; color: rgba(237, 237, 237, 0.60); font-family: 'JetBrains Mono', monospace;">GOVERNANCE SYSTEMS</div>
-        </div>
-      </div>
+  <div class="vmp-atmosphere"></div>
+  <div class="vmp-ambient-light"></div>
 
-      <!-- Navigation -->
-      <nav class="mt-6 space-y-1 flex-1">
-        {% if user %}
-        <div class="mb-4 pb-4 border-b vmp-border-color">
-          <div class="vmp-caption vmp-muted mb-1">Logged in as</div>
-          <div class="vmp-body-small font-medium">{{ user.displayName or user.email }}</div>
-        </div>
-        {% endif %}
-        <a href="/home" class="vmp-navigation-link vmp-navigation-link-active">
-          <span class="vmp-body-small">Console</span>
-          <span class="vmp-label-kicker vmp-subtle">HOME</span>
-        </a>
-
-        <a href="#" class="vmp-navigation-link">
-          <span class="vmp-body-small">Cases</span>
-          <span class="vmp-label-kicker vmp-subtle">VMP-CASE</span>
-        </a>
-
-        <a href="#" class="vmp-navigation-link">
-          <span class="vmp-body-small">Documents</span>
-          <span class="vmp-label-kicker vmp-subtle">DOC</span>
-        </a>
-
-        <a href="#" class="vmp-navigation-link">
-          <span class="vmp-body-small">SOA Mapping</span>
-          <span class="vmp-label-kicker vmp-subtle">SOA</span>
-        </a>
-
-        <a href="/examples" class="vmp-navigation-link">
-          <span class="vmp-body-small">UI Examples</span>
-          <span class="vmp-label-kicker vmp-subtle">EXAMPLES</span>
-        </a>
-
-        <a href="/components" class="vmp-navigation-link">
-          <span class="vmp-body-small">Components</span>
-          <span class="vmp-label-kicker vmp-subtle">SHOWCASE</span>
-        </a>
-      </nav>
-
-      <!-- Doctrine -->
-      <div class="pt-4 mt-4 border-t vmp-border-color">
-        <div class="vmp-label-kicker mb-2">// doctrine</div>
-        <p class="vmp-caption leading-relaxed vmp-muted">
-          No evidence, no movement. Every message becomes a case note. Every case is auditable.
-        </p>
-      </div>
-
-      {% if user %}
-      <!-- Theme Toggle (User Menu) -->
-      <div class="pt-4 mt-4 border-t vmp-border-color">
-        <button type="button" 
-                class="vmp-theme-toggle w-full flex items-center justify-center gap-2 px-3 py-2 rounded-md border vmp-border-color hover:vmp-bg-veil transition-all duration-200"
-                @click="theme = (theme === 'dark') ? 'light' : 'dark'"
-                :aria-label="theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'" 
-                title="Toggle theme (⌘T)">
-          <svg x-show="theme === 'dark'" 
-               xmlns="http://www.w3.org/2000/svg" 
-               fill="none" 
-               viewBox="0 0 24 24"
-               stroke="currentColor" 
-               class="w-5 h-5"
-               x-cloak>
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-              d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
-          </svg>
-          <svg x-show="theme === 'light'" 
-               xmlns="http://www.w3.org/2000/svg" 
-               fill="none" 
-               viewBox="0 0 24 24"
-               stroke="currentColor" 
-               class="w-5 h-5"
-               x-cloak>
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-              d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-          </svg>
-          <span class="vmp-body-small" x-text="theme === 'dark' ? 'Light Mode' : 'Dark Mode'"></span>
-        </button>
-      </div>
-      {% endif %}
-
-      {% if user %}
-      <!-- User Info & Logout -->
-      <div class="pt-4 mt-4 border-t vmp-border-color">
-        <div class="mb-3">
-          <div class="vmp-caption vmp-muted mb-1">Logged in as</div>
-          <div class="vmp-body-small font-medium truncate">{{ user.displayName or user.email }}</div>
-        </div>
-        
-        <!-- Notification Badge (Sprint 7.4) -->
-        <div id="notification-badge-container" 
-             hx-get="/partials/notification-badge.html" 
-             hx-trigger="load, every 30s"
-             hx-target="this" 
-             hx-swap="innerHTML"
-             class="mb-3">
-        </div>
-        
-        <form method="POST" action="/logout">
-          <button type="submit" class="vmp-btn vmp-btn-outline w-full">
-            Sign Out
-          </button>
-        </form>
-      </div>
-      {% endif %}
-
+  <aside class="w-[280px] flex-shrink-0 flex flex-col relative z-20 hidden md:flex"
+    style="border-right: 1px solid var(--shell-border); background: linear-gradient(180deg, rgba(5,5,5,0.8) 0%, rgba(5,5,5,0.95) 100%); backdrop-filter: blur(20px);"
+    id="org-tree-sidebar" hx-get="/partials/org-tree-sidebar.html" hx-trigger="load" hx-swap="innerHTML"
+    hx-indicator="#org-tree-loading"
+    hx-on::htmx:response-error="console.error('HTMX Error loading org tree:', event.detail)"
+    hx-on::htmx:after-request="if(event.detail.failed) { console.error('HTMX Request failed:', event.detail); }">
+    <div id="org-tree-loading" class="flex items-center justify-center h-full htmx-indicator">
+      <div class="text-white/20 text-xs">Loading organization tree...</div>
     </div>
   </aside>
 
-  <!-- Mobile Navigation Drawer (Sprint 12.3) -->
-  {% if user %}
-  {% include "partials/mobile_nav_drawer.html" %}
-  {% endif %}
+  <main id="main-content" class="flex-1 relative z-10 flex flex-col min-w-0 overflow-hidden">
 
-  <!-- Main Content -->
-  <main class="flex-1 min-w-0 relative z-10 md:ml-0" style="padding-top: env(safe-area-inset-top);">
-    {% block content %}{% endblock %}
+    <header class="h-16 shrink-0 border-b border-white/5 bg-[#050505]/50 backdrop-blur-md flex items-center justify-between px-6 z-50 relative">
+      <div class="flex items-center gap-4">
+        <button @click="mobileMenuOpen = !mobileMenuOpen" 
+                class="lg:hidden p-2 -ml-2 text-white/50 hover:text-white transition-colors"
+                id="mobile-menu-button">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 6h16M4 12h8m-8 6h16"></path>
+          </svg>
+        </button>
+        
+        <div class="flex items-center gap-3">
+          <div class="w-2 h-2 rounded-full bg-white shadow-[0_0_10px_white]"></div>
+          <span class="font-serif text-lg tracking-tight text-white">The Uplink</span>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-4">
+        <div class="hidden md:flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20">
+          <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+          <span class="font-mono text-[10px] text-emerald-400 uppercase tracking-widest">Secure_Link</span>
+        </div>
+        
+        <div class="w-9 h-9 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-white/60 font-serif font-bold">
+          {{ user.email[0] | upper if user else 'O' }}
+        </div>
+      </div>
+    </header>
+
+    <div x-show="mobileMenuOpen" 
+         x-transition.opacity
+         class="lg:hidden fixed inset-0 z-[60] bg-[#050505]/90 backdrop-blur-lg p-6 flex flex-col items-center justify-center space-y-8"
+         style="display: none;">
+      <button @click="mobileMenuOpen = false" class="absolute top-6 right-6 text-white/40 text-2xl hover:text-white transition-colors">×</button>
+      
+      <nav class="flex flex-col items-center gap-8">
+        <a href="/supplier/dashboard" @click="mobileMenuOpen = false" class="font-serif text-3xl text-white hover:text-emerald-400 transition-colors">Canvas</a>
+        <a href="/supplier/cases" @click="mobileMenuOpen = false" class="font-serif text-3xl text-white/50 hover:text-white transition-colors">Signals</a>
+        <a href="/supplier/payments" @click="mobileMenuOpen = false" class="font-serif text-3xl text-white/50 hover:text-white transition-colors">Ledger</a>
+        <a href="/profile" @click="mobileMenuOpen = false" class="font-serif text-3xl text-white/50 hover:text-white transition-colors">Identity</a>
+      </nav>
+    </div>
+
+    <div class="flex-1 overflow-y-auto scroll-smooth">
+      <div id="main-loader" class="htmx-indicator h-0.5 w-full bg-[#60ffc6]/20 overflow-hidden absolute top-0 z-50">
+        <div class="h-full bg-[#60ffc6] w-1/3 animate-[loading_1s_ease-in-out_infinite]"></div>
+      </div>
+
+      <div class="w-full max-w-[1600px] mx-auto p-6 lg:p-10 min-h-full">
+        {% block content %}{% endblock %}
+      </div>
+    </div>
+
   </main>
 
-  <!-- Service Worker Registration (Sprint 12.2: PWA) -->
+  <div id="toast-container" class="fixed bottom-8 right-8 z-50 flex flex-col gap-3 pointer-events-none"></div>
+
+  {% if user %}
+  {% include "partials/command_palette.html" %}
+  {% include "partials/keyboard_shortcuts_modal.html" %}
+  {% include "partials/export_modal.html" %}
+  {% endif %}
+
   <script>
+    // Service Worker Registration
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js')
-          .then((registration) => {
-            console.log('[PWA] Service Worker registered:', registration.scope);
-            
-            // Check for updates
-            registration.addEventListener('updatefound', () => {
-              const newWorker = registration.installing;
-              newWorker.addEventListener('statechange', () => {
-                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                  // New service worker available
-                  console.log('[PWA] New service worker available');
-                  // Optionally show update notification to user
-                }
-              });
-            });
-          })
-          .catch((error) => {
-            console.error('[PWA] Service Worker registration failed:', error);
-          });
-
-        // Listen for service worker messages
-        navigator.serviceWorker.addEventListener('message', (event) => {
-          console.log('[PWA] Message from service worker:', event.data);
-        });
-
-        // Handle service worker updates
-        let refreshing = false;
-        navigator.serviceWorker.addEventListener('controllerchange', () => {
-          if (!refreshing) {
-            refreshing = true;
-            window.location.reload();
-          }
-        });
+        navigator.serviceWorker.register('/sw.js').catch(err => console.error('[SW] Error:', err));
       });
     }
 
-    // Push Notification Registration (Sprint 12.3)
-    if ('serviceWorker' in navigator && 'PushManager' in window) {
-      // Request permission after user interaction
-      document.addEventListener('click', async () => {
-        if (Notification.permission === 'default') {
-          // Only request on first user interaction
-          const permission = await Notification.requestPermission();
-          if (permission === 'granted') {
-            console.log('[Push] Permission granted');
-            // Subscription will be handled by push-notifications.js
+    // Mobile menu button handler (moved from inline onclick for CSP compliance)
+    document.addEventListener('DOMContentLoaded', () => {
+      const mobileMenuButton = document.getElementById('mobile-menu-button');
+      if (mobileMenuButton) {
+        mobileMenuButton.addEventListener('click', () => {
+          // Use Alpine.js to toggle the mobile drawer
+          const htmlElement = document.documentElement;
+          if (htmlElement.__x) {
+            htmlElement.__x.$data.mobileMenuOpen = !htmlElement.__x.$data.mobileMenuOpen;
           }
-        }
-      }, { once: true });
-    }
+        });
+      }
+    });
   </script>
+
+  <style>
+    @keyframes loading {
+      0% {
+        transform: translateX(-100%);
+      }
+
+      100% {
+        transform: translateX(300%);
+      }
+    }
+  </style>
 </body>
 
 </html>

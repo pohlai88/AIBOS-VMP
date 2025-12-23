@@ -34,6 +34,7 @@ export function validateRequired(field, fieldName = 'Field') {
 
 /**
  * Requires authentication - redirects to login if not authenticated
+ * Handles both institutional and independent users
  * @param {object} req - Express request object
  * @param {object} res - Express response object
  * @returns {boolean} - True if authenticated, false if redirected
@@ -43,18 +44,41 @@ export function requireAuth(req, res) {
     res.status(401).redirect('/login');
     return false;
   }
+
+  // Independent users don't need vendor context
+  if (req.user.user_tier === 'independent') {
+    return true;
+  }
+
+  // Institutional users need vendor context
+  if (!req.user.vendorId) {
+    res.status(403).render('pages/403.html', {
+      error: { status: 403, message: 'Access denied. Vendor context required.' }
+    });
+    return false;
+  }
+
   return true;
+}
+
+/**
+ * Gets user tier from request
+ * @param {object} req - Express request object
+ * @returns {string} - User tier ('institutional' or 'independent')
+ */
+export function getUserTier(req) {
+  return req.user?.user_tier || 'institutional';
 }
 
 /**
  * Requires internal user access - returns 403 if not internal
  * @param {object} req - Express request object
  * @param {object} res - Express response object
- * @param {string} template - Template to render on error (default: 'pages/error.html')
+ * @param {string} template - Template to render on error (default: 'pages/403.html')
  * @param {string} customMessage - Custom error message (optional)
  * @returns {boolean} - True if internal, false if access denied
  */
-export function requireInternal(req, res, template = 'pages/error.html', customMessage = null) {
+export function requireInternal(req, res, template = 'pages/403.html', customMessage = null) {
   if (!req.user) {
     res.status(401).redirect('/login');
     return false;

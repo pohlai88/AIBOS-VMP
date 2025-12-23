@@ -1,0 +1,759 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>NexusCanon — The Doctrine</title>
+    <meta name="description" content="The Operating System for Settlement Governance." />
+    <style>
+        :root {
+            --bg: #050505;
+            --bg2: #0a0a0c;
+            --card: rgba(255, 255, 255, .02);
+            --border: rgba(255, 255, 255, .08);
+            --txt: rgba(235, 235, 235, .9);
+            --muted: rgba(235, 235, 235, .5);
+            --mono: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+            --sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+            --accent: 142 70% 50%;
+            /* Signal Green */
+            --danger: 0 85% 60%;
+            /* Alert Red */
+            --warn: 30 80% 55%;
+            /* Amber */
+            --max: 1180px;
+        }
+
+        * {
+            box-sizing: border-box
+        }
+
+        html,
+        body {
+            height: 100%
+        }
+
+        body {
+            margin: 0;
+            font-family: var(--sans);
+            color: var(--txt);
+            background: var(--bg);
+            overflow-x: hidden;
+        }
+
+        /* --- DEEP VOID ATMOSPHERE --- */
+        .noise {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 90;
+            opacity: .04;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+        }
+
+        .grid-layer {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 0;
+            opacity: .08;
+            background-size: 60px 60px;
+            background-image: linear-gradient(to right, rgba(255, 255, 255, .05) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(255, 255, 255, .05) 1px, transparent 1px);
+            mask-image: radial-gradient(circle at center, black 40%, transparent 100%);
+        }
+
+        a {
+            color: inherit;
+            text-decoration: none;
+            transition: color .2s
+        }
+
+        a:hover {
+            color: #fff
+        }
+
+        .container {
+            max-width: var(--max);
+            margin: 0 auto;
+            padding: 0 24px
+        }
+
+        /* --- TYPOGRAPHY --- */
+        h1,
+        h2,
+        h3 {
+            margin: 0;
+            font-weight: 500;
+            letter-spacing: -0.03em
+        }
+
+        .mono {
+            font-family: var(--mono);
+            letter-spacing: 0.05em;
+            text-transform: uppercase
+        }
+
+        /* --- Navigation --- */
+        nav {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            height: 80px;
+            display: flex;
+            align-items: center;
+            background: rgba(6, 6, 7, .72);
+            backdrop-filter: blur(14px);
+            border-bottom: 1px solid rgba(255, 255, 255, .07);
+            z-index: 100;
+        }
+
+        nav::after {
+            content: "";
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: -1px;
+            height: 1px;
+            background: linear-gradient(to right, transparent, rgba(255, 255, 255, .10), transparent);
+            opacity: .6;
+            pointer-events: none;
+        }
+
+        .nav-inner {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            gap: 16px;
+        }
+
+        .brand {
+            font-size: 1rem;
+            font-weight: 600;
+            font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            letter-spacing: -0.02em;
+            white-space: nowrap;
+            color: #fff;
+        }
+
+        .tracking-tight {
+            letter-spacing: -0.025em;
+        }
+
+        /* Brand Link - Makes icon clickable */
+        .brand-link {
+            display: flex;
+            align-items: center;
+            text-decoration: none;
+            color: inherit;
+            transition: opacity 0.3s ease;
+        }
+
+        .brand-link:hover {
+            opacity: 0.85;
+        }
+
+        .brand svg {
+            width: 36px;
+            height: 36px;
+            color: hsl(var(--accent));
+            transition: color 0.5s ease;
+            position: relative;
+            transform-origin: center;
+            animation: iconBreathing 4s ease-in-out infinite;
+        }
+
+        /* Breathing animation - organic, alive feeling like a heartbeat (no glow) */
+        @keyframes iconBreathing {
+            0% {
+                transform: scale(1);
+            }
+
+            40% {
+                transform: scale(1.03);
+            }
+
+            50% {
+                transform: scale(1.035);
+            }
+
+            60% {
+                transform: scale(1.03);
+            }
+
+            100% {
+                transform: scale(1);
+            }
+        }
+
+        /* Inner elements breathing with slight delay for depth */
+        .brand svg .icon-glow-layer {
+            animation: innerBreathing 4s ease-in-out infinite;
+            transform-origin: center;
+            /* Color inherited from parent SVG via currentColor */
+        }
+
+        @keyframes innerBreathing {
+            0% {
+                transform: scale(1);
+                opacity: 1;
+            }
+
+            40% {
+                transform: scale(1.02);
+                opacity: 0.98;
+            }
+
+            50% {
+                transform: scale(1.025);
+                opacity: 0.97;
+            }
+
+            60% {
+                transform: scale(1.02);
+                opacity: 0.98;
+            }
+
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        /* Geometric pattern elements - subtle breathing with slight offset */
+        .brand svg rect {
+            animation: patternBreathing 4.1s ease-in-out infinite;
+            transform-origin: center;
+        }
+
+        @keyframes patternBreathing {
+
+            0%,
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+
+            50% {
+                transform: scale(1.04);
+                opacity: 0.95;
+            }
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 2rem;
+            font-size: .92rem;
+            color: rgba(237, 237, 237, .60);
+        }
+
+        .nav-links a {
+            position: relative;
+            padding: 8px 0;
+        }
+
+        .nav-links a::after {
+            content: "";
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: 3px;
+            height: 1px;
+            background: rgba(255, 255, 255, .16);
+            opacity: 0;
+            transform: translateY(2px);
+            transition: .18s ease;
+        }
+
+        .nav-links a:hover {
+            color: white;
+        }
+
+        .nav-links a:hover::after {
+            opacity: 1;
+            transform: translateY(0px);
+        }
+
+        /* Nav Actions Container */
+        .nav-actions {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        /* Base Button Styles - Both buttons same size and font */
+        .btn {
+            font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            font-size: 14px;
+            font-weight: 500;
+            padding: 10px 22px;
+            border-radius: 100px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 1px solid transparent;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            text-decoration: none;
+            white-space: nowrap;
+            height: 43px;
+            /* Same height for both buttons */
+        }
+
+        /* PROVENANCE ACCESS: Low-profile, glassmorphic style */
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.05);
+            color: #d1d1d1;
+            border-color: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(5px);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: #ffffff;
+            border-color: rgba(255, 255, 255, 0.3);
+        }
+
+        /* The Status Dot for Provenance - Uses accent color, updates with scroll */
+        .status-dot {
+            width: 6px;
+            height: 6px;
+            background-color: hsl(var(--accent));
+            /* Uses accent color from hero badge */
+            border-radius: 50%;
+            box-shadow: 0 0 8px hsl(var(--accent));
+            flex-shrink: 0;
+            transition: background-color 0.5s ease, box-shadow 0.5s ease;
+        }
+
+        /* --- HERO --- */
+        header {
+            padding: 140px 0 60px;
+            text-align: center
+        }
+
+        .pre-head {
+            color: hsl(var(--accent));
+            font-size: 11px;
+            margin-bottom: 24px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            border: 1px solid rgba(255, 255, 255, .1);
+            padding: 6px 12px;
+            border-radius: 100px;
+        }
+
+        h1 {
+            font-size: clamp(40px, 6vw, 72px);
+            line-height: 1;
+            background: linear-gradient(to bottom, #fff, #888);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            margin-bottom: 24px;
+        }
+
+        .lead {
+            font-size: 18px;
+            color: var(--muted);
+            max-width: 680px;
+            margin: 0 auto 40px;
+            line-height: 1.6;
+        }
+
+        /* --- THE MIRROR (TRANSMUTATION ENGINE) --- */
+        .mirror-section {
+            margin: 80px 0;
+            border: 1px solid var(--border);
+            background: rgba(10, 10, 12, 0.6);
+            border-radius: 12px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .mirror-header {
+            text-align: center;
+            padding: 40px 20px 20px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .mirror-grid {
+            display: grid;
+            grid-template-columns: 1fr 2px 1fr;
+        }
+
+        .mirror-spine {
+            background: linear-gradient(to bottom, transparent, hsl(var(--accent)), transparent);
+            width: 1px;
+            height: 100%;
+            opacity: 0.5;
+            box-shadow: 0 0 15px hsl(var(--accent));
+            position: relative;
+        }
+
+        .mirror-spine::after {
+            content: "KERNEL";
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(90deg);
+            background: #000;
+            color: hsl(var(--accent));
+            font-family: var(--mono);
+            font-size: 10px;
+            padding: 4px 10px;
+            border: 1px solid hsl(var(--accent));
+        }
+
+        /* SIDE: CHAOS */
+        .side-chaos {
+            padding: 40px;
+            background: radial-gradient(circle at top left, rgba(255, 50, 50, 0.03), transparent);
+            color: var(--muted);
+        }
+
+        .chaos-tag {
+            color: hsl(var(--danger));
+            font-size: 10px;
+            margin-bottom: 12px;
+            display: block;
+        }
+
+        .chat-bubble {
+            font-family: var(--mono);
+            font-size: 12px;
+            background: rgba(255, 255, 255, 0.03);
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 12px;
+            border-left: 2px solid hsl(var(--danger));
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        .chat-bubble b {
+            color: #fff;
+            display: block;
+            margin-bottom: 4px;
+            font-size: 10px;
+            opacity: 0.5;
+        }
+
+        /* SIDE: ORDER */
+        .side-order {
+            padding: 40px;
+            background: radial-gradient(circle at top right, rgba(50, 255, 100, 0.03), transparent);
+        }
+
+        .order-tag {
+            color: hsl(var(--accent));
+            font-size: 10px;
+            margin-bottom: 12px;
+            display: block;
+            text-align: right;
+        }
+
+        .data-row {
+            font-family: var(--mono);
+            font-size: 12px;
+            display: flex;
+            justify-content: space-between;
+            border-bottom: 1px solid var(--border);
+            padding: 8px 0;
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        .data-row span:first-child {
+            color: var(--muted);
+        }
+
+        .status-pill {
+            background: rgba(0, 255, 100, 0.1);
+            color: hsl(var(--accent));
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 10px;
+        }
+
+        /* --- DOCTRINE GRID --- */
+        .doctrine-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 24px;
+            margin: 60px 0;
+        }
+
+        .doctrine-card {
+            background: linear-gradient(145deg, rgba(255, 255, 255, 0.03), transparent);
+            border: 1px solid var(--border);
+            padding: 32px;
+            border-radius: 12px;
+            transition: border-color 0.3s;
+        }
+
+        .doctrine-card:hover {
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .num {
+            font-family: var(--mono);
+            color: var(--muted);
+            font-size: 12px;
+            opacity: 0.5;
+            margin-bottom: 16px;
+            display: block;
+        }
+
+        .card-title {
+            font-size: 20px;
+            color: #fff;
+            margin-bottom: 12px;
+        }
+
+        .card-body {
+            font-size: 14px;
+            line-height: 1.6;
+            color: var(--muted);
+        }
+
+        /* --- FOOTER --- */
+        footer {
+            border-top: 1px solid var(--border);
+            padding: 60px 0;
+            margin-top: 80px;
+            text-align: center;
+        }
+
+        .footer-sig {
+            font-family: var(--mono);
+            font-size: 12px;
+            letter-spacing: 0.3em;
+            color: rgba(255, 255, 255, 1);
+            opacity: 1;
+        }
+
+        /* RESPONSIVE */
+        @media(max-width: 768px) {
+            .mirror-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .mirror-spine {
+                height: 1px;
+                width: 100%;
+                margin: 20px 0;
+            }
+
+            .mirror-spine::after {
+                transform: translate(-50%, -50%);
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="noise"></div>
+    <div class="grid-layer"></div>
+
+    <nav>
+        <div class="container nav-inner">
+            <a href="/home" class="brand brand-link">
+                <svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"
+                    role="img" aria-label="NexusCanon Adaptive Icon">
+                    <title>NexusCanon Adaptive Icon</title>
+                    <desc>Transparent icon that adapts to background colors using currentColor and mix-blend-mode</desc>
+                    <mask id="outer-mask" fill="white">
+                        <path
+                            d="M0 18C0 8.05887 8.05887 0 18 0C27.9411 0 36 8.05887 36 18C36 27.9411 27.9411 36 18 36C8.05887 36 0 27.9411 0 18Z" />
+                    </mask>
+                    <circle cx="18" cy="18" r="18" fill="currentColor" fill-opacity="0.12" mask="url(#outer-mask)"
+                        class="icon-glow-layer" />
+                    <path
+                        d="M18 36V35.3333C8.42706 35.3333 0.666667 27.5729 0.666667 18H0H-0.666667C-0.666667 28.3093 7.69068 36.6667 18 36.6667V36ZM36 18H35.3333C35.3333 27.5729 27.5729 35.3333 18 35.3333V36V36.6667C28.3093 36.6667 36.6667 28.3093 36.6667 18H36ZM18 0V0.666667C27.5729 0.666667 35.3333 8.42706 35.3333 18H36H36.6667C36.6667 7.69068 28.3093 -0.666667 18 -0.666667V0ZM18 0V-0.666667C7.69068 -0.666667 -0.666667 7.69068 -0.666667 18H0H0.666667C0.666667 8.42706 8.42706 0.666667 18 0.666667V0Z"
+                        fill="currentColor" fill-opacity="0.08" mask="url(#outer-mask)" />
+                    <mask id="inner-mask" fill="white">
+                        <path
+                            d="M8.66602 17.9998C8.66602 12.8452 12.8447 8.6665 17.9993 8.6665C23.154 8.6665 27.3327 12.8452 27.3327 17.9998C27.3327 23.1545 23.154 27.3332 17.9993 27.3332C12.8447 27.3332 8.66602 23.1545 8.66602 17.9998Z" />
+                    </mask>
+                    <circle cx="18" cy="18" r="9.333" fill="currentColor" fill-opacity="0.2" mask="url(#inner-mask)"
+                        class="icon-glow-layer" />
+                    <path
+                        d="M17.9993 27.3332V26.6665C13.2129 26.6665 9.33268 22.7863 9.33268 17.9998H8.66602H7.99935C7.99935 23.5227 12.4765 27.9998 17.9993 27.9998V27.3332ZM27.3327 17.9998H26.666C26.666 22.7863 22.7858 26.6665 17.9993 26.6665V27.3332V27.9998C23.5222 27.9998 27.9994 23.5227 27.9994 17.9998H27.3327ZM17.9993 8.6665V9.33317C22.7858 9.33317 26.666 13.2134 26.666 17.9998H27.3327H27.9994C27.9994 12.477 23.5222 7.99984 17.9993 7.99984V8.6665ZM17.9993 8.6665V7.99984C12.4765 7.99984 7.99935 12.477 7.99935 17.9998H8.66602H9.33268C9.33268 13.2134 13.2129 9.33317 17.9993 9.33317V8.6665Z"
+                        fill="currentColor" fill-opacity="0.1" mask="url(#inner-mask)" />
+                    <g fill="currentColor">
+                        <rect x="12" y="12" width="12" height="12" rx="2" fill-opacity="0.25" />
+                        <rect x="14" y="14" width="8" height="8" rx="1.5" fill-opacity="0.4" />
+                        <rect x="16" y="16" width="4" height="4" rx="1" fill-opacity="0.6" />
+                    </g>
+                    <circle cx="18" cy="18" r="18" fill="currentColor" fill-opacity="0.05"
+                        style="mix-blend-mode: multiply;" class="icon-glow-layer" />
+                </svg>
+                <span class="tracking-tight">NexusCanon</span>
+            </a>
+
+            <div class="nav-links">
+                <a href="#platform">Platform</a>
+                <a href="#demo">Compliance</a>
+                <a href="#docs">Docs</a>
+            </div>
+
+            <div class="nav-actions">
+                <a href="/login" class="btn btn-secondary">
+                    <span class="status-dot" id="navDot"></span>
+                    <span id="navStatus">Provenance Access</span>
+                </a>
+                <a href="/sign-up" class="btn btn-primary">Initiate Discovery</a>
+            </div>
+        </div>
+    </nav>
+
+    <header class="container">
+        <div class="pre-head mono">Manifesto v2.0</div>
+        <h1>Governance is not a policy.<br>It is code.</h1>
+        <p class="lead">
+            We believe the way companies pay suppliers is fundamentally broken.
+            It isn’t broken because of the ERP. It is broken because of the <strong>WhatsApp Gap</strong>—the chaotic
+            void
+            between the supplier’s phone and your ledger.
+        </p>
+    </header>
+
+    <section class="container">
+        <div class="mirror-section">
+            <div class="mirror-header">
+                <h2 class="mono" style="font-size:14px; color:var(--muted)">THE TRANSMUTATION ENGINE</h2>
+                <p style="font-size:13px; color:rgba(255,255,255,0.4); margin-top:8px">We translate supplier entropy
+                    into
+                    financial signal.</p>
+            </div>
+
+            <div class="mirror-grid">
+                <div class="side-chaos">
+                    <span class="chaos-tag mono">/// INPUT: UNSTRUCTURED ENTROPY</span>
+
+                    <div class="chat-bubble">
+                        <b>[Supplier_WA]:</b> "Hey, forgot to attach the new bank details to the invoice I sent
+                        yesterday. Can you
+                        update? Urgent!!"
+                    </div>
+                    <div class="chat-bubble">
+                        <b>[Supplier_Email]:</b> "Why is inv #9902 unpaid? Payment run was today right?"
+                    </div>
+                    <div class="chat-bubble" style="opacity:0.6">
+                        <b>[System]:</b> Error: 3-way match failed. PO variance > 5%.
+                    </div>
+                </div>
+
+                <div class="mirror-spine"></div>
+
+                <div class="side-order">
+                    <span class="order-tag mono">/// OUTPUT: GOVERNED TRUTH</span>
+
+                    <div class="data-row">
+                        <span>CASE_ID</span>
+                        <span style="color:#fff">#CS-2049</span>
+                    </div>
+                    <div class="data-row">
+                        <span>INTENT</span>
+                        <span style="color:#fff">PAYMENT_DETAILS_UPDATE</span>
+                    </div>
+                    <div class="data-row">
+                        <span>RISK_LEVEL</span>
+                        <span style="color:hsl(var(--danger))">CRITICAL</span>
+                    </div>
+                    <div class="data-row">
+                        <span>ACTION</span>
+                        <span class="status-pill">EVIDENCE_REQUIRED</span>
+                    </div>
+                    <div class="data-row" style="margin-top:10px; border:none">
+                        <span style="color:hsl(var(--accent))">> PROTOCOL_ENFORCED</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="container">
+        <div class="doctrine-grid">
+
+            <div class="doctrine-card">
+                <span class="num">01 // THE ATOMICITY OF TRUTH</span>
+                <h3 class="card-title">Everything is a Case.</h3>
+                <p class="card-body">
+                    There are no "loose threads." If a supplier asks a question, it is a Case. If they dispute a
+                    payment, it is a
+                    Case. We replace the "black hole" of general inquiry with an immutable, tracked object.
+                </p>
+            </div>
+
+            <div class="doctrine-card">
+                <span class="num">02 // THE SILICON SHIELD</span>
+                <h3 class="card-title">The AI is the Gatekeeper.</h3>
+                <p class="card-body">
+                    Your AP team is not a helpdesk. They are guardians of capital. Our AI Agent intercepts noise,
+                    validates data,
+                    and demands missing evidence <em>before</em> a human ever sees it.
+                </p>
+            </div>
+
+            <div class="doctrine-card">
+                <span class="num">03 // BRIDGES, NOT WALLS</span>
+                <h3 class="card-title">Don't kill WhatsApp. Bridge it.</h3>
+                <p class="card-body">
+                    Suppliers live in chat apps. We do not force them to leave. We build Ports that ingest their chaotic
+                    messages
+                    and transmute them into our Evidence Vault.
+                </p>
+            </div>
+
+            <div class="doctrine-card">
+                <span class="num">04 // THE SHADOW LEDGER</span>
+                <h3 class="card-title">Truth is Independent.</h3>
+                <p class="card-body">
+                    NexusCanon maintains the "Supplier Truth" independently of your ERP. Even if SAP is down, or you are
+                    migrating
+                    systems, the settlement governance remains active and visible.
+                </p>
+            </div>
+
+            <div class="doctrine-card">
+                <span class="num">05 // SETTLEMENT GOVERNANCE</span>
+                <h3 class="card-title">No Evidence, No Coin.</h3>
+                <p class="card-body">
+                    We replace "trust" with "proof." A payment cycle cannot proceed unless the evidence pack (Invoice +
+                    GRN +
+                    Approvals) is cryptographically linked and complete.
+                </p>
+            </div>
+
+            <div class="doctrine-card">
+                <span class="num">06 // ARCHAEOLOGY VS. RECALL</span>
+                <h3 class="card-title">Instant Audit.</h3>
+                <p class="card-body">
+                    When the auditors come, you do not dig through emails. You simply export the Case Log. Every
+                    decision, every
+                    override, every document is timestamped and user-stamped.
+                </p>
+            </div>
+
+        </div>
+    </section>
+
+    <footer>
+        <div class="container">
+            <div class="footer-sig">PROTECT • DETECT • REACT</div>
+            <div style="margin-top:20px; font-size:10px; color:rgba(255,255,255,0.6)">
+                KERNEL: AI-BOS // ARCHITECTURE: CANON
+            </div>
+        </div>
+    </footer>
+
+</body>
+
+</html>

@@ -1,0 +1,62 @@
+{% extends "layout.html" %}
+{% block title %}SLA Analytics — NexusCanon VMP{% endblock %}
+
+{% block content %}
+<div class="w-full max-w-7xl mx-auto space-y-8">
+    
+    <header class="border-b border-white/10 pb-6">
+        <div class="flex items-center justify-between mb-2">
+            <h1 class="vmp-h1 leading-none">SLA Analytics</h1>
+            <div class="flex items-center gap-3">
+                <!-- Date Range Selector -->
+                <form hx-get="/ops/sla-analytics" 
+                      hx-target="#main-content" 
+                      hx-swap="innerHTML"
+                      class="flex items-center gap-2">
+                    <input type="date" 
+                           name="start_date" 
+                           value="{{ dateRange.startDate }}"
+                           class="vmp-form-input text-sm">
+                    <span class="vmp-caption vmp-muted">to</span>
+                    <input type="date" 
+                           name="end_date" 
+                           value="{{ dateRange.endDate }}"
+                           class="vmp-form-input text-sm">
+                    {% if scopeId %}
+                    <input type="hidden" name="scope_id" value="{{ scopeId }}">
+                    {% endif %}
+                    <button type="submit" class="vmp-action-button vmp-action-button-primary text-sm">
+                        Apply
+                    </button>
+                </form>
+            </div>
+        </div>
+        <p class="vmp-body opacity-80">
+            {% if scopeType == 'group' %}
+            Director View: Group-wide SLA metrics
+            {% elif scopeType == 'company' %}
+            Manager View: Company-specific SLA metrics
+            {% else %}
+            Super Admin View: Tenant-wide SLA metrics
+            {% endif %}
+        </p>
+        {% if dateRange %}
+        <p class="vmp-caption vmp-muted mt-1">
+            Period: {{ dateRange.startDate }} to {{ dateRange.endDate }}
+        </p>
+        {% endif %}
+    </header>
+
+    <!-- SLA Analytics Content -->
+    <div id="sla-analytics-container"
+         hx-get="/partials/sla-analytics.html?scope_type={{ scopeType }}&scope_id={{ scopeId }}&start_date={{ dateRange.startDate }}&end_date={{ dateRange.endDate }}"
+         hx-trigger="load"
+         hx-target="this"
+         hx-swap="innerHTML">
+        <div class="flex items-center justify-center h-64">
+            <div class="vmp-label-kicker animate-pulse opacity-60">Loading SLA analytics...</div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

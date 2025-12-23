@@ -969,11 +969,51 @@ html[data-surface="vmp"] {
       cursor: not-allowed;
       pointer-events: none;
     }
+  }
 
-    &:focus-visible {
-      outline: 2px solid hsla(0, 0%, 100%, 0.25);
-      outline-offset: 2px;
-    }
+  /* ===== BEASTMODE BUTTONS (Mechanical Feel - High-Fidelity Feedback) ===== */
+  /* 
+   * ===== BEASTMODE BUTTON HIERARCHY (IDE-Readable) =====
+   * 
+   * CONCEPT: Every click feels "heavy" and significant - like flipping a switch in a cockpit
+   * 
+   * COMPONENT STRUCTURE:
+   * - .beast-btn: Base beastmode button with mechanical recoil
+   *   - Mechanical active state: scale down + translateY + inset shadow + border change
+   *   - Optional: Sound feedback (implemented via JavaScript)
+   * 
+   * USAGE: Critical actions that need to feel significant
+   * SCOPE: Design Layer - Free hand for creative/marketing
+   * 
+   * IDE AUTocomplete:
+   * - Type ".beast-btn" for mechanical-feel button
+   */
+  
+  & .beast-btn {
+    transition: transform 0.08s cubic-bezier(0.4, 0, 0.2, 1),
+                box-shadow 0.08s cubic-bezier(0.4, 0, 0.2, 1),
+                border-color 0.08s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  & .beast-btn:active {
+    transform: scale(0.98) translateY(1px);
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.5);
+    border-color: rgba(255, 255, 255, 0.05);
+  }
+
+  /* Apply beastmode to primary buttons by default for critical actions */
+  & .vmp-btn-primary.beast-btn:active,
+  & .vmp-action-button-primary.beast-btn:active {
+    transform: scale(0.98) translateY(1px);
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.6);
+    border-color: rgba(86, 255, 184, 0.3);
+  }
+
+  & .vmp-btn-danger.beast-btn:active,
+  & .vmp-action-button-danger.beast-btn:active {
+    transform: scale(0.98) translateY(1px);
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.6);
+    border-color: rgba(255, 100, 100, 0.3);
   }
 
   & .vmp-btn-ghost,
@@ -1107,6 +1147,79 @@ html[data-surface="vmp"] {
     color: var(--vmp-danger);
   }
 
+  /* ===== PILLS (Status Indicators - Semantic) ===== */
+  /* 
+   * ===== PILL COMPONENT HIERARCHY (IDE-Readable) =====
+   * 
+   * COMPONENT STRUCTURE:
+   * - .vmp-pill: Base pill component (rounded, inline)
+   *   - .vmp-pill-paid: Paid status (green)
+   *   - .vmp-pill-pending: Pending status (yellow)
+   *   - .vmp-pill-disputed: Disputed status (red)
+   *   - .vmp-pill-blocked: Blocked status (red, darker)
+   *   - .vmp-pill-matched: Matched status (green)
+   *   - .vmp-pill-ready: Ready status (green)
+   *   - .vmp-pill-warn: Warning status (yellow)
+   * 
+   * USAGE: Status indicators for invoices, payments, cases
+   * SCOPE: Foundation Layer - Data presentation
+   * 
+   * IDE AUTocomplete:
+   * - Type ".vmp-pill" for base pill
+   * - Type ".vmp-pill-paid" for paid status
+   * - Type ".vmp-pill-pending" for pending status
+   */
+  
+  & .vmp-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--vmp-space-1) var(--vmp-space-3);
+    border-radius: var(--vmp-radius-full);
+    border: 1px solid var(--vmp-border);
+    background: hsla(0, 0%, 100%, 0.05);
+    color: var(--vmp-text);
+    font-size: var(--vmp-font-xs);
+    font-weight: 300;
+    line-height: var(--vmp-line-height-normal);
+    text-transform: uppercase;
+    letter-spacing: var(--vmp-letter-spacing-wider);
+    font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+    white-space: nowrap;
+    min-width: fit-content;
+  }
+
+  /* Pill Variants - Semantic Colors */
+  & .vmp-pill-paid,
+  & .vmp-pill-matched,
+  & .vmp-pill-ready {
+    background: rgba(86, 255, 184, 0.08);
+    border-color: rgba(86, 255, 184, 0.20);
+    color: var(--vmp-ok);
+  }
+
+  & .vmp-pill-pending,
+  & .vmp-pill-warn {
+    background: rgba(255, 210, 120, 0.08);
+    border-color: rgba(255, 210, 120, 0.20);
+    color: var(--vmp-warn);
+  }
+
+  & .vmp-pill-disputed,
+  & .vmp-pill-blocked {
+    background: rgba(255, 100, 100, 0.08);
+    border-color: rgba(255, 100, 100, 0.20);
+    color: var(--vmp-danger);
+  }
+
+  /* Mobile: Full-width on small screens */
+  @media (max-width: 640px) {
+    & .vmp-pill {
+      width: 100%;
+      justify-content: flex-start;
+    }
+  }
+
   /* ===== ALERTS (Semantic) ===== */
   
   & .vmp-alert,
@@ -1137,6 +1250,673 @@ html[data-surface="vmp"] {
     background: rgba(255, 100, 100, 0.08);
     border-color: rgba(255, 100, 100, 0.20);
     color: var(--vmp-danger);
+  }
+
+  /* ===== TRUTH PANEL (Transaction Context) ===== */
+  /* 
+   * ===== TRUTH PANEL COMPONENT (IDE-Readable) =====
+   * 
+   * COMPONENT STRUCTURE:
+   * - .vmp-truth-panel: Container for transaction truth items
+   *   - .vmp-truth-item: Individual transaction item (invoice/PO/GRN/Payment)
+   * 
+   * USAGE: Display transaction context in case detail pages
+   * SCOPE: Foundation Layer - Data presentation
+   * 
+   * IDE AUTocomplete:
+   * - Type ".vmp-truth-panel" for truth panel container
+   * - Type ".vmp-truth-item" for individual transaction items
+   */
+  
+  & .vmp-truth-panel {
+    display: flex;
+    flex-direction: column;
+    gap: var(--vmp-space-3);
+    padding: var(--vmp-space-4);
+    background: var(--vmp-panel);
+    border: 1px solid var(--vmp-border);
+    border-radius: var(--vmp-radius-lg);
+  }
+
+  & .vmp-truth-item {
+    display: flex;
+    flex-direction: column;
+    gap: var(--vmp-space-2);
+    padding: var(--vmp-space-3);
+    border: 1px solid var(--vmp-border);
+    border-radius: var(--vmp-radius-md);
+    background: hsla(0, 0%, 100%, 0.02);
+    transition: background-color var(--vmp-transition-fast), border-color var(--vmp-transition-fast);
+  }
+
+  & .vmp-truth-item:hover {
+    background: hsla(0, 0%, 100%, 0.04);
+    border-color: var(--vmp-border-hover);
+  }
+
+  & .vmp-truth-item-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--vmp-space-2);
+  }
+
+  & .vmp-truth-item-title {
+    font-size: var(--vmp-font-sm);
+    font-weight: 300;
+    color: var(--vmp-text);
+  }
+
+  & .vmp-truth-item-type {
+    font-size: var(--vmp-font-xs);
+    text-transform: uppercase;
+    letter-spacing: var(--vmp-letter-spacing-wider);
+    color: var(--vmp-muted);
+  }
+
+  & .vmp-truth-item-body {
+    display: flex;
+    flex-direction: column;
+    gap: var(--vmp-space-1);
+  }
+
+  & .vmp-truth-item-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--vmp-space-3);
+    font-size: var(--vmp-font-xs);
+    color: var(--vmp-muted);
+  }
+
+  & .vmp-truth-item-link {
+    color: var(--vmp-ok);
+    text-decoration: none;
+    transition: color var(--vmp-transition-fast);
+  }
+
+  & .vmp-truth-item-link:hover {
+    color: var(--vmp-ok-hover);
+    text-decoration: underline;
+  }
+
+  /* ===== ESCALATION ZONE (Break-glass Protocol) ===== */
+  /* 
+   * ===== ESCALATION ZONE COMPONENT (IDE-Readable) =====
+   * 
+   * COMPONENT STRUCTURE:
+   * - .vmp-escalation-zone: Container for escalation hierarchy
+   *   - .vmp-break-glass: Break-glass button/trigger
+   *   - .vmp-emergency-contact: Revealed emergency contact section
+   * 
+   * USAGE: Case escalation and break-glass protocol
+   * SCOPE: Foundation Layer - Data presentation
+   * 
+   * IDE AUTocomplete:
+   * - Type ".vmp-escalation-zone" for escalation container
+   * - Type ".vmp-break-glass" for break-glass button
+   * - Type ".vmp-emergency-contact" for emergency contact section
+   */
+  
+  & .vmp-escalation-zone {
+    display: flex;
+    flex-direction: column;
+    gap: var(--vmp-space-4);
+    padding: var(--vmp-space-4);
+    background: var(--vmp-panel);
+    border: 1px solid var(--vmp-border);
+    border-radius: var(--vmp-radius-lg);
+  }
+
+  & .vmp-break-glass {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--vmp-space-3) var(--vmp-space-4);
+    border-radius: var(--vmp-radius-md);
+    border: 1px solid var(--vmp-warn);
+    background: rgba(255, 210, 120, 0.08);
+    color: var(--vmp-warn);
+    font-size: var(--vmp-font-sm);
+    font-weight: 300;
+    text-transform: uppercase;
+    letter-spacing: var(--vmp-letter-spacing-wider);
+    cursor: pointer;
+    transition: background-color var(--vmp-transition-fast), border-color var(--vmp-transition-fast);
+  }
+
+  & .vmp-break-glass:hover {
+    background: rgba(255, 210, 120, 0.12);
+    border-color: rgba(255, 210, 120, 0.40);
+  }
+
+  & .vmp-break-glass:active {
+    background: rgba(255, 210, 120, 0.16);
+  }
+
+  & .vmp-emergency-contact {
+    display: flex;
+    flex-direction: column;
+    gap: var(--vmp-space-2);
+    padding: var(--vmp-space-3);
+    border-radius: var(--vmp-radius-md);
+    border: 1px solid var(--vmp-warn);
+    background: rgba(255, 210, 120, 0.08);
+  }
+
+  & .vmp-emergency-contact-header {
+    font-size: var(--vmp-font-xs);
+    font-weight: 300;
+    text-transform: uppercase;
+    letter-spacing: var(--vmp-letter-spacing-wider);
+    color: var(--vmp-warn);
+    margin-bottom: var(--vmp-space-2);
+  }
+
+  & .vmp-emergency-contact-item {
+    display: flex;
+    align-items: center;
+    gap: var(--vmp-space-2);
+    font-size: var(--vmp-font-sm);
+    color: var(--vmp-text);
+  }
+
+  & .vmp-emergency-contact-label {
+    font-weight: 300;
+    color: var(--vmp-muted);
+    min-width: 60px;
+  }
+
+  /* ===== TOAST NOTIFICATIONS (User Feedback) ===== */
+  /* 
+   * ===== TOAST COMPONENT (IDE-Readable) =====
+   * 
+   * COMPONENT STRUCTURE:
+   * - .vmp-toast-container: Container for toast stack
+   *   - .vmp-toast: Base toast component
+   *     - .vmp-toast-success: Success variant (green)
+   *     - .vmp-toast-error: Error variant (red)
+   *     - .vmp-toast-warn: Warning variant (yellow)
+   *     - .vmp-toast-info: Info variant (blue)
+   * 
+   * USAGE: User feedback for actions (save, delete, error, etc.)
+   * SCOPE: Foundation Layer - Data presentation
+   * 
+   * IDE AUTocomplete:
+   * - Type ".vmp-toast" for base toast
+   * - Type ".vmp-toast-success" for success message
+   * - Type ".vmp-toast-error" for error message
+   */
+  
+  & .vmp-toast-container {
+    position: fixed;
+    top: var(--vmp-space-4);
+    right: var(--vmp-space-4);
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    gap: var(--vmp-space-2);
+    max-width: 400px;
+    pointer-events: none;
+  }
+
+  & .vmp-toast {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--vmp-space-3);
+    padding: var(--vmp-space-3) var(--vmp-space-4);
+    border-radius: var(--vmp-radius-md);
+    border: 1px solid var(--vmp-border);
+    background: var(--vmp-panel);
+    backdrop-filter: blur(12px);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+    pointer-events: auto;
+    animation: toastSlideIn 0.3s ease-out;
+    max-width: 100%;
+  }
+
+  @keyframes toastSlideIn {
+    from {
+      transform: translateX(100%);
+      opacity: 0;
+    }
+    to {
+      transform: translateX(0);
+      opacity: 1;
+    }
+  }
+
+  @keyframes toastSlideOut {
+    from {
+      transform: translateX(0);
+      opacity: 1;
+    }
+    to {
+      transform: translateX(100%);
+      opacity: 0;
+    }
+  }
+
+  & .vmp-toast.vmp-toast-exiting {
+    animation: toastSlideOut 0.3s ease-in forwards;
+  }
+
+  & .vmp-toast-content {
+    flex: 1;
+    min-width: 0;
+  }
+
+  & .vmp-toast-title {
+    font-size: var(--vmp-font-sm);
+    font-weight: 300;
+    color: var(--vmp-text);
+    margin-bottom: var(--vmp-space-1);
+  }
+
+  & .vmp-toast-message {
+    font-size: var(--vmp-font-xs);
+    color: var(--vmp-muted);
+    line-height: var(--vmp-line-height-relaxed);
+  }
+
+  & .vmp-toast-close {
+    flex-shrink: 0;
+    width: 20px;
+    height: 20px;
+    padding: 0;
+    border: none;
+    background: transparent;
+    color: var(--vmp-muted);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--vmp-radius-sm);
+    transition: background-color var(--vmp-transition-fast), color var(--vmp-transition-fast);
+  }
+
+  & .vmp-toast-close:hover {
+    background: hsla(0, 0%, 100%, 0.1);
+    color: var(--vmp-text);
+  }
+
+  & .vmp-toast-success {
+    border-color: rgba(86, 255, 184, 0.30);
+    background: rgba(86, 255, 184, 0.08);
+  }
+
+  & .vmp-toast-success .vmp-toast-title {
+    color: var(--vmp-ok);
+  }
+
+  & .vmp-toast-error {
+    border-color: rgba(255, 100, 100, 0.30);
+    background: rgba(255, 100, 100, 0.08);
+  }
+
+  & .vmp-toast-error .vmp-toast-title {
+    color: var(--vmp-danger);
+  }
+
+  & .vmp-toast-warn {
+    border-color: rgba(255, 210, 120, 0.30);
+    background: rgba(255, 210, 120, 0.08);
+  }
+
+  & .vmp-toast-warn .vmp-toast-title {
+    color: var(--vmp-warn);
+  }
+
+  & .vmp-toast-info {
+    border-color: rgba(140, 210, 255, 0.30);
+    background: rgba(140, 210, 255, 0.08);
+  }
+
+  & .vmp-toast-info .vmp-toast-title {
+    color: var(--vmp-info, #8cd2ff);
+  }
+
+  /* Mobile: Full-width on small screens */
+  @media (max-width: 640px) {
+    & .vmp-toast-container {
+      left: var(--vmp-space-4);
+      right: var(--vmp-space-4);
+      max-width: none;
+    }
+
+    & .vmp-toast {
+      width: 100%;
+    }
+  }
+
+  /* ===== TIMELINE (Payment History Visualization) ===== */
+  /* 
+   * ===== TIMELINE COMPONENT (IDE-Readable) =====
+   * 
+   * COMPONENT STRUCTURE:
+   * - .vmp-timeline: Container for timeline items
+   *   - .vmp-timeline-item: Individual timeline entry
+   *     - .vmp-timeline-date: Date label
+   *     - .vmp-timeline-content: Timeline content
+   *     - .vmp-timeline-line: Visual timeline line
+   * 
+   * USAGE: Payment history, case activity, transaction timeline
+   * SCOPE: Foundation Layer - Data presentation
+   * 
+   * IDE AUTocomplete:
+   * - Type ".vmp-timeline" for timeline container
+   * - Type ".vmp-timeline-item" for timeline entry
+   */
+  
+  & .vmp-timeline {
+    display: flex;
+    flex-direction: column;
+    gap: var(--vmp-space-4);
+    position: relative;
+    padding-left: var(--vmp-space-6);
+  }
+
+  & .vmp-timeline::before {
+    content: '';
+    position: absolute;
+    left: var(--vmp-space-3);
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: var(--vmp-border);
+  }
+
+  & .vmp-timeline-item {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: var(--vmp-space-2);
+  }
+
+  & .vmp-timeline-item::before {
+    content: '';
+    position: absolute;
+    left: calc(-1 * var(--vmp-space-6) + var(--vmp-space-3) - 4px);
+    top: var(--vmp-space-2);
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--vmp-border);
+    border: 2px solid var(--vmp-panel);
+    z-index: 1;
+  }
+
+  & .vmp-timeline-item.vmp-timeline-item-success::before {
+    background: var(--vmp-ok);
+    border-color: var(--vmp-ok);
+  }
+
+  & .vmp-timeline-item.vmp-timeline-item-warn::before {
+    background: var(--vmp-warn);
+    border-color: var(--vmp-warn);
+  }
+
+  & .vmp-timeline-item.vmp-timeline-item-danger::before {
+    background: var(--vmp-danger);
+    border-color: var(--vmp-danger);
+  }
+
+  & .vmp-timeline-date {
+    font-size: var(--vmp-font-xs);
+    font-weight: 300;
+    color: var(--vmp-muted);
+    text-transform: uppercase;
+    letter-spacing: var(--vmp-letter-spacing-wider);
+    margin-bottom: var(--vmp-space-1);
+  }
+
+  & .vmp-timeline-content {
+    padding: var(--vmp-space-3);
+    border-radius: var(--vmp-radius-md);
+    border: 1px solid var(--vmp-border);
+    background: var(--vmp-panel);
+  }
+
+  & .vmp-timeline-title {
+    font-size: var(--vmp-font-sm);
+    font-weight: 300;
+    color: var(--vmp-text);
+    margin-bottom: var(--vmp-space-1);
+  }
+
+  & .vmp-timeline-description {
+    font-size: var(--vmp-font-xs);
+    color: var(--vmp-muted);
+    line-height: var(--vmp-line-height-relaxed);
+  }
+
+  /* Mobile: Adjust spacing */
+  @media (max-width: 640px) {
+    & .vmp-timeline {
+      padding-left: var(--vmp-space-4);
+    }
+
+    & .vmp-timeline::before {
+      left: var(--vmp-space-2);
+    }
+
+    & .vmp-timeline-item::before {
+      left: calc(-1 * var(--vmp-space-4) + var(--vmp-space-2) - 4px);
+    }
+  }
+
+  /* ===== ACTIVITY FEED (Case Activity Stream) ===== */
+  /* 
+   * ===== ACTIVITY FEED COMPONENT (IDE-Readable) =====
+   * 
+   * COMPONENT STRUCTURE:
+   * - .vmp-activity-feed: Container for activity items
+   *   - .vmp-activity-item: Individual activity entry
+   *     - .vmp-activity-dot: Timeline dot indicator
+   *     - .vmp-activity-content: Activity content
+   *     - .vmp-activity-meta: Activity metadata
+   * 
+   * USAGE: Case activity feed, payment history, transaction log
+   * SCOPE: Foundation Layer - Data presentation
+   * 
+   * IDE AUTocomplete:
+   * - Type ".vmp-activity-feed" for activity feed container
+   * - Type ".vmp-activity-item" for activity entry
+   */
+  
+  & .vmp-activity-feed {
+    display: flex;
+    flex-direction: column;
+    gap: var(--vmp-space-3);
+    padding: var(--vmp-space-4);
+    background: var(--vmp-panel);
+    border: 1px solid var(--vmp-border);
+    border-radius: var(--vmp-radius-lg);
+    max-height: 400px;
+    overflow-y: auto;
+  }
+
+  & .vmp-activity-item {
+    display: flex;
+    gap: var(--vmp-space-3);
+    align-items: flex-start;
+    position: relative;
+  }
+
+  & .vmp-activity-item:not(:last-child) {
+    padding-bottom: var(--vmp-space-3);
+    border-bottom: 1px solid var(--vmp-border);
+  }
+
+  & .vmp-activity-dot {
+    flex-shrink: 0;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--vmp-border);
+    margin-top: var(--vmp-space-2);
+  }
+
+  & .vmp-activity-item.vmp-activity-success .vmp-activity-dot {
+    background: var(--vmp-ok);
+  }
+
+  & .vmp-activity-item.vmp-activity-warn .vmp-activity-dot {
+    background: var(--vmp-warn);
+  }
+
+  & .vmp-activity-item.vmp-activity-danger .vmp-activity-dot {
+    background: var(--vmp-danger);
+  }
+
+  & .vmp-activity-content {
+    flex: 1;
+    min-width: 0;
+  }
+
+  & .vmp-activity-header {
+    display: flex;
+    align-items: center;
+    gap: var(--vmp-space-2);
+    margin-bottom: var(--vmp-space-1);
+  }
+
+  & .vmp-activity-actor {
+    font-size: var(--vmp-font-xs);
+    font-weight: 300;
+    color: var(--vmp-text);
+    text-transform: capitalize;
+  }
+
+  & .vmp-activity-action {
+    font-size: var(--vmp-font-xs);
+    color: var(--vmp-muted);
+  }
+
+  & .vmp-activity-body {
+    font-size: var(--vmp-font-sm);
+    color: var(--vmp-text);
+    line-height: var(--vmp-line-height-relaxed);
+    margin-bottom: var(--vmp-space-1);
+  }
+
+  & .vmp-activity-meta {
+    display: flex;
+    flex-direction: column;
+    gap: var(--vmp-space-1);
+    font-size: var(--vmp-font-xs);
+    color: var(--vmp-muted);
+  }
+
+  & .vmp-activity-timestamp {
+    font-size: var(--vmp-font-xs);
+    color: var(--vmp-muted);
+    margin-top: var(--vmp-space-1);
+  }
+
+  /* Mobile: Adjust spacing */
+  @media (max-width: 640px) {
+    & .vmp-activity-feed {
+      padding: var(--vmp-space-3);
+    }
+
+    & .vmp-activity-item {
+      gap: var(--vmp-space-2);
+    }
+  }
+
+  /* ===== SLA VISUALIZATION (Sprint 8.1 & 8.4) ===== */
+  /* 
+   * SLA Progress and Response Time Display
+   * - .vmp-sla-progress: Container for SLA progress visualization
+   *   - .vmp-sla-progress-bar: Progress bar showing SLA countdown
+   *   - .vmp-sla-countdown: Countdown timer for approaching deadlines
+   *   - .vmp-sla-response-time: Response time SLA indicator
+   *     - .vmp-sla-response-time-on-track: Within SLA (green)
+   *     - .vmp-sla-response-time-overdue: Overdue (red)
+   */
+
+  & .vmp-sla-progress {
+    margin-bottom: var(--vmp-space-3);
+  }
+
+  & .vmp-sla-countdown {
+    font-weight: 500;
+    letter-spacing: 0.05em;
+  }
+
+  & .vmp-sla-response-time {
+    margin-top: var(--vmp-space-2);
+    padding-top: var(--vmp-space-2);
+    border-top: 1px solid var(--vmp-border-color);
+  }
+
+  & .vmp-sla-response-time-on-track {
+    border-color: var(--vmp-ok);
+  }
+
+  & .vmp-sla-response-time-overdue {
+    border-color: var(--vmp-danger);
+  }
+
+  /* ===== VALIDATION PANEL (Sprint 13.2) ===== */
+  /* 
+   * AI Data Validation Display
+   * - .vmp-validation-panel: Container for validation results
+   *   - .vmp-validation-completeness: Completeness percentage display
+   *   - .vmp-validation-actions: Actionable requests container
+   *   - .vmp-validation-action: Individual action button
+   *   - .vmp-validation-escalation: Escalation notice styling
+   */
+
+  & .vmp-validation-panel {
+    padding: var(--vmp-space-4);
+  }
+
+  & .vmp-validation-completeness {
+    margin-bottom: var(--vmp-space-4);
+  }
+
+  & .vmp-validation-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--vmp-space-2);
+    margin-top: var(--vmp-space-2);
+  }
+
+  & .vmp-validation-action {
+    padding: var(--vmp-space-2) var(--vmp-space-3);
+    font-size: var(--vmp-font-xs);
+    border-radius: var(--vmp-radius-sm);
+    transition: all var(--vmp-transition-base);
+  }
+
+  & .vmp-validation-action:hover {
+    background: var(--vmp-bg-panel);
+    transform: translateY(-1px);
+  }
+
+  & .vmp-validation-escalation {
+    margin-top: var(--vmp-space-3);
+    padding: var(--vmp-space-3);
+    border: 1px solid var(--vmp-danger);
+    border-radius: var(--vmp-radius-sm);
+    background: hsla(var(--vmp-danger-hsl), 0.1);
+  }
+
+  /* Mobile: Adjust validation panel spacing */
+  @media (max-width: 640px) {
+    & .vmp-validation-panel {
+      padding: var(--vmp-space-3);
+    }
+
+    & .vmp-validation-actions {
+      flex-direction: column;
+    }
+
+    & .vmp-validation-action {
+      width: 100%;
+      text-align: center;
+    }
   }
 
   /* ===== TABLES (Semantic - Data Presentation) ===== */
@@ -1503,6 +2283,26 @@ html[data-surface="vmp"] {
     }
   }
 
+  /* ===== SCANNER LINE ===== */
+  
+  & .scan-line {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, rgba(0, 255, 157, 0.5), transparent);
+    animation: scan 4s linear infinite;
+    opacity: 0.3;
+    pointer-events: none;
+    z-index: 10;
+  }
+
+  @keyframes scan {
+    0% { transform: translateY(-100%); }
+    100% { transform: translateY(500px); } /* Adjust based on container height */
+  }
+
   /* ===== POLICY CLAMPS ===== */
   
   /* Shadow Policy: NO shadows */
@@ -1685,8 +2485,19 @@ html[data-surface="vmp"] {
  */
 
 /* ==========================================================================
-   COMMAND PALETTE (Sprint 10.1)
+   COMMAND PALETTE - GOD MODE (Primary Navigation)
    ========================================================================== */
+/* 
+ * CONCEPT: The user is a pianist, not a pointer. The mouse is too slow.
+ * This is the PRIMARY way to navigate - not a secondary feature.
+ * 
+ * BEASTMODE UPGRADE: Global Command Palette (Cmd+K) that controls everything
+ * - "Pay Invoice INV-001"
+ * - "Escalate to Director"
+ * - "Switch to Dark Mode"
+ * 
+ * DESIGN: Fast, prominent, powerful - feels like a control center
+ */
 
 .vmp-command-palette {
   position: fixed;
@@ -1695,72 +2506,132 @@ html[data-surface="vmp"] {
   display: flex;
   align-items: flex-start;
   justify-content: center;
-  padding-top: 10vh;
+  padding-top: 8vh;
+  animation: commandPaletteFadeIn 0.15s ease-out;
+}
+
+@keyframes commandPaletteFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 .vmp-command-palette-overlay {
   position: absolute;
   inset: 0;
-  background: rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(4px);
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  animation: overlayFadeIn 0.15s ease-out;
+}
+
+@keyframes overlayFadeIn {
+  from {
+    opacity: 0;
+    backdrop-filter: blur(0px);
+  }
+  to {
+    opacity: 1;
+    backdrop-filter: blur(8px);
+  }
 }
 
 .vmp-command-palette-dialog {
   position: relative;
   width: 100%;
-  max-width: 640px;
-  max-height: 70vh;
-  background: var(--vmp-bg-panel);
-  border: 1px solid var(--vmp-border-color);
-  border-radius: 8px;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 10px 10px -5px rgba(0, 0, 0, 0.2);
+  max-width: 720px;
+  max-height: 75vh;
+  background: linear-gradient(to bottom, 
+    hsla(0, 0%, 100%, 0.08) 0%, 
+    hsla(0, 0%, 100%, 0.04) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 16px;
+  box-shadow: 
+    0 32px 64px rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(96, 255, 198, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  animation: commandDialogSlideIn 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  transform-origin: center top;
+}
+
+@keyframes commandDialogSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 .vmp-command-input-container {
   position: relative;
   display: flex;
   align-items: center;
-  padding: 12px 16px;
-  border-bottom: 1px solid var(--vmp-border-color);
+  padding: 20px 24px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: linear-gradient(to bottom, 
+    rgba(96, 255, 198, 0.03) 0%, 
+    transparent 100%);
 }
 
 .vmp-command-search-icon {
   position: absolute;
-  left: 16px;
+  left: 24px;
   width: 20px;
   height: 20px;
-  color: var(--vmp-text-muted);
+  color: rgba(96, 255, 198, 0.6);
   pointer-events: none;
+  transition: color 0.2s ease;
+}
+
+.vmp-command-input-container:focus-within .vmp-command-search-icon {
+  color: rgba(96, 255, 198, 0.9);
 }
 
 .vmp-command-input {
   width: 100%;
-  padding: 8px 8px 8px 36px;
+  padding: 12px 12px 12px 44px;
   background: transparent;
   border: none;
   outline: none;
-  font-size: 16px;
-  font-family: inherit;
+  font-size: 18px;
+  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
   color: var(--vmp-text);
   font-weight: 300;
+  letter-spacing: 0.02em;
+  transition: all 0.2s ease;
+}
+
+.vmp-command-input:focus {
+  color: rgba(96, 255, 198, 0.95);
 }
 
 .vmp-command-input::placeholder {
-  color: var(--vmp-text-muted);
+  color: rgba(255, 255, 255, 0.3);
+  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  letter-spacing: 0.05em;
 }
 
 .vmp-command-list {
   flex: 1;
   overflow-y: auto;
-  padding: 8px;
-  max-height: calc(70vh - 60px);
+  padding: 12px;
+  max-height: calc(75vh - 100px);
+  scroll-behavior: smooth;
 }
 
 .vmp-command-group {
-  margin-bottom: 16px;
+  margin-bottom: 20px;
 }
 
 .vmp-command-group:last-child {
@@ -1768,40 +2639,84 @@ html[data-surface="vmp"] {
 }
 
 .vmp-command-group-title {
-  padding: 8px 12px;
-  font-size: 11px;
+  padding: 10px 16px;
+  font-size: 10px;
   font-weight: 500;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--vmp-text-muted);
-  font-family: 'JetBrains Mono', monospace;
+  letter-spacing: 0.1em;
+  color: rgba(255, 255, 255, 0.4);
+  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  margin-bottom: 8px;
 }
 
 .vmp-command-item {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 10px 12px;
-  border-radius: 6px;
+  gap: 16px;
+  padding: 14px 16px;
+  border-radius: 10px;
   cursor: pointer;
   text-decoration: none;
   color: var(--vmp-text);
-  transition: background-color 0.15s ease;
+  transition: all 0.12s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 1px solid transparent;
+  position: relative;
+  margin-bottom: 4px;
 }
 
-.vmp-command-item:hover,
-.vmp-command-item-active {
-  background: var(--vmp-bg-veil);
+.vmp-command-item::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: rgba(96, 255, 198, 0);
+  border-radius: 10px 0 0 10px;
+  transition: background 0.12s ease;
+}
+
+.vmp-command-item:hover {
+  background: rgba(96, 255, 198, 0.06);
+  border-color: rgba(96, 255, 198, 0.15);
+  transform: translateX(2px);
+}
+
+.vmp-command-item:hover::before {
+  background: rgba(96, 255, 198, 0.4);
+}
+
+.vmp-command-item-active,
+.vmp-command-item-active:hover {
+  background: rgba(96, 255, 198, 0.1);
+  border-color: rgba(96, 255, 198, 0.25);
+  color: rgba(96, 255, 198, 0.95);
+  transform: translateX(4px);
+  box-shadow: 0 4px 12px rgba(96, 255, 198, 0.15);
+}
+
+.vmp-command-item-active::before {
+  background: rgba(96, 255, 198, 0.8);
+  box-shadow: 0 0 8px rgba(96, 255, 198, 0.4);
 }
 
 .vmp-command-item-icon {
-  width: 20px;
-  height: 20px;
+  width: 24px;
+  height: 24px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 16px;
+  font-size: 18px;
   flex-shrink: 0;
+  color: rgba(96, 255, 198, 0.6);
+  transition: color 0.12s ease, transform 0.12s ease;
+}
+
+.vmp-command-item:hover .vmp-command-item-icon,
+.vmp-command-item-active .vmp-command-item-icon {
+  color: rgba(96, 255, 198, 0.9);
+  transform: scale(1.1);
 }
 
 .vmp-command-item-content {
@@ -1810,38 +2725,70 @@ html[data-surface="vmp"] {
 }
 
 .vmp-command-item-label {
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 300;
   color: var(--vmp-text);
-  margin-bottom: 2px;
+  margin-bottom: 3px;
+  letter-spacing: 0.01em;
+  transition: color 0.12s ease;
+}
+
+.vmp-command-item-active .vmp-command-item-label {
+  color: rgba(96, 255, 198, 0.95);
+  font-weight: 400;
 }
 
 .vmp-command-item-hint {
   font-size: 12px;
-  color: var(--vmp-text-muted);
+  color: rgba(255, 255, 255, 0.5);
   font-weight: 300;
+  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  letter-spacing: 0.05em;
+}
+
+.vmp-command-item-active .vmp-command-item-hint {
+  color: rgba(96, 255, 198, 0.7);
 }
 
 .vmp-command-shortcut {
   display: inline-flex;
   align-items: center;
-  gap: 2px;
-  padding: 2px 6px;
-  font-size: 11px;
-  font-family: 'JetBrains Mono', monospace;
-  background: var(--vmp-bg-veil);
-  border: 1px solid var(--vmp-border-color);
-  border-radius: 4px;
-  color: var(--vmp-text-muted);
-  font-weight: 300;
+  gap: 3px;
+  padding: 4px 8px;
+  font-size: 10px;
+  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  background: rgba(96, 255, 198, 0.08);
+  border: 1px solid rgba(96, 255, 198, 0.2);
+  border-radius: 6px;
+  color: rgba(96, 255, 198, 0.8);
+  font-weight: 400;
+  letter-spacing: 0.05em;
+  transition: all 0.12s ease;
+}
+
+.vmp-command-item-active .vmp-command-shortcut {
+  background: rgba(96, 255, 198, 0.15);
+  border-color: rgba(96, 255, 198, 0.3);
+  color: rgba(96, 255, 198, 0.95);
+  box-shadow: 0 0 8px rgba(96, 255, 198, 0.2);
 }
 
 .vmp-command-empty {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 48px 24px;
+  padding: 64px 24px;
   text-align: center;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.vmp-command-empty::before {
+  content: '⌘';
+  font-size: 48px;
+  opacity: 0.3;
+  margin-bottom: 16px;
+  display: block;
 }
 
 /* ==========================================================================
@@ -1941,6 +2888,15 @@ video {
     min-height: 44px;
     font-size: 16px; /* Prevents zoom on iOS */
   }
+
+  /* Ensure table rows meet touch target requirements */
+  .vmp-table tbody tr {
+    min-height: 44px;
+  }
+
+  .vmp-table tbody td {
+    padding: var(--vmp-space-4) var(--vmp-space-3);
+  }
 }
 
 /* ==========================================================================
@@ -1954,6 +2910,239 @@ video {
 
 .swipeable-horizontal {
   touch-action: pan-x;
+}
+
+/* ==========================================================================
+   FILE UPLOAD COMPONENTS (Mobile UX Improvements - Sprint Refinement)
+   ========================================================================== */
+
+/* Dropzone Component */
+.vmp-dropzone {
+  position: relative;
+  border: 2px dashed var(--vmp-border);
+  border-radius: var(--vmp-radius-md);
+  padding: var(--vmp-space-6);
+  text-align: center;
+  background: hsla(0, 0%, 100%, 0.02);
+  transition: all var(--vmp-transition-fast);
+  cursor: pointer;
+}
+
+.vmp-dropzone:hover {
+  border-color: var(--vmp-border2);
+  background: hsla(0, 0%, 100%, 0.05);
+}
+
+.vmp-dropzone.dragover {
+  border-color: var(--vmp-ok);
+  background: hsla(var(--vmp-ok-h), var(--vmp-ok-s), var(--vmp-ok-l), 0.1);
+}
+
+.vmp-dropzone input[type="file"] {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  top: 0;
+  left: 0;
+  opacity: 0;
+  cursor: pointer;
+  z-index: 1;
+}
+
+.vmp-dropzone-icon {
+  margin: 0 auto var(--vmp-space-3);
+  width: 48px;
+  height: 48px;
+  color: var(--vmp-subtle);
+}
+
+.vmp-dropzone-text {
+  color: var(--vmp-text);
+  font-size: var(--vmp-font-base);
+  margin-bottom: var(--vmp-space-2);
+}
+
+.vmp-dropzone-hint {
+  color: var(--vmp-muted);
+  font-size: var(--vmp-font-sm);
+}
+
+/* File List */
+.vmp-file-list {
+  margin-top: var(--vmp-space-4);
+}
+
+.vmp-file-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--vmp-space-3);
+  border: 1px solid var(--vmp-border);
+  border-radius: var(--vmp-radius-sm);
+  margin-bottom: var(--vmp-space-2);
+  background: hsla(0, 0%, 100%, 0.02);
+}
+
+.vmp-file-item-info {
+  display: flex;
+  align-items: center;
+  gap: var(--vmp-space-3);
+  flex: 1;
+  min-width: 0;
+}
+
+.vmp-file-item-icon {
+  flex-shrink: 0;
+  color: var(--vmp-subtle);
+}
+
+.vmp-file-item-details {
+  flex: 1;
+  min-width: 0;
+}
+
+.vmp-file-item-name {
+  font-size: var(--vmp-font-sm);
+  color: var(--vmp-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.vmp-file-item-size {
+  font-size: var(--vmp-font-xs);
+  color: var(--vmp-muted);
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.vmp-file-item-status {
+  display: flex;
+  align-items: center;
+  gap: var(--vmp-space-2);
+}
+
+.vmp-file-item-remove {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--vmp-radius-sm);
+  background: transparent;
+  border: 1px solid var(--vmp-border);
+  color: var(--vmp-text);
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+  transition: all var(--vmp-transition-fast);
+}
+
+.vmp-file-item-remove:hover {
+  background: var(--vmp-danger);
+  border-color: var(--vmp-danger);
+  color: white;
+}
+
+/* Upload Progress */
+.vmp-upload-progress {
+  width: 100%;
+  height: 4px;
+  background: hsla(0, 0%, 100%, 0.1);
+  border-radius: var(--vmp-radius-sm);
+  overflow: hidden;
+  margin-top: var(--vmp-space-2);
+}
+
+.vmp-upload-progress-bar {
+  height: 100%;
+  background: var(--vmp-ok);
+  transition: width 0.3s ease;
+  width: var(--progress-width, 0%);
+}
+
+/* Mobile Enhancements */
+@media (max-width: 768px) {
+  .vmp-dropzone {
+    padding: var(--vmp-space-8) var(--vmp-space-4);
+    min-height: 120px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .vmp-dropzone-icon {
+    width: 56px;
+    height: 56px;
+    margin-bottom: var(--vmp-space-4);
+  }
+
+  .vmp-dropzone-text {
+    font-size: var(--vmp-font-base);
+    margin-bottom: var(--vmp-space-3);
+  }
+
+  .vmp-file-item {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--vmp-space-2);
+    padding: var(--vmp-space-4);
+    min-height: 44px;
+  }
+
+  .vmp-file-item-info {
+    width: 100%;
+  }
+
+  .vmp-file-item-status {
+    width: 100%;
+    justify-content: space-between;
+    padding-top: var(--vmp-space-2);
+    border-top: 1px solid var(--vmp-border);
+  }
+
+  .vmp-upload-progress {
+    height: 6px;
+    margin-top: var(--vmp-space-3);
+  }
+
+  /* Progress modal mobile enhancements */
+  #upload-progress-container .vmp-panel {
+    max-width: 90vw;
+    margin: var(--vmp-space-4);
+  }
+
+  #upload-progress-container .vmp-h4 {
+    font-size: var(--vmp-font-lg);
+  }
+
+  #upload-progress-container #upload-progress-bar {
+    height: 8px;
+  }
+}
+
+/* Visual feedback when file is selected */
+.vmp-dropzone:has(input[type="file"]:not(:placeholder-shown)),
+.vmp-dropzone.has-files {
+  border-color: var(--vmp-ok);
+  background: hsla(var(--vmp-ok-h), var(--vmp-ok-s), var(--vmp-ok-l), 0.1);
+}
+
+/* Image preview thumbnails (mobile) */
+@media (max-width: 768px) {
+  .vmp-file-item-preview {
+    width: 100%;
+    margin-bottom: var(--vmp-space-2);
+    border-radius: var(--vmp-radius-sm);
+    overflow: hidden;
+  }
+
+  .vmp-file-item-preview img {
+    width: 100%;
+    height: auto;
+    max-height: 200px;
+    object-fit: cover;
+  }
 }
 
 /* ==========================================================================

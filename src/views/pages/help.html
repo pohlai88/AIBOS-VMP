@@ -1,0 +1,92 @@
+{% extends "layout.html" %}
+{% block title %}Help & Support — NexusCanon VMP{% endblock %}
+
+{% block content %}
+<div class="h-full overflow-y-auto">
+    <div class="vmp-container py-8 max-w-4xl mx-auto">
+        
+        <header class="mb-8 border-b pb-6" style="border-color: var(--vmp-border);">
+            <div class="vmp-label mb-2 opacity-70">// SUPPORT</div>
+            <h1 class="vmp-h1 leading-none mb-2">Help & Support</h1>
+            <p class="vmp-body max-w-[60ch] opacity-80">
+                Get assistance with your account, cases, payments, and system features.
+            </p>
+        </header>
+
+        <div class="space-y-8">
+            
+            <!-- Quick Links -->
+            <section class="vmp-panel p-6">
+                <h2 class="vmp-h3 mb-4">Quick Links</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <a href="/case-dashboard" class="vmp-panel p-4 hover:bg-white/[0.02] transition-colors border border-white/5 rounded-lg">
+                        <div class="vmp-label mb-1">Case Dashboard</div>
+                        <div class="vmp-caption opacity-60">Manage your cases and disputes</div>
+                    </a>
+                    <a href="/invoices" class="vmp-panel p-4 hover:bg-white/[0.02] transition-colors border border-white/5 rounded-lg">
+                        <div class="vmp-label mb-1">Invoices</div>
+                        <div class="vmp-caption opacity-60">View and manage invoices</div>
+                    </a>
+                    <a href="/payments" class="vmp-panel p-4 hover:bg-white/[0.02] transition-colors border border-white/5 rounded-lg">
+                        <div class="vmp-label mb-1">Payments</div>
+                        <div class="vmp-caption opacity-60">Payment history and remittances</div>
+                    </a>
+                    <a href="/profile" class="vmp-panel p-4 hover:bg-white/[0.02] transition-colors border border-white/5 rounded-lg">
+                        <div class="vmp-label mb-1">Profile</div>
+                        <div class="vmp-caption opacity-60">Update your company information</div>
+                    </a>
+                </div>
+            </section>
+
+            <!-- Common Questions -->
+            <section class="vmp-panel p-6">
+                <h2 class="vmp-h3 mb-4">Common Questions</h2>
+                <div class="space-y-4">
+                    <div class="border-b border-white/5 pb-4">
+                        <h3 class="vmp-label mb-2">How do I create a new case?</h3>
+                        <p class="vmp-body-small opacity-70">
+                            Navigate to the Case Dashboard and click "Create Case" to initiate a new dispute or inquiry.
+                        </p>
+                    </div>
+                    <div class="border-b border-white/5 pb-4">
+                        <h3 class="vmp-label mb-2">How do I track payments?</h3>
+                        <p class="vmp-body-small opacity-70">
+                            Visit the Payments page to view your payment history, remittances, and download receipts.
+                        </p>
+                    </div>
+                    <div class="border-b border-white/5 pb-4">
+                        <h3 class="vmp-label mb-2">How do I update my banking information?</h3>
+                        <p class="vmp-body-small opacity-70">
+                            Go to your Profile page and submit a bank details change request. Changes require approval.
+                        </p>
+                    </div>
+                    <div>
+                        <h3 class="vmp-label mb-2">How do I escalate an issue?</h3>
+                        <p class="vmp-body-small opacity-70">
+                            Contact your account manager or use the escalation path available in case details.
+                        </p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Contact Support -->
+            <section class="vmp-panel p-6">
+                <h2 class="vmp-h3 mb-4">Contact Support</h2>
+                <div class="space-y-3">
+                    <div class="flex items-start gap-3">
+                        <div class="vmp-label opacity-50">Email:</div>
+                        <div class="vmp-body-small opacity-70">support@nexuscanon.com</div>
+                    </div>
+                    <div class="flex items-start gap-3">
+                        <div class="vmp-label opacity-50">Response Time:</div>
+                        <div class="vmp-body-small opacity-70">Within 24 hours during business days</div>
+                    </div>
+                </div>
+            </section>
+
+        </div>
+
+    </div>
+</div>
+{% endblock %}
+

@@ -1,13 +1,13 @@
-<!-- Upload Progress Indicator Component (Sprint 8.2) -->
+<!-- Upload Progress Indicator Component (Sprint 8.2 - Mobile Enhanced) -->
 <div id="upload-progress-container" class="hidden fixed inset-0 z-50 flex items-center justify-center vmp-bg-veil bg-black/50">
-    <div class="vmp-panel p-6 rounded-lg border vmp-border-color max-w-md w-full mx-4">
+    <div class="vmp-panel p-6 rounded-lg border vmp-border-color max-w-md w-full mx-4" style="min-width: 0;">
         <div class="mb-4">
             <div class="vmp-h4 mb-2">Uploading Evidence</div>
             <div class="vmp-body-small vmp-muted" id="upload-filename">Preparing upload...</div>
         </div>
         
-        <!-- Progress Bar -->
-        <div class="w-full h-2 vmp-bg-panel rounded-full overflow-hidden mb-4">
+        <!-- Progress Bar (Mobile Enhanced) -->
+        <div class="w-full h-3 md:h-2 vmp-bg-panel rounded-full overflow-hidden mb-4">
             <div id="upload-progress-bar" 
                  class="h-full vmp-bg-ok transition-all duration-300"
                  style="width: 0%">

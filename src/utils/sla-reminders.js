@@ -104,6 +104,7 @@ export async function checkAndSendSLAReminders(options = {}) {
 
 /**
  * Send SLA reminder to vendor users
+ * Enhanced with better error handling and future email notification support
  */
 async function sendVendorSLAReminder(caseItem, reminderType, message) {
   try {
@@ -111,28 +112,68 @@ async function sendVendorSLAReminder(caseItem, reminderType, message) {
     const vendorData = await vmpAdapter.getVendorUsers(caseItem.vendor_id);
 
     if (!vendorData || !vendorData.users || vendorData.users.length === 0) {
+      // No users to notify - this is not an error, just log for debugging
+      console.log(`[SLA Reminders] No active vendor users found for case ${caseItem.id}`);
       return;
     }
 
+    const notificationTitle = reminderType === 'overdue'
+      ? '⚠️ Case SLA Overdue'
+      : '⏰ Case SLA Approaching';
+
+    const notificationType = reminderType === 'overdue'
+      ? 'sla_breach'
+      : 'sla_warning';
+
     // Create notification for each vendor user
+    let notificationsSent = 0;
+    let notificationsFailed = 0;
+
     for (const user of vendorData.users) {
-      if (!user.is_active) continue;
+      if (!user.is_active) {
+        console.log(`[SLA Reminders] Skipping inactive user ${user.id} for case ${caseItem.id}`);
+        continue;
+      }
 
-      const notificationTitle = reminderType === 'overdue'
-        ? '⚠️ Case SLA Overdue'
-        : '⏰ Case SLA Approaching';
+      try {
+        // In-app notification (always sent)
+        await vmpAdapter.createNotification(
+          caseItem.id,
+          user.id,
+          notificationType,
+          notificationTitle,
+          message
+        );
+        notificationsSent++;
 
-      const notificationType = reminderType === 'overdue'
-        ? 'sla_breach'
-        : 'sla_warning';
+        // TODO: Future enhancement - Send email notification if user preferences allow
+        // This would require extending the notification utility to support SLA reminders
+        // Example:
+        // if (user.notification_preferences?.email !== false) {
+        //   await sendSLAEmailNotification(user.email, user.display_name, {
+        //     caseId: caseItem.id,
+        //     caseSubject: caseItem.subject,
+        //     reminderType,
+        //     message
+        //   });
+        // }
+      } catch (userError) {
+        notificationsFailed++;
+        logError(userError, {
+          operation: 'sendVendorSLAReminder',
+          caseId: caseItem.id,
+          userId: user.id,
+          step: 'createNotification'
+        });
+        // Continue with other users even if one fails
+      }
+    }
 
-      await vmpAdapter.createNotification(
-        caseItem.id,
-        user.id,
-        notificationType,
-        notificationTitle,
-        message
-      );
+    if (notificationsSent > 0) {
+      console.log(`[SLA Reminders] Sent ${notificationsSent} in-app notifications for case ${caseItem.id}`);
+    }
+    if (notificationsFailed > 0) {
+      console.warn(`[SLA Reminders] Failed to send ${notificationsFailed} notifications for case ${caseItem.id}`);
     }
   } catch (error) {
     logError(error, {
@@ -140,12 +181,14 @@ async function sendVendorSLAReminder(caseItem, reminderType, message) {
       caseId: caseItem.id,
       vendorId: caseItem.vendor_id,
     });
+    // Don't throw - allow other cases to be processed
     throw error;
   }
 }
 
 /**
  * Send SLA reminder to internal users (assigned user or team)
+ * Enhanced with better error handling and future email notification support
  */
 async function sendInternalSLAReminder(caseItem, reminderType, message) {
   try {
@@ -168,8 +211,18 @@ async function sendInternalSLAReminder(caseItem, reminderType, message) {
       .eq('id', caseItem.id)
       .single();
 
-    if (caseError || !caseData || !caseData.assigned_to_user_id) {
-      // If not assigned, skip internal reminder
+    if (caseError) {
+      logError(caseError, {
+        operation: 'sendInternalSLAReminder',
+        caseId: caseItem.id,
+        step: 'queryCase'
+      });
+      return;
+    }
+
+    if (!caseData || !caseData.assigned_to_user_id) {
+      // If not assigned, skip internal reminder (this is expected for unassigned cases)
+      console.log(`[SLA Reminders] Case ${caseItem.id} has no assigned user, skipping internal reminder`);
       return;
     }
 
@@ -185,23 +238,44 @@ async function sendInternalSLAReminder(caseItem, reminderType, message) {
         ? 'sla_breach'
         : 'sla_warning';
 
-      await vmpAdapter.createNotification(
-        caseItem.id,
-        assignedUserId,
-        notificationType,
-        notificationTitle,
-        message
-      );
-    } else {
-      // If not assigned, send to team lead or ops team
-      // For now, we'll skip unassigned cases or implement team-based notifications later
-      console.warn(`[SLA Reminders] Case ${caseItem.id} has no assigned user, skipping internal reminder`);
+      try {
+        await vmpAdapter.createNotification(
+          caseItem.id,
+          assignedUserId,
+          notificationType,
+          notificationTitle,
+          message
+        );
+        console.log(`[SLA Reminders] Sent internal reminder to user ${assignedUserId} for case ${caseItem.id}`);
+
+        // TODO: Future enhancement - Send email notification if user preferences allow
+        // This would require extending the notification utility to support SLA reminders
+        // Example:
+        // const user = await vmpAdapter.getUserById(assignedUserId);
+        // if (user?.notification_preferences?.email !== false) {
+        //   await sendSLAEmailNotification(user.email, user.display_name, {
+        //     caseId: caseItem.id,
+        //     caseSubject: caseItem.subject,
+        //     reminderType,
+        //     message
+        //   });
+        // }
+      } catch (notificationError) {
+        logError(notificationError, {
+          operation: 'sendInternalSLAReminder',
+          caseId: caseItem.id,
+          userId: assignedUserId,
+          step: 'createNotification'
+        });
+        // Don't throw - allow other cases to be processed
+      }
     }
   } catch (error) {
     logError(error, {
       operation: 'sendInternalSLAReminder',
       caseId: caseItem.id,
     });
+    // Don't throw - allow other cases to be processed
     throw error;
   }
 }

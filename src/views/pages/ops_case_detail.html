@@ -1,23 +1,386 @@
 {% extends "layout.html" %}
-{% block title %}Case {{ caseDetail.subject if caseDetail else '—' }} — NexusCanon VMP{% endblock %}
+{% block title %}Case {{ caseDetail.id|string|truncate(8, True, '') if caseDetail else '—' }} — NexusCanon Ops{% endblock %}
 
 {% block content %}
-<div class="h-full overflow-y-auto">
-    <div id="case-detail-panel">
-        {% if caseDetail %}
-        {% include "partials/case_detail.html" %}
-        {% else %}
-        <div class="flex items-center justify-center h-full min-h-[600px]">
-            <div class="text-center max-w-md p-8">
-                <div class="vmp-h3 mb-4">Case Not Found</div>
-                <div class="vmp-body vmp-muted mb-6">
-                    The case you're looking for doesn't exist or you don't have access to it.
+<div class="h-screen flex overflow-hidden" x-data="{ activeTab: 'details' }">
+    
+    {% if caseDetail %}
+    
+    <!-- LEFT PANE: Immutable Context (35% width, Fixed) -->
+    <aside class="w-[35%] flex-shrink-0 flex flex-col border-r border-white/[0.08] bg-[#050505]/95 backdrop-blur-xl">
+        
+        <!-- Case Header -->
+        <div class="p-6 border-b border-white/[0.06] shrink-0">
+            <div class="flex items-start justify-between mb-4">
+                <div class="flex-1 min-w-0">
+                    <div class="font-mono text-[10px] text-white/30 uppercase tracking-widest mb-2">
+                        CASE ID
+                    </div>
+                    <div class="font-mono text-lg text-[#60ffc6] mb-1">
+                        #{{ caseDetail.id|string|truncate(8, True, '') }}
+                    </div>
+                    <div class="font-serif text-sm text-white/60 mt-2 line-clamp-2">
+                        {{ caseDetail.subject or 'Untitled Case' }}
+                    </div>
                 </div>
-                <a href="/ops/cases" class="vmp-btn-primary">Return to Case Queue</a>
+                
+                <!-- Status Badge -->
+                <div class="ml-4 shrink-0">
+                    {% set status_map = {
+                        'open': ('OPEN', 'bg-white/10 border-white/20 text-white'),
+                        'waiting_supplier': ('AWAITING SUPPLIER', 'bg-yellow-500/10 border-yellow-500/30 text-yellow-400'),
+                        'waiting_internal': ('AWAITING INTERNAL', 'bg-blue-500/10 border-blue-500/30 text-blue-400'),
+                        'resolved': ('RESOLVED', 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'),
+                        'blocked': ('BLOCKED', 'bg-rose-500/10 border-rose-500/30 text-rose-400')
+                    } %}
+                    {% set status_info = status_map.get(caseDetail.status or 'open', status_map['open']) %}
+                    <div class="px-3 py-1.5 rounded border font-mono text-[10px] uppercase tracking-wider {{ status_info[1] }}">
+                        {{ status_info[0] }}
+                    </div>
+                </div>
             </div>
         </div>
-        {% endif %}
+        
+        <!-- SLA Countdown Timer -->
+        <div class="p-6 border-b border-white/[0.06] shrink-0">
+            <div class="font-mono text-[10px] text-white/30 uppercase tracking-widest mb-3">
+                SLA COUNTDOWN
+            </div>
+            {% if caseDetail.sla_due_at %}
+            <div class="space-y-2">
+                <div class="flex items-baseline gap-2">
+                    <span class="font-mono text-2xl text-white font-light" 
+                          x-data="{ 
+                              updateTimer() {
+                                  const due = new Date('{{ caseDetail.sla_due_at }}');
+                                  const now = new Date();
+                                  const diff = due - now;
+                                  if (diff <= 0) {
+                                      this.$el.textContent = 'EXPIRED';
+                                      this.$el.classList.add('text-rose-400');
+                                      return;
+                                  }
+                                  const hours = Math.floor(diff / (1000 * 60 * 60));
+                                  const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                                  this.$el.textContent = `${hours}h ${mins}m`;
+                                  if (hours < 24) this.$el.classList.add('text-rose-400');
+                                  else if (hours < 48) this.$el.classList.add('text-yellow-400');
+                                  else this.$el.classList.remove('text-rose-400', 'text-yellow-400');
+                              }
+                          }"
+                          x-init="updateTimer(); setInterval(() => updateTimer(), 60000)">
+                    </span>
+                </div>
+                <div class="font-mono text-xs text-white/40">
+                    Due: {{ caseDetail.sla_due_at | date('%b %d, %H:%M') if caseDetail.sla_due_at else '—' }}
+                </div>
+            </div>
+            {% else %}
+            <div class="font-mono text-sm text-white/30">No SLA set</div>
+            {% endif %}
+        </div>
+        
+        <!-- Primary Metadata -->
+        <div class="flex-1 overflow-y-auto p-6 space-y-6">
+            
+            <!-- Company Info -->
+            <div>
+                <div class="font-mono text-[10px] text-white/30 uppercase tracking-widest mb-2">
+                    ENTITY
+                </div>
+                <div class="font-serif text-sm text-white/90">
+                    {{ caseDetail.vmp_companies.name if caseDetail.vmp_companies else '—' }}
+                </div>
+                {% if caseDetail.vmp_companies and caseDetail.vmp_companies.group_id %}
+                <div class="font-mono text-xs text-white/40 mt-1">
+                    Group ID: {{ caseDetail.vmp_companies.group_id|string|truncate(8, True, '') }}
+                </div>
+                {% endif %}
+            </div>
+            
+            <!-- Vendor Info -->
+            <div>
+                <div class="font-mono text-[10px] text-white/30 uppercase tracking-widest mb-2">
+                    VENDOR
+                </div>
+                <div class="font-serif text-sm text-white/90">
+                    {{ caseDetail.vmp_vendors.name if caseDetail.vmp_vendors else '—' }}
+                </div>
+            </div>
+            
+            <!-- Case Type -->
+            <div>
+                <div class="font-mono text-[10px] text-white/30 uppercase tracking-widest mb-2">
+                    TYPE
+                </div>
+                <div class="font-mono text-sm text-white/70 uppercase">
+                    {{ (caseDetail.case_type or 'general')|upper }}
+                </div>
+            </div>
+            
+            <!-- Owner Team -->
+            <div>
+                <div class="font-mono text-[10px] text-white/30 uppercase tracking-widest mb-2">
+                    OWNER TEAM
+                </div>
+                <div class="font-mono text-sm text-white/70 uppercase">
+                    {{ (caseDetail.owner_team or 'unassigned')|upper }}
+                </div>
+            </div>
+            
+            <!-- ERP Reference -->
+            {% if caseDetail.erp_ref_id %}
+            <div>
+                <div class="font-mono text-[10px] text-white/30 uppercase tracking-widest mb-2">
+                    ERP REFERENCE
+                </div>
+                <div class="font-mono text-sm text-white/70">
+                    {{ caseDetail.erp_ref_id }}
+                </div>
+            </div>
+            {% endif %}
+            
+            <!-- Created Date -->
+            <div>
+                <div class="font-mono text-[10px] text-white/30 uppercase tracking-widest mb-2">
+                    CREATED
+                </div>
+                <div class="font-mono text-xs text-white/50">
+                    {{ caseDetail.created_at | date('%b %d, %H:%M') if caseDetail.created_at else '—' }}
+                </div>
+            </div>
+            
+            <!-- Escalation Level -->
+            {% if caseDetail.escalation_level and caseDetail.escalation_level > 0 %}
+            <div>
+                <div class="font-mono text-[10px] text-white/30 uppercase tracking-widest mb-2">
+                    ESCALATION
+                </div>
+                <div class="flex items-center gap-2">
+                    <div class="px-2 py-1 rounded border border-rose-500/30 bg-rose-500/10 font-mono text-xs text-rose-400">
+                        LEVEL {{ caseDetail.escalation_level }}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </aside>
+    
+    <!-- RIGHT PANE: The Workspace (65% width, Scrollable) -->
+    <main class="flex-1 flex flex-col min-w-0 overflow-hidden bg-[#060607]/80 backdrop-blur-md">
+        
+        <!-- Tab Navigation -->
+        <div class="shrink-0 border-b border-white/[0.08] bg-[#050505]/50">
+            <div class="flex items-center gap-1 px-6 pt-4">
+                <button @click="activeTab = 'details'"
+                        :class="activeTab === 'details' ? 'text-white border-b-2 border-[#60ffc6]' : 'text-white/40 hover:text-white/70'"
+                        class="px-4 py-3 font-mono text-xs uppercase tracking-wider transition-colors">
+                    Details
+                </button>
+                <button @click="activeTab = 'financials'"
+                        :class="activeTab === 'financials' ? 'text-white border-b-2 border-[#60ffc6]' : 'text-white/40 hover:text-white/70'"
+                        class="px-4 py-3 font-mono text-xs uppercase tracking-wider transition-colors">
+                    Financials
+                </button>
+                <button @click="activeTab = 'comments'"
+                        :class="activeTab === 'comments' ? 'text-white border-b-2 border-[#60ffc6]' : 'text-white/40 hover:text-white/70'"
+                        class="px-4 py-3 font-mono text-xs uppercase tracking-wider transition-colors">
+                    Comments
+                </button>
+                <button @click="activeTab = 'audit'"
+                        :class="activeTab === 'audit' ? 'text-white border-b-2 border-[#60ffc6]' : 'text-white/40 hover:text-white/70'"
+                        class="px-4 py-3 font-mono text-xs uppercase tracking-wider transition-colors">
+                    Audit Log
+                </button>
+                <button @click="activeTab = 'evidence'"
+                        :class="activeTab === 'evidence' ? 'text-white border-b-2 border-[#60ffc6]' : 'text-white/40 hover:text-white/70'"
+                        class="px-4 py-3 font-mono text-xs uppercase tracking-wider transition-colors">
+                    Evidence
+                </button>
+            </div>
+        </div>
+        
+        <!-- Tab Content (Scrollable) -->
+        <div class="flex-1 overflow-y-auto">
+            
+            <!-- Details Tab -->
+            <div x-show="activeTab === 'details'" class="p-8 space-y-6">
+                <div class="space-y-4">
+                    <div>
+                        <div class="font-mono text-[10px] text-white/30 uppercase tracking-widest mb-2">
+                            SUBJECT
+                        </div>
+                        <div class="font-serif text-base text-white/90">
+                            {{ caseDetail.subject or 'Untitled Case' }}
+                        </div>
+                    </div>
+                    
+                    {% if caseDetail.description %}
+                    <div>
+                        <div class="font-mono text-[10px] text-white/30 uppercase tracking-widest mb-2">
+                            DESCRIPTION
+                        </div>
+                        <div class="font-sans text-sm text-white/70 leading-relaxed whitespace-pre-wrap">
+                            {{ caseDetail.description }}
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    <div class="grid grid-cols-2 gap-6 pt-4 border-t border-white/[0.06]">
+                        <div>
+                            <div class="font-mono text-[10px] text-white/30 uppercase tracking-widest mb-2">
+                                CASE TYPE
+                            </div>
+                            <div class="font-mono text-sm text-white/70 uppercase">
+                                {{ (caseDetail.case_type or 'general')|upper }}
+                            </div>
+                        </div>
+                        <div>
+                            <div class="font-mono text-[10px] text-white/30 uppercase tracking-widest mb-2">
+                                PRIORITY
+                            </div>
+                            <div class="font-mono text-sm text-white/70">
+                                {% if caseDetail.escalation_level and caseDetail.escalation_level >= 3 %}
+                                CRITICAL
+                                {% elif caseDetail.escalation_level and caseDetail.escalation_level >= 2 %}
+                                HIGH
+                                {% else %}
+                                STANDARD
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Financials Tab -->
+            <div x-show="activeTab === 'financials'" class="p-8 space-y-6">
+                <div class="font-mono text-[10px] text-white/30 uppercase tracking-widest mb-4">
+                    FINANCIAL DATA
+                </div>
+                <div class="space-y-4">
+                    {% if caseDetail.amount %}
+                    <div class="p-4 rounded-lg border border-white/[0.08] bg-white/[0.02]">
+                        <div class="font-mono text-[10px] text-white/30 uppercase tracking-widest mb-2">
+                            AMOUNT
+                        </div>
+                        <div class="font-mono text-2xl text-white font-light">
+                            ${{ "%.2f"|format(caseDetail.amount) if caseDetail.amount else '0.00' }}
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="p-8 text-center border border-dashed border-white/10 rounded-lg">
+                        <div class="font-mono text-xs text-white/30">No financial data available</div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- Comments Tab -->
+            <div x-show="activeTab === 'comments'" class="p-8">
+                <div id="case-thread-container" 
+                     hx-get="/partials/case-thread.html?case_id={{ caseDetail.id }}" 
+                     hx-trigger="load"
+                     hx-target="this" 
+                     hx-swap="innerHTML" 
+                     class="min-h-[400px]">
+                    <div class="flex items-center justify-center h-64">
+                        <div class="vmp-spinner opacity-50"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Audit Log Tab (Flight Recorder Style) -->
+            <div x-show="activeTab === 'audit'" class="p-8">
+                <div class="font-mono text-[10px] text-white/30 uppercase tracking-widest mb-4">
+                    FLIGHT RECORDER
+                </div>
+                <div id="case-activity-container"
+                     hx-get="/partials/case-activity.html?case_id={{ caseDetail.id }}"
+                     hx-trigger="load"
+                     hx-target="this"
+                     hx-swap="innerHTML"
+                     class="font-mono text-xs space-y-1 min-h-[400px]">
+                    <div class="flex items-center justify-center h-64">
+                        <div class="text-white/30">Loading audit log...</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Evidence Tab (Secure Locker) -->
+            <div x-show="activeTab === 'evidence'" class="h-full">
+                <div id="case-evidence-container"
+                     hx-get="/partials/case-evidence.html?case_id={{ caseDetail.id }}"
+                     hx-trigger="load"
+                     hx-target="this"
+                     hx-swap="innerHTML"
+                     class="h-full">
+                    <div class="flex items-center justify-center h-full">
+                        <div class="font-mono text-xs text-emerald-500 animate-pulse">INITIALIZING SECURE LINK...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Action Bar (Fixed Bottom) -->
+        <div class="shrink-0 border-t border-white/[0.08] bg-[#050505]/90 backdrop-blur-xl p-4">
+            <div class="flex items-center justify-between gap-4">
+                <div class="flex items-center gap-2">
+                    <a href="/ops/cases" class="px-4 py-2 rounded-lg border border-white/10 bg-white/[0.02] text-white/70 hover:text-white hover:bg-white/[0.05] transition-colors font-mono text-xs uppercase tracking-wider">
+                        ← Back to Queue
+                    </a>
+                </div>
+                
+                <div class="flex items-center gap-3">
+                    <form hx-post="/cases/{{ caseDetail.id }}/update-status" 
+                          hx-target="#main-content" 
+                          hx-swap="innerHTML"
+                          class="inline-flex">
+                        <input type="hidden" name="status" value="resolved">
+                        <button type="submit" class="px-6 py-2 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20 transition-colors font-mono text-xs uppercase tracking-wider">
+                            Approve
+                        </button>
+                    </form>
+                    
+                    <form hx-post="/cases/{{ caseDetail.id }}/update-status" 
+                          hx-target="#main-content" 
+                          hx-swap="innerHTML"
+                          class="inline-flex">
+                        <input type="hidden" name="status" value="blocked">
+                        <button type="submit" class="px-6 py-2 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-400 hover:bg-rose-500/20 transition-colors font-mono text-xs uppercase tracking-wider">
+                            Reject
+                        </button>
+                    </form>
+                    
+                    <form hx-post="/cases/{{ caseDetail.id }}/update-status" 
+                          hx-target="#main-content" 
+                          hx-swap="innerHTML"
+                          class="inline-flex">
+                        <input type="hidden" name="status" value="waiting_supplier">
+                        <button type="submit" class="px-6 py-2 rounded-lg bg-white/5 border border-white/10 text-white/70 hover:bg-white/10 hover:text-white transition-colors font-mono text-xs uppercase tracking-wider">
+                            Request Info
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </main>
+    
+    {% else %}
+    
+    <!-- Empty State -->
+    <div class="flex-1 flex items-center justify-center">
+        <div class="text-center max-w-md p-8">
+            <div class="font-serif text-2xl text-white mb-4">Case Not Found</div>
+            <div class="font-sans text-sm text-white/60 mb-6">
+                The case you're looking for doesn't exist or you don't have access to it.
+            </div>
+            <a href="/ops/cases" class="inline-block px-6 py-3 rounded-lg bg-[#60ffc6]/10 border border-[#60ffc6]/30 text-[#60ffc6] hover:bg-[#60ffc6]/20 transition-colors font-mono text-xs uppercase tracking-wider">
+                Return to Case Queue
+            </a>
+        </div>
     </div>
+    
+    {% endif %}
 </div>
 {% endblock %}
-

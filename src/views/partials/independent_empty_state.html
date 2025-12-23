@@ -1,0 +1,122 @@
+<div class="h-full overflow-y-auto dashboard-content">
+  <div class="vmp-container py-12 px-4 max-w-4xl mx-auto">
+    
+    {% if welcomeMessage %}
+    <div class="vmp-panel px-6 py-4 mb-8 border-l-4" style="border-left-color: hsl(155, 100%, 69%);">
+      <div class="flex items-center gap-3">
+        <div class="text-2xl">🎉</div>
+        <div>
+          <div class="vmp-h3 mb-1">{{ welcomeMessage }}</div>
+          <div class="vmp-caption vmp-muted">Your Sandbox Node is ready for forensic analysis.</div>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Empty State Card -->
+    <div class="vmp-card p-12 text-center">
+      <div class="max-w-md mx-auto">
+        <!-- Animated Icon -->
+        <div class="mb-8">
+          <svg width="120" height="120" viewBox="0 0 120 120" class="mx-auto" style="opacity: 0.8;">
+            <defs>
+              <linearGradient id="emptyGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" style="stop-color: hsl(155, 100%, 69%); stop-opacity: 0.3" />
+                <stop offset="100%" style="stop-color: hsl(155, 100%, 69%); stop-opacity: 0.1" />
+              </linearGradient>
+            </defs>
+            <circle cx="60" cy="60" r="50" fill="url(#emptyGradient)" class="animate-pulse" />
+            <path d="M 40 50 L 60 70 L 80 50" stroke="hsl(155, 100%, 69%)" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round" opacity="0.6" />
+            <circle cx="60" cy="60" r="3" fill="hsl(155, 100%, 69%)" opacity="0.8" />
+          </svg>
+        </div>
+
+        <!-- Title -->
+        <h1 class="vmp-h1 mb-4">Welcome to Your Sandbox Node</h1>
+        <p class="vmp-body vmp-muted mb-8 leading-relaxed">
+          As an Independent Investigator, you have immediate access to the platform. 
+          Start creating cases and performing forensic analysis right away.
+        </p>
+
+        <!-- Feature Highlights -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8 text-left">
+          <div class="vmp-panel p-4">
+            <div class="text-2xl mb-2">🔬</div>
+            <div class="vmp-label mb-1">Forensic Analysis</div>
+            <div class="vmp-caption vmp-muted">Create and analyze cases with full forensic reasoning capabilities.</div>
+          </div>
+          <div class="vmp-panel p-4">
+            <div class="text-2xl mb-2">📊</div>
+            <div class="vmp-label mb-1">Local Storage</div>
+            <div class="vmp-caption vmp-muted">All your forensic reasoning is stored locally in your sandbox environment.</div>
+          </div>
+          <div class="vmp-panel p-4">
+            <div class="text-2xl mb-2">⚡</div>
+            <div class="vmp-label mb-1">Immediate Access</div>
+            <div class="vmp-caption vmp-muted">No approval needed. Start working with the platform right away.</div>
+          </div>
+        </div>
+
+        <!-- Sandbox Notice -->
+        <div class="vmp-panel px-6 py-4 mb-8 border-l-4" style="border-left-color: #ffc107; background: rgba(255, 193, 7, 0.05);">
+          <div class="flex items-start gap-3">
+            <div class="text-xl">⚠️</div>
+            <div class="text-left">
+              <div class="vmp-label mb-2" style="color: #ffc107;">Sandbox Node Designation</div>
+              <p class="vmp-caption vmp-muted leading-relaxed">
+                Your forensic reasoning is stored locally and cannot be used for multi-party financial settlement 
+                without Institutional Verification. This ensures data integrity and compliance with forensic protocols.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- CTAs -->
+        <div class="flex flex-col sm:flex-row gap-4 justify-center">
+          <a href="/cases/new" class="vmp-btn vmp-btn-primary">
+            Create Your First Case
+          </a>
+          <a href="/docs" class="vmp-btn vmp-btn-outline">
+            View Documentation
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Quick Start Guide -->
+    <div class="vmp-card p-8 mt-8">
+      <h2 class="vmp-h2 mb-6">Quick Start Guide</h2>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="flex gap-4">
+          <div class="flex-shrink-0 w-8 h-8 rounded-full bg-white/5 flex items-center justify-center vmp-label-kicker">1</div>
+          <div>
+            <div class="vmp-label mb-1">Create a Case</div>
+            <div class="vmp-caption vmp-muted">Start by creating your first forensic case. You can analyze invoices, documents, and evidence.</div>
+          </div>
+        </div>
+        <div class="flex gap-4">
+          <div class="flex-shrink-0 w-8 h-8 rounded-full bg-white/5 flex items-center justify-center vmp-label-kicker">2</div>
+          <div>
+            <div class="vmp-label mb-1">Upload Evidence</div>
+            <div class="vmp-caption vmp-muted">Upload documents, invoices, and supporting materials for analysis.</div>
+          </div>
+        </div>
+        <div class="flex gap-4">
+          <div class="flex-shrink-0 w-8 h-8 rounded-full bg-white/5 flex items-center justify-center vmp-label-kicker">3</div>
+          <div>
+            <div class="vmp-label mb-1">Run Analysis</div>
+            <div class="vmp-caption vmp-muted">Use forensic tools to analyze evidence and generate reports.</div>
+          </div>
+        </div>
+        <div class="flex gap-4">
+          <div class="flex-shrink-0 w-8 h-8 rounded-full bg-white/5 flex items-center justify-center vmp-label-kicker">4</div>
+          <div>
+            <div class="vmp-label mb-1">Export Results</div>
+            <div class="vmp-caption vmp-muted">Export your findings for review or institutional verification.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>

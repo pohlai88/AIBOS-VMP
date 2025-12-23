@@ -1,0 +1,268 @@
+// REVERT TO SUPABASE AUTH - Login Route Changes
+// Replace the login POST handler in server.js with this code
+
+// 3a. Login POST Handler (Supabase Auth)
+app.post('/login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+      return res.render('pages/login3.html', {
+        error: 'Email and password are required'
+      });
+    }
+
+    // Use Supabase Auth for authentication
+    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+      email: email.toLowerCase().trim(),
+      password: password
+    });
+
+    if (authError || !authData.user) {
+      return res.render('pages/login3.html', {
+        error: 'Invalid email or password'
+      });
+    }
+
+    // Check if user is active (stored in user_metadata)
+    const isActive = authData.user.user_metadata?.is_active !== false;
+    if (!isActive) {
+      return res.render('pages/login3.html', {
+        error: 'Account is inactive. Please contact support.'
+      });
+    }
+
+    // Store auth session token in express-session
+    req.session.userId = authData.user.id;
+    req.session.authToken = authData.session.access_token;
+    req.session.refreshToken = authData.session.refresh_token;
+    
+    req.session.save((err) => {
+      if (err) {
+        logError(err, { path: req.path, operation: 'createSession' });
+        return res.status(500).render('pages/error.html', {
+          error: { status: 500, message: 'Failed to create session' }
+        });
+      }
+      // Redirect to home
+      res.redirect('/home');
+    });
+  } catch (error) {
+    logError(error, { path: req.path, operation: 'login' });
+    res.render('pages/login3.html', {
+      error: 'An error occurred during login. Please try again.'
+    });
+  }
+});
+
+// REVERT TO SUPABASE AUTH - Password Reset Routes
+// Replace the forgot-password and reset-password routes with this code
+
+// POST: Request Password Reset (Supabase Auth)
+app.post('/forgot-password', limiter, async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.render('pages/forgot_password.html', {
+        error: 'Email is required'
+      });
+    }
+
+    // Use Supabase Auth password reset
+    const { error } = await supabase.auth.resetPasswordForEmail(
+      email.toLowerCase().trim(),
+      {
+        redirectTo: `${process.env.BASE_URL || 'http://localhost:9000'}/reset-password`
+      }
+    );
+
+    // Always show success (security best practice - don't reveal if email exists)
+    res.render('pages/forgot_password.html', {
+      success: 'If an account with that email exists, a password reset link has been sent.'
+    });
+  } catch (error) {
+    logError(error, { path: req.path, operation: 'forgotPassword' });
+    res.render('pages/forgot_password.html', {
+      error: 'An error occurred. Please try again later.'
+    });
+  }
+});
+
+// GET: Reset Password Page (Supabase Auth)
+app.get('/reset-password', async (req, res) => {
+  try {
+    const { access_token, type } = req.query;
+
+    if (type !== 'recovery' || !access_token) {
+      return res.render('pages/reset_password.html', {
+        error: 'Invalid or expired reset link. Please request a new password reset.'
+      });
+    }
+
+    // Verify the token is valid
+    const { data: { user }, error } = await supabase.auth.getUser(access_token);
+
+    if (error || !user) {
+      return res.render('pages/reset_password.html', {
+        error: 'Invalid or expired reset link. Please request a new password reset.'
+      });
+    }
+
+    res.render('pages/reset_password.html', {
+      token: access_token,
+      error: null
+    });
+  } catch (error) {
+    logError(error, { path: req.path, operation: 'resetPasswordPage' });
+    res.render('pages/reset_password.html', {
+      error: 'An error occurred. Please try again later.'
+    });
+  }
+});
+
+// POST: Reset Password Action (Supabase Auth)
+app.post('/reset-password', async (req, res) => {
+  try {
+    const { token, new_password, confirm_password } = req.body;
+
+    if (!token || !new_password || !confirm_password) {
+      return res.render('pages/reset_password.html', {
+        token: token || '',
+        error: 'All fields are required'
+      });
+    }
+
+    if (new_password !== confirm_password) {
+      return res.render('pages/reset_password.html', {
+        token: token,
+        error: 'Passwords do not match'
+      });
+    }
+
+    if (new_password.length < 8) {
+      return res.render('pages/reset_password.html', {
+        token: token,
+        error: 'Password must be at least 8 characters long'
+      });
+    }
+
+    // Update password using Supabase Auth
+    const { error } = await supabase.auth.updateUser({
+      password: new_password
+    }, {
+      access_token: token
+    });
+
+    if (error) {
+      return res.render('pages/reset_password.html', {
+        token: token,
+        error: 'Invalid or expired reset link. Please request a new password reset.'
+      });
+    }
+
+    // Success - redirect to login
+    res.redirect('/login?password_reset=success');
+  } catch (error) {
+    logError(error, { path: req.path, operation: 'resetPassword' });
+    res.render('pages/reset_password.html', {
+      token: req.body.token || '',
+      error: 'An error occurred. Please try again later.'
+    });
+  }
+});
+
+// REVERT TO SUPABASE AUTH - Auth Middleware Changes
+// Replace the auth middleware with this code
+
+// --- MIDDLEWARE: Supabase Auth (Session Lookup) ---
+app.use(async (req, res, next) => {
+  // Skip auth for public routes
+  const publicRoutes = ['/login', '/', '/health', '/manifesto', '/accept', '/sign-up', '/forgot-password', '/reset-password'];
+  if (publicRoutes.includes(req.path) || req.path.startsWith('/partials/login-')) {
+    return next();
+  }
+
+  // Test mode: Allow bypass with test header (for automated testing)
+  if (env.NODE_ENV === 'test' && req.headers['x-test-auth'] === 'bypass') {
+    const testUserId = req.headers['x-test-user-id'] || 'test-user-id';
+    const testVendorId = req.headers['x-test-vendor-id'] || env.DEMO_VENDOR_ID;
+    const isInternal = req.headers['x-test-is-internal'] === 'true';
+
+    req.user = {
+      id: testUserId,
+      email: 'test@example.com',
+      displayName: 'Test User',
+      vendorId: testVendorId,
+      vendor: { id: testVendorId, name: 'Test Vendor' },
+      isInternal: isInternal || false
+    };
+    return next();
+  }
+
+  // Check if user is stored in session
+  if (!req.session.userId || !req.session.authToken) {
+    return res.redirect('/login');
+  }
+
+  try {
+    // Verify session token with Supabase Auth
+    const { data: { user }, error } = await supabase.auth.getUser(req.session.authToken);
+
+    if (error || !user) {
+      // Invalid token - destroy session
+      req.session.destroy((err) => {
+        if (err) logError(err, { operation: 'authMiddleware', path: req.path });
+      });
+      return res.redirect('/login');
+    }
+
+    // Check if user is active
+    const isActive = user.user_metadata?.is_active !== false;
+    if (!isActive) {
+      req.session.destroy((err) => {
+        if (err) logError(err, { operation: 'authMiddleware', path: req.path });
+      });
+      return res.redirect('/login');
+    }
+
+    // Get vendor information from user_metadata
+    const vendorId = user.user_metadata?.vendor_id;
+    if (!vendorId) {
+      logError(new Error('User missing vendor_id'), { userId: user.id, path: req.path });
+      req.session.destroy((err) => {
+        if (err) logError(err, { operation: 'authMiddleware', path: req.path });
+      });
+      return res.redirect('/login');
+    }
+
+    // Get vendor details
+    const vendor = await vmpAdapter.getVendorById(vendorId);
+    if (!vendor) {
+      logError(new Error('Vendor not found'), { vendorId, path: req.path });
+      req.session.destroy((err) => {
+        if (err) logError(err, { operation: 'authMiddleware', path: req.path });
+      });
+      return res.redirect('/login');
+    }
+
+    // Set user on request
+    req.user = {
+      id: user.id,
+      email: user.email,
+      displayName: user.user_metadata?.display_name || user.email,
+      vendorId: vendorId,
+      vendor: vendor,
+      isInternal: user.user_metadata?.is_internal === true || false
+    };
+
+    next();
+  } catch (error) {
+    logError(error, { operation: 'authMiddleware', path: req.path });
+    req.session.destroy((err) => {
+      if (err) logError(err, { operation: 'authMiddleware', path: req.path });
+    });
+    return res.redirect('/login');
+  }
+});
+

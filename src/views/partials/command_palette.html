@@ -1,262 +1,79 @@
-<!-- Command Palette Partial (Sprint 10.1) -->
-<div id="command-palette" 
-     class="vmp-command-palette"
-     x-data="commandPalette()"
-     x-show="isOpen"
-     @keydown.escape.window="close()"
-     @keydown.meta.k.window.prevent="toggle()"
-     @keydown.ctrl.k.window.prevent="toggle()"
-     style="display: none;">
-  <!-- Overlay -->
-  <div class="vmp-command-palette-overlay" @click="close()"></div>
+<div x-data="{ 
+  open: false,
+  active: 0,
+  items: [
+      { id: 'nav-home', label: 'Go to Console', icon: 'Home', action: () => window.location.href = '/home' },
+      { id: 'nav-inbox', label: 'Go to Case Inbox', icon: 'Inbox', action: () => window.location.href = '/cases' },
+      { id: 'nav-inv', label: 'Go to Invoices', icon: 'FileText', action: () => window.location.href = '/invoices' },
+      { id: 'act-new', label: 'Create New Case', icon: 'Plus', action: () => htmx.ajax('GET', '/partials/modals/new-case', { target: '#modal-container' }) },
+      { id: 'act-theme', label: 'Toggle Theme', icon: 'Moon', action: () => document.documentElement.setAttribute('data-theme', document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark') }
+  ],
+  init() {
+      document.addEventListener('keydown', (e) => {
+          if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+              e.preventDefault();
+              this.open = !this.open;
+              if (this.open) this.$nextTick(() => this.$refs.cmdInput.focus());
+          }
+          if (e.key === 'Escape') this.open = false;
+      });
+  },
+  execute(index) {
+      this.items[index].action();
+      this.open = false;
+  }
+}"
+x-show="open"
+class="vmp-modal-overlay z-[9999]"
+style="display: none;"
+x-transition.opacity>
+
+<div class="vmp-panel w-full max-w-xl shadow-2xl flex flex-col overflow-hidden relative top-[-10vh]"
+   @click.outside="open = false"
+   x-transition:enter="ease-out duration-200"
+   x-transition:enter-start="opacity-0 scale-95"
+   x-transition:enter-end="opacity-100 scale-100">
   
-  <!-- Dialog -->
-  <div class="vmp-command-palette-dialog" @click.stop>
-    <!-- Search Input -->
-    <div class="vmp-command-input-container">
-      <svg class="vmp-command-search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-        <circle cx="11" cy="11" r="8"></circle>
-        <path d="m21 21-4.35-4.35"></path>
-      </svg>
-      <input 
-        type="text"
-        class="vmp-command-input"
-        placeholder="Search cases, invoices, actions..."
-        x-model="query"
-        @input.debounce.200ms="search()"
-        @keydown.arrow-down.prevent="navigateDown()"
-        @keydown.arrow-up.prevent="navigateUp()"
-        @keydown.enter.prevent="selectItem()"
-        x-ref="input"
-      />
-      <kbd class="vmp-command-shortcut">⌘K</kbd>
-    </div>
+  <div class="flex items-center border-b p-4" style="border-color: var(--vmp-border);">
+      <svg class="w-5 h-5 opacity-40 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+      <input type="text" 
+             x-ref="cmdInput"
+             class="vmp-input border-none bg-transparent p-0 text-lg focus:ring-0" 
+             placeholder="What do you need?..."
+             @keydown.arrow-down.prevent="active = (active + 1) % items.length"
+             @keydown.arrow-up.prevent="active = (active - 1 + items.length) % items.length"
+             @keydown.enter.prevent="execute(active)">
+      <div class="vmp-tag vmp-tag-mono text-[10px] opacity-40">ESC</div>
+  </div>
 
-    <!-- Results -->
-    <div class="vmp-command-list" x-show="results.length > 0 || isLoading">
-      <template x-if="isLoading">
-        <div class="vmp-command-empty">
-          <div class="vmp-spinner"></div>
-          <span class="vmp-body-small vmp-muted ml-2">Searching...</span>
-        </div>
+  <div class="max-h-[300px] overflow-y-auto p-2">
+      <div class="vmp-label px-3 py-2 opacity-50 text-[10px]">SUGGESTIONS</div>
+      <template x-for="(item, index) in items" :key="item.id">
+          <button class="w-full flex items-center justify-between px-3 py-3 rounded-lg text-left transition-colors"
+                  :class="active === index ? 'bg-[var(--vmp-border)]' : 'hover:bg-[var(--vmp-border)]'"
+                  @click="execute(index)"
+                  @mousemove="active = index">
+              <div class="flex items-center gap-3">
+                  <div class="w-8 h-8 rounded border grid place-items-center opacity-60" style="border-color: var(--vmp-border);">
+                      <svg x-show="item.icon === 'Home'" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
+                      <svg x-show="item.icon === 'Inbox'" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path></svg>
+                      <svg x-show="item.icon === 'FileText'" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                      <svg x-show="item.icon === 'Plus'" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                      <svg x-show="item.icon === 'Moon'" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg>
+                  </div>
+                  <span class="vmp-body-small" x-text="item.label"></span>
+              </div>
+              <span class="vmp-caption opacity-30">Jump</span>
+          </button>
       </template>
-
-      <template x-if="!isLoading && results.length > 0">
-        <template x-for="(group, groupIndex) in groupedResults" :key="groupIndex">
-          <div class="vmp-command-group">
-            <div class="vmp-command-group-title" x-text="group.category"></div>
-            <template x-for="(item, itemIndex) in group.items" :key="item.id">
-              <a 
-                :href="item.url"
-                class="vmp-command-item"
-                :class="{ 'vmp-command-item-active': activeIndex === groupIndex + '-' + itemIndex }"
-                @mouseenter="activeIndex = groupIndex + '-' + itemIndex"
-                @click.prevent="executeAction(item)">
-                <div class="vmp-command-item-icon" x-html="item.icon || '📄'"></div>
-                <div class="vmp-command-item-content">
-                  <div class="vmp-command-item-label" x-text="item.label"></div>
-                  <div class="vmp-command-item-hint" x-text="item.hint || ''"></div>
-                </div>
-                <kbd class="vmp-command-shortcut" x-show="item.shortcut" x-text="item.shortcut"></kbd>
-              </a>
-            </template>
-          </div>
-        </template>
-      </template>
-    </div>
-
-    <!-- Empty State -->
-    <div class="vmp-command-empty" x-show="!isLoading && results.length === 0 && query.length > 0">
-      <div class="vmp-body-small vmp-muted">No results found</div>
-    </div>
-
-    <!-- Initial State -->
-    <div class="vmp-command-empty" x-show="!isLoading && results.length === 0 && query.length === 0">
-      <div class="vmp-body-small vmp-muted mb-2">Quick Actions</div>
-      <div class="vmp-command-group">
-        <a href="/cases/new" class="vmp-command-item" @click.prevent="executeAction({ url: '/cases/new', action: 'navigate' })">
-          <div class="vmp-command-item-icon">➕</div>
-          <div class="vmp-command-item-content">
-            <div class="vmp-command-item-label">New Case</div>
-            <div class="vmp-command-item-hint">Create a new case</div>
-          </div>
-          <kbd class="vmp-command-shortcut">⌘N</kbd>
-        </a>
-        <a href="/invoices" class="vmp-command-item" @click.prevent="executeAction({ url: '/invoices', action: 'navigate' })">
-          <div class="vmp-command-item-icon">📋</div>
-          <div class="vmp-command-item-content">
-            <div class="vmp-command-item-label">View Invoices</div>
-            <div class="vmp-command-item-hint">Browse all invoices</div>
-          </div>
-        </a>
-        <a href="/payments/history" class="vmp-command-item" @click.prevent="executeAction({ url: '/payments/history', action: 'navigate' })">
-          <div class="vmp-command-item-icon">💰</div>
-          <div class="vmp-command-item-content">
-            <div class="vmp-command-item-label">Payment History</div>
-            <div class="vmp-command-item-hint">View payment timeline</div>
-          </div>
-        </a>
+  </div>
+  
+  <div class="px-4 py-2 border-t flex justify-between items-center" style="border-color: var(--vmp-border);">
+      <div class="flex gap-4">
+          <span class="vmp-caption opacity-40"><strong class="font-medium">↑↓</strong> to navigate</span>
+          <span class="vmp-caption opacity-40"><strong class="font-medium">↵</strong> to select</span>
       </div>
-    </div>
+      <div class="vmp-code-small opacity-30">VMP-OS</div>
   </div>
 </div>
-
-<script>
-function commandPalette() {
-  return {
-    isOpen: false,
-    query: '',
-    results: [],
-    isLoading: false,
-    activeIndex: null,
-
-    init() {
-      // Listen for Cmd/Ctrl+K globally
-      document.addEventListener('keydown', (e) => {
-        if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-          e.preventDefault();
-          this.toggle();
-        }
-      });
-    },
-
-    toggle() {
-      this.isOpen = !this.isOpen;
-      if (this.isOpen) {
-        this.$nextTick(() => {
-          this.$refs.input.focus();
-        });
-      } else {
-        this.query = '';
-        this.results = [];
-        this.activeIndex = null;
-      }
-    },
-
-    close() {
-      this.isOpen = false;
-      this.query = '';
-      this.results = [];
-      this.activeIndex = null;
-    },
-
-    async search() {
-      if (!this.query || this.query.length < 2) {
-        this.results = [];
-        return;
-      }
-
-      this.isLoading = true;
-      try {
-        const response = await fetch(`/api/command-palette/search?q=${encodeURIComponent(this.query)}`);
-        const data = await response.json();
-        this.results = data.results || [];
-        this.activeIndex = this.results.length > 0 ? '0-0' : null;
-      } catch (error) {
-        console.error('Search error:', error);
-        this.results = [];
-      } finally {
-        this.isLoading = false;
-      }
-    },
-
-    get groupedResults() {
-      const groups = {};
-      this.results.forEach(item => {
-        if (!groups[item.category]) {
-          groups[item.category] = [];
-        }
-        groups[item.category].push(item);
-      });
-      return Object.keys(groups).map(category => ({
-        category,
-        items: groups[category]
-      }));
-    },
-
-    navigateDown() {
-      if (this.results.length === 0) return;
-      const groups = this.groupedResults;
-      let currentGroup = 0;
-      let currentItem = 0;
-      
-      if (this.activeIndex) {
-        const [g, i] = this.activeIndex.split('-').map(Number);
-        currentGroup = g;
-        currentItem = i;
-        
-        if (currentItem < groups[currentGroup].items.length - 1) {
-          currentItem++;
-        } else if (currentGroup < groups.length - 1) {
-          currentGroup++;
-          currentItem = 0;
-        } else {
-          currentGroup = 0;
-          currentItem = 0;
-        }
-      }
-      
-      this.activeIndex = `${currentGroup}-${currentItem}`;
-      this.scrollToActive();
-    },
-
-    navigateUp() {
-      if (this.results.length === 0) return;
-      const groups = this.groupedResults;
-      let currentGroup = 0;
-      let currentItem = 0;
-      
-      if (this.activeIndex) {
-        const [g, i] = this.activeIndex.split('-').map(Number);
-        currentGroup = g;
-        currentItem = i;
-        
-        if (currentItem > 0) {
-          currentItem--;
-        } else if (currentGroup > 0) {
-          currentGroup--;
-          currentItem = groups[currentGroup].items.length - 1;
-        } else {
-          currentGroup = groups.length - 1;
-          currentItem = groups[currentGroup].items.length - 1;
-        }
-      } else {
-        currentGroup = groups.length - 1;
-        currentItem = groups[currentGroup].items.length - 1;
-      }
-      
-      this.activeIndex = `${currentGroup}-${currentItem}`;
-      this.scrollToActive();
-    },
-
-    scrollToActive() {
-      this.$nextTick(() => {
-        const activeElement = document.querySelector('.vmp-command-item-active');
-        if (activeElement) {
-          activeElement.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-        }
-      });
-    },
-
-    selectItem() {
-      if (!this.activeIndex || this.results.length === 0) return;
-      const groups = this.groupedResults;
-      const [g, i] = this.activeIndex.split('-').map(Number);
-      const item = groups[g].items[i];
-      this.executeAction(item);
-    },
-
-    executeAction(item) {
-      if (item.action === 'navigate') {
-        window.location.href = item.url;
-      } else if (item.action === 'htmx') {
-        htmx.ajax('GET', item.url, { target: item.target, swap: item.swap || 'innerHTML' });
-        this.close();
-      } else {
-        window.location.href = item.url;
-      }
-    }
-  }
-}
-</script>
-
+</div>

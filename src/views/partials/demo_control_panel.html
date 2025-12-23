@@ -1,0 +1,42 @@
+<div x-data="{ show: true }" 
+     x-show="show" 
+     x-transition.opacity.duration.500ms
+     class="mb-8 animate-in fade-in slide-in-from-top-4 duration-700">
+    
+    <div class="vmp-panel p-1 flex flex-col md:flex-row items-stretch md:items-center gap-6 border-l-4" 
+         style="border-color: var(--vmp-brand); background: linear-gradient(90deg, var(--vmp-panel) 0%, transparent 100%);">
+        
+        <div class="p-4 flex items-center justify-center bg-white/5 rounded-lg shrink-0">
+            <div class="relative">
+                <span class="text-2xl">🚀</span>
+                <div class="absolute -top-1 -right-1 w-2 h-2 bg-[var(--vmp-ok)] rounded-full animate-ping"></div>
+            </div>
+        </div>
+
+        <div class="flex-1 py-2">
+            <div class="flex items-center gap-2 mb-1">
+                <h3 class="vmp-h5 leading-none">Flight Simulator Active</h3>
+                <span class="vmp-tag vmp-tag-mono text-[10px] bg-[var(--vmp-brand)] text-black">DEMO MODE</span>
+            </div>
+            <p class="vmp-caption opacity-70 max-w-xl">
+                You are operating in a sandbox environment. Data generated here is isolated and will not affect the production ledger.
+            </p>
+        </div>
+
+        <div class="p-4 flex items-center gap-3 border-t md:border-t-0 md:border-l border-white/5">
+            <button hx-post="/api/demo/reset" 
+                    hx-swap="none"
+                    class="vmp-btn vmp-btn-ghost vmp-btn-sm text-[var(--vmp-danger)] hover:bg-[var(--vmp-danger)]/10">
+                Reset Data
+            </button>
+            <button hx-post="/api/demo/seed" 
+                    hx-swap="none"
+                    class="vmp-btn vmp-btn-primary">
+                <span class="vmp-label text-[var(--vmp-bg)]">Generate Invoices</span>
+            </button>
+            <button @click="show = false" class="vmp-btn vmp-btn-ghost vmp-btn-sm p-2 rounded-full" aria-label="Dismiss">
+                <svg class="w-4 h-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+        </div>
+    </div>
+</div>

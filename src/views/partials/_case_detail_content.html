@@ -1,0 +1,111 @@
+<div class="flex flex-col h-full" style="background: var(--vmp-veil);">
+    
+    {% if error %}
+    <div class="p-4 m-4 vmp-alert vmp-alert-danger">
+        <div class="vmp-label vmp-signal-danger mb-1">ERROR</div>
+        <div>{{ error }}</div>
+    </div>
+    {% endif %}
+    
+    {% include "partials/upload_progress.html" %}
+
+    <header class="shrink-0 p-6 border-b" style="border-color: var(--vmp-border); background: var(--vmp-panel);">
+        <div class="flex justify-between items-start mb-6">
+            <div>
+                <div class="flex items-center gap-2 mb-2">
+                    <span class="vmp-code-small opacity-50">CASE-{{ caseId_short }}</span>
+                    <span class="vmp-subtle">•</span>
+                    <span class="vmp-label">protocol</span>
+                </div>
+                <h2 class="vmp-h3 max-w-2xl leading-tight">
+                    {{ caseDetail.subject or 'Untitled Case' }}
+                </h2>
+            </div>
+
+            <div class="vmp-panel px-4 py-3 flex items-center gap-4" style="background: var(--vmp-veil);">
+                <div class="text-right">
+                    <div class="vmp-label opacity-50 mb-1">CURRENT STATE</div>
+                    <div class="vmp-pill {{ status_class }}">
+                        {{ status_label }}
+                    </div>
+                </div>
+                <div class="w-1.5 h-10 rounded-full overflow-hidden relative" style="background: var(--vmp-panel);">
+                    <div class="absolute bottom-0 left-0 right-0 {{ fill_class }} {{ 'animate-pulse' if is_urgent }}">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-4 gap-6 pt-6 border-t" style="border-color: var(--vmp-border);">
+            <div>
+                <div class="vmp-label mb-2 opacity-60">Owner</div>
+                {% if isInternal %}
+                <form hx-post="/cases/{{ caseId }}/reassign" hx-target="#case-detail-panel" hx-swap="innerHTML">
+                    <select name="owner_team" 
+                            onchange="this.form.requestSubmit()" 
+                            class="vmp-select vmp-body-small py-1 px-2 h-auto">
+                        <option value="procurement" {{ 'selected' if caseDetail.owner_team == 'procurement' }}>Procurement</option>
+                        <option value="ap" {{ 'selected' if caseDetail.owner_team == 'ap' }}>AP</option>
+                        <option value="finance" {{ 'selected' if caseDetail.owner_team == 'finance' }}>Finance</option>
+                    </select>
+                </form>
+                {% else %}
+                <div class="vmp-body-small">
+                    <span class="vmp-pill {{ 'vmp-pill-ready' if caseDetail.assigned_user else 'vmp-pill-pending' }}">
+                        {{ (caseDetail.owner_team or 'Unassigned') | upper }}
+                    </span>
+                </div>
+                {% endif %}
+            </div>
+            
+            <div>
+                <div class="vmp-label mb-2 opacity-60">Entity</div>
+                <div class="vmp-body-small">{{ caseDetail.vmp_companies.name or '—' }}</div>
+            </div>
+
+            <div>
+                <div class="vmp-label mb-2 opacity-60">SLA Target</div>
+                {% if sla %}
+                <div class="vmp-panel p-2 border" style="border-color: var(--vmp-border);">
+                    <div class="vmp-progress vmp-progress-sm mb-1.5">
+                        <div class="vmp-progress-bar {{ sla.bar_class }}" style="width: {{ sla.percent }}%"></div>
+                    </div>
+                    <div class="vmp-code-small {{ sla.text_class }}">
+                        {{ sla.due_date_formatted }}
+                    </div>
+                </div>
+                {% else %}
+                <div class="vmp-body-small opacity-50">—</div>
+                {% endif %}
+            </div>
+
+            <div>
+                <div class="vmp-label mb-2 opacity-60">Ref ID</div>
+                <div class="vmp-code-small opacity-50 truncate">{{ caseDetail.erp_ref_id or 'Pending' }}</div>
+            </div>
+        </div>
+    </header>
+
+    <div class="flex-1 overflow-hidden grid lg:grid-cols-[1fr_400px]">
+        <div class="flex flex-col border-r h-full relative" style="border-color: var(--vmp-border);">
+            <div id="case-thread-container" 
+                 hx-get="/partials/case-thread?case_id={{ caseId }}" 
+                 hx-trigger="load"
+                 hx-target="this" 
+                 hx-swap="innerHTML" 
+                 class="flex-1 h-full">
+                 <div class="flex items-center justify-center h-full">
+                    <div class="vmp-spinner opacity-50"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="flex flex-col h-full overflow-y-auto" style="background: var(--vmp-panel);">
+            <div id="case-checklist-container" hx-get="/partials/case-checklist?case_id={{ caseId }}" hx-trigger="load" hx-target="this"></div>
+            <div id="case-evidence-container" hx-get="/partials/case-evidence?case_id={{ caseId }}" hx-trigger="load" hx-target="this" class="flex-1"></div>
+            <div id="case-activity-container" hx-get="/partials/case-activity?case_id={{ caseId }}" hx-trigger="load" hx-target="this"></div>
+            <div id="case-escalation-container" hx-get="/partials/escalation?case_id={{ caseId }}" hx-trigger="load" hx-target="this"></div>
+        </div>
+    </div>
+</div>
+

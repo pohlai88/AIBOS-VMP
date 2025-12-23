@@ -1,93 +1,105 @@
-<!-- Ops Case Queue Partial -->
-<div class="space-y-6">
-    {% if error %}
-    <div class="p-4 mb-4 rounded-lg border vmp-border-warn vmp-bg-warn vmp-opacity-30">
-        <div class="vmp-label vmp-text-warn">{{ error }}</div>
-    </div>
-    {% endif %}
-
-    <!-- Filters -->
-    <div class="vmp-panel p-4 border vmp-border-color">
-        <form hx-get="/partials/ops-case-queue.html?scope_type={{ scopeType }}&scope_id={{ scopeId }}"
+<div class="space-y-4">
+    <div class="vmp-panel p-3 border flex flex-wrap items-center gap-3 sticky top-0 z-10 shadow-lg" 
+         style="border-color: var(--vmp-border);">
+        <form hx-get="/partials/ops-case-queue.html"
               hx-target="#case-queue-container"
               hx-swap="innerHTML"
-              class="flex gap-4 items-center flex-wrap">
-            <select name="status" class="vmp-form-input text-sm">
-                <option value="">All Status</option>
-                <option value="open" {% if filters.status == 'open' %}selected{% endif %}>Open</option>
-                <option value="resolved" {% if filters.status == 'resolved' %}selected{% endif %}>Resolved</option>
-                <option value="closed" {% if filters.status == 'closed' %}selected{% endif %}>Closed</option>
+              class="flex-1 flex gap-3 items-center flex-wrap">
+            
+            <div class="flex items-center gap-2 px-2 border-r" style="border-color: var(--vmp-border);">
+                <svg class="w-4 h-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path></svg>
+                <span class="vmp-code-small opacity-60">FILTER</span>
+            </div>
+
+            <select name="status" class="vmp-input-sm bg-transparent border-0 focus:ring-0 vmp-code-small cursor-pointer hover:text-white transition-colors"
+                    onchange="this.form.requestSubmit()">
+                <option value="" class="bg-black">All Status</option>
+                <option value="open" class="bg-black" {% if filters.status == 'open' %}selected{% endif %}>Open</option>
+                <option value="resolved" class="bg-black" {% if filters.status == 'resolved' %}selected{% endif %}>Resolved</option>
+                <option value="closed" class="bg-black" {% if filters.status == 'closed' %}selected{% endif %}>Closed</option>
             </select>
-            <select name="owner_team" class="vmp-form-input text-sm">
-                <option value="">All Teams</option>
-                <option value="procurement" {% if filters.owner_team == 'procurement' %}selected{% endif %}>Procurement</option>
-                <option value="ap" {% if filters.owner_team == 'ap' %}selected{% endif %}>AP</option>
-                <option value="finance" {% if filters.owner_team == 'finance' %}selected{% endif %}>Finance</option>
+
+            <select name="owner_team" class="vmp-input-sm bg-transparent border-0 focus:ring-0 vmp-code-small cursor-pointer hover:text-white transition-colors"
+                    onchange="this.form.requestSubmit()">
+                <option value="" class="bg-black">All Teams</option>
+                <option value="procurement" class="bg-black" {% if filters.owner_team == 'procurement' %}selected{% endif %}>Procurement</option>
+                <option value="ap" class="bg-black" {% if filters.owner_team == 'ap' %}selected{% endif %}>AP</option>
+                <option value="finance" class="bg-black" {% if filters.owner_team == 'finance' %}selected{% endif %}>Finance</option>
             </select>
-            <select name="case_type" class="vmp-form-input text-sm">
-                <option value="">All Types</option>
-                <option value="invoice" {% if filters.case_type == 'invoice' %}selected{% endif %}>Invoice</option>
-                <option value="payment" {% if filters.case_type == 'payment' %}selected{% endif %}>Payment</option>
-                <option value="onboarding" {% if filters.case_type == 'onboarding' %}selected{% endif %}>Onboarding</option>
-            </select>
-            <button type="submit" class="vmp-btn-outline text-sm">Filter</button>
         </form>
     </div>
 
-    <!-- Case List -->
-    {% if cases and cases|length > 0 %}
-    <div class="divide-y vmp-border-color">
-        {% for case in cases %}
-        <a href="/ops/cases/{{ case.id }}" 
-           class="block px-4 py-3.5 hover:bg-white/[0.02] active:bg-white/[0.04] transition-all">
-            <div class="flex items-start justify-between gap-3">
-                <div class="flex items-start gap-3 min-w-0 flex-1">
-                    <div class="mt-1.5 relative shrink-0">
-                        {% if case.escalation_level >= 3 %}
-                        <div class="w-1.5 h-1.5 rounded-full vmp-fill-danger animate-pulse"></div>
-                        {% elif case.escalation_level >= 2 %}
-                        <div class="w-1.5 h-1.5 rounded-full vmp-fill-warn"></div>
-                        {% else %}
-                        <div class="w-1.5 h-1.5 rounded-full vmp-bg-panel"></div>
-                        {% endif %}
-                    </div>
-                    <div class="min-w-0 flex-1">
-                        <div class="flex items-center gap-2 mb-1">
-                            <span class="vmp-code">{{ case.case_type | upper }}</span>
+    <div class="vmp-panel border overflow-hidden" style="border-color: var(--vmp-border);">
+        {% if cases and cases|length > 0 %}
+        <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse">
+                <thead>
+                    <tr class="border-b bg-[var(--vmp-background-secondary)]" style="border-color: var(--vmp-border);">
+                        <th class="p-3 vmp-code-small opacity-50 font-normal w-12">Esc</th>
+                        <th class="p-3 vmp-code-small opacity-50 font-normal">Case Ref</th>
+                        <th class="p-3 vmp-code-small opacity-50 font-normal">Subject</th>
+                        <th class="p-3 vmp-code-small opacity-50 font-normal">Team</th>
+                        <th class="p-3 vmp-code-small opacity-50 font-normal">Updated</th>
+                        <th class="p-3 vmp-code-small opacity-50 font-normal text-right">Status</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y" style="divide-color: var(--vmp-border);">
+                    {% for case in cases %}
+                    <tr class="group hover:bg-[var(--vmp-background-hover)] transition-colors cursor-pointer"
+                        onclick="window.location='/ops/cases/{{ case.id }}'">
+                        
+                        <td class="p-3 text-center">
+                            {% if case.escalation_level >= 3 %}
+                                <div class="w-2 h-2 rounded-full bg-[var(--vmp-danger)] mx-auto animate-pulse shadow-[0_0_8px_var(--vmp-danger)]"></div>
+                            {% elif case.escalation_level >= 2 %}
+                                <div class="w-2 h-2 rounded-full bg-[var(--vmp-warn)] mx-auto"></div>
+                            {% else %}
+                                <div class="w-2 h-2 rounded-full bg-[var(--vmp-border)] mx-auto opacity-30"></div>
+                            {% endif %}
+                        </td>
+
+                        <td class="p-3">
+                            <div class="flex flex-col">
+                                <span class="vmp-code-small text-[var(--vmp-brand)]">#{{ case.id | truncate(8, True, '') }}</span>
+                                <span class="vmp-caption text-[10px] opacity-50">{{ case.case_type | upper }}</span>
+                            </div>
+                        </td>
+
+                        <td class="p-3 max-w-md">
+                            <div class="vmp-body-small font-medium truncate mb-0.5">{{ case.subject or 'No subject' }}</div>
                             {% if case.vmp_companies %}
-                            <span class="vmp-caption vmp-muted">{{ case.vmp_companies.name }}</span>
+                            <div class="vmp-caption opacity-60 flex items-center gap-1">
+                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>
+                                {{ case.vmp_companies.name }}
+                            </div>
                             {% endif %}
-                            {% if case.owner_team %}
-                            <span class="vmp-caption vmp-muted">• {{ case.owner_team | upper }}</span>
-                            {% endif %}
-                        </div>
-                        <div class="vmp-body-small leading-snug truncate">
-                            {{ case.subject or 'No subject' }}
-                        </div>
-                        <div class="mt-2 flex items-center gap-2">
-                            <span class="vmp-caption vmp-muted">
-                                {{ case.updated_at | date('%b %d, %Y') if case.updated_at else '—' }}
+                        </td>
+
+                        <td class="p-3">
+                            <span class="vmp-badge vmp-badge-outline text-[10px]">
+                                {{ case.owner_team | upper if case.owner_team else 'UNASSIGNED' }}
                             </span>
-                        </div>
-                    </div>
-                </div>
-                <div class="shrink-0">
-                    <span class="vmp-tag vmp-tag-mono text-xs">
-                        {{ (case.status or 'open') | upper }}
-                    </span>
-                </div>
-            </div>
-        </a>
-        {% endfor %}
-    </div>
-    {% else %}
-    <div class="vmp-body vmp-muted text-center py-8">
-        {% if error %}
-        {{ error }}
+                        </td>
+
+                        <td class="p-3 vmp-caption opacity-60">
+                            {{ case.updated_at | date('%b %d') if case.updated_at else '—' }}
+                        </td>
+
+                        <td class="p-3 text-right">
+                            <span class="vmp-tag {{ 'vmp-tag-mono' if case.status == 'open' else 'opacity-50 border border-white/10' }}">
+                                {{ (case.status or 'open') | upper }}
+                            </span>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
         {% else %}
-        No cases found for this scope.
+        <div class="vmp-empty py-12 text-center">
+            <div class="vmp-empty-title">Queue Clear</div>
+            <div class="vmp-empty-description">No cases match your filters.</div>
+        </div>
         {% endif %}
     </div>
-    {% endif %}
 </div>
-

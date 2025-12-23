@@ -1,0 +1,271 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>NexusIcon Adaptive - Usage Examples</title>
+  <style>
+    :root {
+      --accent: #60FFC6;
+      --bg-dark: #050505;
+      --bg-light: #ffffff;
+      --text-dark: #ededed;
+      --text-light: #000000;
+    }
+    
+    body {
+      margin: 0;
+      font-family: system-ui, sans-serif;
+      padding: 2rem;
+      background: var(--bg-dark);
+      color: var(--text-dark);
+    }
+    
+    .example-section {
+      margin-bottom: 4rem;
+      padding: 2rem;
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 12px;
+    }
+    
+    .example-title {
+      font-size: 1.5rem;
+      margin-bottom: 1.5rem;
+      color: var(--accent);
+    }
+    
+    .example-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 2rem;
+    }
+    
+    .example-card {
+      padding: 1.5rem;
+      background: rgba(255,255,255,0.02);
+      border: 1px solid rgba(255,255,255,0.05);
+      border-radius: 8px;
+    }
+    
+    .example-label {
+      font-size: 0.85rem;
+      color: rgba(255,255,255,0.5);
+      margin-bottom: 1rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    
+    /* Example 1: Basic currentColor */
+    .basic-example {
+      color: var(--accent);
+    }
+    
+    /* Example 2: Light Background */
+    .light-bg {
+      background: var(--bg-light);
+      color: var(--text-light);
+      padding: 1rem;
+      border-radius: 8px;
+    }
+    
+    /* Example 3: Dark Background */
+    .dark-bg {
+      background: var(--bg-dark);
+      color: var(--accent);
+      padding: 1rem;
+      border-radius: 8px;
+    }
+    
+    /* Example 4: With CSS Variable */
+    .css-var-example {
+      --icon-color: #FF6B6B;
+      color: var(--icon-color);
+    }
+    
+    /* Example 5: Mix Blend Mode */
+    .blend-example {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      padding: 1rem;
+      border-radius: 8px;
+      color: #ffffff;
+    }
+    
+    .blend-example svg {
+      mix-blend-mode: screen;
+    }
+    
+    /* Example 6: Hover Effect */
+    .hover-example {
+      color: var(--accent);
+      transition: color 0.3s ease;
+      cursor: pointer;
+    }
+    
+    .hover-example:hover {
+      color: #ffffff;
+    }
+    
+    /* Icon Sizing */
+    .icon-small { width: 24px; height: 24px; }
+    .icon-medium { width: 36px; height: 36px; }
+    .icon-large { width: 48px; height: 48px; }
+    .icon-xlarge { width: 64px; height: 64px; }
+  </style>
+</head>
+<body>
+  <h1>NexusIcon Adaptive - Usage Examples</h1>
+  
+  <!-- Example 1: Basic currentColor -->
+  <div class="example-section">
+    <h2 class="example-title">1. Basic currentColor Usage</h2>
+    <div class="example-grid">
+      <div class="example-card">
+        <div class="example-label">Default (Accent Color)</div>
+        <div class="basic-example">
+          <svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <!-- Paste NexusIconAdaptive.svg content here -->
+            <circle cx="18" cy="18" r="18" fill="currentColor" fill-opacity="0.12"/>
+            <circle cx="18" cy="18" r="9.333" fill="currentColor" fill-opacity="0.2"/>
+            <rect x="12" y="12" width="12" height="12" rx="2" fill="currentColor" fill-opacity="0.25"/>
+            <rect x="14" y="14" width="8" height="8" rx="1.5" fill="currentColor" fill-opacity="0.4"/>
+            <rect x="16" y="16" width="4" height="4" rx="1" fill="currentColor" fill-opacity="0.6"/>
+          </svg>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Example 2: Light/Dark Backgrounds -->
+  <div class="example-section">
+    <h2 class="example-title">2. Background Adaptation</h2>
+    <div class="example-grid">
+      <div class="example-card">
+        <div class="example-label">Light Background</div>
+        <div class="light-bg">
+          <svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="18" cy="18" r="18" fill="currentColor" fill-opacity="0.12"/>
+            <circle cx="18" cy="18" r="9.333" fill="currentColor" fill-opacity="0.2"/>
+            <rect x="12" y="12" width="12" height="12" rx="2" fill="currentColor" fill-opacity="0.25"/>
+            <rect x="14" y="14" width="8" height="8" rx="1.5" fill="currentColor" fill-opacity="0.4"/>
+            <rect x="16" y="16" width="4" height="4" rx="1" fill="currentColor" fill-opacity="0.6"/>
+          </svg>
+        </div>
+      </div>
+      <div class="example-card">
+        <div class="example-label">Dark Background</div>
+        <div class="dark-bg">
+          <svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="18" cy="18" r="18" fill="currentColor" fill-opacity="0.12"/>
+            <circle cx="18" cy="18" r="9.333" fill="currentColor" fill-opacity="0.2"/>
+            <rect x="12" y="12" width="12" height="12" rx="2" fill="currentColor" fill-opacity="0.25"/>
+            <rect x="14" y="14" width="8" height="8" rx="1.5" fill="currentColor" fill-opacity="0.4"/>
+            <rect x="16" y="16" width="4" height="4" rx="1" fill="currentColor" fill-opacity="0.6"/>
+          </svg>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Example 3: CSS Variables -->
+  <div class="example-section">
+    <h2 class="example-title">3. CSS Variables</h2>
+    <div class="example-grid">
+      <div class="example-card">
+        <div class="example-label">Custom Color Variable</div>
+        <div class="css-var-example">
+          <svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="18" cy="18" r="18" fill="currentColor" fill-opacity="0.12"/>
+            <circle cx="18" cy="18" r="9.333" fill="currentColor" fill-opacity="0.2"/>
+            <rect x="12" y="12" width="12" height="12" rx="2" fill="currentColor" fill-opacity="0.25"/>
+            <rect x="14" y="14" width="8" height="8" rx="1.5" fill="currentColor" fill-opacity="0.4"/>
+            <rect x="16" y="16" width="4" height="4" rx="1" fill="currentColor" fill-opacity="0.6"/>
+          </svg>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Example 4: Mix Blend Mode -->
+  <div class="example-section">
+    <h2 class="example-title">4. Mix Blend Mode</h2>
+    <div class="example-grid">
+      <div class="example-card">
+        <div class="example-label">Screen Blend Mode</div>
+        <div class="blend-example">
+          <svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" style="mix-blend-mode: screen;">
+            <circle cx="18" cy="18" r="18" fill="currentColor" fill-opacity="0.12"/>
+            <circle cx="18" cy="18" r="9.333" fill="currentColor" fill-opacity="0.2"/>
+            <rect x="12" y="12" width="12" height="12" rx="2" fill="currentColor" fill-opacity="0.25"/>
+            <rect x="14" y="14" width="8" height="8" rx="1.5" fill="currentColor" fill-opacity="0.4"/>
+            <rect x="16" y="16" width="4" height="4" rx="1" fill="currentColor" fill-opacity="0.6"/>
+          </svg>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Example 5: Hover Effects -->
+  <div class="example-section">
+    <h2 class="example-title">5. Interactive States</h2>
+    <div class="example-grid">
+      <div class="example-card">
+        <div class="example-label">Hover Effect</div>
+        <div class="hover-example">
+          <svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="18" cy="18" r="18" fill="currentColor" fill-opacity="0.12"/>
+            <circle cx="18" cy="18" r="9.333" fill="currentColor" fill-opacity="0.2"/>
+            <rect x="12" y="12" width="12" height="12" rx="2" fill="currentColor" fill-opacity="0.25"/>
+            <rect x="14" y="14" width="8" height="8" rx="1.5" fill="currentColor" fill-opacity="0.4"/>
+            <rect x="16" y="16" width="4" height="4" rx="1" fill="currentColor" fill-opacity="0.6"/>
+          </svg>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Example 6: Different Sizes -->
+  <div class="example-section">
+    <h2 class="example-title">6. Size Variations</h2>
+    <div class="example-grid">
+      <div class="example-card">
+        <div class="example-label">Small (24px)</div>
+        <div style="color: var(--accent);">
+          <svg width="24" height="24" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="18" cy="18" r="18" fill="currentColor" fill-opacity="0.12"/>
+            <circle cx="18" cy="18" r="9.333" fill="currentColor" fill-opacity="0.2"/>
+            <rect x="12" y="12" width="12" height="12" rx="2" fill="currentColor" fill-opacity="0.25"/>
+            <rect x="14" y="14" width="8" height="8" rx="1.5" fill="currentColor" fill-opacity="0.4"/>
+            <rect x="16" y="16" width="4" height="4" rx="1" fill="currentColor" fill-opacity="0.6"/>
+          </svg>
+        </div>
+      </div>
+      <div class="example-card">
+        <div class="example-label">Medium (36px)</div>
+        <div style="color: var(--accent);">
+          <svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="18" cy="18" r="18" fill="currentColor" fill-opacity="0.12"/>
+            <circle cx="18" cy="18" r="9.333" fill="currentColor" fill-opacity="0.2"/>
+            <rect x="12" y="12" width="12" height="12" rx="2" fill="currentColor" fill-opacity="0.25"/>
+            <rect x="14" y="14" width="8" height="8" rx="1.5" fill="currentColor" fill-opacity="0.4"/>
+            <rect x="16" y="16" width="4" height="4" rx="1" fill="currentColor" fill-opacity="0.6"/>
+          </svg>
+        </div>
+      </div>
+      <div class="example-card">
+        <div class="example-label">Large (48px)</div>
+        <div style="color: var(--accent);">
+          <svg width="48" height="48" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="18" cy="18" r="18" fill="currentColor" fill-opacity="0.12"/>
+            <circle cx="18" cy="18" r="9.333" fill="currentColor" fill-opacity="0.2"/>
+            <rect x="12" y="12" width="12" height="12" rx="2" fill="currentColor" fill-opacity="0.25"/>
+            <rect x="14" y="14" width="8" height="8" rx="1.5" fill="currentColor" fill-opacity="0.4"/>
+            <rect x="16" y="16" width="4" height="4" rx="1" fill="currentColor" fill-opacity="0.6"/>
+          </svg>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+</body>
+</html>
+
