@@ -1,6 +1,6 @@
 import express from 'express';
 import { vmpAdapter } from '../adapters/supabase.js';
-import { requireAuth, handleRouteError, handlePartialError } from '../utils/route-helpers.js';
+import { requireAuth, handleRouteError, handlePartialError, validateUUIDParam } from '../utils/route-helpers.js';
 
 const clientRouter = express.Router();
 
@@ -11,7 +11,7 @@ const clientRouter = express.Router();
  * Displays full case with metadata, tabs (overview, thread, evidence, checklist, activity)
  * Anti-drift: Tabs lazy load via HTMX; NO full page reload
  */
-clientRouter.get('/:id', (req, res) => {
+clientRouter.get('/cases/:id', (req, res) => {
   // Check auth first
   if (!requireAuth(req, res)) {
     return;
@@ -19,6 +19,9 @@ clientRouter.get('/:id', (req, res) => {
 
   const caseId = req.params.id;
   const activeTab = req.query.tab || 'overview';
+
+  // Validate UUID
+  if (!validateUUIDParam(caseId, res)) return;
 
   (async () => {
     try {
@@ -57,7 +60,7 @@ clientRouter.get('/:id', (req, res) => {
  * Returns partial HTML for thread tab (lazy loaded)
  * Anti-drift: Returns fragment only; NO layout wrap
  */
-clientRouter.get('/:id/thread', (req, res) => {
+clientRouter.get('/cases/:id/thread', (req, res) => {
   if (!requireAuth(req, res)) {
     return;
   }
@@ -96,7 +99,7 @@ clientRouter.get('/:id/thread', (req, res) => {
  * Returns partial HTML for evidence gallery (lazy loaded)
  * Anti-drift: Returns fragment only; NO layout wrap
  */
-clientRouter.get('/:id/evidence', (req, res) => {
+clientRouter.get('/cases/:id/evidence', (req, res) => {
   if (!requireAuth(req, res)) {
     return;
   }
@@ -125,18 +128,22 @@ clientRouter.get('/:id/evidence', (req, res) => {
 
 /**
  * API Endpoint: Send Message
- * Route: POST /api/cases/:id/messages
+ * Route: POST /cases/:id/messages
  *
  * Creates new message in case thread
  * Request: { content: string }
  * Response: { id, created_at, sender_name, body }
  */
-clientRouter.post('/api/:id/messages', (req, res) => {
+clientRouter.post('/cases/:id/messages', (req, res) => {
   if (!requireAuth(req, res)) {
     return;
   }
 
   const caseId = req.params.id;
+  
+  // Validate UUID
+  if (!validateUUIDParam(caseId, res, 'pages/error.html')) return;
+  
   const { content } = req.body;
 
   // Validation before adapter
@@ -170,17 +177,21 @@ clientRouter.post('/api/:id/messages', (req, res) => {
 
 /**
  * API Endpoint: Upload Evidence File
- * Route: POST /api/cases/:id/evidence
+ * Route: POST /cases/:id/evidence
  *
  * Uploads file to case evidence
  * Multipart form data with 'file' field
  */
-clientRouter.post('/api/:id/evidence', (req, res) => {
+clientRouter.post('/cases/:id/evidence', (req, res) => {
   if (!requireAuth(req, res)) {
     return;
   }
 
   const caseId = req.params.id;
+  
+  // Validate UUID
+  if (!validateUUIDParam(caseId, res, 'pages/error.html')) return;
+  
   // Note: Assumes multer middleware is attached upstream
   // req.file will be populated by multer
 

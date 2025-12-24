@@ -1,6 +1,6 @@
 import express from 'express';
 import { vmpAdapter } from '../adapters/supabase.js';
-import { requireAuth, handleRouteError } from '../utils/route-helpers.js';
+import { requireAuth, handleRouteError, validateRequired } from '../utils/route-helpers.js';
 
 const vendorRouter = express.Router();
 
@@ -18,6 +18,15 @@ vendorRouter.get('/dashboard', (req, res) => {
   }
 
   const vendorId = req.user.vendorId;
+  
+  // Validate vendor ID
+  if (!validateRequired(vendorId, 'Vendor ID')) {
+    return handleRouteError(
+      new Error('Vendor ID not available. Please ensure you are logged in.'),
+      req,
+      res
+    );
+  }
   const { status, search, from_date, page = 1 } = req.query;
 
   (async () => {

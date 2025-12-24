@@ -34,6 +34,7 @@
     "test:all": "npm run test:coverage && npm run test:e2e",
     "vercel-build": "echo 'No build step required for Express'",
     "set-password": "node scripts/set-password.js",
+    "setup-jack-password": "node scripts/setup-jack-password.js",
     "seed": "node scripts/seed-vmp-data.js",
     "vitest:run": "node scripts/run-vitest.js",
     "vitest:coverage:run": "node scripts/run-vitest-coverage.js",

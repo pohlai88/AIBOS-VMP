@@ -2806,11 +2806,11 @@ app.post('/cases/:id/evidence', upload.single('file'), async (req, res) => {
 // POST: Upload Document (Simplified - for Evidence Locker)
 app.post('/cases/:id/documents', upload.single('document'), async (req, res) => {
   try {
+    // 1. Authentication (check first before processing)
+    if (!requireAuth(req, res)) return;
+
     const caseId = req.params.id;
     const file = req.file;
-
-    // 1. Authentication
-    if (!requireAuth(req, res)) return;
 
     // 2. Input validation
     if (!caseId) {
@@ -8191,7 +8191,9 @@ app.post('/ops/access-requests/:id/status', async (req, res) => {
 
           // Send invite email
           try {
-            const inviteUrl = `${req.protocol}://${req.get('host')}${invite.invite_url}`;
+            // Use BASE_URL from environment (production URL) instead of req.get('host') which may be localhost
+            const baseUrl = env.BASE_URL || `${req.protocol}://${req.get('host')}`;
+            const inviteUrl = `${baseUrl}${env.BASE_PATH || ''}${invite.invite_url}`;
             const vendorName = updatedRequest.company.trim();
             const tenantName = userContext.vmp_vendors?.vmp_tenants?.name || 'Organization';
             await sendInviteEmail(updatedRequest.email, inviteUrl, vendorName, tenantName);
@@ -8330,23 +8332,78 @@ app.post('/ops/invites', async (req, res) => {
       }
     }
 
-    // Create invite
+    // Create invite record first
     const invite = await vmpAdapter.createInvite(vendorId, email, companyIdsArray, req.user.id);
 
-    const inviteUrl = `${req.protocol}://${req.get('host')}${invite.invite_url}`;
+    // Create Supabase Auth user with invite (if not already exists)
+    let supabaseUser = null;
+    let supabaseInviteSent = false;
+    let supabaseError = null;
+    
+    try {
+      // Check if user already exists in Supabase Auth
+      const { data: existingUsers } = await supabaseAdmin.auth.admin.listUsers();
+      const existingUser = existingUsers?.users?.find(u => u.email === email.toLowerCase().trim());
+      
+      if (existingUser) {
+        // User already exists - use existing user
+        supabaseUser = existingUser;
+        supabaseInviteSent = false; // Can't send invite to existing user
+      } else {
+        // Create new Supabase Auth user with invite
+        const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.inviteUserByEmail(
+          email.toLowerCase().trim(),
+          {
+            data: {
+              vendor_id: vendorId,
+              user_tier: 'institutional',
+              is_active: true,
+            },
+            redirectTo: `${env.BASE_URL}${env.BASE_PATH || ''}/accept?type=invite`,
+          }
+        );
 
-    // Send invite email
+        if (createError) {
+          // If invite fails, log but continue with custom invite
+          logError(createError, {
+            path: req.path,
+            operation: 'supabase-invite-user',
+            email: email.toLowerCase().trim(),
+          });
+          supabaseError = createError.message;
+        } else if (newUser?.user) {
+          supabaseUser = newUser.user;
+          supabaseInviteSent = true; // Supabase sends the email automatically
+        }
+      }
+    } catch (supabaseErr) {
+      // Log but don't fail - fall back to custom invite
+      logError(supabaseErr, {
+        path: req.path,
+        operation: 'supabase-invite-creation',
+        email: email.toLowerCase().trim(),
+      });
+      supabaseError = supabaseErr.message;
+    }
+
+    // Use BASE_URL from environment (production URL) instead of req.get('host') which may be localhost
+    const baseUrl = env.BASE_URL || `${req.protocol}://${req.get('host')}`;
+    const inviteUrl = `${baseUrl}${env.BASE_PATH || ''}${invite.invite_url}`;
+
+    // Send custom invite email (as backup or if Supabase invite wasn't sent)
     let emailSent = false;
     let emailError = null;
-    try {
-      const vendorName = vendor_name.trim();
-      const tenantName = userContext.vmp_vendors?.vmp_tenants?.name || 'Organization';
-      await sendInviteEmail(invite.email, inviteUrl, vendorName, tenantName);
-      emailSent = true;
-    } catch (emailErr) {
-      logError(emailErr, { path: req.path, operation: 'sendInviteEmail', inviteId: invite.id });
-      emailError = emailErr.message;
-      // Don't fail invite creation if email fails - invite link is still valid
+    if (!supabaseInviteSent) {
+      try {
+        const vendorName = vendor_name.trim();
+        const tenantName = userContext.vmp_vendors?.vmp_tenants?.name || 'Organization';
+        await sendInviteEmail(invite.email, inviteUrl, vendorName, tenantName);
+        emailSent = true;
+      } catch (emailErr) {
+        logError(emailErr, { path: req.path, operation: 'sendInviteEmail', inviteId: invite.id });
+        emailError = emailErr.message;
+        // Don't fail invite creation if email fails - invite link is still valid
+      }
     }
 
     // 4. Return JSON response with invite link (for copy-paste)
@@ -8366,9 +8423,16 @@ app.post('/ops/invites', async (req, res) => {
       },
       companies: companyIdsArray.length > 0 ? companyIdsArray : null,
       email: {
-        sent: emailSent,
-        error: emailError || null,
+        sent: emailSent || supabaseInviteSent,
+        error: emailError || supabaseError || null,
+        supabase_invite_sent: supabaseInviteSent,
+        custom_invite_sent: emailSent,
       },
+      supabase_user: supabaseUser ? {
+        id: supabaseUser.id,
+        email: supabaseUser.email,
+        created: !!supabaseUser,
+      } : null,
     });
   } catch (error) {
     logError(error, { path: req.path, userId: req.user?.id });
@@ -8729,8 +8793,17 @@ app.post('/accept', async (req, res) => {
             });
           }
 
-          // Update password in Supabase Auth
-          const { error: updateError } = await supabaseAuth.auth.updateUser({
+          // Update password in Supabase Auth using the access token
+          // Create a temporary client with the user's access token
+          const userClient = createClient(env.SUPABASE_URL, env.SUPABASE_ANON_KEY, {
+            global: {
+              headers: {
+                Authorization: `Bearer ${supabaseAccessToken}`,
+              },
+            },
+          });
+          
+          const { error: updateError } = await userClient.auth.updateUser({
             password: password,
           });
 
@@ -8750,6 +8823,28 @@ app.post('/accept', async (req, res) => {
           user.email,
           display_name || user.user_metadata?.display_name || null
         );
+
+        // Update Supabase Auth user metadata with vendor_id (if not already set)
+        if (!user.user_metadata?.vendor_id) {
+          try {
+            await supabaseAdmin.auth.admin.updateUserById(user.id, {
+              user_metadata: {
+                ...user.user_metadata,
+                vendor_id: invite.vendor_id,
+                user_tier: 'institutional',
+                is_active: true,
+              },
+            });
+          } catch (metadataError) {
+            // Log but don't fail - metadata update is not critical
+            logError(metadataError, {
+              path: req.path,
+              operation: 'update-user-metadata-vendorId',
+              userId: user.id,
+              vendorId: invite.vendor_id,
+            });
+          }
+        }
 
         // Mark invite as used
         await vmpAdapter.markInviteAsUsed(invite.id, vendorUser.id);
@@ -8831,19 +8926,168 @@ app.post('/accept', async (req, res) => {
       });
     }
 
-    // 2. Business logic - Accept invite and create user (atomic operation)
-    const { user, invite } = await vmpAdapter.acceptInviteAndCreateUser(
-      token,
-      password,
-      display_name || null
-    );
+    // 2. Get invite first to get email and vendor_id
+    let invite = await vmpAdapter.getInviteByToken(token);
+    if (!invite) {
+      return res.status(400).render('pages/accept.html', {
+        ...defaultData,
+        error: 'Invalid or expired invite token',
+      });
+    }
 
-    // 3. Create onboarding case
+    // Validate invite is not expired or used
+    if (invite.expired) {
+      return res.status(400).render('pages/accept.html', {
+        ...defaultData,
+        error: 'This invite has expired. Please request a new invite.',
+        invite: invite,
+        token: token,
+      });
+    }
+
+    if (invite.used) {
+      return res.status(400).render('pages/accept.html', {
+        ...defaultData,
+        error: 'This invite has already been used.',
+        invite: invite,
+        token: token,
+      });
+    }
+
+    // 3. Create Supabase Auth user (if not already exists) for custom invites
+    let supabaseAuthUser = null;
+    let supabaseSession = null;
+    try {
+      // Check if Supabase Auth user already exists
+      const { data: existingUsers } = await supabaseAdmin.auth.admin.listUsers();
+      const existingUser = existingUsers?.users?.find(
+        u => u.email === invite.email.toLowerCase().trim()
+      );
+
+      if (existingUser) {
+        // User exists - sign in with password
+        const { data: signInData, error: signInError } = await supabaseAuth.auth.signInWithPassword({
+          email: invite.email.toLowerCase().trim(),
+          password: password,
+        });
+
+        if (signInError) {
+          // Password might be wrong or user needs to set password
+          // Create new user with password
+          const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
+            email: invite.email.toLowerCase().trim(),
+            password: password,
+            email_confirm: true,
+            user_metadata: {
+              vendor_id: invite.vendor_id,
+              user_tier: 'institutional',
+              is_active: true,
+              display_name: display_name || null,
+            },
+          });
+
+          if (createError || !newUser?.user) {
+            throw createError || new Error('Failed to create Supabase Auth user');
+          }
+
+          supabaseAuthUser = newUser.user;
+          // Sign in to get session
+          const { data: sessionData, error: sessionError } = await supabaseAuth.auth.signInWithPassword({
+            email: invite.email.toLowerCase().trim(),
+            password: password,
+          });
+
+          if (sessionError || !sessionData?.session) {
+            throw sessionError || new Error('Failed to create session');
+          }
+
+          supabaseSession = sessionData.session;
+        } else {
+          supabaseAuthUser = signInData.user;
+          supabaseSession = signInData.session;
+        }
+      } else {
+        // Create new Supabase Auth user with password
+        const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
+          email: invite.email.toLowerCase().trim(),
+          password: password,
+          email_confirm: true,
+          user_metadata: {
+            vendor_id: invite.vendor_id,
+            user_tier: 'institutional',
+            is_active: true,
+            display_name: display_name || null,
+          },
+        });
+
+        if (createError || !newUser?.user) {
+          throw createError || new Error('Failed to create Supabase Auth user');
+        }
+
+        supabaseAuthUser = newUser.user;
+        // Sign in to get session
+        const { data: sessionData, error: sessionError } = await supabaseAuth.auth.signInWithPassword({
+          email: invite.email.toLowerCase().trim(),
+          password: password,
+        });
+
+        if (sessionError || !sessionData?.session) {
+          throw sessionError || new Error('Failed to create session');
+        }
+
+        supabaseSession = sessionData.session;
+      }
+    } catch (supabaseError) {
+      logError(supabaseError, {
+        path: req.path,
+        operation: 'create-supabase-auth-user-custom-invite',
+        email: invite.email,
+      });
+      // Fall back to old flow (vendor_user with password_hash)
+      // But this won't work with Supabase Auth login, so log warning
+      logError(
+        new Error(
+          'Failed to create Supabase Auth user for custom invite - user will not be able to use Supabase Auth login'
+        ),
+        { path: req.path, email: invite.email }
+      );
+    }
+
+    // 4. Create vendor_user (link to Supabase Auth user if available)
+    let vendorUser;
+    if (supabaseAuthUser && supabaseSession) {
+      // Use Supabase Auth user flow
+      vendorUser = await vmpAdapter.createVendorUserFromSupabase(
+        invite.vendor_id,
+        supabaseAuthUser.id,
+        invite.email,
+        display_name || null
+      );
+    } else {
+      // Fallback to old flow (password_hash)
+      const { user: oldUser } = await vmpAdapter.acceptInviteAndCreateUser(
+        token,
+        password,
+        display_name || null
+      );
+      vendorUser = oldUser;
+    }
+
+    // 5. Mark invite as used
+    await vmpAdapter.markInviteAsUsed(invite.id, vendorUser.id);
+
+    // 6. Create onboarding case
     const companyId = invite.vmp_vendor_company_links?.[0]?.company_id || null;
     const onboardingCase = await vmpAdapter.createOnboardingCase(invite.vendor_id, companyId);
 
-    // 4. Create session and log user in (express-session stores userId in session)
-    req.session.userId = user.id;
+    // 7. Create session and log user in
+    req.session.userId = vendorUser.id;
+    if (supabaseSession) {
+      req.session.authToken = supabaseSession.access_token;
+      if (supabaseSession.refresh_token) {
+        req.session.refreshToken = supabaseSession.refresh_token;
+      }
+    }
     req.session.save(err => {
       if (err) {
         logError(err, { path: req.path, operation: 'createSession' });
@@ -8851,7 +9095,7 @@ app.post('/accept', async (req, res) => {
           error: { status: 500, message: 'Failed to create session' },
         });
       }
-      // 5. Redirect to onboarding case
+      // 8. Redirect to onboarding case
       res.redirect(`/cases/${onboardingCase.id}`);
     });
   } catch (error) {
@@ -9005,6 +9249,35 @@ app.post('/login', async (req, res) => {
         error: 'Account is inactive. Please contact support.',
         password_reset: null,
       });
+    }
+
+    // Ensure vendor_id is in user metadata (for users created via old invite system)
+    // If missing, look up vendor_user by email and update metadata
+    if (!authData.user.user_metadata?.vendor_id && authData.user.user_metadata?.user_tier !== 'independent') {
+      try {
+        const vendorUser = await vmpAdapter.getUserByEmail(authData.user.email);
+        if (vendorUser && vendorUser.vendor_id) {
+          // Update Supabase Auth user metadata with vendor_id
+          await supabaseAdmin.auth.admin.updateUserById(authData.user.id, {
+            user_metadata: {
+              ...authData.user.user_metadata,
+              vendor_id: vendorUser.vendor_id,
+            },
+          });
+          // Update local authData for consistency
+          authData.user.user_metadata = {
+            ...authData.user.user_metadata,
+            vendor_id: vendorUser.vendor_id,
+          };
+        }
+      } catch (metadataError) {
+        // Log but don't fail login - getVendorContext will handle the error
+        logError(metadataError, {
+          path: req.path,
+          operation: 'updateUserMetadata-vendorId',
+          email: authData.user.email,
+        });
+      }
     }
 
     // Store auth session token in express-session
@@ -10236,8 +10509,56 @@ app.delete('/api/demo/clear', async (req, res) => {
 });
 
 // Mount portal routers (currently stubbed; safe to keep alongside existing routes during migration)
-app.use(`${BASE_PATH}/vendor`, vendorRouter);
-app.use(`${BASE_PATH}/client`, clientRouter);
+// NOTE: Commented out to prevent route conflicts - routers are for future migration
+// When ready to migrate, uncomment and ensure routes don't conflict with existing routes in server.js
+// app.use(`${BASE_PATH}/vendor`, vendorRouter);
+// app.use(`${BASE_PATH}/client`, clientRouter);
+
+// TEMPORARY: Admin route to set user password (REMOVE AFTER USE)
+app.post('/admin/set-password', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    
+    if (!email || !password) {
+      return res.status(400).json({ error: 'Email and password required' });
+    }
+
+    // Find user
+    const { data: { users }, error: listError } = await supabaseAdmin.auth.admin.listUsers();
+    if (listError) throw listError;
+    
+    const user = users?.find(u => u.email?.toLowerCase() === email.toLowerCase().trim());
+    
+    if (!user) {
+      // Create user if doesn't exist
+      const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
+        email: email.toLowerCase().trim(),
+        password: password,
+        email_confirm: true,
+        user_metadata: {
+          vendor_id: '20000000-0000-0000-0000-000000000001',
+          user_tier: 'institutional',
+          is_internal: true,
+          is_active: true,
+        },
+      });
+      
+      if (createError) throw createError;
+      return res.json({ success: true, message: 'User created with password', email });
+    }
+    
+    // Update password
+    const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(user.id, {
+      password: password,
+    });
+    
+    if (updateError) throw updateError;
+    res.json({ success: true, message: 'Password updated', email, userId: user.id });
+  } catch (error) {
+    logError(error, { path: req.path, operation: 'admin-set-password' });
+    res.status(500).json({ error: error.message });
+  }
+});
 
 app.use((err, req, res, next) => {
   // Log error with context
