@@ -1,0 +1,137 @@
+{% extends "layout.html" %}
+{% from "partials/case-card.html" import caseCard %}
+
+{% block title %}Dashboard - {{ vendor.name }}{% endblock %}
+
+{% block content %}
+<main class="min-h-screen bg-black">
+  <!-- Header -->
+  <div class="border-b border-white/8 bg-white/3 backdrop-blur-sm">
+    <div class="max-w-7xl mx-auto px-4 py-6 flex justify-between items-center">
+      <div>
+        <h1 class="text-2xl font-bold text-white">{{ vendor.name }}</h1>
+        <p class="text-sm text-white/60 mt-1">Vendor ID: {{ vendor.id | truncate(12) }}</p>
+      </div>
+      <div class="relative">
+        <button class="relative p-2 hover:bg-white/5 rounded-lg transition-colors" aria-label="Notifications">
+          <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+          </svg>
+          {% if unread_count > 0 %}
+          <span class="absolute -top-1 -right-1 bg-green-500 text-black text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+            {{ unread_count }}
+          </span>
+          {% endif %}
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filter Bar -->
+  <div class="border-b border-white/8">
+    <div class="max-w-7xl mx-auto px-4 py-4">
+      <form method="GET" class="flex gap-3 flex-wrap items-end">
+        <!-- Status Filter -->
+        <div class="flex flex-col">
+          <label for="status" class="text-xs text-white/60 mb-1 font-semibold">Status</label>
+          <select name="status" id="status" class="px-3 py-2 bg-white/5 border border-white/8 rounded-lg text-white text-sm hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-green-500">
+            <option value="">All Status</option>
+            <option value="open" {% if filters.status == 'open' %}selected{% endif %}>Open</option>
+            <option value="closed" {% if filters.status == 'closed' %}selected{% endif %}>Closed</option>
+            <option value="action-required" {% if filters.status == 'action-required' %}selected{% endif %}>Action Required</option>
+          </select>
+        </div>
+        
+        <!-- Search Input -->
+        <div class="flex flex-col flex-1 min-w-[200px]">
+          <label for="search" class="text-xs text-white/60 mb-1 font-semibold">Search</label>
+          <input type="text" name="search" id="search" value="{{ filters.search or '' }}" 
+                 placeholder="Case ID or title..."
+                 class="px-3 py-2 bg-white/5 border border-white/8 rounded-lg text-white text-sm hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-green-500">
+        </div>
+        
+        <!-- Filter Button -->
+        <button type="submit" class="px-4 py-2 bg-green-500 hover:bg-green-600 text-black font-semibold rounded-lg text-sm transition-colors">
+          Filter
+        </button>
+        
+        <!-- Clear Filters -->
+        {% if filters.status or filters.search %}
+        <a href="/vendor/dashboard" class="px-4 py-2 bg-white/5 hover:bg-white/10 text-white rounded-lg text-sm transition-colors">
+          Clear
+        </a>
+        {% endif %}
+      </form>
+    </div>
+  </div>
+
+  <!-- Cases Grid -->
+  <div class="max-w-7xl mx-auto px-4 py-6">
+    {% if cases.length > 0 %}
+      <div class="mb-4">
+        <p class="text-sm text-white/60">
+          Showing <span class="text-white font-semibold">{{ cases.length }}</span> of 
+          <span class="text-white font-semibold">{{ pagination.total }}</span> cases
+        </p>
+      </div>
+
+      <!-- Case Cards Grid -->
+      <div data-testid="case-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {% for case in cases %}
+          {{ caseCard(case) }}
+        {% endfor %}
+      </div>
+      
+      <!-- Pagination -->
+      {% if pagination.total_pages > 1 %}
+      <nav class="flex justify-center items-center gap-2 mt-8" aria-label="Pagination">
+        <!-- Previous Button -->
+        {% if pagination.page > 1 %}
+        <a href="?page={{ pagination.page - 1 }}{% if filters.status %}&status={{ filters.status }}{% endif %}{% if filters.search %}&search={{ filters.search }}{% endif %}"
+           class="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-white text-sm transition-colors">
+          ← Previous
+        </a>
+        {% else %}
+        <button disabled class="px-4 py-2 bg-white/5 rounded-lg text-white/30 text-sm cursor-not-allowed">
+          ← Previous
+        </button>
+        {% endif %}
+        
+        <!-- Page Info -->
+        <div class="px-4 py-2 text-white text-sm">
+          Page <span class="font-semibold">{{ pagination.page }}</span> of 
+          <span class="font-semibold">{{ pagination.total_pages }}</span>
+        </div>
+        
+        <!-- Next Button -->
+        {% if pagination.page < pagination.total_pages %}
+        <a href="?page={{ pagination.page + 1 }}{% if filters.status %}&status={{ filters.status }}{% endif %}{% if filters.search %}&search={{ filters.search }}{% endif %}"
+           class="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-white text-sm transition-colors">
+          Next →
+        </a>
+        {% else %}
+        <button disabled class="px-4 py-2 bg-white/5 rounded-lg text-white/30 text-sm cursor-not-allowed">
+          Next →
+        </button>
+        {% endif %}
+      </nav>
+      {% endif %}
+    {% else %}
+      <!-- Empty State -->
+      <div class="text-center py-12">
+        <svg class="w-16 h-16 text-white/30 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+        </svg>
+        <p class="text-white/60 text-lg mb-2">No cases found</p>
+        <p class="text-white/40 text-sm">
+          {% if filters.status or filters.search %}
+            Try adjusting your filters or <a href="/vendor/dashboard" class="text-green-400 hover:text-green-300">clear filters</a>
+          {% else %}
+            No cases have been assigned to your vendor yet.
+          {% endif %}
+        </p>
+      </div>
+    {% endif %}
+  </div>
+</main>
+{% endblock %}
