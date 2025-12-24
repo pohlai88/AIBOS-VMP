@@ -220,10 +220,17 @@ app.use(
 );
 
 // Rate limiting
+// Configure for Vercel proxy (uses Forwarded header)
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 100, // limit each IP to 100 requests per windowMs
   message: 'Too many requests from this IP, please try again later.',
+  standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
+  legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+  // Use X-Forwarded-For header for Vercel proxy
+  keyGenerator: (req) => {
+    return req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.ip || 'unknown';
+  },
 });
 app.use(limiter);
 
@@ -258,7 +265,9 @@ const BASE_PATH = env.BASE_PATH || '';
 const USE_DECISION_ENGINE = process.env.USE_DECISION_ENGINE === 'true';
 
 // --- CONFIG ---
-const nunjucksEnv = nunjucks.configure('src/views', {
+// Use absolute path for Nunjucks to work in serverless environments (Vercel)
+const viewsPath = path.join(__dirname, 'src', 'views');
+const nunjucksEnv = nunjucks.configure(viewsPath, {
   autoescape: true,
   express: app,
   watch: env.NODE_ENV === 'development',
