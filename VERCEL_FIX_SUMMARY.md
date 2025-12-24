@@ -4,8 +4,9 @@
 
 ### 1. ✅ Function Configuration Added
 - **File**: `vercel.json`
-- **Changes**: Added function configuration with increased memory (3008 MB) and timeout (60 seconds)
-- **Why**: Prevents "out of memory" and "timeout" errors
+- **Changes**: Added function configuration with timeout (60 seconds)
+- **Note**: Memory setting removed (ignored on Active CPU billing/Fluid Compute)
+- **Why**: Prevents "timeout" errors; memory is automatically managed by Fluid Compute
 
 ### 2. ✅ API Handler Verified
 - **File**: `api/index.js`
