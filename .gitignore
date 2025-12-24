@@ -55,3 +55,4 @@ coverage*.txt
 # Vercel
 .vercel
 .vercelignore
+.env*.local
