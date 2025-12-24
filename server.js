@@ -97,6 +97,7 @@ const env = cleanEnv(process.env, {
   SUPABASE_URL: url({ default: '' }),
   SUPABASE_SERVICE_ROLE_KEY: str({ default: '' }),
   SUPABASE_ANON_KEY: str({ default: '' }), // For Supabase Auth client operations
+  SESSION_DB_URL: str(), // PostgreSQL connection string for session store (required)
   DEMO_VENDOR_ID: str({ default: '' }),
   SESSION_SECRET: str({ default: 'dev-secret-change-in-production' }),
   PORT: str({ default: '9000' }),
@@ -441,34 +442,14 @@ app.get(offlinePath, (req, res) => {
 
 // PostgreSQL Session Store (Production-Ready)
 // Uses Supabase PostgreSQL connection via connect-pg-simple
+// SESSION_DB_URL is validated by envalid above - will fail fast if missing
 const PgSession = connectPgSimple(session);
 
-// Session store configuration
-// For Supabase, use connection pooling URL format:
-// postgresql://postgres.[project-ref]:[password]@aws-0-[region].pooler.supabase.com:6543/postgres
-// Or provide full SESSION_DB_URL in environment
-let sessionStore;
-if (process.env.SESSION_DB_URL) {
-  // Production: Use provided connection string
-  sessionStore = new PgSession({
-    conString: process.env.SESSION_DB_URL,
-    tableName: 'session',
-    createTableIfMissing: true,
-  });
-} else if (env.NODE_ENV === 'development') {
-  // Development: Use MemoryStore with warning (for local dev without DB config)
-  console.warn('⚠️  WARNING: Using MemoryStore for sessions in development.');
-  console.warn('   Set SESSION_DB_URL in .env for PostgreSQL session store.');
-  console.warn(
-    '   Format: postgresql://postgres.[project-ref]:[password]@aws-0-[region].pooler.supabase.com:6543/postgres'
-  );
-  sessionStore = undefined; // Will use MemoryStore (express-session default)
-} else {
-  // Production without SESSION_DB_URL: Error
-  throw new Error(
-    'SESSION_DB_URL must be set for production session store. See docs/development/DEPLOYMENT_GUIDE.md for setup instructions.'
-  );
-}
+const sessionStore = new PgSession({
+  conString: env.SESSION_DB_URL,
+  tableName: 'session',
+  createTableIfMissing: true,
+});
 
 app.use(
   session({
