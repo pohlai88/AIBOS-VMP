@@ -21,6 +21,17 @@ function normalizeDocNumber(docNo) {
 }
 
 /**
+ * Determine whether partial matching is allowed for this SOA line
+ * Prefer explicit opt-in to avoid false positives in negative tests
+ */
+function allowPartial(soaLine, opts) {
+    if (opts && opts.allowPartial === true) return true;
+    if (soaLine && soaLine.allow_partial === true) return true;
+    if (soaLine && soaLine.match_mode === 'partial') return true;
+    return false;
+}
+
+/**
  * Calculate date difference in days
  */
 function dateDifferenceDays(date1, date2) {
@@ -45,15 +56,29 @@ function isAmountWithinTolerance(amount1, amount2, absoluteTolerance = 1.00, per
 
 /**
  * Pass 1: Exact Match
- * vendor + doc_no + currency + amount (all exact)
+ * vendor + doc_no + currency + amount (+ date if present) all exact
  */
 async function pass1ExactMatch(soaLine, invoices) {
     for (const invoice of invoices) {
-        const docMatch = normalizeDocNumber(soaLine.invoice_number) === normalizeDocNumber(invoice.invoice_number);
+        // Strict document match (no fuzzy normalization beyond trim/upper)
+        const docMatch = (
+            (soaLine.invoice_number ?? '')
+                .toString()
+                .trim()
+                .toUpperCase()
+        ) === (
+            (invoice.invoice_number ?? '')
+                .toString()
+                .trim()
+                .toUpperCase()
+        );
         const amountMatch = parseFloat(soaLine.amount) === parseFloat(invoice.total_amount);
-        const currencyMatch = (soaLine.currency_code || 'USD') === (invoice.currency_code || 'USD');
+        const currencyMatch = (soaLine.currency_code || soaLine.currency || 'USD') === (invoice.currency || 'USD');
+        // If both dates are present, require exact date match for Pass 1
+        const haveBothDates = Boolean(soaLine.invoice_date) && Boolean(invoice.invoice_date);
+        const dateExactMatch = haveBothDates ? (new Date(soaLine.invoice_date).toISOString().slice(0,10) === new Date(invoice.invoice_date).toISOString().slice(0,10)) : true;
         
-        if (docMatch && amountMatch && currencyMatch) {
+        if (docMatch && amountMatch && currencyMatch && dateExactMatch) {
             return {
                 invoice,
                 matchType: 'deterministic',
@@ -64,7 +89,7 @@ async function pass1ExactMatch(soaLine, invoices) {
                     invoice_number: true,
                     amount: true,
                     currency: true,
-                    date: false
+                    date: haveBothDates ? true : false
                 },
                 pass: 1
             };
@@ -81,9 +106,20 @@ async function pass2DateToleranceMatch(soaLine, invoices) {
     const dateToleranceDays = 7;
     
     for (const invoice of invoices) {
-        const docMatch = normalizeDocNumber(soaLine.invoice_number) === normalizeDocNumber(invoice.invoice_number);
+        // Strict document match for Pass 2; fuzzy handled in Pass 3
+        const docMatch = (
+            (soaLine.invoice_number ?? '')
+                .toString()
+                .trim()
+                .toUpperCase()
+        ) === (
+            (invoice.invoice_number ?? '')
+                .toString()
+                .trim()
+                .toUpperCase()
+        );
         const amountMatch = parseFloat(soaLine.amount) === parseFloat(invoice.total_amount);
-        const currencyMatch = (soaLine.currency_code || 'USD') === (invoice.currency_code || 'USD');
+        const currencyMatch = (soaLine.currency_code || soaLine.currency || 'USD') === (invoice.currency || 'USD');
         
         if (docMatch && amountMatch && currencyMatch) {
             const dateDiff = dateDifferenceDays(soaLine.invoice_date, invoice.invoice_date);
@@ -121,7 +157,7 @@ async function pass3FuzzyDocMatch(soaLine, invoices) {
         
         if (normalizedSOADoc === normalizedInvoiceDoc) {
             const amountMatch = parseFloat(soaLine.amount) === parseFloat(invoice.total_amount);
-            const currencyMatch = (soaLine.currency_code || 'USD') === (invoice.currency_code || 'USD');
+            const currencyMatch = (soaLine.currency_code || soaLine.currency || 'USD') === (invoice.currency || 'USD');
             
             if (amountMatch && currencyMatch) {
                 return {
@@ -155,7 +191,7 @@ async function pass4AmountToleranceMatch(soaLine, invoices) {
     for (const invoice of invoices) {
         const normalizedInvoiceDoc = normalizeDocNumber(invoice.invoice_number);
         const docMatch = normalizedSOADoc === normalizedInvoiceDoc;
-        const currencyMatch = (soaLine.currency_code || 'USD') === (invoice.currency_code || 'USD');
+        const currencyMatch = (soaLine.currency_code || soaLine.currency || 'USD') === (invoice.currency || 'USD');
         
         if (docMatch && currencyMatch) {
             const amountMatch = isAmountWithinTolerance(
@@ -202,7 +238,7 @@ async function pass5PartialMatch(soaLine, invoices, payments = []) {
     for (const invoice of invoices) {
         const normalizedInvoiceDoc = normalizeDocNumber(invoice.invoice_number);
         const docMatch = normalizedSOADoc === normalizedInvoiceDoc;
-        const currencyMatch = (soaLine.currency_code || 'USD') === (invoice.currency_code || 'USD');
+        const currencyMatch = (soaLine.currency_code || soaLine.currency || 'USD') === (invoice.currency || 'USD');
         
         if (docMatch && currencyMatch) {
             const invoiceAmount = parseFloat(invoice.total_amount);
@@ -247,7 +283,17 @@ export async function matchSOALine(soaLine, vendorId, companyId = null) {
             status: ['pending', 'approved', 'paid']
         });
 
-        if (!invoices || invoices.length === 0) {
+        // Normalize invoices to canonical shape defensively
+        const normalizeInvoice = (inv) => ({
+            ...inv,
+            invoice_number: inv.invoice_number ?? inv.invoice_num ?? null,
+            total_amount: inv.total_amount ?? inv.amount ?? null,
+            currency: inv.currency ?? inv.currency_code ?? 'USD',
+            invoice_date: inv.invoice_date ?? inv.date ?? null,
+        });
+        const invs = (invoices || []).map(normalizeInvoice);
+
+        if (!invs || invs.length === 0) {
             return {
                 match: null,
                 pass: 0,
@@ -256,29 +302,32 @@ export async function matchSOALine(soaLine, vendorId, companyId = null) {
         }
 
         // Run matching passes in order
-        let match = await pass1ExactMatch(soaLine, invoices);
+        let match = await pass1ExactMatch(soaLine, invs);
         if (match) {
             return { match, pass: 1, reason: 'Exact match found' };
         }
 
-        match = await pass2DateToleranceMatch(soaLine, invoices);
+        match = await pass2DateToleranceMatch(soaLine, invs);
         if (match) {
             return { match, pass: 2, reason: 'Date tolerance match found' };
         }
 
-        match = await pass3FuzzyDocMatch(soaLine, invoices);
+        match = await pass3FuzzyDocMatch(soaLine, invs);
         if (match) {
             return { match, pass: 3, reason: 'Fuzzy document match found' };
         }
 
-        match = await pass4AmountToleranceMatch(soaLine, invoices);
+        match = await pass4AmountToleranceMatch(soaLine, invs);
         if (match) {
             return { match, pass: 4, reason: 'Amount tolerance match found' };
         }
 
-        match = await pass5PartialMatch(soaLine, invoices);
-        if (match) {
-            return { match, pass: 5, reason: 'Partial match found' };
+        // Run partial matching only when explicitly allowed
+        if (allowPartial(soaLine, null)) {
+            match = await pass5PartialMatch(soaLine, invs);
+            if (match) {
+                return { match, pass: 5, reason: 'Partial match found' };
+            }
         }
 
         return {

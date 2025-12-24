@@ -374,6 +374,9 @@ describe('SOA Matching Engine', () => {
         currency_code: 'USD'
       });
 
+      // Explicitly allow partial matching for this test scenario (in-memory flag)
+      soaLine.allow_partial = true;
+
       const invoice = await createTestInvoice(supabase, {
         vendorId: testVendor.id,
         invoice_number: 'INV-001',
@@ -404,6 +407,9 @@ describe('SOA Matching Engine', () => {
         amount: 1000.00,
         currency_code: 'USD'
       });
+
+      // Do NOT allow partial matching here; earlier passes should handle equality
+      soaLine.allow_partial = false;
 
       const invoice = await createTestInvoice(supabase, {
         vendorId: testVendor.id,

@@ -2854,6 +2854,20 @@ export const vmpAdapter = {
             throw new ValidationError('getInvoices requires vendorId', null, { vendorId });
         }
 
+        // Mapper: Convert DB row to canonical domain shape expected by matching engine/tests
+        function mapInvoiceRowToDomain(row) {
+            return {
+                ...row,
+                // Canonical names
+                invoice_number: row.invoice_number ?? row.invoice_num ?? row.invoiceNo ?? row.invoice_no ?? null,
+                total_amount: row.total_amount ?? row.amount ?? row.totalAmount ?? null,
+                currency: row.currency ?? row.currency_code ?? row.currencyCode ?? null,
+                // Dates / docs
+                invoice_date: row.invoice_date ?? row.date ?? row.invoiceDate ?? null,
+                doc_number: row.doc_number ?? row.document_no ?? row.docNo ?? row.invoice_number ?? row.invoice_num ?? null,
+            };
+        }
+
         let query = supabase
             .from('vmp_invoices')
             .select(`
@@ -2868,7 +2882,11 @@ export const vmpAdapter = {
         }
 
         if (filters.status) {
-            query = query.eq('status', filters.status);
+            if (Array.isArray(filters.status)) {
+                query = query.in('status', filters.status);
+            } else {
+                query = query.eq('status', filters.status);
+            }
         }
 
         if (filters.search) {
@@ -2883,7 +2901,7 @@ export const vmpAdapter = {
             throw new DatabaseError('Failed to fetch invoices', error, { vendorId, companyId });
         }
 
-        return data || [];
+        return (data || []).map(mapInvoiceRowToDomain);
     },
 
     // Sprint 4.4: Get Payments for Vendor
@@ -3133,8 +3151,14 @@ export const vmpAdapter = {
             }
             throw handledError;
         }
-
-        return data;
+        // Map to canonical domain shape
+        return {
+            ...data,
+            invoice_number: data?.invoice_number ?? data?.invoice_num ?? null,
+            total_amount: data?.total_amount ?? data?.amount ?? null,
+            currency: data?.currency ?? data?.currency_code ?? null,
+            invoice_date: data?.invoice_date ?? null,
+        };
     },
 
     // Sprint 2.6: Get Matching Status (Enhanced for Sprint 7.1)

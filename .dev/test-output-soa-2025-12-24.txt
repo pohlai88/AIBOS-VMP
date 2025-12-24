@@ -1,0 +1,21 @@
+[SOA Test Run - 2025-12-24]
+Command: pnpm run test:soa
+
+Output:
+WARN Unsupported engine: wanted: {"node":"20.x"} (current: {"node":"v22.18.0","pnpm":"10.17.1"})
+> nexus-vmp-canon@0.1.0 test:soa D:\AIBOS-VMP
+> vitest run tests/server-soa-routes.test.js tests/adapters/soa-adapter.test.js tests/utils/soa-matching-engine.test.js
+
+RUN  v4.0.16 D:/AIBOS-VMP
+
+❯ tests/utils/soa-matching-engine.test.js (17 tests | 15 failed)
+... (full output truncated in terminal, key failures summarized below) ...
+
+Failed Tests excerpt:
+FAIL tests/server-soa-routes.test.js > ... Unknown Error: Could not find the 'total_amount' column of 'vmp_invoices' in the schema cache
+(repeats across 100 failures)
+
+Summary:
+Test Files  3 failed (3)
+Tests      100 failed | 2 passed (102)
+Duration   151.96s

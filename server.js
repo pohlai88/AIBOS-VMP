@@ -1,4 +1,4 @@
-/// <reference path="./types/express.d.ts" />
+﻿/// <reference path="./types/express.d.ts" />
 import express from 'express';
 import nunjucks from 'nunjucks';
 import dotenv from 'dotenv';
@@ -11,10 +11,13 @@ import rateLimit from 'express-rate-limit';
 import { cleanEnv, str, url } from 'envalid';
 import 'express-async-errors';
 import multer from 'multer';
-import bcrypt from 'bcrypt';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { randomUUID } from 'crypto';
+import { applyDecision } from './src/services/decisions/applyDecision.js';
+import vendorRouter from './src/routes/vendor.js';
+import clientRouter from './src/routes/client.js';
+import { attachSupabaseClient } from './src/middleware/supabase-client.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -25,10 +28,10 @@ import { parseEmailWebhook, extractCaseReference, extractVendorIdentifier } from
 import { parseWhatsAppWebhook, extractCaseReferenceFromWhatsApp, extractVendorIdentifierFromWhatsApp } from './src/utils/whatsapp-parser.js';
 import { classifyMessageIntent, extractStructuredData, findBestMatchingCase } from './src/utils/ai-message-parser.js';
 import { validateCaseData, generateValidationResponse } from './src/utils/ai-data-validation.js';
-import { performAISearch, parseSearchIntent, generateSearchSuggestions } from './src/utils/ai-search.js';
+import { parseSearchIntent, generateSearchSuggestions } from './src/utils/ai-search.js';
 import { checkAndSendSLAReminders, getSLAReminderStats } from './src/utils/sla-reminders.js';
-import { generatePDF, generateExcel, getExportFields } from './src/utils/export-utils.js';
-import { sendPasswordResetEmail, sendInviteEmail } from './src/utils/notifications.js';
+// Export utilities removed (not currently used in server routes)
+import { sendInviteEmail } from './src/utils/notifications.js';
 import { detectPeriodFromFilename, formatUserFriendlyError, getPeriodSuggestions } from './src/utils/soa-upload-helpers.js';
 
 // Timeout wrapper for async operations (local helper)
@@ -77,14 +80,23 @@ const env = cleanEnv(process.env, {
   VAPID_PRIVATE_KEY: str({ default: '' }),
 });
 
-// Create Supabase client for admin operations (database queries, admin auth)
-const supabase = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, {
+// Create Supabase ADMIN client (service_role - BYPASSES RLS)
+// ONLY use for:
+// - Admin operations (user creation, bulk imports)
+// - Internal cron jobs
+// - Legacy vmpAdapter methods (until refactored)
+// For user requests, use req.supabase (RLS-enforced)
+const supabaseAdmin = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, {
   db: { schema: 'public' },
   auth: {
     autoRefreshToken: false,
     persistSession: false
   }
 });
+
+// Alias for backward compatibility with existing code
+// TODO: Remove this after migrating all routes to req.supabase
+const supabase = supabaseAdmin;
 
 // Create Supabase client for Auth operations (uses anon key for client-side auth)
 // Falls back to service role if anon key not provided (for admin auth operations)
@@ -177,6 +189,11 @@ app.use((req, res, next) => {
 // Compression
 app.use(compression());
 
+// Base path helper (subdirectory deployments)
+const BASE_PATH = env.BASE_PATH || '';
+// Optional feature flag to enable decision engine path (defaults to off to avoid behavior change)
+const USE_DECISION_ENGINE = process.env.USE_DECISION_ENGINE === 'true';
+
 // --- CONFIG ---
 const nunjucksEnv = nunjucks.configure('src/views', {
   autoescape: true,
@@ -189,6 +206,12 @@ nunjucksEnv.addGlobal('vapid_public_key', env.VAPID_PUBLIC_KEY || '');
 nunjucksEnv.addGlobal('supabase_url', env.SUPABASE_URL || '');
 nunjucksEnv.addGlobal('supabase_anon_key', env.SUPABASE_ANON_KEY || '');
 nunjucksEnv.addGlobal('base_path', env.BASE_PATH || ''); // Base path for sub-directory deployment
+nunjucksEnv.addGlobal('url', (p = '') => {
+  const base = (BASE_PATH || '').replace(/\/+$/, '');
+  const path = String(p || '');
+  const norm = path.startsWith('/') ? path : `/${path}`;
+  return `${base}${norm}` || norm;
+});
 
 // Add custom filters
 nunjucksEnv.addFilter('upper', (str) => {
@@ -314,6 +337,12 @@ if (env.BASE_PATH) {
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Expose basePath to all templates and handlers
+app.use((req, res, next) => {
+  res.locals.basePath = BASE_PATH;
+  next();
+});
+
 // PWA Manifest and Service Worker (Sprint 12.2)
 // Support base path for sub-directory deployment
 const manifestPath = env.BASE_PATH ? `${env.BASE_PATH}/manifest.json` : '/manifest.json';
@@ -377,6 +406,12 @@ app.use(
     }
   })
 );
+
+// --- MIDDLEWARE: RLS-Enforced Supabase Client ---
+// Attach user-scoped Supabase client to req.supabase
+// Uses anon key + user JWT so RLS policies are enforced
+// CRITICAL: This ensures "Tenant Isolation Is Absolute" at database level
+app.use(attachSupabaseClient);
 
 // --- MIDDLEWARE: Supabase Auth (Session Lookup) ---
 app.use(async (req, res, next) => {
@@ -1117,6 +1152,7 @@ app.post('/reset-password', async (req, res) => {
 });
 
 // POST: Sign-Up Request (Public Route - No Auth Required)
+// NOTE: Public routes do not require ownership checks; access is unrestricted by design.
 app.post('/sign-up', async (req, res) => {
   try {
     const {
@@ -1532,10 +1568,10 @@ app.get('/cases/:id', async (req, res) => {
 
       // Verify vendor has access to this case
       if (caseDetail && caseDetail.vendor_id !== vendorId && !req.user?.isInternal) {
-        return res.status(403).render('pages/403.html', {
+        return res.status(404).render('pages/error.html', {
           error: {
-            status: 403,
-            message: 'Access denied to this case'
+            status: 404,
+            message: 'Case not found'
           }
         });
       }
@@ -1590,7 +1626,7 @@ legacyHomeRoutes.forEach(route => {
 // Note: All partials are explicitly whitelisted via individual routes below.
 // Future: Consider consolidating into a single handler with ALLOWED_PARTIALS whitelist.
 
-app.get('/partials/case-inbox.html', async (req, res) => {
+const caseInboxPartial = async (req, res) => {
   try {
     // 1. Authentication
     if (!requireAuth(req, res)) return;
@@ -1643,9 +1679,14 @@ app.get('/partials/case-inbox.html', async (req, res) => {
   } catch (error) {
     handlePartialError(error, req, res, 'partials/case_inbox.html', { cases: [] });
   }
-});
+};
 
-app.get('/partials/case-detail.html', async (req, res) => {
+// Legacy path
+app.get('/partials/case-inbox.html', caseInboxPartial);
+// Vendor namespaced path (BASE_PATH-aware)
+app.get(`${BASE_PATH}/vendor/partials/case-inbox.html`, caseInboxPartial);
+
+const caseDetailPartial = async (req, res) => {
   try {
     // 1. Authentication
     if (!requireAuth(req, res)) return;
@@ -1665,11 +1706,11 @@ app.get('/partials/case-detail.html', async (req, res) => {
     // Validate UUID if provided
     if (!validateUUIDParam(getStringParam(caseId), res, 'partials/case_detail.html')) return;
 
-    // 3. Business logic
+    // 3. Business logic with scope verification
     const vendorId = req.user.vendorId || env.DEMO_VENDOR_ID;
     if (!vendorId) {
       return handlePartialError(
-        new Error('Vendor ID not available'),
+        new ValidationError('Vendor ID not available'),
         req,
         res,
         'partials/case_detail.html',
@@ -1680,12 +1721,17 @@ app.get('/partials/case-detail.html', async (req, res) => {
     let caseDetail = null;
     try {
       caseDetail = await vmpAdapter.getCaseDetail(caseId, vendorId);
-    } catch (adapterError) {
-      // Continue with null caseDetail - template handles it gracefully
-      // Only log if it's not a "not found" error
-      if (adapterError.code !== 'NOT_FOUND' && !adapterError.message?.includes('not found')) {
-        logError(adapterError, { path: req.path, caseId, vendorId });
+      if (!caseDetail || caseDetail.vendor_id !== vendorId) {
+        return handlePartialError(
+          new NotFoundError('Case'),
+          req,
+          res,
+          'partials/case_detail.html',
+          defaultData
+        );
       }
+    } catch (adapterError) {
+      return handlePartialError(adapterError, req, res, 'partials/case_detail.html', defaultData);
     }
 
     // 4. AI Data Validation (Sprint 13.2) - Run validation if case exists
@@ -1715,10 +1761,13 @@ app.get('/partials/case-detail.html', async (req, res) => {
       isInternal: req.user?.isInternal || false
     });
   }
-});
+};
+
+app.get('/partials/case-detail.html', caseDetailPartial);
+app.get(`${BASE_PATH}/vendor/partials/case-detail.html`, caseDetailPartial);
 
 // Case Thread Partial
-app.get('/partials/case-thread.html', async (req, res) => {
+const caseThreadPartial = async (req, res) => {
   try {
     // 1. Authentication
     if (!requireAuth(req, res)) return;
@@ -1734,7 +1783,35 @@ app.get('/partials/case-thread.html', async (req, res) => {
     // Validate UUID if provided
     if (!validateUUIDParam(getStringParam(caseId), res, 'partials/case_thread.html')) return;
 
-    // 3. Business logic
+    // 3. Business logic with scope verification
+    const vendorId = req.user.vendorId || env.DEMO_VENDOR_ID;
+    if (!vendorId) {
+      return handlePartialError(
+        new ValidationError('Vendor ID not available'),
+        req,
+        res,
+        'partials/case_thread.html',
+        defaultData
+      );
+    }
+
+    // Verify case belongs to vendor before loading messages
+    try {
+      const caseDetail = await vmpAdapter.getCaseDetail(caseId, vendorId);
+      if (!caseDetail || caseDetail.vendor_id !== vendorId) {
+        return handlePartialError(
+          new NotFoundError('Case'),
+          req,
+          res,
+          'partials/case_thread.html',
+          defaultData
+        );
+      }
+    } catch (adapterError) {
+      return handlePartialError(adapterError, req, res, 'partials/case_thread.html', defaultData);
+    }
+
+    // Load messages after scope check
     let messages = [];
     try {
       messages = await vmpAdapter.getMessages(caseId);
@@ -1754,10 +1831,13 @@ app.get('/partials/case-thread.html', async (req, res) => {
       messages: []
     });
   }
-});
+};
+
+app.get('/partials/case-thread.html', caseThreadPartial);
+app.get(`${BASE_PATH}/vendor/partials/case-thread.html`, caseThreadPartial);
 
 // Case Activity Feed Partial (Sprint 8.1)
-app.get('/partials/case-activity.html', async (req, res) => {
+const caseActivityPartial = async (req, res) => {
   try {
     // 1. Authentication
     if (!requireAuth(req, res)) return;
@@ -1773,12 +1853,39 @@ app.get('/partials/case-activity.html', async (req, res) => {
     // Validate UUID if provided
     if (!validateUUIDParam(getStringParam(caseId), res, 'partials/case_activity.html')) return;
 
-    // 3. Business logic
+    // 3. Business logic with scope verification
+    const vendorId = req.user.vendorId || env.DEMO_VENDOR_ID;
+    if (!vendorId) {
+      return handlePartialError(
+        new ValidationError('Vendor ID not available'),
+        req,
+        res,
+        'partials/case_activity.html',
+        defaultData
+      );
+    }
+
+    // Verify case belongs to vendor before loading activity
+    try {
+      const caseDetail = await vmpAdapter.getCaseDetail(caseId, vendorId);
+      if (!caseDetail || caseDetail.vendor_id !== vendorId) {
+        return handlePartialError(
+          new NotFoundError('Case'),
+          req,
+          res,
+          'partials/case_activity.html',
+          defaultData
+        );
+      }
+    } catch (adapterError) {
+      return handlePartialError(adapterError, req, res, 'partials/case_activity.html', defaultData);
+    }
+
+    // Load activity after scope check
     let activities = [];
     try {
       activities = await vmpAdapter.getCaseActivity(caseId);
     } catch (adapterError) {
-      // Return with error message for graceful degradation
       return res.render('partials/case_activity.html', {
         activities: [],
         error: adapterError.message || 'Failed to load activity feed'
@@ -1790,91 +1897,112 @@ app.get('/partials/case-activity.html', async (req, res) => {
   } catch (error) {
     handlePartialError(error, req, res, 'partials/case_activity.html', { activities: [], error: error.message || 'Failed to load activity' });
   }
-});
+};
 
-// Case Checklist Partial
-app.get('/partials/case-checklist.html', async (req, res) => {
+app.get('/partials/case-activity.html', caseActivityPartial);
+app.get(`${BASE_PATH}/vendor/partials/case-activity.html`, caseActivityPartial);
+
+const supplierCaseListPartial = async (req, res) => {
+  try {
+    if (!requireAuth(req, res)) return;
+
+    if (!req.user.vendorId) {
+      return handlePartialError(
+        new ValidationError('Supplier case list is only available to vendors'),
+        req,
+        res,
+        'partials/supplier_case_list.html',
+        { cases: [] }
+      );
+    }
+
+    const { status } = req.query;
+    let cases = [];
+
+    try {
+      cases = await vmpAdapter.getInbox(req.user.vendorId);
+
+      if (status) {
+        if (status === 'action_required') {
+          cases = cases.filter(c => c.status === 'blocked' || c.status === 'waiting_supplier');
+        } else {
+          cases = cases.filter(c => c.status === status);
+        }
+      }
+    } catch (adapterError) {
+      logError(adapterError, { path: req.path, userId: req.user?.id, vendorId: req.user.vendorId });
+    }
+
+    res.render('partials/supplier_case_list.html', {
+      cases,
+      status: status || null,
+      isInternal: req.user?.isInternal || false
+    });
+  } catch (error) {
+    handlePartialError(error, req, res, 'partials/supplier_case_list.html', {
+      cases: [],
+      status: req.query?.status || null
+    });
+  }
+};
+
+// Legacy partial
+app.get('/partials/supplier-case-list.html', supplierCaseListPartial);
+
+// Vendor portal namespaced partial (BASE_PATH-aware)
+app.get(`${BASE_PATH}/vendor/partials/supplier-case-list.html`, supplierCaseListPartial);
+
+// Case Checklist Partial (GET)
+const caseChecklistPartial = async (req, res) => {
   try {
     // 1. Authentication
     if (!requireAuth(req, res)) return;
 
-    // 2. Input validation (case_id is optional for partials - can render empty state)
+    // 2. Input validation
     const caseId = req.query.case_id;
-    const defaultData = {
-      caseId: null,
-      checklistSteps: [],
-      isInternal: req.user?.isInternal || false
-    };
+    const defaultData = { caseId: null, checklistSteps: [], isInternal: req.user?.isInternal || false };
 
     if (!caseId) {
       return res.render('partials/case_checklist.html', defaultData);
     }
 
-    // Validate UUID if provided
     if (!validateUUIDParam(getStringParam(caseId), res, 'partials/case_checklist.html')) return;
 
-    // 3. Business logic
+    // 3. Business logic with scope verification
     const vendorId = req.user.vendorId || env.DEMO_VENDOR_ID;
-    let checklistSteps = [];
+    if (!vendorId) {
+      return handlePartialError(new ValidationError('Vendor ID not available'), req, res, 'partials/case_checklist.html', defaultData);
+    }
 
     try {
-      // Get case detail to determine case type
-      let caseDetail = null;
-      if (vendorId) {
-        try {
-          caseDetail = await vmpAdapter.getCaseDetail(caseId, vendorId);
-        } catch (adapterError) {
-          // Log but continue - will try to get steps anyway
-          if (adapterError.code !== 'NOT_FOUND') {
-            logError(adapterError, { path: req.path, caseId, operation: 'getCaseDetail' });
-          }
-        }
-      }
-
-      // Ensure checklist steps exist (create if missing based on case type)
-      if (caseDetail && caseDetail.case_type) {
-        try {
-          checklistSteps = await vmpAdapter.ensureChecklistSteps(caseId, caseDetail.case_type);
-        } catch (ensureError) {
-          // Try to get existing steps even if ensure failed
-          try {
-            checklistSteps = await vmpAdapter.getChecklistSteps(caseId);
-          } catch (getError) {
-            // Continue with empty array
-            logError(getError, { path: req.path, caseId, operation: 'getChecklistSteps' });
-          }
-        }
-      } else {
-        // Case type unknown, just get existing steps
-        try {
-          checklistSteps = await vmpAdapter.getChecklistSteps(caseId);
-        } catch (getError) {
-          // Continue with empty array
-          logError(getError, { path: req.path, caseId, operation: 'getChecklistSteps' });
-        }
+      const caseDetail = await vmpAdapter.getCaseDetail(caseId, vendorId);
+      if (!caseDetail || caseDetail.vendor_id !== vendorId) {
+        return handlePartialError(new NotFoundError('Case'), req, res, 'partials/case_checklist.html', defaultData);
       }
     } catch (adapterError) {
-      // Continue with empty checklistSteps array
-      logError(adapterError, { path: req.path, caseId, operation: 'loadChecklist' });
+      return handlePartialError(adapterError, req, res, 'partials/case_checklist.html', defaultData);
+    }
+
+    // Load checklist steps
+    let checklistSteps = [];
+    try {
+      checklistSteps = await vmpAdapter.getChecklistSteps(caseId);
+    } catch (adapterError) {
+      logError(adapterError, { path: req.path, caseId, operation: 'getChecklistSteps' });
     }
 
     // 4. Render response
-    res.render('partials/case_checklist.html', {
-      caseId,
-      checklistSteps,
-      isInternal: req.user?.isInternal || false
-    });
+    res.render('partials/case_checklist.html', { caseId, checklistSteps, isInternal: req.user?.isInternal || false });
   } catch (error) {
-    handlePartialError(error, req, res, 'partials/case_checklist.html', {
-      caseId: req.query.case_id || null,
-      checklistSteps: [],
-      isInternal: req.user?.isInternal || false
-    });
+    handlePartialError(error, req, res, 'partials/case_checklist.html', { caseId: req.query.case_id || null, checklistSteps: [], isInternal: req.user?.isInternal || false });
   }
-});
+};
+
+app.get('/partials/case-checklist.html', caseChecklistPartial);
+app.get(`${BASE_PATH}/vendor/partials/case-checklist.html`, caseChecklistPartial);
 
 // Case Evidence Partial
-app.get('/partials/case-evidence.html', async (req, res) => {
+const caseEvidencePartial = async (req, res) => {
   try {
     // 1. Authentication
     if (!requireAuth(req, res)) return;
@@ -1890,7 +2018,34 @@ app.get('/partials/case-evidence.html', async (req, res) => {
     // Validate UUID if provided
     if (!validateUUIDParam(getStringParam(caseId), res, 'partials/case_evidence.html')) return;
 
-    // 3. Business logic
+    // 3. Business logic with scope verification
+    const vendorId = req.user.vendorId || env.DEMO_VENDOR_ID;
+    if (!vendorId) {
+      return handlePartialError(
+        new ValidationError('Vendor ID not available'),
+        req,
+        res,
+        'partials/case_evidence.html',
+        defaultData
+      );
+    }
+
+    // Verify case belongs to vendor before fetching evidence
+    try {
+      const caseDetail = await vmpAdapter.getCaseDetail(caseId, vendorId);
+      if (!caseDetail || caseDetail.vendor_id !== vendorId) {
+        return handlePartialError(
+          new NotFoundError('Case'),
+          req,
+          res,
+          'partials/case_evidence.html',
+          defaultData
+        );
+      }
+    } catch (adapterError) {
+      return handlePartialError(adapterError, req, res, 'partials/case_evidence.html', defaultData);
+    }
+
     let evidence = [];
     try {
       evidence = await vmpAdapter.getEvidence(caseId);
@@ -1936,7 +2091,10 @@ app.get('/partials/case-evidence.html', async (req, res) => {
       documents: []
     });
   }
-});
+};
+
+app.get('/partials/case-evidence.html', caseEvidencePartial);
+app.get(`${BASE_PATH}/vendor/partials/case-evidence.html`, caseEvidencePartial);
 
 // GET: Document Template Download (Sprint 8.2)
 app.get('/templates/:type-template.pdf', async (req, res) => {
@@ -1989,7 +2147,7 @@ Generated: ${new Date().toISOString()}
 });
 
 // Escalation Partial
-app.get('/partials/escalation.html', async (req, res) => {
+const escalationPartial = async (req, res) => {
   try {
     // 1. Authentication
     if (!requireAuth(req, res)) return;
@@ -2010,26 +2168,44 @@ app.get('/partials/escalation.html', async (req, res) => {
     // Validate UUID if provided
     if (!validateUUIDParam(getStringParam(caseId), res, 'partials/escalation.html')) return;
 
-    // 3. Business logic
+    // 3. Business logic with scope verification
+    const vendorId = req.user.vendorId || env.DEMO_VENDOR_ID;
+    if (!vendorId) {
+      return handlePartialError(
+        new ValidationError('Vendor ID not available'),
+        req,
+        res,
+        'partials/escalation.html',
+        defaultData
+      );
+    }
+
     let caseDetail = null;
     let directorInfo = null;
 
     try {
-      caseDetail = await vmpAdapter.getCaseDetail(caseId, req.user.vendorId);
+      caseDetail = await vmpAdapter.getCaseDetail(caseId, vendorId);
+      if (!caseDetail || caseDetail.vendor_id !== vendorId) {
+        return handlePartialError(
+          new NotFoundError('Case'),
+          req,
+          res,
+          'partials/escalation.html',
+          defaultData
+        );
+      }
 
       // If Level 3 escalation, fetch Director info
-      if (caseDetail && caseDetail.escalation_level >= 3) {
+      if (caseDetail.escalation_level >= 3) {
         const groupId = caseDetail.group_id || (caseDetail.vmp_companies && caseDetail.vmp_companies.group_id) || null;
         try {
           directorInfo = await vmpAdapter.getGroupDirectorInfo(groupId);
         } catch (directorError) {
-          // Continue without director info
           logError(directorError, { path: req.path, caseId, groupId, operation: 'getGroupDirectorInfo' });
         }
       }
     } catch (adapterError) {
-      // Continue with null caseDetail
-      logError(adapterError, { path: req.path, caseId, operation: 'getCaseDetail' });
+      return handlePartialError(adapterError, req, res, 'partials/escalation.html', defaultData);
     }
 
     // 4. Render response
@@ -2047,7 +2223,10 @@ app.get('/partials/escalation.html', async (req, res) => {
       directorInfo: null
     });
   }
-});
+};
+
+app.get('/partials/escalation.html', escalationPartial);
+app.get(`${BASE_PATH}/vendor/partials/escalation.html`, escalationPartial);
 
 // GET: Case Row Partial (Single Case Row for HTMX Refresh)
 app.get('/partials/case-row.html', async (req, res) => {
@@ -2066,11 +2245,22 @@ app.get('/partials/case-row.html', async (req, res) => {
     // Validate UUID format
     if (!validateUUIDParam(getStringParam(caseId), res, 'partials/case_row.html')) return;
 
-    // 3. Business logic
+    // 3. Business logic with scope verification
+    const vendorId = req.user.vendorId || env.DEMO_VENDOR_ID;
+    if (!vendorId) {
+      return handlePartialError(
+        new ValidationError('Vendor ID not available'),
+        req,
+        res,
+        'partials/case_row.html',
+        defaultData
+      );
+    }
+
     let caseData = null;
     try {
-      caseData = await vmpAdapter.getCaseDetail(caseId, req.user.vendorId);
-      if (!caseData) {
+      caseData = await vmpAdapter.getCaseDetail(caseId, vendorId);
+      if (!caseData || caseData.vendor_id !== vendorId) {
         return handlePartialError(
           new NotFoundError('Case'),
           req,
@@ -2093,6 +2283,39 @@ app.get('/partials/case-row.html', async (req, res) => {
   }
 });
 
+// Vendor namespaced path (BASE_PATH-aware)
+app.get(`${BASE_PATH}/vendor/partials/case-row.html`, async (req, res) => {
+  try {
+    if (!requireAuth(req, res)) return;
+
+    const caseId = req.query.case_id;
+    const defaultData = { case: null };
+    if (!validateRequiredQuery(caseId, 'case_id', res, 'partials/case_row.html', defaultData)) {
+      return;
+    }
+    if (!validateUUIDParam(getStringParam(caseId), res, 'partials/case_row.html')) return;
+
+    const vendorId = req.user.vendorId || env.DEMO_VENDOR_ID;
+    if (!vendorId) {
+      return handlePartialError(new ValidationError('Vendor ID not available'), req, res, 'partials/case_row.html', defaultData);
+    }
+
+    let caseData = null;
+    try {
+      caseData = await vmpAdapter.getCaseDetail(caseId, vendorId);
+      if (!caseData || caseData.vendor_id !== vendorId) {
+        return handlePartialError(new NotFoundError('Case'), req, res, 'partials/case_row.html', defaultData);
+      }
+    } catch (adapterError) {
+      return handlePartialError(adapterError, req, res, 'partials/case_row.html', defaultData);
+    }
+
+    res.render('partials/case_row.html', { case: caseData, error: null });
+  } catch (error) {
+    handlePartialError(error, req, res, 'partials/case_row.html', { case: null });
+  }
+});
+
 // POST: Create Message
 app.post('/cases/:id/messages', async (req, res) => {
   try {
@@ -2106,6 +2329,33 @@ app.post('/cases/:id/messages', async (req, res) => {
     const { body } = req.body;
     const defaultData = { caseId, messages: [] };
 
+    // 3. Scope verification for vendor access
+    const vendorId = req.user.vendorId || env.DEMO_VENDOR_ID;
+    if (!vendorId) {
+      return handlePartialError(
+        new ValidationError('Vendor ID not available'),
+        req,
+        res,
+        'partials/case_thread.html',
+        defaultData
+      );
+    }
+
+    try {
+      const caseDetail = await vmpAdapter.getCaseDetail(caseId, vendorId);
+      if (!caseDetail || caseDetail.vendor_id !== vendorId) {
+        return handlePartialError(
+          new NotFoundError('Case'),
+          req,
+          res,
+          'partials/case_thread.html',
+          defaultData
+        );
+      }
+    } catch (adapterError) {
+      return handlePartialError(adapterError, req, res, 'partials/case_thread.html', defaultData);
+    }
+
     if (!body || !body.trim()) {
       // Return refreshed thread without error (just ignore empty message)
       try {
@@ -2116,11 +2366,11 @@ app.post('/cases/:id/messages', async (req, res) => {
       }
     }
 
-    // 3. Determine sender type
+    // 4. Determine sender type
     const senderType = req.user.isInternal ? 'internal' : 'vendor';
     const senderUserId = req.user.id;
 
-    // 4. Business logic - Create the human/vendor message
+    // 5. Business logic - Create the human/vendor message
     let messageCreated = false;
     try {
       await vmpAdapter.createMessage(
@@ -2137,7 +2387,7 @@ app.post('/cases/:id/messages', async (req, res) => {
       logError(createError, { path: req.path, caseId, userId: req.user.id, operation: 'createMessage' });
     }
 
-    // 5. AI AP ENFORCER - Trigger AI analysis for vendor messages
+    // 6. AI AP ENFORCER - Trigger AI analysis for vendor messages
     if (senderType === 'vendor' && messageCreated) {
       try {
         // Classify message intent
@@ -2195,7 +2445,7 @@ app.post('/cases/:id/messages', async (req, res) => {
       }
     }
 
-    // 6. Return refreshed thread with new message(s)
+    // 7. Return refreshed thread with new message(s)
     try {
       const messages = await vmpAdapter.getMessages(caseId);
       return res.render('partials/case_thread.html', { caseId, messages });
@@ -2222,6 +2472,9 @@ app.post('/cases/:id/evidence', upload.single('file'), async (req, res) => {
     const caseId = req.params.id;
     const { evidence_type, checklist_step_id } = req.body;
     const file = req.file;
+
+    // 0. Authentication
+    if (!requireAuth(req, res)) return;
 
     // Validate file is present
     if (!file) {
@@ -2267,25 +2520,30 @@ app.post('/cases/:id/evidence', upload.single('file'), async (req, res) => {
       });
     }
 
-    // Verify case belongs to vendor (security check)
-    const VENDOR_ID_HARDCODED = env.DEMO_VENDOR_ID;
-    if (VENDOR_ID_HARDCODED) {
-      try {
-        const caseDetail = await vmpAdapter.getCaseDetail(caseId, VENDOR_ID_HARDCODED);
-        if (!caseDetail) {
-          return res.status(404).render('partials/case_evidence.html', {
-            caseId,
-            evidence: [],
-            error: 'Case not found'
-          });
-        }
-      } catch (checkError) {
-        return res.status(403).render('partials/case_evidence.html', {
+    // Verify case belongs to vendor (security check) using vendorId
+    const vendorId = req.user.vendorId || env.DEMO_VENDOR_ID;
+    if (!vendorId) {
+      return res.status(403).render('partials/case_evidence.html', {
+        caseId,
+        evidence: [],
+        error: 'Vendor context required'
+      });
+    }
+    try {
+      const caseDetail = await vmpAdapter.getCaseDetail(caseId, vendorId);
+      if (!caseDetail || caseDetail.vendor_id !== vendorId) {
+        return res.status(404).render('partials/case_evidence.html', {
           caseId,
           evidence: [],
-          error: 'Access denied to this case'
+          error: 'Case not found or access denied'
         });
       }
+    } catch (checkError) {
+      return res.status(404).render('partials/case_evidence.html', {
+        caseId,
+        evidence: [],
+        error: 'Case not found'
+      });
     }
 
     // Upload evidence
@@ -2391,24 +2649,29 @@ app.post('/cases/:id/documents', upload.single('document'), async (req, res) => 
       });
     }
 
-    const VENDOR_ID_HARDCODED = env.DEMO_VENDOR_ID;
-    if (VENDOR_ID_HARDCODED) {
-      try {
-        const caseDetail = await vmpAdapter.getCaseDetail(caseId, VENDOR_ID_HARDCODED);
-        if (!caseDetail) {
-          return res.status(404).render('partials/case_evidence.html', {
-            caseId,
-            documents: [],
-            error: 'Case not found'
-          });
-        }
-      } catch (checkError) {
-        return res.status(403).render('partials/case_evidence.html', {
+    const vendorId = req.user.vendorId || env.DEMO_VENDOR_ID;
+    if (!vendorId) {
+      return res.status(403).render('partials/case_evidence.html', {
+        caseId,
+        documents: [],
+        error: 'Vendor context required'
+      });
+    }
+    try {
+      const caseDetail = await vmpAdapter.getCaseDetail(caseId, vendorId);
+      if (!caseDetail || caseDetail.vendor_id !== vendorId) {
+        return res.status(404).render('partials/case_evidence.html', {
           caseId,
           documents: [],
-          error: 'Access denied to this case'
+          error: 'Case not found or access denied'
         });
       }
+    } catch (checkError) {
+      return res.status(404).render('partials/case_evidence.html', {
+        caseId,
+        documents: [],
+        error: 'Case not found'
+      });
     }
 
     // 4. Upload document (use 'general' as default evidence_type for simple document uploads)
@@ -2751,33 +3014,46 @@ app.post('/cases/:id/reassign', async (req, res) => {
   }
 });
 
-// Day 9: Internal Ops - Update Case Status
-app.post('/cases/:id/update-status', async (req, res) => {
+// Internal Ops - Update Case Status (legacy + canonical alias)
+const updateCaseStatusHandler = async (req, res) => {
   try {
-    // 1. Authentication & Authorization
     if (!requireInternal(req, res, 'partials/case_detail.html', 'Only internal staff can update case status')) return;
 
-    // 2. Input validation
     const caseId = req.params.id;
     if (!validateUUIDParam(caseId, res, 'partials/case_detail.html')) return;
 
-    const { status } = req.body;
+    // Support legacy payload ({status}) and forward compatibility ({action})
+    const { status, action, note, reason } = req.body;
+    const nextStatus = status || action; // future mapping to applyDecision will replace this
     const defaultData = { caseId, caseDetail: null };
 
-    if (!status || !['open', 'waiting_supplier', 'waiting_internal', 'resolved', 'blocked'].includes(status)) {
+    if (!nextStatus || !['open', 'waiting_supplier', 'waiting_internal', 'resolved', 'blocked'].includes(nextStatus)) {
       return handlePartialError(
         new ValidationError('status must be one of: open, waiting_supplier, waiting_internal, resolved, blocked'),
         req,
         res,
         'partials/case_detail.html',
         defaultData,
-        true // Use proper status codes
+        true
       );
     }
 
-    // 3. Business logic - Update case status
     try {
-      await vmpAdapter.updateCaseStatus(caseId, status, req.user.id);
+      if (USE_DECISION_ENGINE && action) {
+        await applyDecision({
+          entity: 'case',
+          id: caseId,
+          action,
+          channel: 'resolution',
+          actorId: req.user.id,
+          tenantId: req.user.vendor?.tenant_id || null,
+          vendorId: req.user.vendorId || null,
+          note,
+          reason
+        });
+      } else {
+        await vmpAdapter.updateCaseStatus(caseId, nextStatus, req.user.id, { note, reason });
+      }
     } catch (updateError) {
       const wrappedError = updateError instanceof VMPError
         ? updateError
@@ -2785,7 +3061,6 @@ app.post('/cases/:id/update-status', async (req, res) => {
       return handlePartialError(wrappedError, req, res, 'partials/case_detail.html', defaultData, true);
     }
 
-    // 4. Return refreshed case detail
     try {
       const vendorId = req.user.vendorId || env.DEMO_VENDOR_ID;
       let caseDetail = null;
@@ -2805,7 +3080,13 @@ app.post('/cases/:id/update-status', async (req, res) => {
       caseDetail: null
     }, true);
   }
-});
+};
+
+// Legacy endpoint (kept for compatibility during migration)
+app.post('/cases/:id/update-status', updateCaseStatusHandler);
+
+// Canonical decision endpoint (maps to legacy handler until applyDecision is introduced)
+app.post('/cases/:id/update', updateCaseStatusHandler);
 
 // POST: Escalate Case
 app.post('/cases/:id/escalate', async (req, res) => {
@@ -3213,10 +3494,10 @@ app.get('/payments/:id', async (req, res) => {
 
       // Verify vendor has access to this payment
       if (paymentDetail && paymentDetail.vendor_id !== req.user.vendorId && !req.user?.isInternal) {
-        return res.status(403).render('pages/403.html', {
+        return res.status(404).render('pages/error.html', {
           error: {
-            status: 403,
-            message: 'Access denied to this payment'
+            status: 404,
+            message: 'Payment not found'
           }
         });
       }
@@ -3231,9 +3512,14 @@ app.get('/payments/:id', async (req, res) => {
         }
       }
     } catch (adapterError) {
-      // If payment not found, render page with empty state (not an error)
+      // If payment not found, return 404 (anti-enumeration)
       if (adapterError.code === 'NOT_FOUND' || adapterError.message?.includes('not found')) {
-        paymentDetail = null;
+        return res.status(404).render('pages/error.html', {
+          error: {
+            status: 404,
+            message: 'Payment not found'
+          }
+        });
       } else {
         // Other errors: throw to be handled by catch block
         throw adapterError;
@@ -3630,13 +3916,10 @@ app.post('/profile/bank-details', async (req, res) => {
   }
 });
 
-// GET: Supplier Dashboard (Canvas OS)
-app.get('/supplier/dashboard', async (req, res) => {
+const supplierDashboardHandler = async (req, res) => {
   try {
-    // 1. Authentication
     if (!requireAuth(req, res)) return;
 
-    // 2. Authorization - Only vendors can access
     if (!req.user.vendorId) {
       return res.status(403).render('pages/403.html', {
         title: 'Access Denied',
@@ -3648,7 +3931,6 @@ app.get('/supplier/dashboard', async (req, res) => {
       });
     }
 
-    // 3. Business logic - Fetch cases and calculate metrics for Posture Rail
     let cases = [];
     let readyCount = 0;
     let actionCount = 0;
@@ -3659,39 +3941,25 @@ app.get('/supplier/dashboard', async (req, res) => {
     let pendingPayments = [];
 
     try {
-      // Fetch cases from Shadow Ledger
       cases = await vmpAdapter.getInbox(req.user.vendorId);
-
-      // Calculate Posture Rail counts (per Supplier HUD specification)
-      // READY: Cases that are resolved (supplier has completed action)
       readyCount = cases.filter(c => c.status === 'resolved').length;
-
-      // ACTION REQUIRED: Cases waiting for supplier response
       actionCount = cases.filter(c => c.status === 'waiting_supplier').length;
-
-      // BLOCKED: Cases that are blocked
       blockedCount = cases.filter(c => c.status === 'blocked').length;
-
-      // OPEN: Cases that are open (not resolved, not waiting, not blocked)
       openCount = cases.filter(c => c.status === 'open').length;
     } catch (adapterError) {
       logError(adapterError, { path: req.path, userId: req.user?.id, vendorId: req.user.vendorId });
-      // Continue with empty data rather than failing
     }
 
-    // 4. Fetch Financial 'Carrot' Data (Payments from Shadow Ledger)
     try {
       payments = await vmpAdapter.getPayments(req.user.vendorId);
       if (payments && payments.length > 0) {
         recentPayment = payments[0] || null;
-        pendingPayments = payments.slice(1, 6); // Next 5 payments
+        pendingPayments = payments.slice(1, 6);
       }
     } catch (paymentError) {
       logError(paymentError, { path: req.path, userId: req.user?.id, vendorId: req.user.vendorId, operation: 'getPayments' });
-      // Continue without payment data
     }
 
-    // 5. Render response
     res.render('pages/supplier_dashboard.html', {
       title: 'Supplier Dashboard',
       user: req.user,
@@ -3699,14 +3967,20 @@ app.get('/supplier/dashboard', async (req, res) => {
       actionCount,
       blockedCount,
       openCount,
-      cases, // Pass cases directly for server-side rendering
+      cases,
       recent_payment: recentPayment,
       pending_payments: pendingPayments
     });
   } catch (error) {
     handleRouteError(error, req, res);
   }
-});
+};
+
+// Existing supplier route (legacy URL)
+app.get('/supplier/dashboard', supplierDashboardHandler);
+
+// Vendor canonical route under BASE_PATH
+app.get(`${BASE_PATH}/vendor/dashboard`, supplierDashboardHandler);
 
 // GET: Supplier Case List Partial
 app.get('/partials/supplier-case-list.html', async (req, res) => {
@@ -8956,10 +9230,10 @@ app.get('/api/cases/:id/validate', async (req, res) => {
       });
     }
 
-    // Verify access
+    // Verify access: return 404 to prevent enumeration when vendor mismatch
     if (caseDetail.vendor_id !== vendorId && !req.user?.isInternal) {
-      return res.status(403).json({
-        error: 'Access denied'
+      return res.status(404).json({
+        error: 'Case not found'
       });
     }
 
@@ -9427,6 +9701,10 @@ app.delete('/api/demo/clear', async (req, res) => {
     res.status(500).json({ error: 'Failed to clear demo data: ' + error.message });
   }
 });
+
+// Mount portal routers (currently stubbed; safe to keep alongside existing routes during migration)
+app.use(`${BASE_PATH}/vendor`, vendorRouter);
+app.use(`${BASE_PATH}/client`, clientRouter);
 
 app.use((err, req, res, next) => {
   // Log error with context

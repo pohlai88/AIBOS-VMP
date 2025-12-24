@@ -42,6 +42,7 @@ describe('SOA Reconciliation Components', () => {
         .insert({
           case_id: testCase.id,
           vendor_id: testVendor.id,
+          company_id: testCase.company_id,
           invoice_number: 'INV-001',
           invoice_date: '2025-01-01',
           amount: 1000.00,
@@ -64,6 +65,7 @@ describe('SOA Reconciliation Components', () => {
         .insert({
           case_id: testCase.id,
           vendor_id: testVendor.id,
+          company_id: testCase.company_id,
           invoice_number: 'INV-002',
           amount: 2000.00,
           status: 'extracted'
@@ -92,6 +94,7 @@ describe('SOA Reconciliation Components', () => {
         .insert({
           case_id: testCase.id,
           vendor_id: testVendor.id,
+          company_id: testCase.company_id,
           invoice_number: 'INV-003',
           amount: 3000.00,
           status: 'extracted'
@@ -100,12 +103,15 @@ describe('SOA Reconciliation Components', () => {
         .single();
       
       // Create invoice (shadow ledger)
-      const { data: invoice } = await supabase
+        const { data: invoice } = await supabase
         .from('vmp_invoices')
         .insert({
           vendor_id: testVendor.id,
           invoice_number: 'INV-003',
           total_amount: 3000.00,
+            company_id: testCase.company_id,
+            currency_code: 'USD',
+            invoice_date: '2025-01-01',
           status: 'pending'
         })
         .select()
@@ -140,6 +146,7 @@ describe('SOA Reconciliation Components', () => {
         .insert({
           case_id: testCase.id,
           vendor_id: testVendor.id,
+          company_id: testCase.company_id,
           invoice_number: 'INV-004',
           amount: 4000.00,
           status: 'extracted'
@@ -148,7 +155,7 @@ describe('SOA Reconciliation Components', () => {
         .single();
       
       // Create discrepancy
-      const { data, error } = await supabase
+        const { data, error } = await supabase
         .from('vmp_soa_discrepancies')
         .insert({
           case_id: testCase.id,
@@ -170,12 +177,14 @@ describe('SOA Reconciliation Components', () => {
     
     it('should resolve SOA discrepancy', async () => {
       // Create discrepancy
-      const { data: discrepancy } = await supabase
+        const { data: discrepancy } = await supabase
         .from('vmp_soa_discrepancies')
         .insert({
           case_id: testCase.id,
           discrepancy_type: 'amount_mismatch',
-          status: 'open'
+            status: 'open',
+            severity: 'medium',
+            description: 'Amount mismatch to resolve'
         })
         .select()
         .single();
@@ -201,12 +210,14 @@ describe('SOA Reconciliation Components', () => {
   describe('Debit Notes', () => {
     it('should create debit note proposal', async () => {
       // Create discrepancy
-      const { data: discrepancy } = await supabase
+        const { data: discrepancy } = await supabase
         .from('vmp_soa_discrepancies')
         .insert({
           case_id: testCase.id,
-          discrepancy_type: 'overpayment',
-          status: 'open'
+          discrepancy_type: 'amount_mismatch',
+            status: 'open',
+            severity: 'medium',
+            description: 'Overpayment discrepancy'
         })
         .select()
         .single();

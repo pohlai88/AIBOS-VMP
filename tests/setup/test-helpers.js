@@ -163,7 +163,7 @@ export async function createTestCase(supabase, caseData = {}) {
   const { vendorId, companyId, ...cleanCaseData } = caseData;
   
   const vendorIdValue = vendorId || cleanCaseData.vendor_id;
-  const companyIdValue = companyId || cleanCaseData.company_id;
+  let companyIdValue = companyId || cleanCaseData.company_id;
   let tenantId = null;
   
   // Get tenant_id from vendor or company
@@ -194,6 +194,12 @@ export async function createTestCase(supabase, caseData = {}) {
     const tenant = await createTestTenant(supabase);
     tenantId = tenant.id;
   }
+
+  // Ensure company exists when not provided (schema requires company_id on cases)
+  if (!companyIdValue) {
+    const company = await createTestCompany(supabase, { tenant_id: tenantId });
+    companyIdValue = company.id;
+  }
   
   const defaultCase = {
     case_type: 'invoice',
@@ -201,7 +207,7 @@ export async function createTestCase(supabase, caseData = {}) {
     subject: `Test Case ${Date.now()}`,
     tenant_id: tenantId, // Required by schema
     vendor_id: vendorIdValue || null,
-    company_id: companyIdValue || null,
+    company_id: companyIdValue, // Required by schema
     ...cleanCaseData
   };
   
@@ -474,6 +480,29 @@ export async function createTestSOAMatch(supabase, matchData = {}) {
 }
 
 /**
+ * Valid discrepancy types per migration 031_vmp_soa_tables.sql
+ */
+export const DISCREPANCY_TYPES = {
+  AMOUNT_MISMATCH: 'amount_mismatch',
+  DATE_MISMATCH: 'date_mismatch',
+  INVOICE_NOT_FOUND: 'invoice_not_found',
+  DUPLICATE_INVOICE: 'duplicate_invoice',
+  MISSING_SOA_ITEM: 'missing_soa_item',
+  CURRENCY_MISMATCH: 'currency_mismatch',
+  OTHER: 'other'
+};
+
+/**
+ * Valid discrepancy severities
+ */
+export const DISCREPANCY_SEVERITIES = {
+  LOW: 'low',
+  MEDIUM: 'medium',
+  HIGH: 'high',
+  CRITICAL: 'critical'
+};
+
+/**
  * Create SOA issue (discrepancy)
  */
 export async function createTestSOAIssue(supabase, issueData = {}) {
@@ -483,8 +512,8 @@ export async function createTestSOAIssue(supabase, issueData = {}) {
   const defaultIssue = {
     case_id: caseId || issueData.case_id || null,
     soa_item_id: soaItemId || issueData.soa_item_id || null,
-    discrepancy_type: 'amount_mismatch',
-    severity: 'medium',
+    discrepancy_type: DISCREPANCY_TYPES.AMOUNT_MISMATCH,
+    severity: DISCREPANCY_SEVERITIES.MEDIUM,
     description: 'Test discrepancy',
     status: 'open',
     ...cleanIssueData

@@ -36,7 +36,9 @@
     "set-password": "node scripts/set-password.js",
     "seed": "node scripts/seed-vmp-data.js",
     "vitest:run": "node scripts/run-vitest.js",
-    "vitest:coverage:run": "node scripts/run-vitest-coverage.js"
+    "vitest:coverage:run": "node scripts/run-vitest-coverage.js",
+    "guardrails": "node scripts/vmp-guardrails-check.mjs",
+    "guardrails:strict": "node scripts/vmp-guardrails-check.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.39.0",
