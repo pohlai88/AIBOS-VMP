@@ -1,6 +1,6 @@
 /**
  * SOA Matching Engine Tests
- * 
+ *
  * Tests all SOA matching engine functions (7 functions)
  * Covers all 5 matching passes, batch matching, and edge cases
  */
@@ -15,7 +15,7 @@ import {
   createTestSOACase,
   createTestSOALine,
   createTestInvoice,
-  cleanupTestData
+  cleanupTestData,
 } from '../setup/test-helpers.js';
 
 describe('SOA Matching Engine', () => {
@@ -26,13 +26,13 @@ describe('SOA Matching Engine', () => {
 
   beforeEach(async () => {
     supabase = createTestSupabaseClient();
-    
+
     // Create test data
     testVendor = await createTestVendor(supabase);
     testUser = await createTestUser(supabase, { vendor_id: testVendor.id });
     testSOACase = await createTestSOACase(supabase, {
       vendorId: testVendor.id,
-      companyId: null
+      companyId: null,
     });
   });
 
@@ -53,18 +53,18 @@ describe('SOA Matching Engine', () => {
         caseId: testSOACase.id,
         vendorId: testVendor.id,
         invoice_number: 'INV-001',
-        amount: 1000.00,
+        amount: 1000.0,
         currency_code: 'USD',
-        invoice_date: '2025-01-01'
+        invoice_date: '2025-01-01',
       });
 
       const invoice = await createTestInvoice(supabase, {
         vendorId: testVendor.id,
         invoice_number: 'INV-001',
-        total_amount: 1000.00,
+        total_amount: 1000.0,
         currency_code: 'USD',
         invoice_date: '2025-01-01',
-        status: 'pending'
+        status: 'pending',
       });
 
       const result = await matchSOALine(soaLine, testVendor.id);
@@ -86,16 +86,16 @@ describe('SOA Matching Engine', () => {
         caseId: testSOACase.id,
         vendorId: testVendor.id,
         invoice_number: 'INV-001',
-        amount: 1000.00,
-        currency_code: 'USD'
+        amount: 1000.0,
+        currency_code: 'USD',
       });
 
       const invoice = await createTestInvoice(supabase, {
         vendorId: testVendor.id,
         invoice_number: 'INV-002', // Different invoice number
-        total_amount: 1000.00,
+        total_amount: 1000.0,
         currency_code: 'USD',
-        status: 'pending'
+        status: 'pending',
       });
 
       const result = await matchSOALine(soaLine, testVendor.id);
@@ -113,16 +113,16 @@ describe('SOA Matching Engine', () => {
         caseId: testSOACase.id,
         vendorId: testVendor.id,
         invoice_number: 'INV-001',
-        amount: 1000.00,
-        currency_code: 'USD'
+        amount: 1000.0,
+        currency_code: 'USD',
       });
 
       const invoice = await createTestInvoice(supabase, {
         vendorId: testVendor.id,
         invoice_number: 'INV-001',
-        total_amount: 2000.00, // Different amount
+        total_amount: 2000.0, // Different amount
         currency_code: 'USD',
-        status: 'pending'
+        status: 'pending',
       });
 
       const result = await matchSOALine(soaLine, testVendor.id);
@@ -146,18 +146,18 @@ describe('SOA Matching Engine', () => {
         caseId: testSOACase.id,
         vendorId: testVendor.id,
         invoice_number: 'INV-001',
-        amount: 1000.00,
+        amount: 1000.0,
         currency_code: 'USD',
-        invoice_date: '2025-01-01'
+        invoice_date: '2025-01-01',
       });
 
       const invoice = await createTestInvoice(supabase, {
         vendorId: testVendor.id,
         invoice_number: 'INV-001',
-        total_amount: 1000.00,
+        total_amount: 1000.0,
         currency_code: 'USD',
         invoice_date: '2025-01-05', // 4 days difference
-        status: 'pending'
+        status: 'pending',
       });
 
       const result = await matchSOALine(soaLine, testVendor.id);
@@ -178,18 +178,18 @@ describe('SOA Matching Engine', () => {
         caseId: testSOACase.id,
         vendorId: testVendor.id,
         invoice_number: 'INV-001',
-        amount: 1000.00,
+        amount: 1000.0,
         currency_code: 'USD',
-        invoice_date: '2025-01-01'
+        invoice_date: '2025-01-01',
       });
 
       const invoice = await createTestInvoice(supabase, {
         vendorId: testVendor.id,
         invoice_number: 'INV-001',
-        total_amount: 1000.00,
+        total_amount: 1000.0,
         currency_code: 'USD',
         invoice_date: '2025-01-15', // 14 days difference
-        status: 'pending'
+        status: 'pending',
       });
 
       const result = await matchSOALine(soaLine, testVendor.id);
@@ -215,16 +215,16 @@ describe('SOA Matching Engine', () => {
         caseId: testSOACase.id,
         vendorId: testVendor.id,
         invoice_number: 'INV-001', // With dash
-        amount: 1000.00,
-        currency_code: 'USD'
+        amount: 1000.0,
+        currency_code: 'USD',
       });
 
       const invoice = await createTestInvoice(supabase, {
         vendorId: testVendor.id,
         invoice_number: 'INV001', // Without dash (normalized should match)
-        total_amount: 1000.00,
+        total_amount: 1000.0,
         currency_code: 'USD',
-        status: 'pending'
+        status: 'pending',
       });
 
       const result = await matchSOALine(soaLine, testVendor.id);
@@ -232,7 +232,7 @@ describe('SOA Matching Engine', () => {
       expect(result.match).toBeDefined();
       expect(result.pass).toBe(3);
       expect(result.match.isExactMatch).toBe(false);
-      expect(result.match.confidence).toBe(0.90);
+      expect(result.match.confidence).toBe(0.9);
       expect(result.match.matchScore).toBe(90);
 
       // Cleanup
@@ -245,16 +245,16 @@ describe('SOA Matching Engine', () => {
         caseId: testSOACase.id,
         vendorId: testVendor.id,
         invoice_number: 'INV 001', // With space
-        amount: 1000.00,
-        currency_code: 'USD'
+        amount: 1000.0,
+        currency_code: 'USD',
       });
 
       const invoice = await createTestInvoice(supabase, {
         vendorId: testVendor.id,
         invoice_number: 'INV-001', // With dash (normalized should match)
-        total_amount: 1000.00,
+        total_amount: 1000.0,
         currency_code: 'USD',
-        status: 'pending'
+        status: 'pending',
       });
 
       const result = await matchSOALine(soaLine, testVendor.id);
@@ -278,16 +278,16 @@ describe('SOA Matching Engine', () => {
         caseId: testSOACase.id,
         vendorId: testVendor.id,
         invoice_number: 'INV-001',
-        amount: 1000.00,
-        currency_code: 'USD'
+        amount: 1000.0,
+        currency_code: 'USD',
       });
 
       const invoice = await createTestInvoice(supabase, {
         vendorId: testVendor.id,
         invoice_number: 'INV-001',
-        total_amount: 1000.50, // Within RM 1.00 tolerance
+        total_amount: 1000.5, // Within RM 1.00 tolerance
         currency_code: 'USD',
-        status: 'pending'
+        status: 'pending',
       });
 
       const result = await matchSOALine(soaLine, testVendor.id);
@@ -308,16 +308,16 @@ describe('SOA Matching Engine', () => {
         caseId: testSOACase.id,
         vendorId: testVendor.id,
         invoice_number: 'INV-001',
-        amount: 1000.00,
-        currency_code: 'USD'
+        amount: 1000.0,
+        currency_code: 'USD',
       });
 
       const invoice = await createTestInvoice(supabase, {
         vendorId: testVendor.id,
         invoice_number: 'INV-001',
-        total_amount: 1004.00, // Within 0.5% tolerance (4/1000 = 0.4%)
+        total_amount: 1004.0, // Within 0.5% tolerance (4/1000 = 0.4%)
         currency_code: 'USD',
-        status: 'pending'
+        status: 'pending',
       });
 
       const result = await matchSOALine(soaLine, testVendor.id);
@@ -335,16 +335,16 @@ describe('SOA Matching Engine', () => {
         caseId: testSOACase.id,
         vendorId: testVendor.id,
         invoice_number: 'INV-001',
-        amount: 1000.00,
-        currency_code: 'USD'
+        amount: 1000.0,
+        currency_code: 'USD',
       });
 
       const invoice = await createTestInvoice(supabase, {
         vendorId: testVendor.id,
         invoice_number: 'INV-001',
-        total_amount: 1100.00, // Exceeds tolerance
+        total_amount: 1100.0, // Exceeds tolerance
         currency_code: 'USD',
-        status: 'pending'
+        status: 'pending',
       });
 
       const result = await matchSOALine(soaLine, testVendor.id);
@@ -370,8 +370,8 @@ describe('SOA Matching Engine', () => {
         caseId: testSOACase.id,
         vendorId: testVendor.id,
         invoice_number: 'INV-001',
-        amount: 500.00, // Partial payment
-        currency_code: 'USD'
+        amount: 500.0, // Partial payment
+        currency_code: 'USD',
       });
 
       // Explicitly allow partial matching for this test scenario (in-memory flag)
@@ -380,9 +380,9 @@ describe('SOA Matching Engine', () => {
       const invoice = await createTestInvoice(supabase, {
         vendorId: testVendor.id,
         invoice_number: 'INV-001',
-        total_amount: 1000.00, // Full invoice amount
+        total_amount: 1000.0, // Full invoice amount
         currency_code: 'USD',
-        status: 'pending'
+        status: 'pending',
       });
 
       const result = await matchSOALine(soaLine, testVendor.id);
@@ -404,8 +404,8 @@ describe('SOA Matching Engine', () => {
         caseId: testSOACase.id,
         vendorId: testVendor.id,
         invoice_number: 'INV-001',
-        amount: 1000.00,
-        currency_code: 'USD'
+        amount: 1000.0,
+        currency_code: 'USD',
       });
 
       // Do NOT allow partial matching here; earlier passes should handle equality
@@ -414,9 +414,9 @@ describe('SOA Matching Engine', () => {
       const invoice = await createTestInvoice(supabase, {
         vendorId: testVendor.id,
         invoice_number: 'INV-001',
-        total_amount: 1000.00, // Same amount (should match in earlier pass)
+        total_amount: 1000.0, // Same amount (should match in earlier pass)
         currency_code: 'USD',
-        status: 'pending'
+        status: 'pending',
       });
 
       const result = await matchSOALine(soaLine, testVendor.id);
@@ -442,8 +442,8 @@ describe('SOA Matching Engine', () => {
         caseId: testSOACase.id,
         vendorId: testVendor.id,
         invoice_number: 'INV-001',
-        amount: 1000.00,
-        currency_code: 'USD'
+        amount: 1000.0,
+        currency_code: 'USD',
       });
 
       // Create a different vendor's invoice (should not be found)
@@ -451,9 +451,9 @@ describe('SOA Matching Engine', () => {
       const otherInvoice = await createTestInvoice(supabase, {
         vendorId: otherVendor.id,
         invoice_number: 'INV-001',
-        total_amount: 1000.00,
+        total_amount: 1000.0,
         currency_code: 'USD',
-        status: 'pending'
+        status: 'pending',
       });
 
       const result = await matchSOALine(soaLine, testVendor.id);
@@ -473,29 +473,29 @@ describe('SOA Matching Engine', () => {
         caseId: testSOACase.id,
         vendorId: testVendor.id,
         invoice_number: 'INV-001',
-        amount: 1000.00,
+        amount: 1000.0,
         currency_code: 'USD',
-        invoice_date: '2025-01-01'
+        invoice_date: '2025-01-01',
       });
 
       // Create exact match invoice
       const exactInvoice = await createTestInvoice(supabase, {
         vendorId: testVendor.id,
         invoice_number: 'INV-001',
-        total_amount: 1000.00,
+        total_amount: 1000.0,
         currency_code: 'USD',
         invoice_date: '2025-01-01',
-        status: 'pending'
+        status: 'pending',
       });
 
       // Create tolerance match invoice (should not be selected)
       const toleranceInvoice = await createTestInvoice(supabase, {
         vendorId: testVendor.id,
         invoice_number: 'INV-001',
-        total_amount: 1000.50, // Within tolerance
+        total_amount: 1000.5, // Within tolerance
         currency_code: 'USD',
         invoice_date: '2025-01-01',
-        status: 'pending'
+        status: 'pending',
       });
 
       const result = await matchSOALine(soaLine, testVendor.id);
@@ -521,36 +521,36 @@ describe('SOA Matching Engine', () => {
         caseId: testSOACase.id,
         vendorId: testVendor.id,
         invoice_number: 'INV-001',
-        amount: 1000.00,
+        amount: 1000.0,
         currency_code: 'USD',
-        invoice_date: '2025-01-01'
+        invoice_date: '2025-01-01',
       });
 
       const soaLine2 = await createTestSOALine(supabase, {
         caseId: testSOACase.id,
         vendorId: testVendor.id,
         invoice_number: 'INV-002',
-        amount: 2000.00,
+        amount: 2000.0,
         currency_code: 'USD',
-        invoice_date: '2025-01-02'
+        invoice_date: '2025-01-02',
       });
 
       const invoice1 = await createTestInvoice(supabase, {
         vendorId: testVendor.id,
         invoice_number: 'INV-001',
-        total_amount: 1000.00,
+        total_amount: 1000.0,
         currency_code: 'USD',
         invoice_date: '2025-01-01',
-        status: 'pending'
+        status: 'pending',
       });
 
       const invoice2 = await createTestInvoice(supabase, {
         vendorId: testVendor.id,
         invoice_number: 'INV-002',
-        total_amount: 2000.00,
+        total_amount: 2000.0,
         currency_code: 'USD',
         invoice_date: '2025-01-02',
-        status: 'pending'
+        status: 'pending',
       });
 
       const soaLines = [soaLine1, soaLine2];
@@ -576,15 +576,15 @@ describe('SOA Matching Engine', () => {
         caseId: testSOACase.id,
         vendorId: testVendor.id,
         invoice_number: 'INV-001',
-        amount: 1000.00,
-        currency_code: 'USD'
+        amount: 1000.0,
+        currency_code: 'USD',
       });
 
       // Create invalid SOA line (missing required fields)
       const invalidSOALine = {
         id: 'invalid-id',
         invoice_number: null,
-        amount: null
+        amount: null,
       };
 
       const soaLines = [soaLine1, invalidSOALine];
@@ -608,4 +608,3 @@ describe('SOA Matching Engine', () => {
     });
   });
 });
-

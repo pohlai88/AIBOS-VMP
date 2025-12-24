@@ -12,14 +12,14 @@ describe('Server Routes', () => {
   beforeEach(async () => {
     // Set up test environment
     process.env.NODE_ENV = 'test';
-    
+
     // Try to get a test user
     try {
       const testUser = await vmpAdapter.getUserByEmail('admin@acme.com');
       if (testUser) {
         testUserId = testUser.id;
         testVendorId = testUser.vendor_id;
-        
+
         // Create test session
         testSession = await createTestSession(testUserId, testVendorId);
       }
@@ -133,18 +133,14 @@ describe('Server Routes', () => {
     });
 
     test('POST /login should show error for missing email', async () => {
-      const response = await request(app)
-        .post('/login')
-        .send({ password: 'testpassword123' });
+      const response = await request(app).post('/login').send({ password: 'testpassword123' });
 
       expect(response.statusCode).toBe(200);
       expect(response.text).toContain('required');
     });
 
     test('POST /login should show error for missing password', async () => {
-      const response = await request(app)
-        .post('/login')
-        .send({ email: 'admin@acme.com' });
+      const response = await request(app).post('/login').send({ email: 'admin@acme.com' });
 
       expect(response.statusCode).toBe(200);
       expect(response.text).toContain('required');

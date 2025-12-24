@@ -29,8 +29,11 @@ async function testSupabaseAuth() {
   try {
     // Test 1: Check if user exists
     console.log('\n📋 Test 1: Check if user exists in Supabase Auth');
-    const { data: { users }, error: listError } = await supabase.auth.admin.listUsers();
-    
+    const {
+      data: { users },
+      error: listError,
+    } = await supabase.auth.admin.listUsers();
+
     if (listError) {
       console.error('   ❌ Error listing users:', listError.message);
       // Try alternative method
@@ -50,7 +53,7 @@ async function testSupabaseAuth() {
     // Test 2: Test password reset request
     console.log('\n📋 Test 2: Test password reset request');
     const { error: resetError } = await supabase.auth.resetPasswordForEmail(testEmail, {
-      redirectTo: `${process.env.BASE_URL || 'http://localhost:9000'}/reset-password`
+      redirectTo: `${process.env.BASE_URL || 'http://localhost:9000'}/reset-password`,
     });
 
     if (resetError) {
@@ -87,7 +90,6 @@ async function testSupabaseAuth() {
     console.log('   2. Check Supabase Dashboard → Auth → Email Templates to verify email config');
     console.log('   3. Test login via localhost:9000/login');
     console.log('   4. Test password reset via localhost:9000/forgot-password');
-
   } catch (error) {
     console.error('\n❌ Test failed:', error);
     throw error;
@@ -99,8 +101,7 @@ testSupabaseAuth()
     console.log('\n✅ Test script completed');
     process.exit(0);
   })
-  .catch((error) => {
+  .catch(error => {
     console.error('\n❌ Test script failed:', error);
     process.exit(1);
   });
-

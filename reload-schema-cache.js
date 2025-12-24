@@ -4,10 +4,12 @@ import pg from 'pg';
 const { Client } = pg;
 
 const client = new Client({
-  connectionString: 'postgresql://postgres.vrawceruzokxitybkufk:Weepohlai88!@aws-1-ap-southeast-2.pooler.supabase.com:6543/postgres'
+  connectionString:
+    'postgresql://postgres.vrawceruzokxitybkufk:Weepohlai88!@aws-1-ap-southeast-2.pooler.supabase.com:6543/postgres',
 });
 
-client.connect()
+client
+  .connect()
   .then(() => {
     console.log('Connected to Supabase...');
     return client.query("NOTIFY pgrst, 'reload schema';");

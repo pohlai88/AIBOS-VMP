@@ -164,24 +164,24 @@ function invoiceCardFeed() {
       fetch(`/invoices/${invoiceId}/open-case`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
-        }
+          'Content-Type': 'application/json',
+        },
       })
-      .then(res => res.json())
-      .then(data => {
-        if (data.case_id) {
-          // Navigate to case with evidence upload
-          window.location.href = `/cases/${data.case_id}?action=upload-evidence`;
-        } else {
-          // Navigate to invoice detail
+        .then(res => res.json())
+        .then(data => {
+          if (data.case_id) {
+            // Navigate to case with evidence upload
+            window.location.href = `/cases/${data.case_id}?action=upload-evidence`;
+          } else {
+            // Navigate to invoice detail
+            window.location.href = `/invoices/${invoiceId}?action=upload-evidence`;
+          }
+        })
+        .catch(error => {
+          console.error('Error opening evidence upload:', error);
+          // Fallback to invoice detail
           window.location.href = `/invoices/${invoiceId}?action=upload-evidence`;
-        }
-      })
-      .catch(error => {
-        console.error('Error opening evidence upload:', error);
-        // Fallback to invoice detail
-        window.location.href = `/invoices/${invoiceId}?action=upload-evidence`;
-      });
+        });
     },
 
     openChat(invoiceId) {
@@ -189,25 +189,25 @@ function invoiceCardFeed() {
       fetch(`/invoices/${invoiceId}/open-case`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
-        }
+          'Content-Type': 'application/json',
+        },
       })
-      .then(res => res.json())
-      .then(data => {
-        if (data.case_id) {
-          // Navigate to case thread
-          window.location.href = `/cases/${data.case_id}`;
-        } else {
-          // Show error
+        .then(res => res.json())
+        .then(data => {
+          if (data.case_id) {
+            // Navigate to case thread
+            window.location.href = `/cases/${data.case_id}`;
+          } else {
+            // Show error
+            alert('Failed to open chat. Please try again.');
+          }
+        })
+        .catch(error => {
+          console.error('Error opening chat:', error);
           alert('Failed to open chat. Please try again.');
-        }
-      })
-      .catch(error => {
-        console.error('Error opening chat:', error);
-        alert('Failed to open chat. Please try again.');
-      });
-    }
-  }
+        });
+    },
+  };
 }
 
 // Swipeable card component
@@ -224,16 +224,24 @@ function swipeableCard(invoiceId) {
       const cardElement = this.$el;
       if (!cardElement) return;
 
-      cardElement.addEventListener('touchstart', (e) => {
-        this.touchStartX = e.changedTouches[0].screenX;
-        this.touchStartY = e.changedTouches[0].screenY;
-      }, { passive: true });
+      cardElement.addEventListener(
+        'touchstart',
+        e => {
+          this.touchStartX = e.changedTouches[0].screenX;
+          this.touchStartY = e.changedTouches[0].screenY;
+        },
+        { passive: true }
+      );
 
-      cardElement.addEventListener('touchend', (e) => {
-        this.touchEndX = e.changedTouches[0].screenX;
-        this.touchEndY = e.changedTouches[0].screenY;
-        this.handleSwipe(invoiceId);
-      }, { passive: true });
+      cardElement.addEventListener(
+        'touchend',
+        e => {
+          this.touchEndX = e.changedTouches[0].screenX;
+          this.touchEndY = e.changedTouches[0].screenY;
+          this.handleSwipe(invoiceId);
+        },
+        { passive: true }
+      );
     },
 
     handleSwipe(invoiceId) {
@@ -262,44 +270,44 @@ function swipeableCard(invoiceId) {
       fetch(`/invoices/${invoiceId}/open-case`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
-        }
+          'Content-Type': 'application/json',
+        },
       })
-      .then(res => res.json())
-      .then(data => {
-        if (data.case_id) {
-          window.location.href = `/cases/${data.case_id}?action=upload-evidence`;
-        } else {
+        .then(res => res.json())
+        .then(data => {
+          if (data.case_id) {
+            window.location.href = `/cases/${data.case_id}?action=upload-evidence`;
+          } else {
+            window.location.href = `/invoices/${invoiceId}?action=upload-evidence`;
+          }
+        })
+        .catch(error => {
+          console.error('Error opening evidence upload:', error);
           window.location.href = `/invoices/${invoiceId}?action=upload-evidence`;
-        }
-      })
-      .catch(error => {
-        console.error('Error opening evidence upload:', error);
-        window.location.href = `/invoices/${invoiceId}?action=upload-evidence`;
-      });
+        });
     },
 
     openChat(invoiceId) {
       fetch(`/invoices/${invoiceId}/open-case`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
-        }
+          'Content-Type': 'application/json',
+        },
       })
-      .then(res => res.json())
-      .then(data => {
-        if (data.case_id) {
-          window.location.href = `/cases/${data.case_id}`;
-        } else {
+        .then(res => res.json())
+        .then(data => {
+          if (data.case_id) {
+            window.location.href = `/cases/${data.case_id}`;
+          } else {
+            alert('Failed to open chat. Please try again.');
+          }
+        })
+        .catch(error => {
+          console.error('Error opening chat:', error);
           alert('Failed to open chat. Please try again.');
-        }
-      })
-      .catch(error => {
-        console.error('Error opening chat:', error);
-        alert('Failed to open chat. Please try again.');
-      });
-    }
-  }
+        });
+    },
+  };
 }
 </script>
 

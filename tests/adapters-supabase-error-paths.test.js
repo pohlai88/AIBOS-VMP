@@ -94,7 +94,7 @@ describe('Adapter Error Paths and Cleanup', () => {
 
       // First ensure steps exist
       await vmpAdapter.ensureChecklistSteps(testCaseId, 'invoice');
-      
+
       // Ensure again - should not create duplicates
       const steps = await vmpAdapter.ensureChecklistSteps(testCaseId, 'invoice');
       expect(Array.isArray(steps)).toBe(true);
@@ -188,13 +188,13 @@ describe('Adapter Error Paths and Cleanup', () => {
 
       // Create a session
       const session = await vmpAdapter.createSession(testUserId, {});
-      
+
       // Get the session - if it's expired, it should be auto-deleted
       const retrieved = await vmpAdapter.getSession(session.sessionId);
-      
+
       // If valid, should return session; if expired, should return null
       expect(retrieved === null || (retrieved && retrieved.user_id === testUserId)).toBe(true);
-      
+
       await vmpAdapter.deleteSession(session.sessionId);
     });
   });
@@ -220,9 +220,11 @@ describe('Adapter Error Paths and Cleanup', () => {
         return;
       }
 
-      const version = await vmpAdapter.getNextEvidenceVersion(testCaseId, 'new_type_with_no_evidence');
+      const version = await vmpAdapter.getNextEvidenceVersion(
+        testCaseId,
+        'new_type_with_no_evidence'
+      );
       expect(version).toBe(1); // Should return 1 for new evidence type
     });
   });
 });
-

@@ -1,6 +1,6 @@
 /**
  * Ollama Client Utility
- * 
+ *
  * Provides a client interface for calling Ollama via Supabase Edge Functions.
  * This allows AI features to use Ollama instead of external APIs.
  */
@@ -19,26 +19,26 @@ export async function callOllamaViaEdgeFunction(action, data, supabaseUrl, anonK
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${anonKey}`,
+        Authorization: `Bearer ${anonKey}`,
       },
       body: JSON.stringify({
         action,
         ...data,
       }),
-    })
+    });
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}))
+      const errorData = await response.json().catch(() => ({}));
       throw new Error(`Ollama Edge Function error: ${response.statusText}`, {
-        cause: errorData
-      })
+        cause: errorData,
+      });
     }
 
-    const result = await response.json()
-    return result.data || result
+    const result = await response.json();
+    return result.data || result;
   } catch (error) {
-    console.error('[Ollama Client] Error calling Edge Function:', error)
-    throw error
+    console.error('[Ollama Client] Error calling Edge Function:', error);
+    throw error;
   }
 }
 
@@ -51,13 +51,24 @@ export async function callOllamaViaEdgeFunction(action, data, supabaseUrl, anonK
  * @param {string} anonKey - Supabase anon key
  * @returns {Promise<Object>} Chat response
  */
-export async function chatWithOllama(messages, model = 'llama3', options = {}, supabaseUrl, anonKey) {
-  return callOllamaViaEdgeFunction('ollama-chat', {
-    messages,
-    model,
-    stream: false,
-    options,
-  }, supabaseUrl, anonKey)
+export async function chatWithOllama(
+  messages,
+  model = 'llama3',
+  options = {},
+  supabaseUrl,
+  anonKey
+) {
+  return callOllamaViaEdgeFunction(
+    'ollama-chat',
+    {
+      messages,
+      model,
+      stream: false,
+      options,
+    },
+    supabaseUrl,
+    anonKey
+  );
 }
 
 /**
@@ -69,10 +80,15 @@ export async function chatWithOllama(messages, model = 'llama3', options = {}, s
  * @returns {Promise<Object>} Embedding response
  */
 export async function embedWithOllama(text, model = 'nomic-embed-text', supabaseUrl, anonKey) {
-  return callOllamaViaEdgeFunction('ollama-embedding', {
-    text,
-    model,
-  }, supabaseUrl, anonKey)
+  return callOllamaViaEdgeFunction(
+    'ollama-embedding',
+    {
+      text,
+      model,
+    },
+    supabaseUrl,
+    anonKey
+  );
 }
 
 /**
@@ -85,13 +101,25 @@ export async function embedWithOllama(text, model = 'nomic-embed-text', supabase
  * @param {string} anonKey - Supabase anon key
  * @returns {Promise<Object>} Classification response
  */
-export async function classifyWithOllama(text, systemPrompt = null, prompt = null, model = 'llama3', supabaseUrl, anonKey) {
-  return callOllamaViaEdgeFunction('ollama-classify', {
-    text,
-    systemPrompt,
-    prompt,
-    model,
-  }, supabaseUrl, anonKey)
+export async function classifyWithOllama(
+  text,
+  systemPrompt = null,
+  prompt = null,
+  model = 'llama3',
+  supabaseUrl,
+  anonKey
+) {
+  return callOllamaViaEdgeFunction(
+    'ollama-classify',
+    {
+      text,
+      systemPrompt,
+      prompt,
+      model,
+    },
+    supabaseUrl,
+    anonKey
+  );
 }
 
 /**
@@ -104,13 +132,20 @@ export async function classifyWithOllama(text, systemPrompt = null, prompt = nul
  * @param {string} anonKey - Supabase anon key
  * @returns {Promise<Object>} Chat response
  */
-export async function callAIChat(message, context = {}, history = [], model = 'llama3', supabaseUrl, anonKey) {
+export async function callAIChat(
+  message,
+  context = {},
+  history = [],
+  model = 'llama3',
+  supabaseUrl,
+  anonKey
+) {
   try {
     const response = await fetch(`${supabaseUrl}/functions/v1/ai-chat`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${anonKey}`,
+        Authorization: `Bearer ${anonKey}`,
       },
       body: JSON.stringify({
         action: 'chat',
@@ -119,20 +154,19 @@ export async function callAIChat(message, context = {}, history = [], model = 'l
         history,
         model,
       }),
-    })
+    });
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}))
+      const errorData = await response.json().catch(() => ({}));
       throw new Error(`AI Chat Edge Function error: ${response.statusText}`, {
-        cause: errorData
-      })
+        cause: errorData,
+      });
     }
 
-    const result = await response.json()
-    return result.data || result
+    const result = await response.json();
+    return result.data || result;
   } catch (error) {
-    console.error('[Ollama Client] Error calling AI Chat:', error)
-    throw error
+    console.error('[Ollama Client] Error calling AI Chat:', error);
+    throw error;
   }
 }
-

@@ -2,7 +2,7 @@ import { defineConfig, devices } from '@playwright/test';
 
 /**
  * Playwright Configuration for VMP E2E Tests
- * 
+ *
  * Tests Days 5-8 functionality with real browser authentication
  */
 export default defineConfig({
@@ -12,7 +12,7 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 0,
   workers: process.env.CI ? 1 : undefined,
   reporter: 'html',
-  
+
   use: {
     baseURL: 'http://localhost:9000',
     trace: 'on-first-retry',
@@ -47,4 +47,3 @@ export default defineConfig({
     stderr: 'pipe',
   },
 });
-

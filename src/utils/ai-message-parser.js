@@ -14,12 +14,12 @@ export async function classifyMessageIntent(messageText, channel = 'email') {
     // For now, use rule-based classification as fallback
     // In production, this would call an AI service (OpenAI, Anthropic, etc.)
     const intent = await classifyIntentRuleBased(messageText, channel);
-    
+
     return {
       intent: intent.primary,
       confidence: intent.confidence,
       secondaryIntents: intent.secondary || [],
-      entities: intent.entities || []
+      entities: intent.entities || [],
     };
   } catch (error) {
     console.error('[AI Parser] Error classifying intent:', error);
@@ -28,7 +28,7 @@ export async function classifyMessageIntent(messageText, channel = 'email') {
       intent: 'general_inquiry',
       confidence: 0.5,
       secondaryIntents: [],
-      entities: []
+      entities: [],
     };
   }
 }
@@ -43,10 +43,10 @@ export async function extractStructuredData(messageText, subject = '') {
   try {
     // Combine subject and body for better extraction
     const fullText = subject ? `${subject}\n\n${messageText}` : messageText;
-    
+
     // Extract using rule-based patterns first
     const extracted = await extractDataRuleBased(fullText);
-    
+
     return {
       invoiceNumbers: extracted.invoiceNumbers || [],
       poNumbers: extracted.poNumbers || [],
@@ -56,7 +56,7 @@ export async function extractStructuredData(messageText, subject = '') {
       dates: extracted.dates || [],
       caseReferences: extracted.caseReferences || [],
       urgency: extracted.urgency || 'normal',
-      confidence: extracted.confidence || 0.7
+      confidence: extracted.confidence || 0.7,
     };
   } catch (error) {
     console.error('[AI Parser] Error extracting structured data:', error);
@@ -69,7 +69,7 @@ export async function extractStructuredData(messageText, subject = '') {
       dates: [],
       caseReferences: [],
       urgency: 'normal',
-      confidence: 0.5
+      confidence: 0.5,
     };
   }
 }
@@ -97,10 +97,13 @@ export async function findBestMatchingCase(messageData, candidateCases, extracte
       // Match by case reference in message
       if (extractedData.caseReferences && extractedData.caseReferences.length > 0) {
         const caseRef = candidateCase.case_num || candidateCase.id;
-        if (extractedData.caseReferences.some(ref => 
-          ref.toLowerCase().includes(caseRef.toLowerCase()) || 
-          caseRef.toLowerCase().includes(ref.toLowerCase())
-        )) {
+        if (
+          extractedData.caseReferences.some(
+            ref =>
+              ref.toLowerCase().includes(caseRef.toLowerCase()) ||
+              caseRef.toLowerCase().includes(ref.toLowerCase())
+          )
+        ) {
           score += 50;
         }
       }
@@ -124,11 +127,11 @@ export async function findBestMatchingCase(messageData, candidateCases, extracte
       if (messageData.subject) {
         const subjectLower = messageData.subject.toLowerCase();
         const caseSubjectLower = (candidateCase.subject || '').toLowerCase();
-        
+
         // Check for common keywords
         const keywords = ['payment', 'invoice', 'case', 'issue', 'problem', 'urgent'];
-        const matchingKeywords = keywords.filter(kw => 
-          subjectLower.includes(kw) && caseSubjectLower.includes(kw)
+        const matchingKeywords = keywords.filter(
+          kw => subjectLower.includes(kw) && caseSubjectLower.includes(kw)
         );
         score += matchingKeywords.length * 5;
       }
@@ -159,7 +162,7 @@ export async function findBestMatchingCase(messageData, candidateCases, extracte
         caseId: bestMatch.case.id,
         caseNum: bestMatch.case.case_num,
         confidence: Math.min(bestScore / 100, 1.0),
-        matchReason: getMatchReason(bestMatch, extractedData)
+        matchReason: getMatchReason(bestMatch, extractedData),
       };
     }
 
@@ -219,7 +222,7 @@ async function classifyIntentRuleBased(messageText, channel) {
     primary: intents[0].intent,
     confidence: intents[0].confidence,
     secondary: intents.slice(1, 3).map(i => i.intent),
-    entities: []
+    entities: [],
   };
 }
 
@@ -236,14 +239,14 @@ async function extractDataRuleBased(text) {
     dates: [],
     caseReferences: [],
     urgency: 'normal',
-    confidence: 0.7
+    confidence: 0.7,
   };
 
   // Extract invoice numbers (various formats)
   const invoicePatterns = [
     /(?:invoice|inv)[\s#:]*([A-Z0-9-]+)/gi,
     /INV-?([A-Z0-9-]+)/gi,
-    /INV\s*#?\s*([A-Z0-9-]+)/gi
+    /INV\s*#?\s*([A-Z0-9-]+)/gi,
   ];
   invoicePatterns.forEach(pattern => {
     const matches = text.matchAll(pattern);
@@ -258,7 +261,7 @@ async function extractDataRuleBased(text) {
   const poPatterns = [
     /(?:po|purchase\s*order)[\s#:]*([A-Z0-9-]+)/gi,
     /PO-?([A-Z0-9-]+)/gi,
-    /PO\s*#?\s*([A-Z0-9-]+)/gi
+    /PO\s*#?\s*([A-Z0-9-]+)/gi,
   ];
   poPatterns.forEach(pattern => {
     const matches = text.matchAll(pattern);
@@ -273,7 +276,7 @@ async function extractDataRuleBased(text) {
   const grnPatterns = [
     /(?:grn|goods\s*receipt)[\s#:]*([A-Z0-9-]+)/gi,
     /GRN-?([A-Z0-9-]+)/gi,
-    /GRN\s*#?\s*([A-Z0-9-]+)/gi
+    /GRN\s*#?\s*([A-Z0-9-]+)/gi,
   ];
   grnPatterns.forEach(pattern => {
     const matches = text.matchAll(pattern);
@@ -288,7 +291,7 @@ async function extractDataRuleBased(text) {
   const paymentPatterns = [
     /(?:payment|ref|reference)[\s#:]*([A-Z0-9-]+)/gi,
     /PAY-?([A-Z0-9-]+)/gi,
-    /REF-?([A-Z0-9-]+)/gi
+    /REF-?([A-Z0-9-]+)/gi,
   ];
   paymentPatterns.forEach(pattern => {
     const matches = text.matchAll(pattern);
@@ -303,7 +306,7 @@ async function extractDataRuleBased(text) {
   const amountPatterns = [
     /\$[\s]*([\d,]+\.?\d*)/g,
     /([\d,]+\.?\d*)\s*(?:USD|dollars?)/gi,
-    /(?:amount|total)[\s:]*\$?[\s]*([\d,]+\.?\d*)/gi
+    /(?:amount|total)[\s:]*\$?[\s]*([\d,]+\.?\d*)/gi,
   ];
   amountPatterns.forEach(pattern => {
     const matches = text.matchAll(pattern);
@@ -319,7 +322,7 @@ async function extractDataRuleBased(text) {
   const casePatterns = [
     /(?:case|ticket)[\s#:]*([A-Z0-9-]+)/gi,
     /CASE-?([A-Z0-9-]+)/gi,
-    /#([A-Z0-9-]+)/g
+    /#([A-Z0-9-]+)/g,
   ];
   casePatterns.forEach(pattern => {
     const matches = text.matchAll(pattern);
@@ -345,7 +348,7 @@ async function extractDataRuleBased(text) {
  */
 function getMatchReason(match, extractedData) {
   const reasons = [];
-  
+
   if (extractedData.caseReferences && extractedData.caseReferences.length > 0) {
     reasons.push('Case reference found in message');
   }
@@ -355,7 +358,6 @@ function getMatchReason(match, extractedData) {
   if (extractedData.poNumbers && extractedData.poNumbers.length > 0) {
     reasons.push('PO number matches');
   }
-  
+
   return reasons.join(', ') || 'Contextual similarity';
 }
-

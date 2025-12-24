@@ -30,8 +30,11 @@ async function testSupabaseAuthComplete() {
   try {
     // Test 1: Check if user exists in Supabase Auth
     console.log('\n📋 Test 1: User exists in Supabase Auth');
-    const { data: { users }, error: listError } = await supabase.auth.admin.listUsers();
-    
+    const {
+      data: { users },
+      error: listError,
+    } = await supabase.auth.admin.listUsers();
+
     if (listError) {
       console.error('   ❌ Error listing users:', listError.message);
       allTestsPassed = false;
@@ -53,7 +56,7 @@ async function testSupabaseAuthComplete() {
     // Test 2: Test password reset request
     console.log('\n📋 Test 2: Password reset request');
     const { error: resetError } = await supabase.auth.resetPasswordForEmail(testEmail, {
-      redirectTo: `${process.env.BASE_URL || 'http://localhost:9000'}/reset-password`
+      redirectTo: `${process.env.BASE_URL || 'http://localhost:9000'}/reset-password`,
     });
 
     if (resetError) {
@@ -79,7 +82,7 @@ async function testSupabaseAuthComplete() {
         console.log('   ✅ Can get user from Supabase Auth');
         console.log('      User ID:', testUser.id);
         console.log('      Vendor ID:', testUser.user_metadata?.vendor_id);
-        
+
         // Check if vendor exists
         if (testUser.user_metadata?.vendor_id) {
           console.log('   ✅ Vendor ID found in metadata');
@@ -119,7 +122,6 @@ async function testSupabaseAuthComplete() {
     } else {
       console.log('❌ Some tests failed. Please review the output above.');
     }
-
   } catch (error) {
     console.error('\n❌ Test failed:', error);
     throw error;
@@ -131,8 +133,7 @@ testSupabaseAuthComplete()
     console.log('\n✅ Test script completed');
     process.exit(0);
   })
-  .catch((error) => {
+  .catch(error => {
     console.error('\n❌ Test script failed:', error);
     process.exit(1);
   });
-

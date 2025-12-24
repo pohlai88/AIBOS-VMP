@@ -4,10 +4,10 @@ import { DatabaseError, TimeoutError, StorageError } from '../../src/utils/error
 
 /**
  * Error Simulation Tests for VMP Adapter
- * 
+ *
  * These tests specifically target uncovered error paths (catch blocks) in supabase.js
  * to improve coverage from 66% to 85%+.
- * 
+ *
  * Strategy: Mock Supabase client to return errors that trigger handleSupabaseError
  * catch blocks throughout the adapter methods.
  */
@@ -47,11 +47,11 @@ describe('VMP Adapter - Error Simulation Tests', () => {
       // This tests the catch block in withTimeout (lines 55-59)
       // We can't easily mock the timeout, but we can verify the error handling exists
       // by checking that timeout errors are properly thrown
-      
+
       // Use an operation that might timeout (very long timeout to avoid actual timeout)
       // The timeout wrapper's catch block logs errors and re-throws them
       expect(typeof vmpAdapter.getUserByEmail).toBe('function');
-      
+
       // The withTimeout catch block (line 55-59) handles errors and logs them
       // This is covered indirectly through other error tests
     });
@@ -66,7 +66,7 @@ describe('VMP Adapter - Error Simulation Tests', () => {
       // This tests the error path in getUserByEmail (lines 77-83)
       // We can't easily mock Supabase client, but we can test with invalid data
       // that triggers real errors
-      
+
       // Test with invalid email format or database connection issues
       // The error should be handled by handleSupabaseError
       const result = await vmpAdapter.getUserByEmail('nonexistent@example.com');
@@ -82,11 +82,9 @@ describe('VMP Adapter - Error Simulation Tests', () => {
       // Test with invalid user ID to trigger foreign key constraint error
       // This tests lines 138-140 (error handling in createSession)
       const invalidUserId = '00000000-0000-0000-0000-000000000000';
-      
-      await expect(
-        vmpAdapter.createSession(invalidUserId, {})
-      ).rejects.toThrow();
-      
+
+      await expect(vmpAdapter.createSession(invalidUserId, {})).rejects.toThrow();
+
       // The error path (lines 138-140) should have been executed
     });
 
@@ -100,9 +98,7 @@ describe('VMP Adapter - Error Simulation Tests', () => {
     test('deleteSession should handle errors gracefully', async () => {
       // Test deleteSession error handling (lines 196-199)
       // Should not throw even if session doesn't exist
-      await expect(
-        vmpAdapter.deleteSession('nonexistent-session-id')
-      ).resolves.not.toThrow();
+      await expect(vmpAdapter.deleteSession('nonexistent-session-id')).resolves.not.toThrow();
     });
   });
 
@@ -120,10 +116,8 @@ describe('VMP Adapter - Error Simulation Tests', () => {
       // Test with invalid user ID to trigger error
       // This tests lines 268-270 (error handling)
       const invalidUserId = '00000000-0000-0000-0000-000000000000';
-      
-      await expect(
-        vmpAdapter.getVendorContext(invalidUserId)
-      ).rejects.toThrow();
+
+      await expect(vmpAdapter.getVendorContext(invalidUserId)).rejects.toThrow();
     });
 
     test('getInbox should handle database query errors', async () => {
@@ -135,7 +129,7 @@ describe('VMP Adapter - Error Simulation Tests', () => {
       // Test with invalid vendor ID
       // This tests lines 297-299 (error handling)
       const invalidVendorId = '00000000-0000-0000-0000-000000000000';
-      
+
       // Should return empty array or throw, depending on error type
       try {
         const result = await vmpAdapter.getInbox(invalidVendorId);
@@ -154,10 +148,8 @@ describe('VMP Adapter - Error Simulation Tests', () => {
       // Test with non-existent case ID
       // This tests lines 325-327 (error handling)
       const invalidCaseId = '00000000-0000-0000-0000-000000000000';
-      
-      await expect(
-        vmpAdapter.getCaseDetail(invalidCaseId, testVendorId)
-      ).rejects.toThrow();
+
+      await expect(vmpAdapter.getCaseDetail(invalidCaseId, testVendorId)).rejects.toThrow();
     });
   });
 
@@ -176,7 +168,7 @@ describe('VMP Adapter - Error Simulation Tests', () => {
       // This tests lines 366-368 (error handling)
       // Note: Invalid UUIDs might return empty array instead of error
       const invalidCaseId = '00000000-0000-0000-0000-000000000000';
-      
+
       try {
         const result = await vmpAdapter.getMessages(invalidCaseId);
         // If no error, should return empty array
@@ -196,10 +188,8 @@ describe('VMP Adapter - Error Simulation Tests', () => {
       // Test with invalid case ID to trigger foreign key constraint
       // This tests lines 434-436 (error handling)
       const invalidCaseId = '00000000-0000-0000-0000-000000000000';
-      
-      await expect(
-        vmpAdapter.createMessage(invalidCaseId, 'Test message')
-      ).rejects.toThrow();
+
+      await expect(vmpAdapter.createMessage(invalidCaseId, 'Test message')).rejects.toThrow();
     });
   });
 
@@ -218,7 +208,7 @@ describe('VMP Adapter - Error Simulation Tests', () => {
       // This tests lines 461-463 (error handling)
       // Note: Invalid UUIDs might return empty array instead of error
       const invalidCaseId = '00000000-0000-0000-0000-000000000000';
-      
+
       try {
         const result = await vmpAdapter.getChecklistSteps(invalidCaseId);
         // If no error, should return empty array
@@ -238,10 +228,8 @@ describe('VMP Adapter - Error Simulation Tests', () => {
       // Test with invalid case ID
       // This tests lines 493-495 (error handling)
       const invalidCaseId = '00000000-0000-0000-0000-000000000000';
-      
-      await expect(
-        vmpAdapter.createChecklistStep(invalidCaseId, 'Test Step')
-      ).rejects.toThrow();
+
+      await expect(vmpAdapter.createChecklistStep(invalidCaseId, 'Test Step')).rejects.toThrow();
     });
 
     test('ensureChecklistSteps should handle individual step creation errors gracefully', async () => {
@@ -252,7 +240,7 @@ describe('VMP Adapter - Error Simulation Tests', () => {
 
       // This tests the catch block in ensureChecklistSteps (lines 531-537)
       // where individual step creation errors are logged but don't stop the process
-      
+
       // Try to ensure steps - if some fail, they should be logged but not throw
       try {
         await vmpAdapter.ensureChecklistSteps(testCaseId);
@@ -280,7 +268,7 @@ describe('VMP Adapter - Error Simulation Tests', () => {
       // This tests lines 563-565 (error handling)
       // Note: Invalid UUIDs might return empty array instead of error
       const invalidCaseId = '00000000-0000-0000-0000-000000000000';
-      
+
       try {
         const result = await vmpAdapter.getEvidence(invalidCaseId);
         // If no error, should return empty array
@@ -301,7 +289,7 @@ describe('VMP Adapter - Error Simulation Tests', () => {
       // This tests lines 598-600 (error handling)
       // Note: Invalid UUIDs might return default value (1) instead of error
       const invalidCaseId = '00000000-0000-0000-0000-000000000000';
-      
+
       try {
         const result = await vmpAdapter.getNextEvidenceVersion(invalidCaseId, 'invoice_pdf');
         // If no error, should return a number (defaults to 1)
@@ -321,17 +309,17 @@ describe('VMP Adapter - Error Simulation Tests', () => {
       // This tests the cleanup catch block (lines 711-717)
       // We need to trigger an error during upload, then verify cleanup is attempted
       // The cleanup error should be logged but not thrown
-      
+
       const mockFile = {
         buffer: Buffer.from('test'),
         originalname: 'test.pdf',
         mimetype: 'application/pdf',
-        size: 100
+        size: 100,
       };
 
       // Use invalid case ID to trigger database error
       const invalidCaseId = '00000000-0000-0000-0000-000000000000';
-      
+
       await expect(
         vmpAdapter.uploadEvidence(
           invalidCaseId,
@@ -342,7 +330,7 @@ describe('VMP Adapter - Error Simulation Tests', () => {
           testUserId
         )
       ).rejects.toThrow();
-      
+
       // The cleanup catch block (lines 711-717) should have been executed
     });
 
@@ -354,11 +342,11 @@ describe('VMP Adapter - Error Simulation Tests', () => {
 
       // This tests the step status update catch block (lines 730-736)
       // The step update error should be logged but not fail the upload
-      
+
       // Note: This is difficult to test directly without mocking Supabase
       // The error handling path exists and is covered by code structure
       // Integration tests verify the behavior in practice
-      
+
       expect(typeof vmpAdapter.uploadEvidence).toBe('function');
     });
 
@@ -370,7 +358,7 @@ describe('VMP Adapter - Error Simulation Tests', () => {
 
       // This tests the case status update catch block (lines 742-747)
       // The status update error should be logged but not fail the upload
-      
+
       expect(typeof vmpAdapter.uploadEvidence).toBe('function');
     });
 
@@ -383,10 +371,8 @@ describe('VMP Adapter - Error Simulation Tests', () => {
       // Test with invalid checklist step ID
       // This tests lines 770-772 (error handling)
       const invalidStepId = '00000000-0000-0000-0000-000000000000';
-      
-      await expect(
-        vmpAdapter.verifyEvidence(invalidStepId, testUserId)
-      ).rejects.toThrow();
+
+      await expect(vmpAdapter.verifyEvidence(invalidStepId, testUserId)).rejects.toThrow();
     });
 
     test('verifyEvidence should handle case status update errors gracefully', async () => {
@@ -397,7 +383,7 @@ describe('VMP Adapter - Error Simulation Tests', () => {
 
       // This tests the case status update catch block (lines 796-800)
       // The status update error should be logged but not fail verification
-      
+
       expect(typeof vmpAdapter.verifyEvidence).toBe('function');
     });
 
@@ -410,7 +396,7 @@ describe('VMP Adapter - Error Simulation Tests', () => {
       // Test with invalid checklist step ID
       // This tests lines 834-836 (error handling)
       const invalidStepId = '00000000-0000-0000-0000-000000000000';
-      
+
       await expect(
         vmpAdapter.rejectEvidence(invalidStepId, testUserId, 'Test rejection reason')
       ).rejects.toThrow();
@@ -431,10 +417,8 @@ describe('VMP Adapter - Error Simulation Tests', () => {
       // Test with invalid case ID
       // This tests lines 877-879 (error handling)
       const invalidCaseId = '00000000-0000-0000-0000-000000000000';
-      
-      await expect(
-        vmpAdapter.reassignCase(invalidCaseId, 'internal_ops')
-      ).rejects.toThrow();
+
+      await expect(vmpAdapter.reassignCase(invalidCaseId, 'internal_ops')).rejects.toThrow();
     });
 
     test('updateCaseStatus should handle database update errors', async () => {
@@ -446,10 +430,8 @@ describe('VMP Adapter - Error Simulation Tests', () => {
       // Test with invalid case ID
       // This tests lines 916-918 (error handling)
       const invalidCaseId = '00000000-0000-0000-0000-000000000000';
-      
-      await expect(
-        vmpAdapter.updateCaseStatus(invalidCaseId, 'closed')
-      ).rejects.toThrow();
+
+      await expect(vmpAdapter.updateCaseStatus(invalidCaseId, 'closed')).rejects.toThrow();
     });
 
     test('escalateCase should handle database update errors', async () => {
@@ -461,10 +443,8 @@ describe('VMP Adapter - Error Simulation Tests', () => {
       // Test with invalid case ID
       // This tests lines 962-964 (error handling)
       const invalidCaseId = '00000000-0000-0000-0000-000000000000';
-      
-      await expect(
-        vmpAdapter.escalateCase(invalidCaseId, 2)
-      ).rejects.toThrow();
+
+      await expect(vmpAdapter.escalateCase(invalidCaseId, 2)).rejects.toThrow();
     });
 
     test('escalateCase should handle message creation errors gracefully', async () => {
@@ -475,7 +455,7 @@ describe('VMP Adapter - Error Simulation Tests', () => {
 
       // This tests the message creation catch block (lines 980-983)
       // Message creation errors should be logged but not fail escalation
-      
+
       expect(typeof vmpAdapter.escalateCase).toBe('function');
     });
   });
@@ -494,10 +474,8 @@ describe('VMP Adapter - Error Simulation Tests', () => {
       // Test with invalid user ID
       // This tests lines 1106-1108 (error handling)
       const invalidUserId = '00000000-0000-0000-0000-000000000000';
-      
-      await expect(
-        vmpAdapter.getUserNotifications(invalidUserId)
-      ).rejects.toThrow();
+
+      await expect(vmpAdapter.getUserNotifications(invalidUserId)).rejects.toThrow();
     });
 
     test('notifyVendorUsersForCase should handle errors gracefully', async () => {
@@ -508,14 +486,13 @@ describe('VMP Adapter - Error Simulation Tests', () => {
 
       // This tests the outer catch block (lines 1076-1079)
       // Errors should return empty array instead of throwing
-      
+
       // Test with invalid case ID
       const invalidCaseId = '00000000-0000-0000-0000-000000000000';
-      
+
       // Should return empty array on error, not throw
       const result = await vmpAdapter.notifyVendorUsersForCase(invalidCaseId, 'test', 'test');
       expect(Array.isArray(result)).toBe(true);
     });
   });
 });
-

@@ -1,6 +1,6 @@
 /**
  * SLA Reminders System
- * 
+ *
  * Monitors cases approaching or past SLA deadlines and sends reminders.
  * Can be run as a scheduled job (cron) or manually triggered.
  */
@@ -82,7 +82,6 @@ export async function checkAndSendSLAReminders(options = {}) {
         } else {
           summary.warningsSent++;
         }
-
       } catch (caseError) {
         logError(caseError, {
           operation: 'checkAndSendSLAReminders',
@@ -117,13 +116,10 @@ async function sendVendorSLAReminder(caseItem, reminderType, message) {
       return;
     }
 
-    const notificationTitle = reminderType === 'overdue'
-      ? '⚠️ Case SLA Overdue'
-      : '⏰ Case SLA Approaching';
+    const notificationTitle =
+      reminderType === 'overdue' ? '⚠️ Case SLA Overdue' : '⏰ Case SLA Approaching';
 
-    const notificationType = reminderType === 'overdue'
-      ? 'sla_breach'
-      : 'sla_warning';
+    const notificationType = reminderType === 'overdue' ? 'sla_breach' : 'sla_warning';
 
     // Create notification for each vendor user
     let notificationsSent = 0;
@@ -163,17 +159,21 @@ async function sendVendorSLAReminder(caseItem, reminderType, message) {
           operation: 'sendVendorSLAReminder',
           caseId: caseItem.id,
           userId: user.id,
-          step: 'createNotification'
+          step: 'createNotification',
         });
         // Continue with other users even if one fails
       }
     }
 
     if (notificationsSent > 0) {
-      console.log(`[SLA Reminders] Sent ${notificationsSent} in-app notifications for case ${caseItem.id}`);
+      console.log(
+        `[SLA Reminders] Sent ${notificationsSent} in-app notifications for case ${caseItem.id}`
+      );
     }
     if (notificationsFailed > 0) {
-      console.warn(`[SLA Reminders] Failed to send ${notificationsFailed} notifications for case ${caseItem.id}`);
+      console.warn(
+        `[SLA Reminders] Failed to send ${notificationsFailed} notifications for case ${caseItem.id}`
+      );
     }
   } catch (error) {
     logError(error, {
@@ -197,14 +197,14 @@ async function sendInternalSLAReminder(caseItem, reminderType, message) {
     const { createClient } = await import('@supabase/supabase-js');
     const supabaseUrl = process.env.SUPABASE_URL;
     const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-    
+
     if (!supabaseUrl || !supabaseKey) {
       console.warn('[SLA Reminders] Supabase config missing, skipping internal reminder');
       return;
     }
-    
+
     const supabase = createClient(supabaseUrl, supabaseKey);
-    
+
     const { data: caseData, error: caseError } = await supabase
       .from('vmp_cases')
       .select('assigned_to_user_id')
@@ -215,14 +215,16 @@ async function sendInternalSLAReminder(caseItem, reminderType, message) {
       logError(caseError, {
         operation: 'sendInternalSLAReminder',
         caseId: caseItem.id,
-        step: 'queryCase'
+        step: 'queryCase',
       });
       return;
     }
 
     if (!caseData || !caseData.assigned_to_user_id) {
       // If not assigned, skip internal reminder (this is expected for unassigned cases)
-      console.log(`[SLA Reminders] Case ${caseItem.id} has no assigned user, skipping internal reminder`);
+      console.log(
+        `[SLA Reminders] Case ${caseItem.id} has no assigned user, skipping internal reminder`
+      );
       return;
     }
 
@@ -230,13 +232,12 @@ async function sendInternalSLAReminder(caseItem, reminderType, message) {
 
     // If case is assigned, send to assigned user
     if (assignedUserId) {
-      const notificationTitle = reminderType === 'overdue'
-        ? '🚨 Case SLA Overdue - Action Required'
-        : '⏰ Case SLA Approaching';
+      const notificationTitle =
+        reminderType === 'overdue'
+          ? '🚨 Case SLA Overdue - Action Required'
+          : '⏰ Case SLA Approaching';
 
-      const notificationType = reminderType === 'overdue'
-        ? 'sla_breach'
-        : 'sla_warning';
+      const notificationType = reminderType === 'overdue' ? 'sla_breach' : 'sla_warning';
 
       try {
         await vmpAdapter.createNotification(
@@ -246,7 +247,9 @@ async function sendInternalSLAReminder(caseItem, reminderType, message) {
           notificationTitle,
           message
         );
-        console.log(`[SLA Reminders] Sent internal reminder to user ${assignedUserId} for case ${caseItem.id}`);
+        console.log(
+          `[SLA Reminders] Sent internal reminder to user ${assignedUserId} for case ${caseItem.id}`
+        );
 
         // TODO: Future enhancement - Send email notification if user preferences allow
         // This would require extending the notification utility to support SLA reminders
@@ -265,7 +268,7 @@ async function sendInternalSLAReminder(caseItem, reminderType, message) {
           operation: 'sendInternalSLAReminder',
           caseId: caseItem.id,
           userId: assignedUserId,
-          step: 'createNotification'
+          step: 'createNotification',
         });
         // Don't throw - allow other cases to be processed
       }
@@ -320,7 +323,7 @@ function formatDate(dateString) {
 export async function getSLAReminderStats(vendorId = null) {
   try {
     const now = new Date();
-    const thresholdTime = new Date(now.getTime() + (24 * 60 * 60 * 1000)); // 24 hours
+    const thresholdTime = new Date(now.getTime() + 24 * 60 * 60 * 1000); // 24 hours
 
     // Get approaching cases
     const approachingCases = await vmpAdapter.getCasesWithSLAApproaching(24);
@@ -333,7 +336,9 @@ export async function getSLAReminderStats(vendorId = null) {
     // Categorize cases
     const overdue = filteredCases.filter(c => c.is_overdue);
     const dueToday = filteredCases.filter(c => !c.is_overdue && c.hours_remaining < 24);
-    const dueTomorrow = filteredCases.filter(c => !c.is_overdue && c.hours_remaining >= 24 && c.hours_remaining < 48);
+    const dueTomorrow = filteredCases.filter(
+      c => !c.is_overdue && c.hours_remaining >= 24 && c.hours_remaining < 48
+    );
 
     return {
       total: filteredCases.length,
@@ -351,4 +356,3 @@ export async function getSLAReminderStats(vendorId = null) {
     throw error;
   }
 }
-

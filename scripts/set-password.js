@@ -34,7 +34,7 @@ async function setPassword() {
     // Hash the password
     console.log('Hashing password...');
     const passwordHash = await bcrypt.hash(password, 10);
-    
+
     // Update the user
     console.log(`Updating password for ${email}...`);
     const { data, error } = await supabase
@@ -42,24 +42,23 @@ async function setPassword() {
       .update({ password_hash: passwordHash })
       .eq('email', email.toLowerCase().trim())
       .select();
-    
+
     if (error) {
       console.error('Error updating password:', error);
       process.exit(1);
     }
-    
+
     if (!data || data.length === 0) {
       console.error(`Error: User with email ${email} not found`);
       process.exit(1);
     }
-    
+
     console.log('✅ Password updated successfully!');
     console.log(`User: ${data[0].email}`);
     console.log(`User ID: ${data[0].id}`);
     console.log(`\nYou can now login with:`);
     console.log(`  Email: ${email}`);
     console.log(`  Password: ${password}`);
-    
   } catch (error) {
     console.error('Error:', error);
     process.exit(1);
@@ -67,4 +66,3 @@ async function setPassword() {
 }
 
 setPassword();
-

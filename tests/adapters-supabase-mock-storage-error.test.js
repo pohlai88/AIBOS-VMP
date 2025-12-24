@@ -19,7 +19,7 @@ describe('Adapter Storage Error Paths - Advanced Mocks', () => {
         const cases = await vmpAdapter.getInbox(testUser.vendor_id);
         if (cases && cases.length > 0) {
           testCaseId = cases[0].id;
-          
+
           const steps = await vmpAdapter.getChecklistSteps(testCaseId);
           if (steps && steps.length > 0) {
             testChecklistStepId = steps[0].id;
@@ -46,39 +46,35 @@ describe('Adapter Storage Error Paths - Advanced Mocks', () => {
       buffer: Buffer.from('test file content'),
       originalname: 'test.pdf',
       mimetype: 'application/pdf',
-      size: 100
+      size: 100,
     };
 
     // Mock uploadEvidenceToStorage to succeed
     const originalUpload = vmpAdapter.uploadEvidenceToStorage;
     vmpAdapter.uploadEvidenceToStorage = vi.fn().mockResolvedValue({
       path: 'test/path.pdf',
-      id: 'test-id'
+      id: 'test-id',
     });
 
     // Use invalid case_id to trigger foreign key constraint error
     // This will cause database insert to fail, triggering cleanup at line 631
     const invalidCaseId = '00000000-0000-0000-0000-000000000000';
-    
+
     try {
-      await vmpAdapter.uploadEvidence(
-        invalidCaseId,
-        mockFile,
-        'invoice',
-        null,
-        'vendor'
-      );
+      await vmpAdapter.uploadEvidence(invalidCaseId, mockFile, 'invoice', null, 'vendor');
       // Should not reach here
       expect(true).toBe(false);
     } catch (error) {
       // Expected - database insert should fail with foreign key constraint error
       // handleSupabaseError converts 23503 to "Referenced resource does not exist"
-      expect(error.message).toMatch(/Failed to create evidence record|Referenced resource does not exist/);
+      expect(error.message).toMatch(
+        /Failed to create evidence record|Referenced resource does not exist/
+      );
     }
 
     // Restore original method
     vmpAdapter.uploadEvidenceToStorage = originalUpload;
-    
+
     // This covers:
     // - Line 627: if (error) check
     // - Line 631: cleanup attempt (try block)
@@ -97,24 +93,23 @@ describe('Adapter Storage Error Paths - Advanced Mocks', () => {
 
     // This test verifies the error handling at line 647
     // The checklist step update is in a try-catch that doesn't fail the upload
-    
+
     // Note: To actually trigger line 647, we would need the update to fail
     // but the upload to succeed. This is difficult without deep mocking.
     // The code path exists and is designed to catch update errors gracefully.
-    
+
     const mockFile = {
       buffer: Buffer.from('test file content'),
       originalname: 'test.pdf',
       mimetype: 'application/pdf',
-      size: 100
+      size: 100,
     };
 
     // The error handling at line 646-649 ensures that checklist step update failures
     // are caught and logged, but don't cause the upload to fail
     expect(typeof vmpAdapter.uploadEvidence).toBe('function');
-    
+
     // In practice, if the checklist step update fails (line 647),
     // the error is logged but the upload still succeeds
   });
 });
-

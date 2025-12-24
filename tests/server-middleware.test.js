@@ -12,14 +12,14 @@ describe('Server Middleware', () => {
 
   beforeEach(async () => {
     process.env.NODE_ENV = 'test';
-    
+
     try {
       const testUser = await vmpAdapter.getUserByEmail('admin@acme.com');
       if (testUser) {
         testUserId = testUser.id;
         testVendorId = testUser.vendor_id;
         testSession = await createTestSession(testUserId, testVendorId);
-        
+
         // Get a test case ID from inbox
         try {
           const inbox = await vmpAdapter.getInbox(testVendorId);
@@ -57,7 +57,7 @@ describe('Server Middleware', () => {
         .set('x-test-auth', 'bypass')
         .set('x-test-user-id', 'test-user-id')
         .set('x-test-vendor-id', 'test-vendor-id');
-      
+
       expect(response.statusCode).toBe(200);
     });
 
@@ -69,14 +69,14 @@ describe('Server Middleware', () => {
       }
 
       const session = await vmpAdapter.createSession(testUserId, {});
-      
+
       // Mock getSession to return expired session
       const originalGetSession = vmpAdapter.getSession;
       vmpAdapter.getSession = vi.fn().mockResolvedValue({
         id: session.sessionId,
         user_id: testUserId,
         expires_at: new Date(Date.now() - 1000).toISOString(), // Expired
-        data: {}
+        data: {},
       });
 
       const response = await request(app)
@@ -97,13 +97,13 @@ describe('Server Middleware', () => {
       }
 
       const session = await vmpAdapter.createSession(testUserId, {});
-      
+
       // Mock getVendorContext to return inactive user
       const originalGetVendorContext = vmpAdapter.getVendorContext;
       vmpAdapter.getVendorContext = vi.fn().mockResolvedValue({
         id: testUserId,
         is_active: false,
-        vendor_id: testVendorId
+        vendor_id: testVendorId,
       });
 
       const response = await request(app)
@@ -124,7 +124,7 @@ describe('Server Middleware', () => {
       }
 
       const session = await vmpAdapter.createSession(testUserId, {});
-      
+
       // Mock getSession to throw error
       const originalGetSession = vmpAdapter.getSession;
       vmpAdapter.getSession = vi.fn().mockRejectedValue(new Error('Database error'));
@@ -154,7 +154,7 @@ describe('Server Middleware', () => {
 
       // Create a mock PDF file
       const pdfBuffer = Buffer.from('%PDF-1.4 fake pdf content');
-      
+
       const response = await request(app)
         .post(`/cases/${testCaseId}/evidence`)
         .set('x-test-auth', 'bypass')
@@ -175,7 +175,7 @@ describe('Server Middleware', () => {
 
       // Create a mock image file
       const imageBuffer = Buffer.from('fake image content');
-      
+
       const response = await request(app)
         .post(`/cases/${testCaseId}/evidence`)
         .set('x-test-auth', 'bypass')
@@ -196,7 +196,7 @@ describe('Server Middleware', () => {
 
       // Create a mock executable file
       const exeBuffer = Buffer.from('fake exe content');
-      
+
       const response = await request(app)
         .post(`/cases/${testCaseId}/evidence`)
         .set('x-test-auth', 'bypass')
@@ -233,7 +233,7 @@ describe('Server Middleware', () => {
       const response = await request(app)
         .get('/definitely-does-not-exist-route-12345')
         .set('x-test-auth', 'bypass');
-      
+
       // Should return 404 or redirect if caught by auth
       expect([302, 404]).toContain(response.statusCode);
     });
@@ -267,4 +267,3 @@ describe('Server Middleware', () => {
     });
   });
 });
-

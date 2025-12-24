@@ -7,7 +7,7 @@ import { createTestSession, getTestAuthHeaders } from './helpers/auth-helper.js'
 
 /**
  * Days 5-8 Test Suite
- * 
+ *
  * Tests functionality for:
  * - Day 5: Case detail refactoring and HTMX containers
  * - Day 6: Thread cell and message posting
@@ -26,7 +26,7 @@ describe('Days 5-8: Case Detail Functionality', () => {
   beforeAll(async () => {
     // Check prerequisites
     console.log('Checking prerequisites...');
-    
+
     // Check if we have a demo vendor ID
     const demoVendorId = process.env.DEMO_VENDOR_ID;
     if (!demoVendorId) {
@@ -56,11 +56,11 @@ describe('Days 5-8: Case Detail Functionality', () => {
       if (testUser) {
         mockUserId = testUser.id;
         mockVendorId = testUser.vendor_id;
-        
+
         // Use auth helper to create test session
         const session = await createTestSession(mockUserId, mockVendorId);
         mockSessionId = session.sessionId;
-        
+
         console.log(`✅ Created test session: ${mockSessionId}`);
       }
     } catch (error) {
@@ -82,7 +82,7 @@ describe('Days 5-8: Case Detail Functionality', () => {
   // Helper to make authenticated requests (uses test auth bypass)
   const authenticatedRequest = (method, path) => {
     const req = request(app)[method.toLowerCase()](path);
-    
+
     // Use test auth headers to bypass authentication
     if (mockUserId && mockVendorId) {
       const headers = getTestAuthHeaders(mockUserId, mockVendorId);
@@ -104,7 +104,10 @@ describe('Days 5-8: Case Detail Functionality', () => {
         return;
       }
 
-      const response = await authenticatedRequest('get', `/partials/case-detail.html?case_id=${mockCaseId}`);
+      const response = await authenticatedRequest(
+        'get',
+        `/partials/case-detail.html?case_id=${mockCaseId}`
+      );
       expect(response.statusCode).toBe(200);
       // Check for actual rendered content instead of variable name
       expect(response.text).toMatch(/CASE-|case-thread-container|case-checklist-container/);
@@ -123,7 +126,10 @@ describe('Days 5-8: Case Detail Functionality', () => {
         return;
       }
 
-      const response = await authenticatedRequest('get', `/partials/case-detail.html?case_id=${mockCaseId}`);
+      const response = await authenticatedRequest(
+        'get',
+        `/partials/case-detail.html?case_id=${mockCaseId}`
+      );
       expect(response.statusCode).toBe(200);
       // Check for HTMX containers
       expect(response.text).toMatch(/case-thread-container/i);
@@ -144,7 +150,10 @@ describe('Days 5-8: Case Detail Functionality', () => {
         return;
       }
 
-      const response = await authenticatedRequest('get', `/partials/case-thread.html?case_id=${mockCaseId}`);
+      const response = await authenticatedRequest(
+        'get',
+        `/partials/case-thread.html?case_id=${mockCaseId}`
+      );
       expect(response.statusCode).toBe(200);
       // Check for actual rendered content
       expect(response.text).toMatch(/Case Thread|messages|vmp-body-small/);
@@ -162,8 +171,9 @@ describe('Days 5-8: Case Detail Functionality', () => {
         return;
       }
 
-      const response = await authenticatedRequest('post', `/cases/${mockCaseId}/messages`)
-        .send({ body: 'Test message from test suite' });
+      const response = await authenticatedRequest('post', `/cases/${mockCaseId}/messages`).send({
+        body: 'Test message from test suite',
+      });
 
       expect(response.statusCode).toBe(200);
       // Check for actual rendered content (thread should be refreshed)
@@ -176,8 +186,9 @@ describe('Days 5-8: Case Detail Functionality', () => {
         return;
       }
 
-      const response = await authenticatedRequest('post', `/cases/${mockCaseId}/messages`)
-        .send({ body: '   ' }); // Whitespace only
+      const response = await authenticatedRequest('post', `/cases/${mockCaseId}/messages`).send({
+        body: '   ',
+      }); // Whitespace only
 
       // Should return refreshed thread without error
       expect(response.statusCode).toBe(200);
@@ -209,7 +220,10 @@ describe('Days 5-8: Case Detail Functionality', () => {
         return;
       }
 
-      const response = await authenticatedRequest('get', `/partials/case-checklist.html?case_id=${mockCaseId}`);
+      const response = await authenticatedRequest(
+        'get',
+        `/partials/case-checklist.html?case_id=${mockCaseId}`
+      );
       expect(response.statusCode).toBe(200);
       // Check for actual rendered content
       expect(response.text).toMatch(/EVIDENCE GATES|checklist|NO CHECKLIST STEPS/);
@@ -268,7 +282,10 @@ describe('Days 5-8: Case Detail Functionality', () => {
         return;
       }
 
-      const response = await authenticatedRequest('get', `/partials/case-evidence.html?case_id=${mockCaseId}`);
+      const response = await authenticatedRequest(
+        'get',
+        `/partials/case-evidence.html?case_id=${mockCaseId}`
+      );
       expect(response.statusCode).toBe(200);
       // Check for actual rendered content
       expect(response.text).toMatch(/VAULT CONTENT|evidence|NO EVIDENCE/);
@@ -286,8 +303,9 @@ describe('Days 5-8: Case Detail Functionality', () => {
         return;
       }
 
-      const response = await authenticatedRequest('post', `/cases/${mockCaseId}/evidence`)
-        .send({ evidence_type: 'invoice_pdf' });
+      const response = await authenticatedRequest('post', `/cases/${mockCaseId}/evidence`).send({
+        evidence_type: 'invoice_pdf',
+      });
 
       // Should return 400 for missing file (required field)
       expect(response.statusCode).toBe(400);
@@ -301,7 +319,7 @@ describe('Days 5-8: Case Detail Functionality', () => {
 
       // Create a small test file buffer
       const testFile = Buffer.from('test file content');
-      
+
       const response = await authenticatedRequest('post', `/cases/${mockCaseId}/evidence`)
         .attach('file', testFile, 'test.pdf')
         .field('evidence_type', ''); // Empty evidence type
@@ -339,23 +357,38 @@ describe('Days 5-8: Case Detail Functionality', () => {
       }
 
       // Load case detail
-      const detailResponse = await authenticatedRequest('get', `/partials/case-detail.html?case_id=${mockCaseId}`);
+      const detailResponse = await authenticatedRequest(
+        'get',
+        `/partials/case-detail.html?case_id=${mockCaseId}`
+      );
       expect(detailResponse.statusCode).toBe(200);
 
       // Load thread
-      const threadResponse = await authenticatedRequest('get', `/partials/case-thread.html?case_id=${mockCaseId}`);
+      const threadResponse = await authenticatedRequest(
+        'get',
+        `/partials/case-thread.html?case_id=${mockCaseId}`
+      );
       expect(threadResponse.statusCode).toBe(200);
 
       // Load checklist
-      const checklistResponse = await authenticatedRequest('get', `/partials/case-checklist.html?case_id=${mockCaseId}`);
+      const checklistResponse = await authenticatedRequest(
+        'get',
+        `/partials/case-checklist.html?case_id=${mockCaseId}`
+      );
       expect(checklistResponse.statusCode).toBe(200);
 
       // Load evidence
-      const evidenceResponse = await authenticatedRequest('get', `/partials/case-evidence.html?case_id=${mockCaseId}`);
+      const evidenceResponse = await authenticatedRequest(
+        'get',
+        `/partials/case-evidence.html?case_id=${mockCaseId}`
+      );
       expect(evidenceResponse.statusCode).toBe(200);
 
       // Load escalation
-      const escalationResponse = await authenticatedRequest('get', `/partials/escalation.html?case_id=${mockCaseId}`);
+      const escalationResponse = await authenticatedRequest(
+        'get',
+        `/partials/escalation.html?case_id=${mockCaseId}`
+      );
       expect(escalationResponse.statusCode).toBe(200);
     });
 
@@ -366,15 +399,22 @@ describe('Days 5-8: Case Detail Functionality', () => {
       }
 
       // Get initial thread
-      const initialThread = await authenticatedRequest('get', `/partials/case-thread.html?case_id=${mockCaseId}`);
+      const initialThread = await authenticatedRequest(
+        'get',
+        `/partials/case-thread.html?case_id=${mockCaseId}`
+      );
       const initialMessageCount = (initialThread.text.match(/message|msg/gi) || []).length;
 
       // Post a message
-      await authenticatedRequest('post', `/cases/${mockCaseId}/messages`)
-        .send({ body: 'Integration test message' });
+      await authenticatedRequest('post', `/cases/${mockCaseId}/messages`).send({
+        body: 'Integration test message',
+      });
 
       // Get updated thread
-      const updatedThread = await authenticatedRequest('get', `/partials/case-thread.html?case_id=${mockCaseId}`);
+      const updatedThread = await authenticatedRequest(
+        'get',
+        `/partials/case-thread.html?case_id=${mockCaseId}`
+      );
       expect(updatedThread.statusCode).toBe(200);
       // Thread should be refreshed (exact count may vary, but should contain messages)
       expect(updatedThread.text).toMatch(/Case Thread|messages|vmp-body-small/);
@@ -475,11 +515,12 @@ describe('Days 5-8: Case Detail Functionality', () => {
 
     test('Storage bucket check (manual verification required)', () => {
       // This requires manual verification in Supabase Dashboard
-      console.log('⚠️  Manual check required: Verify vmp-evidence bucket exists in Supabase Storage');
+      console.log(
+        '⚠️  Manual check required: Verify vmp-evidence bucket exists in Supabase Storage'
+      );
       console.log('   See: migrations/007_storage_bucket_setup.sql for setup instructions');
       // Test always passes - manual verification needed
       expect(true).toBe(true);
     });
   });
 });
-

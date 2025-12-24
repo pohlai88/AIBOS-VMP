@@ -24,7 +24,7 @@ export async function sendPaymentNotification(paymentId, vendorId, paymentData) 
       email: { sent: 0, failed: 0 },
       sms: { sent: 0, failed: 0 },
       inApp: { sent: 0, failed: 0 },
-      push: { sent: 0, failed: 0 }
+      push: { sent: 0, failed: 0 },
     };
 
     // Send notifications to each user based on their preferences
@@ -56,7 +56,7 @@ export async function sendPaymentNotification(paymentId, vendorId, paymentData) 
             paymentRef,
             amount,
             currencyCode: currencyCode || 'USD',
-            invoiceNum
+            invoiceNum,
           });
           results.email.sent++;
         } catch (error) {
@@ -72,7 +72,7 @@ export async function sendPaymentNotification(paymentId, vendorId, paymentData) 
             paymentRef,
             amount,
             currencyCode: currencyCode || 'USD',
-            invoiceNum
+            invoiceNum,
           });
           results.sms.sent++;
         } catch (error) {
@@ -89,7 +89,7 @@ export async function sendPaymentNotification(paymentId, vendorId, paymentData) 
             amount,
             currency_code: currencyCode,
             payment_ref: paymentRef,
-            invoice_num: invoiceNum
+            invoice_num: invoiceNum,
           });
           results.push.sent++;
         } catch (error) {
@@ -119,14 +119,14 @@ async function sendPaymentEmail(userEmail, userName, paymentData) {
 
   // Check if email service is configured
   const emailService = process.env.EMAIL_SERVICE; // 'sendgrid', 'resend', 'smtp', or 'console'
-  
+
   if (!emailService || emailService === 'console') {
     // Development mode - just log
     const emailContent = {
       to: userEmail,
       subject: `Payment Received: ${paymentRef}`,
       html: generatePaymentEmailHTML(userName, paymentData),
-      text: generatePaymentEmailText(userName, paymentData)
+      text: generatePaymentEmailText(userName, paymentData),
     };
     console.log('[Email] Payment notification (console mode):', emailContent);
     return { success: true, mode: 'console', emailContent };
@@ -191,7 +191,7 @@ async function sendPaymentSMS(phoneNumber, paymentData) {
 function generatePaymentEmailHTML(userName, paymentData) {
   const { paymentRef, amount, currencyCode, invoiceNum } = paymentData;
   const portalUrl = process.env.PORTAL_URL || 'https://vmp.nexuscanon.com';
-  
+
   return `
 <!DOCTYPE html>
 <html>
@@ -224,7 +224,7 @@ function generatePaymentEmailHTML(userName, paymentData) {
 function generatePaymentEmailText(userName, paymentData) {
   const { paymentRef, amount, currencyCode, invoiceNum } = paymentData;
   const portalUrl = process.env.PORTAL_URL || 'https://vmp.nexuscanon.com';
-  
+
   return `
 Hello ${userName},
 
@@ -259,7 +259,7 @@ async function sendViaSendGrid(userEmail, userName, paymentData) {
     from: process.env.SENDGRID_FROM_EMAIL || 'noreply@nexuscanon.com',
     subject: `Payment Received: ${paymentData.paymentRef}`,
     text: generatePaymentEmailText(userName, paymentData),
-    html: generatePaymentEmailHTML(userName, paymentData)
+    html: generatePaymentEmailHTML(userName, paymentData),
   };
 
   await sgMail.send(msg);
@@ -284,7 +284,7 @@ async function sendViaResend(userEmail, userName, paymentData) {
     to: userEmail,
     subject: `Payment Received: ${paymentData.paymentRef}`,
     text: generatePaymentEmailText(userName, paymentData),
-    html: generatePaymentEmailHTML(userName, paymentData)
+    html: generatePaymentEmailHTML(userName, paymentData),
   });
 
   if (error) {
@@ -301,7 +301,7 @@ async function sendViaResend(userEmail, userName, paymentData) {
  */
 async function sendViaSMTP(userEmail, userName, paymentData) {
   const nodemailer = await import('nodemailer');
-  
+
   // Get SMTP configuration from environment variables
   const smtpHost = process.env.SMTP_HOST;
   const smtpPort = parseInt(process.env.SMTP_PORT || '587', 10);
@@ -338,12 +338,12 @@ async function sendViaSMTP(userEmail, userName, paymentData) {
   };
 
   const info = await transporter.sendMail(mailOptions);
-  
-  return { 
-    success: true, 
-    mode: 'smtp', 
+
+  return {
+    success: true,
+    mode: 'smtp',
     messageId: info.messageId,
-    response: info.response 
+    response: info.response,
   };
 }
 
@@ -358,12 +358,12 @@ async function sendViaSMTP(userEmail, userName, paymentData) {
 export async function sendPasswordResetEmail(userEmail, resetToken, resetUrl) {
   const emailService = process.env.EMAIL_SERVICE || 'console';
   const siteUrl = process.env.SITE_URL || process.env.BASE_URL || 'http://localhost:9000';
-  
+
   const emailContent = {
     to: userEmail,
     subject: 'Reset Your Password — NexusCanon VMP',
     html: generatePasswordResetEmailHTML(resetUrl),
-    text: generatePasswordResetEmailText(resetUrl)
+    text: generatePasswordResetEmailText(resetUrl),
   };
 
   if (!emailService || emailService === 'console') {
@@ -401,7 +401,7 @@ export async function sendPasswordResetEmail(userEmail, resetToken, resetUrl) {
 function generatePasswordResetEmailHTML(resetUrl) {
   // Ensure resetUrl is a string (URLs are generally safe, but validate)
   const safeResetUrl = String(resetUrl || '');
-  
+
   return `
 <!DOCTYPE html>
 <html>
@@ -448,7 +448,7 @@ function generatePasswordResetEmailHTML(resetUrl) {
 function generatePasswordResetEmailText(resetUrl) {
   // Ensure resetUrl is a string
   const safeResetUrl = String(resetUrl || '');
-  
+
   return `
 Reset Your Password — NexusCanon VMP
 
@@ -482,7 +482,7 @@ async function sendPasswordResetViaSendGrid(userEmail, emailContent) {
     from: process.env.SENDGRID_FROM_EMAIL || 'noreply@nexuscanon.com',
     subject: emailContent.subject,
     text: emailContent.text,
-    html: emailContent.html
+    html: emailContent.html,
   };
 
   await sgMail.send(msg);
@@ -506,7 +506,7 @@ async function sendPasswordResetViaResend(userEmail, emailContent) {
     to: userEmail,
     subject: emailContent.subject,
     text: emailContent.text,
-    html: emailContent.html
+    html: emailContent.html,
   });
 
   if (error) {
@@ -523,7 +523,7 @@ async function sendPasswordResetViaResend(userEmail, emailContent) {
  */
 async function sendPasswordResetViaSMTP(userEmail, emailContent) {
   const nodemailer = await import('nodemailer');
-  
+
   // Get SMTP configuration from environment variables
   const smtpHost = process.env.SMTP_HOST;
   const smtpPort = parseInt(process.env.SMTP_PORT || '587', 10);
@@ -560,12 +560,12 @@ async function sendPasswordResetViaSMTP(userEmail, emailContent) {
   };
 
   const info = await transporter.sendMail(mailOptions);
-  
-  return { 
-    success: true, 
-    mode: 'smtp', 
+
+  return {
+    success: true,
+    mode: 'smtp',
     messageId: info.messageId,
-    response: info.response 
+    response: info.response,
   };
 }
 
@@ -579,12 +579,12 @@ async function sendPasswordResetViaSMTP(userEmail, emailContent) {
  */
 export async function sendInviteEmail(userEmail, inviteUrl, vendorName, tenantName) {
   const emailService = process.env.EMAIL_SERVICE || 'console';
-  
+
   const emailContent = {
     to: userEmail,
     subject: `You're Invited to Join ${tenantName} — NexusCanon VMP`,
     html: generateInviteEmailHTML(inviteUrl, vendorName, tenantName),
-    text: generateInviteEmailText(inviteUrl, vendorName, tenantName)
+    text: generateInviteEmailText(inviteUrl, vendorName, tenantName),
   };
 
   if (!emailService || emailService === 'console') {
@@ -620,7 +620,7 @@ export async function sendInviteEmail(userEmail, inviteUrl, vendorName, tenantNa
  */
 function generateInviteEmailHTML(inviteUrl, vendorName, tenantName) {
   // Escape HTML to prevent XSS
-  const escapeHtml = (str) => {
+  const escapeHtml = str => {
     if (!str) return '';
     return String(str)
       .replace(/&/g, '&amp;')
@@ -629,11 +629,11 @@ function generateInviteEmailHTML(inviteUrl, vendorName, tenantName) {
       .replace(/"/g, '&quot;')
       .replace(/'/g, '&#039;');
   };
-  
+
   const safeVendorName = escapeHtml(vendorName);
   const safeTenantName = escapeHtml(tenantName);
   const safeInviteUrl = String(inviteUrl || ''); // URL is already safe, just ensure it's a string
-  
+
   return `
 <!DOCTYPE html>
 <html>
@@ -682,7 +682,7 @@ function generateInviteEmailText(inviteUrl, vendorName, tenantName) {
   const safeVendorName = String(vendorName || '');
   const safeTenantName = String(tenantName || '');
   const safeInviteUrl = String(inviteUrl || '');
-  
+
   return `
 You're Invited to Join ${safeTenantName} — NexusCanon VMP
 
@@ -716,7 +716,7 @@ async function sendInviteViaSendGrid(userEmail, emailContent) {
     from: process.env.SENDGRID_FROM_EMAIL || 'noreply@nexuscanon.com',
     subject: emailContent.subject,
     text: emailContent.text,
-    html: emailContent.html
+    html: emailContent.html,
   };
 
   await sgMail.send(msg);
@@ -740,7 +740,7 @@ async function sendInviteViaResend(userEmail, emailContent) {
     to: userEmail,
     subject: emailContent.subject,
     text: emailContent.text,
-    html: emailContent.html
+    html: emailContent.html,
   });
 
   if (error) {
@@ -755,7 +755,7 @@ async function sendInviteViaResend(userEmail, emailContent) {
  */
 async function sendInviteViaSMTP(userEmail, emailContent) {
   const nodemailer = await import('nodemailer');
-  
+
   const smtpHost = process.env.SMTP_HOST;
   const smtpPort = parseInt(process.env.SMTP_PORT || '587', 10);
   const smtpUser = process.env.SMTP_USER;
@@ -789,12 +789,12 @@ async function sendInviteViaSMTP(userEmail, emailContent) {
   };
 
   const info = await transporter.sendMail(mailOptions);
-  
-  return { 
-    success: true, 
-    mode: 'smtp', 
+
+  return {
+    success: true,
+    mode: 'smtp',
     messageId: info.messageId,
-    response: info.response 
+    response: info.response,
   };
 }
 
@@ -820,9 +820,8 @@ async function sendViaTwilio(phoneNumber, paymentData) {
   const result = await client.messages.create({
     body: message,
     from: twilioFromNumber,
-    to: phoneNumber
+    to: phoneNumber,
   });
 
   return { success: true, mode: 'twilio', sid: result.sid };
 }
-

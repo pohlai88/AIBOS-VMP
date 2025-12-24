@@ -21,8 +21,8 @@ if (!supabaseUrl || !supabaseServiceKey) {
 const supabase = createClient(supabaseUrl, supabaseServiceKey, {
   auth: {
     autoRefreshToken: false,
-    persistSession: false
-  }
+    persistSession: false,
+  },
 });
 
 const [email, password] = process.argv.slice(2);
@@ -59,8 +59,11 @@ async function createSuperAdmin() {
 
     // 2. Check if user exists in Supabase Auth
     console.log('\n2. Checking Supabase Auth...');
-    const { data: { users }, error: listError } = await supabase.auth.admin.listUsers();
-    
+    const {
+      data: { users },
+      error: listError,
+    } = await supabase.auth.admin.listUsers();
+
     if (listError) {
       console.error(`❌ Error listing users: ${listError.message}`);
       process.exit(1);
@@ -89,18 +92,15 @@ async function createSuperAdmin() {
       console.log('   ✅ Password updated successfully');
 
       // Update user metadata
-      const { error: metadataError } = await supabase.auth.admin.updateUserById(
-        authUserId,
-        {
-          user_metadata: {
-            display_name: vmpUser.display_name,
-            vendor_id: vmpUser.vendor_id,
-            vmp_user_id: vmpUser.id,
-            is_active: vmpUser.is_active,
-            is_internal: vmpUser.is_internal
-          }
-        }
-      );
+      const { error: metadataError } = await supabase.auth.admin.updateUserById(authUserId, {
+        user_metadata: {
+          display_name: vmpUser.display_name,
+          vendor_id: vmpUser.vendor_id,
+          vmp_user_id: vmpUser.id,
+          is_active: vmpUser.is_active,
+          is_internal: vmpUser.is_internal,
+        },
+      });
 
       if (metadataError) {
         console.warn(`   ⚠️  Warning: Could not update metadata: ${metadataError.message}`);
@@ -111,7 +111,7 @@ async function createSuperAdmin() {
       // Create new user
       console.log('   ℹ️  User not found in Supabase Auth, creating...');
       console.log('\n3. Creating Supabase Auth user...');
-      
+
       const { data: newUser, error: createError } = await supabase.auth.admin.createUser({
         email: email.toLowerCase().trim(),
         email_confirm: true, // Auto-confirm email
@@ -121,8 +121,8 @@ async function createSuperAdmin() {
           vendor_id: vmpUser.vendor_id,
           vmp_user_id: vmpUser.id,
           is_active: vmpUser.is_active,
-          is_internal: vmpUser.is_internal
-        }
+          is_internal: vmpUser.is_internal,
+        },
       });
 
       if (createError) {
@@ -138,13 +138,16 @@ async function createSuperAdmin() {
     console.log('\n4. Creating auth user mapping...');
     const { data: mapping, error: mappingError } = await supabase
       .from('vmp_auth_user_mapping')
-      .upsert({
-        auth_user_id: authUserId,
-        vmp_user_id: vmpUser.id,
-        email: email.toLowerCase().trim()
-      }, {
-        onConflict: 'auth_user_id'
-      })
+      .upsert(
+        {
+          auth_user_id: authUserId,
+          vmp_user_id: vmpUser.id,
+          email: email.toLowerCase().trim(),
+        },
+        {
+          onConflict: 'auth_user_id',
+        }
+      )
       .select()
       .single();
 
@@ -157,7 +160,7 @@ async function createSuperAdmin() {
     // 5. Verify super admin status
     console.log('\n5. Verifying super admin status...');
     const isSuperAdmin = !vmpUser.scope_group_id && !vmpUser.scope_company_id;
-    
+
     if (isSuperAdmin) {
       console.log('   ✅ User is configured as Super Admin');
       console.log('   - Can access all tenants, groups, and companies');
@@ -167,7 +170,9 @@ async function createSuperAdmin() {
       console.log(`   - Scope Group: ${vmpUser.scope_group_id || 'null'}`);
       console.log(`   - Scope Company: ${vmpUser.scope_company_id || 'null'}`);
       console.log('\n   To make this user a super admin, run:');
-      console.log(`   UPDATE vmp_vendor_users SET scope_group_id = NULL, scope_company_id = NULL WHERE email = '${email}';`);
+      console.log(
+        `   UPDATE vmp_vendor_users SET scope_group_id = NULL, scope_company_id = NULL WHERE email = '${email}';`
+      );
     }
 
     // Summary
@@ -184,7 +189,6 @@ async function createSuperAdmin() {
     console.log(`\n🌐 Login at: http://localhost:9000/login`);
     console.log(`\n⚠️  Note: This password is stored in plain text in this script output.`);
     console.log(`   Change it after first login for security.\n`);
-
   } catch (error) {
     console.error('❌ Error:', error);
     process.exit(1);
@@ -192,4 +196,3 @@ async function createSuperAdmin() {
 }
 
 createSuperAdmin();
-

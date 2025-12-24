@@ -1,7 +1,7 @@
 /**
  * Route Helper Utilities
  * Standardized functions for route handlers per .cursorrules
- * 
+ *
  * These utilities ensure consistent:
  * - Authentication checks
  * - Authorization checks
@@ -10,7 +10,13 @@
  * - Response rendering
  */
 
-import { logError, ValidationError, NotFoundError, ForbiddenError, UnauthorizedError } from './errors.js';
+import {
+  logError,
+  ValidationError,
+  NotFoundError,
+  ForbiddenError,
+  UnauthorizedError,
+} from './errors.js';
 
 /**
  * Validates UUID format
@@ -29,7 +35,12 @@ export function isValidUUID(id) {
  * @returns {boolean} - True if field is valid
  */
 export function validateRequired(field, fieldName = 'Field') {
-  return field !== null && field !== undefined && field !== '' && (typeof field !== 'string' || field.trim() !== '');
+  return (
+    field !== null &&
+    field !== undefined &&
+    field !== '' &&
+    (typeof field !== 'string' || field.trim() !== '')
+  );
 }
 
 /**
@@ -53,7 +64,7 @@ export function requireAuth(req, res) {
   // Institutional users need vendor context
   if (!req.user.vendorId) {
     res.status(403).render('pages/403.html', {
-      error: { status: 403, message: 'Access denied. Vendor context required.' }
+      error: { status: 403, message: 'Access denied. Vendor context required.' },
     });
     return false;
   }
@@ -83,22 +94,24 @@ export function requireInternal(req, res, template = 'pages/403.html', customMes
     res.status(401).redirect('/login');
     return false;
   }
-  
+
   if (!req.user.isInternal) {
     const message = customMessage || 'Access denied. Internal users only.';
-    
+
     // Partial templates expect error as a string, page templates expect an object
     const isPartial = template.startsWith('partials/');
-    
+
     res.status(403).render(template, {
-      error: isPartial ? message : {
-        status: 403,
-        message: message
-      }
+      error: isPartial
+        ? message
+        : {
+            status: 403,
+            message: message,
+          },
     });
     return false;
   }
-  
+
   return true;
 }
 
@@ -114,8 +127,8 @@ export function validateUUIDParam(id, res, template = 'pages/error.html') {
     res.status(400).render(template, {
       error: {
         status: 400,
-        message: 'Invalid ID format'
-      }
+        message: 'Invalid ID format',
+      },
     });
     return false;
   }
@@ -135,7 +148,7 @@ export function validateRequiredQuery(param, paramName, res, template, defaultDa
   if (!validateRequired(param, paramName)) {
     res.status(400).render(template, {
       ...defaultData,
-      error: `${paramName} is required`
+      error: `${paramName} is required`,
     });
     return false;
   }
@@ -156,7 +169,7 @@ export function handleRouteError(error, req, res, template = 'pages/error.html',
   logError(error, {
     path: req.path,
     method: req.method,
-    userId: req.user?.id
+    userId: req.user?.id,
   });
 
   // Determine status code
@@ -188,8 +201,8 @@ export function handleRouteError(error, req, res, template = 'pages/error.html',
     error: {
       status,
       message,
-      code: error.code || 'INTERNAL_ERROR'
-    }
+      code: error.code || 'INTERNAL_ERROR',
+    },
   });
 }
 
@@ -203,12 +216,19 @@ export function handleRouteError(error, req, res, template = 'pages/error.html',
  * @param {object} defaultData - Default data to pass to template
  * @param {boolean} useStatusCodes - If true, return proper HTTP status codes instead of 200
  */
-export function handlePartialError(error, req, res, template, defaultData = {}, useStatusCodes = false) {
+export function handlePartialError(
+  error,
+  req,
+  res,
+  template,
+  defaultData = {},
+  useStatusCodes = false
+) {
   // Log error with context
   logError(error, {
     path: req.path,
     method: req.method,
-    userId: req.user?.id
+    userId: req.user?.id,
   });
 
   // Determine status code
@@ -236,7 +256,7 @@ export function handlePartialError(error, req, res, template, defaultData = {}, 
   // This ensures the error message appears in the rendered HTML for tests
   res.status(status).render(template, {
     ...defaultData,
-    error: message
+    error: message,
   });
 }
 
@@ -253,13 +273,18 @@ export function asyncRoute(handler) {
     } catch (error) {
       // Determine if this is a partial route (HTMX component)
       const isPartial = req.path.startsWith('/partials/');
-      
+
       if (isPartial) {
-        handlePartialError(error, req, res, req.path.replace('/partials/', 'partials/').replace('.html', '.html'), {});
+        handlePartialError(
+          error,
+          req,
+          res,
+          req.path.replace('/partials/', 'partials/').replace('.html', '.html'),
+          {}
+        );
       } else {
         handleRouteError(error, req, res);
       }
     }
   };
 }
-

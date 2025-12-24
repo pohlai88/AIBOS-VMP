@@ -2,7 +2,7 @@
 
 /**
  * Vitest Runner Script
- * 
+ *
  * Wrapper script to run Vitest with proper PATH resolution
  * This helps MCP tools and other processes that might have PATH issues
  */
@@ -35,12 +35,11 @@ const child = spawn(command, vitestArgs, {
   },
 });
 
-child.on('error', (error) => {
+child.on('error', error => {
   console.error('Error running vitest:', error);
   process.exit(1);
 });
 
-child.on('exit', (code) => {
+child.on('exit', code => {
   process.exit(code || 0);
 });
-

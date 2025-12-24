@@ -17,7 +17,8 @@ function initializeVAPID() {
 
   const vapidPublicKey = process.env.VAPID_PUBLIC_KEY;
   const vapidPrivateKey = process.env.VAPID_PRIVATE_KEY;
-  const vapidSubject = process.env.VAPID_SUBJECT || process.env.SUPABASE_URL || 'mailto:admin@nexuscanon.com';
+  const vapidSubject =
+    process.env.VAPID_SUBJECT || process.env.SUPABASE_URL || 'mailto:admin@nexuscanon.com';
 
   if (!vapidPublicKey || !vapidPrivateKey) {
     console.warn('[Push] VAPID keys not configured. Push notifications will not work.');
@@ -25,11 +26,7 @@ function initializeVAPID() {
     return false;
   }
 
-  webpush.setVapidDetails(
-    vapidSubject,
-    vapidPublicKey,
-    vapidPrivateKey
-  );
+  webpush.setVapidDetails(vapidSubject, vapidPublicKey, vapidPrivateKey);
 
   vapidInitialized = true;
   console.log('[Push] VAPID keys initialized');
@@ -55,8 +52,8 @@ export async function sendPushNotification(subscription, payload) {
       endpoint: subscription.endpoint,
       keys: {
         p256dh: subscription.p256dh_key,
-        auth: subscription.auth_key
-      }
+        auth: subscription.auth_key,
+      },
     };
 
     // Default payload structure
@@ -68,13 +65,12 @@ export async function sendPushNotification(subscription, payload) {
       data: payload.data || {},
       tag: payload.tag || 'vmp-notification',
       requireInteraction: payload.requireInteraction || false,
-      ...payload
+      ...payload,
     });
 
     // Send notification
     await webpush.sendNotification(pushSubscription, notificationPayload);
     return true;
-
   } catch (error) {
     // Handle specific error cases
     if (error.statusCode === 410) {
@@ -108,7 +104,7 @@ export async function sendPushNotification(subscription, payload) {
 export async function sendPushToUser(userId, payload) {
   try {
     const subscriptions = await vmpAdapter.getUserPushSubscriptions(userId);
-    
+
     if (subscriptions.length === 0) {
       return { sent: 0, failed: 0, message: 'No active subscriptions' };
     }
@@ -132,7 +128,6 @@ export async function sendPushToUser(userId, payload) {
     }
 
     return { sent, failed, total: subscriptions.length };
-
   } catch (error) {
     console.error('[Push] Error sending to user:', error);
     throw error;
@@ -150,7 +145,7 @@ export async function sendPushToVendor(vendorId, payload) {
     // Dynamic import to avoid circular dependency
     const { vmpAdapter } = await import('../adapters/supabase.js');
     const subscriptions = await vmpAdapter.getVendorPushSubscriptions(vendorId);
-    
+
     if (subscriptions.length === 0) {
       return { sent: 0, failed: 0, message: 'No active subscriptions' };
     }
@@ -174,7 +169,6 @@ export async function sendPushToVendor(vendorId, payload) {
     }
 
     return { sent, failed, total: subscriptions.length };
-
   } catch (error) {
     console.error('[Push] Error sending to vendor:', error);
     throw error;
@@ -199,10 +193,10 @@ export async function sendCaseNotification(caseId, userId, message, options = {}
       type: 'case',
       caseId,
       url: `/cases/${caseId}`,
-      ...options.data
+      ...options.data,
     },
     tag: `case-${caseId}`,
-    requireInteraction: options.requireInteraction || false
+    requireInteraction: options.requireInteraction || false,
   };
 
   return await sendPushToUser(userId, payload);
@@ -218,7 +212,7 @@ export async function sendCaseNotification(caseId, userId, message, options = {}
 export async function sendPaymentNotification(paymentId, userId, paymentData) {
   const amount = paymentData.amount || 0;
   const currency = paymentData.currency_code || 'USD';
-  
+
   const payload = {
     title: 'Payment Received',
     body: `Payment of ${currency} ${amount.toFixed(2)} has been processed`,
@@ -229,12 +223,11 @@ export async function sendPaymentNotification(paymentId, userId, paymentData) {
       paymentId,
       url: `/payments/${paymentId}`,
       amount,
-      currency
+      currency,
     },
     tag: `payment-${paymentId}`,
-    requireInteraction: false
+    requireInteraction: false,
   };
 
   return await sendPushToUser(userId, payload);
 }
-

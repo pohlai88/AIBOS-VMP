@@ -2,7 +2,7 @@
 
 /**
  * Apply SOA Migrations (031, 032)
- * 
+ *
  * Applies SOA reconciliation migrations using Supabase client
  */
 
@@ -28,26 +28,27 @@ if (!supabaseUrl || !supabaseServiceKey) {
 
 const supabase = createClient(supabaseUrl, supabaseServiceKey, {
   db: { schema: 'public' },
-  auth: { autoRefreshToken: false, persistSession: false }
+  auth: { autoRefreshToken: false, persistSession: false },
 });
 
 async function applyMigration(name, sql) {
   try {
     console.log(`📦 Applying ${name}...`);
-    
+
     // Split SQL into statements and execute
     const statements = sql.split(';').filter(s => s.trim().length > 0);
-    
+
     for (const statement of statements) {
       if (statement.trim()) {
         const { error } = await supabase.rpc('exec_sql', { sql_query: statement + ';' });
-        if (error && !error.message.includes('already exists') && !error.message.includes('does not exist')) {
+        if (
+          error &&
+          !error.message.includes('already exists') &&
+          !error.message.includes('does not exist')
+        ) {
           // Try direct query if RPC doesn't work
-          const { error: directError } = await supabase
-            .from('_migrations')
-            .select('*')
-            .limit(1);
-          
+          const { error: directError } = await supabase.from('_migrations').select('*').limit(1);
+
           if (directError) {
             // Execute via raw SQL (requires pg extension or direct connection)
             console.log(`   ⚠️  Note: Some operations may require direct database access`);
@@ -55,7 +56,7 @@ async function applyMigration(name, sql) {
         }
       }
     }
-    
+
     console.log(`✅ ${name} applied`);
     return true;
   } catch (error) {
@@ -66,23 +67,24 @@ async function applyMigration(name, sql) {
 
 async function main() {
   console.log('🚀 Applying SOA Migrations...\n');
-  
+
   const migrations = [
     { name: '031_vmp_soa_tables.sql', file: 'migrations/031_vmp_soa_tables.sql' },
-    { name: '032_vmp_debit_notes.sql', file: 'migrations/032_vmp_debit_notes.sql' }
+    { name: '032_vmp_debit_notes.sql', file: 'migrations/032_vmp_debit_notes.sql' },
   ];
-  
+
   for (const migration of migrations) {
     const sql = await readFile(join(__dirname, '..', migration.file), 'utf-8');
     await applyMigration(migration.name, sql);
   }
-  
+
   console.log('\n✅ SOA migrations complete!');
   console.log('\n📝 Next steps:');
-  console.log('   1. Verify tables created: vmp_soa_items, vmp_soa_matches, vmp_soa_discrepancies, vmp_soa_acknowledgements, vmp_debit_notes');
+  console.log(
+    '   1. Verify tables created: vmp_soa_items, vmp_soa_matches, vmp_soa_discrepancies, vmp_soa_acknowledgements, vmp_debit_notes'
+  );
   console.log('   2. Check indexes were created');
   console.log('   3. Verify triggers are active');
 }
 
 main().catch(console.error);
-

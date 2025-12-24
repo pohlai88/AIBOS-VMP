@@ -12,14 +12,14 @@ describe('Server Error Paths and Edge Cases', () => {
 
   beforeEach(async () => {
     process.env.NODE_ENV = 'test';
-    
+
     try {
       const testUser = await vmpAdapter.getUserByEmail('admin@acme.com');
       if (testUser) {
         testUserId = testUser.id;
         testVendorId = testUser.vendor_id;
         testSession = await createTestSession(testUserId, testVendorId);
-        
+
         if (testVendorId) {
           const cases = await vmpAdapter.getInbox(testVendorId);
           if (cases && cases.length > 0) {
@@ -51,7 +51,7 @@ describe('Server Error Paths and Edge Cases', () => {
       const response = await request(app)
         .get('/definitely-does-not-exist-route-99999')
         .set('x-test-auth', 'bypass');
-      
+
       expect(response.statusCode).toBe(404);
       expect(response.text).toContain('404');
     });
@@ -79,7 +79,7 @@ describe('Server Error Paths and Edge Cases', () => {
       vmpAdapter.getUserByEmail = vi.fn().mockResolvedValue({
         id: testUserId,
         email: 'inactive@example.com',
-        is_active: false
+        is_active: false,
       });
 
       const response = await request(app)
@@ -221,7 +221,10 @@ describe('Server Error Paths and Edge Cases', () => {
       const originalGetCaseDetail = vmpAdapter.getCaseDetail;
       vmpAdapter.getCaseDetail = vi.fn().mockRejectedValue(new Error('Database error'));
 
-      const response = await authenticatedRequest('get', `/partials/case-detail.html?case_id=${testCaseId}`);
+      const response = await authenticatedRequest(
+        'get',
+        `/partials/case-detail.html?case_id=${testCaseId}`
+      );
       expect(response.statusCode).toBe(200); // Should render with null caseDetail
 
       vmpAdapter.getCaseDetail = originalGetCaseDetail;
@@ -236,7 +239,10 @@ describe('Server Error Paths and Edge Cases', () => {
       const originalGetMessages = vmpAdapter.getMessages;
       vmpAdapter.getMessages = vi.fn().mockRejectedValue(new Error('Database error'));
 
-      const response = await authenticatedRequest('get', `/partials/case-thread.html?case_id=${testCaseId}`);
+      const response = await authenticatedRequest(
+        'get',
+        `/partials/case-thread.html?case_id=${testCaseId}`
+      );
       // Route returns 200 with error message for graceful degradation
       expect(response.statusCode).toBe(200);
       expect(response.text).toBeDefined();
@@ -253,7 +259,10 @@ describe('Server Error Paths and Edge Cases', () => {
       const originalEnsureChecklistSteps = vmpAdapter.ensureChecklistSteps;
       vmpAdapter.ensureChecklistSteps = vi.fn().mockRejectedValue(new Error('Database error'));
 
-      const response = await authenticatedRequest('get', `/partials/case-checklist.html?case_id=${testCaseId}`);
+      const response = await authenticatedRequest(
+        'get',
+        `/partials/case-checklist.html?case_id=${testCaseId}`
+      );
       expect(response.statusCode).toBe(200); // Should handle error gracefully
 
       vmpAdapter.ensureChecklistSteps = originalEnsureChecklistSteps;
@@ -268,7 +277,10 @@ describe('Server Error Paths and Edge Cases', () => {
       const originalGetEvidenceSignedUrl = vmpAdapter.getEvidenceSignedUrl;
       vmpAdapter.getEvidenceSignedUrl = vi.fn().mockRejectedValue(new Error('Storage error'));
 
-      const response = await authenticatedRequest('get', `/partials/case-evidence.html?case_id=${testCaseId}`);
+      const response = await authenticatedRequest(
+        'get',
+        `/partials/case-evidence.html?case_id=${testCaseId}`
+      );
       expect(response.statusCode).toBe(200); // Should handle URL generation errors
 
       vmpAdapter.getEvidenceSignedUrl = originalGetEvidenceSignedUrl;
@@ -282,9 +294,14 @@ describe('Server Error Paths and Edge Cases', () => {
 
       // Test the adapterError catch block (line 544)
       const originalGetEvidence = vmpAdapter.getEvidence;
-      vmpAdapter.getEvidence = vi.fn().mockRejectedValue(new Error('Adapter error loading evidence'));
+      vmpAdapter.getEvidence = vi
+        .fn()
+        .mockRejectedValue(new Error('Adapter error loading evidence'));
 
-      const response = await authenticatedRequest('get', `/partials/case-evidence.html?case_id=${testCaseId}`);
+      const response = await authenticatedRequest(
+        'get',
+        `/partials/case-evidence.html?case_id=${testCaseId}`
+      );
       expect(response.statusCode).toBe(200); // Should continue with empty evidence array
       expect(response.text).toContain('VAULT CONTENT'); // Should still render template with empty state
 
@@ -300,11 +317,11 @@ describe('Server Error Paths and Edge Cases', () => {
       // Test timeout scenario - the timeout promise should reject before signed URL resolves
       const originalGetEvidence = vmpAdapter.getEvidence;
       const originalGetEvidenceSignedUrl = vmpAdapter.getEvidenceSignedUrl;
-      
-      vmpAdapter.getEvidence = vi.fn().mockResolvedValue([
-        { id: '1', storage_path: 'path/to/file1.pdf' }
-      ]);
-      
+
+      vmpAdapter.getEvidence = vi
+        .fn()
+        .mockResolvedValue([{ id: '1', storage_path: 'path/to/file1.pdf' }]);
+
       // Mock getEvidenceSignedUrl to never resolve (simulating a hang)
       // The 3s timeout should trigger first and reject, which will be caught
       vmpAdapter.getEvidenceSignedUrl = vi.fn().mockImplementation(() => {
@@ -314,9 +331,12 @@ describe('Server Error Paths and Edge Cases', () => {
       });
 
       const startTime = Date.now();
-      const response = await authenticatedRequest('get', `/partials/case-evidence.html?case_id=${testCaseId}`);
+      const response = await authenticatedRequest(
+        'get',
+        `/partials/case-evidence.html?case_id=${testCaseId}`
+      );
       const duration = Date.now() - startTime;
-      
+
       expect(response.statusCode).toBe(200); // Should handle timeout gracefully
       // Should complete within reasonable time (timeout is 3s, but test should finish quickly)
       expect(duration).toBeLessThan(5000); // Should not wait for full timeout
@@ -338,7 +358,10 @@ describe('Server Error Paths and Edge Cases', () => {
       // For this test, we'll verify the outer catch exists by checking error handling
       // The actual outer catch is hard to trigger without modifying the template system
       // So we'll verify the error path exists in the code structure
-      const response = await authenticatedRequest('get', `/partials/case-evidence.html?case_id=${testCaseId}`);
+      const response = await authenticatedRequest(
+        'get',
+        `/partials/case-evidence.html?case_id=${testCaseId}`
+      );
       // Normal case should work - outer catch is for unexpected errors
       expect(response.statusCode).toBe(200);
       // The outer catch block (lines 550-555) exists to handle unexpected errors
@@ -360,8 +383,9 @@ describe('Server Error Paths and Edge Cases', () => {
       const originalCreateMessage = vmpAdapter.createMessage;
       vmpAdapter.createMessage = vi.fn().mockRejectedValue(new Error('Database error'));
 
-      const response = await authenticatedRequest('post', `/cases/${testCaseId}/messages`)
-        .send({ body: 'Test message' });
+      const response = await authenticatedRequest('post', `/cases/${testCaseId}/messages`).send({
+        body: 'Test message',
+      });
 
       // Should still try to refresh thread
       expect(response.statusCode).toBe(200);
@@ -378,8 +402,9 @@ describe('Server Error Paths and Edge Cases', () => {
       const originalGetMessages = vmpAdapter.getMessages;
       vmpAdapter.getMessages = vi.fn().mockRejectedValue(new Error('Database error'));
 
-      const response = await authenticatedRequest('post', `/cases/${testCaseId}/messages`)
-        .send({ body: 'Test message' });
+      const response = await authenticatedRequest('post', `/cases/${testCaseId}/messages`).send({
+        body: 'Test message',
+      });
 
       expect(response.statusCode).toBe(500); // Should return error
 
@@ -434,7 +459,7 @@ describe('Server Error Paths and Edge Cases', () => {
       const originalUploadEvidence = vmpAdapter.uploadEvidence;
       const originalGetEvidence = vmpAdapter.getEvidence;
       const originalGetEvidenceSignedUrl = vmpAdapter.getEvidenceSignedUrl;
-      
+
       vmpAdapter.uploadEvidence = vi.fn().mockResolvedValue(undefined);
       // Make getEvidence fail to trigger the refresh error catch block
       vmpAdapter.getEvidence = vi.fn().mockRejectedValue(new Error('Refresh failed'));
@@ -464,12 +489,14 @@ describe('Server Error Paths and Edge Cases', () => {
       // Test the outer catch block (lines 800-805) by causing an error in uploadEvidence
       // that bypasses the inner try-catch at line 745
       const originalUploadEvidence = vmpAdapter.uploadEvidence;
-      
+
       // Make uploadEvidence throw synchronously (not async rejection) to potentially
       // trigger outer catch, but actually it will be caught by inner try-catch at line 759
       // The outer catch is for errors outside the try blocks, like in middleware
       // For this test, we verify the error handling path exists
-      vmpAdapter.uploadEvidence = vi.fn().mockRejectedValue(new Error('Unexpected error in POST /cases/:id/evidence'));
+      vmpAdapter.uploadEvidence = vi
+        .fn()
+        .mockRejectedValue(new Error('Unexpected error in POST /cases/:id/evidence'));
 
       const testFile = Buffer.from('test file content');
       const response = await authenticatedRequest('post', `/cases/${testCaseId}/evidence`)
@@ -494,12 +521,12 @@ describe('Server Error Paths and Edge Cases', () => {
       const originalUploadEvidence = vmpAdapter.uploadEvidence;
       const originalGetEvidence = vmpAdapter.getEvidence;
       const originalGetEvidenceSignedUrl = vmpAdapter.getEvidenceSignedUrl;
-      
+
       vmpAdapter.uploadEvidence = vi.fn().mockResolvedValue(undefined);
-      vmpAdapter.getEvidence = vi.fn().mockResolvedValue([
-        { id: '1', storage_path: 'path/to/file1.pdf' }
-      ]);
-      
+      vmpAdapter.getEvidence = vi
+        .fn()
+        .mockResolvedValue([{ id: '1', storage_path: 'path/to/file1.pdf' }]);
+
       // Mock getEvidenceSignedUrl to never resolve (simulating a hang)
       // The 3s timeout should trigger first
       vmpAdapter.getEvidenceSignedUrl = vi.fn().mockImplementation(() => {
@@ -554,4 +581,3 @@ describe('Server Error Paths and Edge Cases', () => {
     });
   });
 });
-

@@ -3,9 +3,9 @@ import { createClient } from '@supabase/supabase-js';
 /**
  * Creates a Supabase client scoped to the authenticated user.
  * Uses anon key + user JWT so RLS policies are enforced.
- * 
+ *
  * CRITICAL: This ensures "Tenant Isolation Is Absolute" at database level.
- * 
+ *
  * @param {Express.Request} req - Express request object (must have session.authToken)
  * @returns {SupabaseClient} - Supabase client with user JWT set
  */
@@ -21,8 +21,8 @@ export function createUserScopedSupabaseClient(req) {
   const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     auth: {
       autoRefreshToken: false,
-      persistSession: false
-    }
+      persistSession: false,
+    },
   });
 
   // If user is authenticated, set their JWT
@@ -37,10 +37,10 @@ export function createUserScopedSupabaseClient(req) {
 
 /**
  * Express middleware: Attach user-scoped Supabase client to req.supabase
- * 
+ *
  * Usage:
  *   app.use(attachSupabaseClient);
- *   
+ *
  *   app.get('/vendor/cases/:id', async (req, res) => {
  *     const { data } = await req.supabase.from('vmp_cases').select('*');
  *     // RLS policies automatically enforce vendor/tenant isolation

@@ -33,7 +33,7 @@ const routeMappings = {
   '/notifications': 'pages/notifications.html',
   '/login': 'pages/login.html',
   '/accept': 'pages/accept.html',
-  
+
   // Partials
   '/partials/org-tree-sidebar.html': 'partials/org_tree_sidebar.html',
   '/partials/scoped-dashboard.html': 'partials/scoped_dashboard.html',
@@ -93,28 +93,30 @@ const successes = [];
 // Check each route mapping
 for (const [route, expectedFile] of Object.entries(routeMappings)) {
   const exists = checkFileExists(expectedFile);
-  
+
   if (exists) {
     successes.push(`✅ ${route} → ${expectedFile}`);
   } else {
     issues.push(`❌ MISSING: ${route} → ${expectedFile}`);
   }
-  
+
   // Check naming convention
   const routeParts = route.split('/');
   const lastPart = routeParts[routeParts.length - 1];
   const fileParts = expectedFile.split('/');
   const fileName = fileParts[fileParts.length - 1].replace('.html', '');
-  
+
   // Route should be kebab-case, file should be snake_case
   if (lastPart.includes(':') === false && lastPart.includes('.html')) {
     const routeBase = lastPart.replace('.html', '');
     const fileBase = fileName;
     const expectedRouteBase = convertSnakeToKebab(fileBase);
     const expectedFileBase = convertKebabToSnake(routeBase);
-    
+
     if (routeBase !== expectedRouteBase && fileBase !== expectedFileBase) {
-      warnings.push(`⚠️  Naming mismatch: ${route} (route: ${routeBase}) vs ${expectedFile} (file: ${fileBase})`);
+      warnings.push(
+        `⚠️  Naming mismatch: ${route} (route: ${routeBase}) vs ${expectedFile} (file: ${fileBase})`
+      );
     }
   }
 }
@@ -157,4 +159,3 @@ console.log('     - src/views/pages/ops_ingest.html (uses #dashboard-main-conten
 
 console.log('\n' + '='.repeat(80));
 console.log('\n✅ Verification complete!');
-

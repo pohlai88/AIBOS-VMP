@@ -2,12 +2,12 @@
 
 /**
  * Migration Application Script
- * 
+ *
  * Applies database migrations using Supabase MCP or CLI
- * 
+ *
  * Usage:
  *   node scripts/apply-migrations.js [--env=production|development|staging] [--include-seed]
- * 
+ *
  * Options:
  *   --env=production      Production environment (excludes seed data)
  *   --env=development    Development environment (includes seed data)
@@ -30,8 +30,9 @@ dotenv.config();
 
 // Environment validation
 const env = process.env.NODE_ENV || 'development';
-const includeSeed = process.argv.includes('--include-seed') || 
-                    (env !== 'production' && !process.argv.includes('--exclude-seed'));
+const includeSeed =
+  process.argv.includes('--include-seed') ||
+  (env !== 'production' && !process.argv.includes('--exclude-seed'));
 
 // Supabase configuration
 const supabaseUrl = process.env.SUPABASE_URL;
@@ -47,8 +48,8 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey, {
   db: { schema: 'public' },
   auth: {
     autoRefreshToken: false,
-    persistSession: false
-  }
+    persistSession: false,
+  },
 });
 
 /**
@@ -57,19 +58,16 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey, {
 async function applyMigration(filename, sql) {
   try {
     console.log(`📦 Applying ${filename}...`);
-    
+
     // Execute migration
     const { error } = await supabase.rpc('exec_sql', { sql_query: sql });
-    
+
     if (error) {
       // If RPC doesn't exist, execute directly
       if (error.message.includes('function') && error.message.includes('does not exist')) {
         // Fallback: Execute SQL directly (requires service role)
-        const { error: directError } = await supabase
-          .from('_migrations')
-          .select('*')
-          .limit(1);
-        
+        const { error: directError } = await supabase.from('_migrations').select('*').limit(1);
+
         // If _migrations table doesn't exist, create it
         if (directError && directError.message.includes('does not exist')) {
           await supabase.rpc('exec_sql', {
@@ -79,10 +77,10 @@ async function applyMigration(filename, sql) {
                 filename VARCHAR(255) UNIQUE NOT NULL,
                 applied_at TIMESTAMPTZ DEFAULT NOW()
               );
-            `
+            `,
           });
         }
-        
+
         // Execute migration SQL
         const { error: execError } = await supabase.rpc('exec_sql', { sql_query: sql });
         if (execError) throw execError;
@@ -90,12 +88,10 @@ async function applyMigration(filename, sql) {
         throw error;
       }
     }
-    
+
     // Record migration
-    await supabase
-      .from('_migrations')
-      .upsert({ filename, applied_at: new Date().toISOString() });
-    
+    await supabase.from('_migrations').upsert({ filename, applied_at: new Date().toISOString() });
+
     console.log(`✅ Applied ${filename}`);
     return true;
   } catch (error) {
@@ -110,7 +106,7 @@ async function applyMigration(filename, sql) {
 async function getMigrationFiles() {
   const migrationsDir = join(__dirname, '..', 'migrations');
   const files = await readdir(migrationsDir);
-  
+
   // Filter and sort migration files
   const migrationFiles = files
     .filter(f => f.endsWith('.sql') && /^\d{3}_/.test(f))
@@ -119,12 +115,12 @@ async function getMigrationFiles() {
       const numB = parseInt(b.substring(0, 3));
       return numA - numB;
     });
-  
+
   // Exclude seed data if not in development/staging
   if (!includeSeed) {
     return migrationFiles.filter(f => !f.includes('seed'));
   }
-  
+
   return migrationFiles;
 }
 
@@ -138,7 +134,7 @@ async function isMigrationApplied(filename) {
       .select('filename')
       .eq('filename', filename)
       .single();
-    
+
     return !error && data !== null;
   } catch (error) {
     // Table doesn't exist yet
@@ -154,23 +150,23 @@ async function main() {
   console.log(`   Environment: ${env}`);
   console.log(`   Include seed data: ${includeSeed ? 'YES' : 'NO'}`);
   console.log('');
-  
+
   // Get migration files
   const migrationFiles = await getMigrationFiles();
-  
+
   if (migrationFiles.length === 0) {
     console.error('❌ No migration files found');
     process.exit(1);
   }
-  
+
   console.log(`📋 Found ${migrationFiles.length} migration(s) to apply\n`);
-  
+
   // Apply migrations in order
   const migrationsDir = join(__dirname, '..', 'migrations');
   let applied = 0;
   let skipped = 0;
   let failed = 0;
-  
+
   for (const filename of migrationFiles) {
     // Check if already applied
     if (await isMigrationApplied(filename)) {
@@ -178,13 +174,13 @@ async function main() {
       skipped++;
       continue;
     }
-    
+
     // Read migration SQL
     const sql = await readFile(join(migrationsDir, filename), 'utf-8');
-    
+
     // Apply migration
     const success = await applyMigration(filename, sql);
-    
+
     if (success) {
       applied++;
     } else {
@@ -193,17 +189,17 @@ async function main() {
       break;
     }
   }
-  
+
   // Summary
   console.log('\n📊 Migration Summary:');
   console.log(`   ✅ Applied: ${applied}`);
   console.log(`   ⏭️  Skipped: ${skipped}`);
   console.log(`   ❌ Failed: ${failed}`);
-  
+
   if (failed > 0) {
     process.exit(1);
   }
-  
+
   console.log('\n✅ Migration application complete!');
 }
 
@@ -212,4 +208,3 @@ main().catch(error => {
   console.error('❌ Fatal error:', error);
   process.exit(1);
 });
-

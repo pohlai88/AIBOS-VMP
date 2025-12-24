@@ -1,9 +1,9 @@
 /**
  * Script: Promote User to Admin/Internal
  * Description: Updates dev@example.com to have internal/admin access
- * 
+ *
  * Usage: node scripts/promote-user-to-admin.js
- * 
+ *
  * This script:
  * 1. Updates Supabase Auth user_metadata.is_internal = true
  * 2. Updates or creates vmp_vendor_users record with is_internal = true
@@ -38,8 +38,8 @@ async function promoteUserToAdmin() {
   const supabase = createClient(supabaseUrl, supabaseServiceKey, {
     auth: {
       autoRefreshToken: false,
-      persistSession: false
-    }
+      persistSession: false,
+    },
   });
 
   try {
@@ -68,13 +68,13 @@ async function promoteUserToAdmin() {
     console.log('\n📝 Updating Supabase Auth user_metadata...');
     const updatedMetadata = {
       ...authUser.user_metadata,
-      is_internal: true
+      is_internal: true,
     };
 
     const { data: updatedUser, error: updateError } = await supabase.auth.admin.updateUserById(
       authUser.id,
       {
-        user_metadata: updatedMetadata
+        user_metadata: updatedMetadata,
       }
     );
 
@@ -130,7 +130,9 @@ async function promoteUserToAdmin() {
         .eq('email', TARGET_EMAIL)
         .single();
 
-      console.log(`   vmp_vendor_users.is_internal: ${verifyVendorUser?.is_internal ? '✅ true' : '❌ false'}`);
+      console.log(
+        `   vmp_vendor_users.is_internal: ${verifyVendorUser?.is_internal ? '✅ true' : '❌ false'}`
+      );
     }
 
     console.log('\n✅ Promotion complete!');
@@ -138,7 +140,6 @@ async function promoteUserToAdmin() {
     console.log('   1. Log out and log back in (or refresh the page)');
     console.log('   2. Check the sidebar - it should now show the organization tree');
     console.log('   3. Your badge should show "ADMIN" instead of "OPERATOR"');
-
   } catch (error) {
     console.error('\n❌ Error:', error.message);
     console.error(error);
@@ -148,4 +149,3 @@ async function promoteUserToAdmin() {
 
 // Run the script
 promoteUserToAdmin();
-

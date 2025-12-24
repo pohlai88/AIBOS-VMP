@@ -15,7 +15,7 @@ export class VMPError extends Error {
     this.code = code;
     this.details = details;
     this.timestamp = new Date().toISOString();
-    
+
     // Maintains proper stack trace for where error was thrown
     Error.captureStackTrace(this, this.constructor);
   }
@@ -30,8 +30,8 @@ export class VMPError extends Error {
         code: this.code,
         status: this.statusCode,
         timestamp: this.timestamp,
-        ...(this.details && { details: this.details })
-      }
+        ...(this.details && { details: this.details }),
+      },
     };
   }
 
@@ -41,7 +41,7 @@ export class VMPError extends Error {
   toResponse() {
     return {
       status: this.statusCode,
-      body: this.toJSON()
+      body: this.toJSON(),
     };
   }
 }
@@ -114,7 +114,7 @@ export class DatabaseError extends VMPError {
   constructor(message, originalError = null, details = null) {
     super(message, 500, 'DATABASE_ERROR', {
       ...details,
-      ...(originalError && { originalError: originalError.message })
+      ...(originalError && { originalError: originalError.message }),
     });
     this.originalError = originalError;
   }
@@ -126,12 +126,11 @@ export class DatabaseError extends VMPError {
  */
 export class TimeoutError extends VMPError {
   constructor(operation = 'Operation', timeoutMs = 0, details = null) {
-    super(
-      `${operation} timed out after ${timeoutMs}ms`,
-      504,
-      'TIMEOUT',
-      { operation, timeoutMs, ...details }
-    );
+    super(`${operation} timed out after ${timeoutMs}ms`, 504, 'TIMEOUT', {
+      operation,
+      timeoutMs,
+      ...details,
+    });
   }
 }
 
@@ -143,7 +142,7 @@ export class StorageError extends VMPError {
   constructor(message, originalError = null, details = null) {
     super(message, 500, 'STORAGE_ERROR', {
       ...details,
-      ...(originalError && { originalError: originalError.message })
+      ...(originalError && { originalError: originalError.message }),
     });
     this.originalError = originalError;
   }
@@ -168,163 +167,144 @@ export function handleSupabaseError(error, context = 'operation') {
       case 'PGRST116':
         // No rows returned (not necessarily an error)
         return null;
-      
+
       case 'PGRST301':
         // Resource not found
         return new NotFoundError('Resource', { code: error.code });
-      
+
       case 'PGRST202':
         // Precondition failed
-        return new ClientError(
-          'Precondition failed',
-          'PRECONDITION_FAILED',
-          { code: error.code, details: error.details }
-        );
-      
+        return new ClientError('Precondition failed', 'PRECONDITION_FAILED', {
+          code: error.code,
+          details: error.details,
+        });
+
       // PostgreSQL Error Codes - Constraint Violations
       case '23505':
         // Unique constraint violation
-        return new ConflictError(
-          'Resource already exists',
-          'UNIQUE_CONSTRAINT_VIOLATION',
-          { constraint: error.details, code: error.code }
-        );
-      
+        return new ConflictError('Resource already exists', 'UNIQUE_CONSTRAINT_VIOLATION', {
+          constraint: error.details,
+          code: error.code,
+        });
+
       case '23503':
         // Foreign key violation
-        return new ClientError(
-          'Referenced resource does not exist',
-          'FOREIGN_KEY_VIOLATION',
-          { constraint: error.details, code: error.code }
-        );
-      
+        return new ClientError('Referenced resource does not exist', 'FOREIGN_KEY_VIOLATION', {
+          constraint: error.details,
+          code: error.code,
+        });
+
       case '23502':
         // Not null violation
-        return new ValidationError(
-          'Required field is missing',
-          null,
-          { constraint: error.details, code: error.code }
-        );
-      
+        return new ValidationError('Required field is missing', null, {
+          constraint: error.details,
+          code: error.code,
+        });
+
       case '23514':
         // Check constraint violation
-        return new ValidationError(
-          'Check constraint violation',
-          null,
-          { constraint: error.details, code: error.code }
-        );
-      
+        return new ValidationError('Check constraint violation', null, {
+          constraint: error.details,
+          code: error.code,
+        });
+
       // PostgreSQL Error Codes - Database/Object Errors
       case '42P01':
         // Table does not exist
-        return new DatabaseError(
-          'Database table not found',
-          error,
-          { table: error.details, code: error.code }
-        );
-      
+        return new DatabaseError('Database table not found', error, {
+          table: error.details,
+          code: error.code,
+        });
+
       case '42P02':
         // Column does not exist
-        return new DatabaseError(
-          'Database column not found',
-          error,
-          { column: error.details, code: error.code }
-        );
-      
+        return new DatabaseError('Database column not found', error, {
+          column: error.details,
+          code: error.code,
+        });
+
       // PostgreSQL Error Codes - Authentication/Authorization
       case '42501':
         // Insufficient privilege (RLS blocking)
-        return new ForbiddenError(
-          'Insufficient privilege to access this resource',
-          { code: error.code, details: error.details }
-        );
-      
+        return new ForbiddenError('Insufficient privilege to access this resource', {
+          code: error.code,
+          details: error.details,
+        });
+
       case '28P01':
         // Invalid password
-        return new UnauthorizedError(
-          'Invalid authentication credentials',
-          { code: error.code }
-        );
-      
+        return new UnauthorizedError('Invalid authentication credentials', { code: error.code });
+
       // PostgreSQL Error Codes - Connection Errors
       case '3D000':
         // Database does not exist
-        return new DatabaseError(
-          'Database does not exist',
-          error,
-          { code: error.code, details: error.details }
-        );
-      
+        return new DatabaseError('Database does not exist', error, {
+          code: error.code,
+          details: error.details,
+        });
+
       case '08003':
         // Connection does not exist
-        return new DatabaseError(
-          'Database connection does not exist',
-          error,
-          { code: error.code }
-        );
-      
+        return new DatabaseError('Database connection does not exist', error, { code: error.code });
+
       case '08006':
         // Connection failure
-        return new DatabaseError(
-          'Database connection failure',
-          error,
-          { code: error.code }
-        );
-      
+        return new DatabaseError('Database connection failure', error, { code: error.code });
+
       default:
-        return new DatabaseError(
-          `Database operation failed: ${error.message}`,
-          error,
-          { code: error.code, details: error.details }
-        );
+        return new DatabaseError(`Database operation failed: ${error.message}`, error, {
+          code: error.code,
+          details: error.details,
+        });
     }
   }
 
   // Handle storage errors
-  if (error.message && (error.message.includes('storage') || error.message.includes('bucket') || error.message.includes('object'))) {
+  if (
+    error.message &&
+    (error.message.includes('storage') ||
+      error.message.includes('bucket') ||
+      error.message.includes('object'))
+  ) {
     // Check for specific storage error types
-    if (error.message.includes('not found') || error.message.includes('BucketNotFound') || error.message.includes('ObjectNotFound')) {
-      return new NotFoundError('Storage resource', { 
+    if (
+      error.message.includes('not found') ||
+      error.message.includes('BucketNotFound') ||
+      error.message.includes('ObjectNotFound')
+    ) {
+      return new NotFoundError('Storage resource', {
         originalError: error.message,
-        storageError: true 
+        storageError: true,
       });
     }
-    
+
     if (error.message.includes('too large') || error.message.includes('PayloadTooLarge')) {
-      return new ClientError(
-        'File size exceeds limit',
-        'PAYLOAD_TOO_LARGE',
-        { originalError: error.message, storageError: true }
-      );
+      return new ClientError('File size exceeds limit', 'PAYLOAD_TOO_LARGE', {
+        originalError: error.message,
+        storageError: true,
+      });
     }
-    
+
     if (error.message.includes('unauthorized') || error.message.includes('Unauthorized')) {
       return new UnauthorizedError('Storage access denied', {
         originalError: error.message,
-        storageError: true
+        storageError: true,
       });
     }
-    
+
     if (error.message.includes('invalid') || error.message.includes('InvalidInput')) {
-      return new ValidationError(
-        'Invalid file type or name',
-        null,
-        { originalError: error.message, storageError: true }
-      );
+      return new ValidationError('Invalid file type or name', null, {
+        originalError: error.message,
+        storageError: true,
+      });
     }
-    
+
     // Generic storage error
-    return new StorageError(
-      `Storage operation failed: ${error.message}`,
-      error
-    );
+    return new StorageError(`Storage operation failed: ${error.message}`, error);
   }
 
   // Default: wrap as database error
-  return new DatabaseError(
-    `Database operation failed: ${error.message}`,
-    error
-  );
+  return new DatabaseError(`Database operation failed: ${error.message}`, error);
 }
 
 /**
@@ -336,7 +316,7 @@ export function createErrorResponse(error, req = null) {
   if (error instanceof VMPError) {
     return {
       status: error.statusCode,
-      body: error.toJSON()
+      body: error.toJSON(),
     };
   }
 
@@ -345,7 +325,7 @@ export function createErrorResponse(error, req = null) {
   if (vmpError) {
     return {
       status: vmpError.statusCode,
-      body: vmpError.toJSON()
+      body: vmpError.toJSON(),
     };
   }
 
@@ -359,9 +339,9 @@ export function createErrorResponse(error, req = null) {
         code: 'INTERNAL_ERROR',
         status: 500,
         timestamp: new Date().toISOString(),
-        ...(!isProduction && { stack: error.stack })
-      }
-    }
+        ...(!isProduction && { stack: error.stack }),
+      },
+    },
   };
 }
 
@@ -376,9 +356,9 @@ export function logError(error, context = {}) {
       name: error.name,
       message: error.message,
       code: error.code || 'UNKNOWN',
-      status: error.statusCode || 500
+      status: error.statusCode || 500,
     },
-    context
+    context,
   };
 
   // Include stack trace in development
@@ -390,12 +370,12 @@ export function logError(error, context = {}) {
   if (error.originalError) {
     errorInfo.originalError = {
       name: error.originalError.name,
-      message: error.originalError.message
+      message: error.originalError.message,
     };
   }
 
   console.error('VMP Error:', JSON.stringify(errorInfo, null, 2));
-  
+
   return errorInfo;
 }
 
@@ -408,4 +388,3 @@ export function asyncHandler(fn) {
     Promise.resolve(fn(req, res, next)).catch(next);
   };
 }
-

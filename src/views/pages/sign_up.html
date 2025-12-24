@@ -976,14 +976,14 @@
               
               <script>
                 // Add loading state to signup form
-                (function() {
+                (function () {
                   const form = document.querySelector('form[method="POST"][action="/sign-up"]');
                   const submitBtn = document.getElementById('signup-submit-btn');
                   const submitText = document.getElementById('signup-submit-text');
                   const submitLoading = document.getElementById('signup-submit-loading');
-                  
+                
                   if (form && submitBtn) {
-                    form.addEventListener('submit', function() {
+                    form.addEventListener('submit', function () {
                       submitBtn.disabled = true;
                       if (submitText) submitText.style.display = 'none';
                       if (submitLoading) submitLoading.style.display = 'inline';
@@ -1007,28 +1007,28 @@
 
   <script>
     function setTier(tier) {
-      const isInstitutional = (tier === 'institutional');
-      
+      const isInstitutional = tier === 'institutional';
+    
       // Update button states
       const institutionalBtn = document.getElementById('tier-institutional');
       const independentBtn = document.getElementById('tier-independent');
-      
+    
       if (institutionalBtn && independentBtn) {
         institutionalBtn.classList.toggle('active', isInstitutional);
         independentBtn.classList.toggle('active', !isInstitutional);
       }
-      
+    
       // Update hidden input
       const tierInput = document.getElementById('user_tier_input');
       if (tierInput) {
         tierInput.value = tier;
       }
-      
+    
       // Toggle organization field
       const orgContainer = document.getElementById('org-container');
       const orgInput = document.getElementById('company');
       const independentNotice = document.getElementById('independent-notice');
-      
+    
       if (isInstitutional) {
         if (orgContainer) orgContainer.style.display = 'block';
         if (orgInput) {
@@ -1046,27 +1046,27 @@
     }
 
     // Initialize on page load and attach event listeners
-    document.addEventListener('DOMContentLoaded', function() {
+    document.addEventListener('DOMContentLoaded', function () {
       // Attach click event listeners to tier buttons
       const institutionalBtn = document.getElementById('tier-institutional');
       const independentBtn = document.getElementById('tier-independent');
-      
+    
       if (institutionalBtn) {
-        institutionalBtn.addEventListener('click', function(e) {
+        institutionalBtn.addEventListener('click', function (e) {
           e.preventDefault();
           e.stopPropagation();
           setTier('institutional');
         });
       }
-      
+    
       if (independentBtn) {
-        independentBtn.addEventListener('click', function(e) {
+        independentBtn.addEventListener('click', function (e) {
           e.preventDefault();
           e.stopPropagation();
           setTier('independent');
         });
       }
-      
+    
       // Default to institutional
       setTier('institutional');
     });

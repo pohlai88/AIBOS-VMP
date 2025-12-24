@@ -12,14 +12,14 @@ describe('Server Extended Routes', () => {
 
   beforeEach(async () => {
     process.env.NODE_ENV = 'test';
-    
+
     try {
       const testUser = await vmpAdapter.getUserByEmail('admin@acme.com');
       if (testUser) {
         testUserId = testUser.id;
         testVendorId = testUser.vendor_id;
         testSession = await createTestSession(testUserId, testVendorId);
-        
+
         // Get a test case if available
         if (testVendorId) {
           const cases = await vmpAdapter.getInbox(testVendorId);
@@ -82,7 +82,7 @@ describe('Server Extended Routes', () => {
       const response = await authenticatedRequest('get', '/home3');
       expect(response.statusCode).toBe(302);
       expect(response.headers.location).toBe('/home');
-      
+
       // Restore
       vmpAdapter.getInbox = originalGetInbox;
     });
@@ -181,7 +181,10 @@ describe('Server Extended Routes', () => {
         return;
       }
 
-      const response = await authenticatedRequest('get', `/partials/case-detail.html?case_id=${testCaseId}`);
+      const response = await authenticatedRequest(
+        'get',
+        `/partials/case-detail.html?case_id=${testCaseId}`
+      );
       expect(response.statusCode).toBe(200);
       expect(response.text).toBeDefined();
     });
@@ -203,7 +206,10 @@ describe('Server Extended Routes', () => {
         return;
       }
 
-      const response = await authenticatedRequest('get', `/partials/case-thread.html?case_id=${testCaseId}`);
+      const response = await authenticatedRequest(
+        'get',
+        `/partials/case-thread.html?case_id=${testCaseId}`
+      );
       expect(response.statusCode).toBe(200);
       expect(response.text).toBeDefined();
     });
@@ -225,7 +231,10 @@ describe('Server Extended Routes', () => {
         return;
       }
 
-      const response = await authenticatedRequest('get', `/partials/case-checklist.html?case_id=${testCaseId}`);
+      const response = await authenticatedRequest(
+        'get',
+        `/partials/case-checklist.html?case_id=${testCaseId}`
+      );
       expect(response.statusCode).toBe(200);
       expect(response.text).toBeDefined();
     });
@@ -236,7 +245,10 @@ describe('Server Extended Routes', () => {
         return;
       }
 
-      const response = await authenticatedRequest('get', `/partials/case-evidence.html?case_id=${testCaseId}`);
+      const response = await authenticatedRequest(
+        'get',
+        `/partials/case-evidence.html?case_id=${testCaseId}`
+      );
       expect(response.statusCode).toBe(200);
       expect(response.text).toBeDefined();
     });
@@ -264,8 +276,9 @@ describe('Server Extended Routes', () => {
         return;
       }
 
-      const response = await authenticatedRequest('post', `/cases/${testCaseId}/messages`)
-        .send({ body: 'Test message from test suite' });
+      const response = await authenticatedRequest('post', `/cases/${testCaseId}/messages`).send({
+        body: 'Test message from test suite',
+      });
 
       expect([200, 302]).toContain(response.statusCode);
     });
@@ -276,8 +289,9 @@ describe('Server Extended Routes', () => {
         return;
       }
 
-      const response = await authenticatedRequest('post', '/cases//messages')
-        .send({ body: 'Test message' });
+      const response = await authenticatedRequest('post', '/cases//messages').send({
+        body: 'Test message',
+      });
 
       expect(response.statusCode).toBeGreaterThanOrEqual(400);
     });
@@ -288,8 +302,9 @@ describe('Server Extended Routes', () => {
         return;
       }
 
-      const response = await authenticatedRequest('post', `/cases/${testCaseId}/messages`)
-        .send({ body: '' });
+      const response = await authenticatedRequest('post', `/cases/${testCaseId}/messages`).send({
+        body: '',
+      });
 
       // Should still return 200 and refresh thread
       expect(response.statusCode).toBe(200);
@@ -301,8 +316,7 @@ describe('Server Extended Routes', () => {
         return;
       }
 
-      const response = await authenticatedRequest('post', `/cases/${testCaseId}/messages`)
-        .send({});
+      const response = await authenticatedRequest('post', `/cases/${testCaseId}/messages`).send({});
 
       expect(response.statusCode).toBe(200);
     });
@@ -313,8 +327,9 @@ describe('Server Extended Routes', () => {
         return;
       }
 
-      const response = await authenticatedRequest('post', `/cases/${testCaseId}/evidence`)
-        .send({ evidence_type: 'invoice_pdf' });
+      const response = await authenticatedRequest('post', `/cases/${testCaseId}/evidence`).send({
+        evidence_type: 'invoice_pdf',
+      });
 
       // Should return 400 for missing file (required field)
       expect(response.statusCode).toBe(400);
@@ -326,8 +341,7 @@ describe('Server Extended Routes', () => {
         return;
       }
 
-      const response = await authenticatedRequest('post', `/cases/${testCaseId}/evidence`)
-        .send({});
+      const response = await authenticatedRequest('post', `/cases/${testCaseId}/evidence`).send({});
 
       // Without file, server returns 200 with refreshed evidence (empty)
       // With file but no evidence_type, server returns 400
@@ -371,4 +385,3 @@ describe('Server Extended Routes', () => {
     });
   });
 });
-

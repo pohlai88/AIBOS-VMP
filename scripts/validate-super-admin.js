@@ -2,7 +2,7 @@
 /**
  * Validate Super Admin Account Security
  * Checks if jackwee2020@gmail.com can log in without credentials
- * 
+ *
  * Usage: node scripts/validate-super-admin.js
  */
 
@@ -22,8 +22,8 @@ if (!supabaseUrl || !supabaseServiceKey) {
 const supabase = createClient(supabaseUrl, supabaseServiceKey, {
   auth: {
     autoRefreshToken: false,
-    persistSession: false
-  }
+    persistSession: false,
+  },
 });
 
 const testEmail = 'jackwee2020@gmail.com';
@@ -36,15 +36,18 @@ async function validateSuperAdmin() {
   try {
     // Step 1: Check if user exists in Supabase Auth
     console.log('📋 Step 1: Checking Supabase Auth account...');
-    const { data: { users }, error: listError } = await supabase.auth.admin.listUsers();
-    
+    const {
+      data: { users },
+      error: listError,
+    } = await supabase.auth.admin.listUsers();
+
     if (listError) {
       console.error('   ❌ Error listing users:', listError.message);
       process.exit(1);
     }
 
     const authUser = users.find(u => u.email === testEmail.toLowerCase().trim());
-    
+
     if (!authUser) {
       console.error('   ❌ User NOT found in Supabase Auth');
       console.error('\n💡 The account does not exist in Supabase Auth.');
@@ -62,7 +65,7 @@ async function validateSuperAdmin() {
     // Check if user has a password (encrypted_password field exists)
     const hasPassword = !!authUser.encrypted_password;
     console.log(`      Has Password: ${hasPassword ? '✅ Yes' : '❌ No'}`);
-    
+
     if (!hasPassword) {
       console.error('\n⚠️  SECURITY WARNING: User has NO password set!');
       console.error('   This account cannot log in via email/password.');
@@ -98,7 +101,7 @@ async function validateSuperAdmin() {
       console.log(`      Is Internal: ${vmpUser.is_internal ? '✅ Yes' : '❌ No'}`);
       console.log(`      Scope Group: ${vmpUser.scope_group_id || 'null (Super Admin)'}`);
       console.log(`      Scope Company: ${vmpUser.scope_company_id || 'null (Super Admin)'}`);
-      
+
       const isSuperAdmin = !vmpUser.scope_group_id && !vmpUser.scope_company_id;
       console.log(`      Super Admin: ${isSuperAdmin ? '✅ Yes' : '❌ No'}`);
     }
@@ -124,10 +127,10 @@ async function validateSuperAdmin() {
     // Step 5: Test login requirement (verify credentials are required)
     console.log('\n📋 Step 5: Testing login security...');
     console.log('   Testing login WITHOUT password...');
-    
+
     const { data: loginData, error: loginError } = await supabase.auth.signInWithPassword({
       email: testEmail.toLowerCase().trim(),
-      password: '' // Empty password
+      password: '', // Empty password
     });
 
     if (loginError) {
@@ -143,7 +146,7 @@ async function validateSuperAdmin() {
     console.log('   Testing login with WRONG password...');
     const { error: wrongPasswordError } = await supabase.auth.signInWithPassword({
       email: testEmail.toLowerCase().trim(),
-      password: 'wrong-password-12345'
+      password: 'wrong-password-12345',
     });
 
     if (wrongPasswordError) {
@@ -158,7 +161,7 @@ async function validateSuperAdmin() {
     console.log('\n📋 Step 6: Checking environment and bypass status...');
     const nodeEnv = process.env.NODE_ENV || 'development';
     console.log(`      NODE_ENV: ${nodeEnv}`);
-    
+
     if (nodeEnv === 'development') {
       console.log('   ⚠️  Development mode is ACTIVE');
       console.log('   ⚠️  Development bypass is enabled for protected routes');
@@ -175,26 +178,26 @@ async function validateSuperAdmin() {
     console.log('\n' + '='.repeat(70));
     console.log('📊 VALIDATION SUMMARY');
     console.log('='.repeat(70));
-    
+
     const issues = [];
     const warnings = [];
-    
+
     if (!hasPassword) {
       issues.push('❌ No password set - account cannot log in');
     }
-    
+
     if (!authUser.email_confirmed_at) {
       warnings.push('⚠️  Email not confirmed');
     }
-    
+
     if (metadata.is_active === false) {
       issues.push('❌ Account is inactive');
     }
-    
+
     if (!vmpUser) {
       warnings.push('⚠️  User not found in vmp_vendor_users table');
     }
-    
+
     if (nodeEnv === 'development') {
       warnings.push('⚠️  Development mode active (bypass enabled for protected routes only)');
     }
@@ -209,7 +212,7 @@ async function validateSuperAdmin() {
         console.log('\n❌ CRITICAL ISSUES:');
         issues.forEach(issue => console.log(`   ${issue}`));
       }
-      
+
       if (warnings.length > 0) {
         console.log('\n⚠️  WARNINGS:');
         warnings.forEach(warning => console.log(`   ${warning}`));
@@ -221,7 +224,7 @@ async function validateSuperAdmin() {
     console.log('   ✅ Cannot log in without credentials');
     console.log('   ✅ Wrong passwords are rejected');
     console.log('   ✅ Development bypass does NOT affect login route');
-    
+
     if (nodeEnv === 'development') {
       console.log('\n💡 IMPORTANT: In development mode, protected routes can be accessed');
       console.log('   without login AFTER the dev bypass is triggered. However, the');
@@ -230,17 +233,18 @@ async function validateSuperAdmin() {
 
     console.log('\n📝 NEXT STEPS:');
     if (!hasPassword) {
-      console.log('   1. Set password: node scripts/create-super-admin.js jackwee2020@gmail.com <password>');
+      console.log(
+        '   1. Set password: node scripts/create-super-admin.js jackwee2020@gmail.com <password>'
+      );
     } else {
       console.log('   1. Test login at: http://localhost:9000/login');
       console.log('   2. Use email: jackwee2020@gmail.com');
       console.log('   3. Enter the password you set when creating the account');
     }
-    
+
     if (!authUser.email_confirmed_at) {
       console.log('   4. Confirm email (or use create-super-admin.js which auto-confirms)');
     }
-
   } catch (error) {
     console.error('\n❌ Validation failed:', error);
     console.error('   Stack:', error.stack);
@@ -253,8 +257,7 @@ validateSuperAdmin()
     console.log('\n✅ Validation complete\n');
     process.exit(0);
   })
-  .catch((error) => {
+  .catch(error => {
     console.error('\n❌ Validation script failed:', error);
     process.exit(1);
   });
-

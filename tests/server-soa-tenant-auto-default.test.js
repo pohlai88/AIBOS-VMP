@@ -1,6 +1,6 @@
 /**
  * SOA Upload Tenant Auto-Default Smoke Test
- * 
+ *
  * Tests the tenant_id auto-defaulting functionality when uploading SOA files.
  * Verifies:
  * 1. Tenant ID is automatically defaulted from logged-in user
@@ -20,7 +20,7 @@ import {
   createTestUser,
   createTestTenant,
   createTestCompany,
-  cleanupTestData
+  cleanupTestData,
 } from './setup/test-helpers.js';
 
 describe('SOA Upload - Tenant Auto-Default Smoke Test', () => {
@@ -35,52 +35,50 @@ describe('SOA Upload - Tenant Auto-Default Smoke Test', () => {
 
   beforeEach(async () => {
     process.env.NODE_ENV = 'test';
-    
+
     supabase = createTestSupabaseClient();
-    
+
     // Create test tenant
     testTenant = await createTestTenant(supabase, {
-      name: `Test Tenant ${Date.now()}`
+      name: `Test Tenant ${Date.now()}`,
     });
-    
+
     // Create test vendor with tenant_id
     testVendor = await createTestVendor(supabase, {
       tenant_id: testTenant.id,
-      name: `Test Vendor ${Date.now()}`
+      name: `Test Vendor ${Date.now()}`,
     });
-    
+
     // Create test user
-    testUser = await createTestUser(supabase, { 
-      vendor_id: testVendor.id 
+    testUser = await createTestUser(supabase, {
+      vendor_id: testVendor.id,
     });
-    
+
     // Create test companies
     testCompany1 = await createTestCompany(supabase, {
       tenant_id: testTenant.id,
-      name: `Test Company 1 ${Date.now()}`
+      name: `Test Company 1 ${Date.now()}`,
     });
-    
+
     testCompany2 = await createTestCompany(supabase, {
       tenant_id: testTenant.id,
-      name: `Test Company 2 ${Date.now()}`
+      name: `Test Company 2 ${Date.now()}`,
     });
-    
+
     // Link vendor to companies
-    await supabase
-      .from('vmp_vendor_company_links')
-      .insert([
-        {
-          vendor_id: testVendor.id,
-          company_id: testCompany1.id,
-          status: 'active'
-        },
-        {
-          vendor_id: testVendor.id,
-          company_id: testCompany2.id,
-          status: 'active'
-        }
-      ]);
-    
+    await supabase.from('vmp_vendor_company_links').insert([
+      {
+        vendor_id: testVendor.id,
+        company_id: testCompany1.id,
+        status: 'active',
+      },
+      {
+        vendor_id: testVendor.id,
+        company_id: testCompany2.id,
+        status: 'active',
+      },
+    ]);
+
     // Create test session
     testSession = await createTestSession(testUser.id, testVendor.id);
     authHeaders = getTestAuthHeaders(testUser.id, testVendor.id, testTenant.id);
@@ -116,31 +114,28 @@ INV-002,2024-01-16,2000.00,USD,INV`;
     // Mock the adapter to capture tenant_id
     const originalIngest = vmpAdapter.ingestSOAFromCSV;
     let capturedTenantId = null;
-    
+
     vmpAdapter.ingestSOAFromCSV = vi.fn(async (...args) => {
       capturedTenantId = args[5]; // tenantId is the 6th parameter
       return originalIngest.apply(vmpAdapter, args);
     });
 
     // Remove one company link so only one company exists (auto-select)
-    await supabase
-      .from('vmp_vendor_company_links')
-      .delete()
-      .eq('company_id', testCompany2.id);
+    await supabase.from('vmp_vendor_company_links').delete().eq('company_id', testCompany2.id);
 
     const response = await request(app)
       .post('/api/soa/ingest')
       .set(authHeaders)
       .attach('file', Buffer.from(csvContent), {
         filename: 'test-soa.csv',
-        contentType: 'text/csv'
+        contentType: 'text/csv',
       })
       .field('period_start', '2024-01-01')
       .field('period_end', '2024-01-31');
 
     // Verify tenant_id was captured from user
     expect(capturedTenantId).toBe(testTenant.id);
-    
+
     // Restore original method
     vmpAdapter.ingestSOAFromCSV = originalIngest;
   });
@@ -151,10 +146,7 @@ INV-002,2024-01-16,2000.00,USD,INV`;
 
   test('should auto-select company if vendor has only one company', async () => {
     // Remove one company link so only one company exists
-    await supabase
-      .from('vmp_vendor_company_links')
-      .delete()
-      .eq('company_id', testCompany2.id);
+    await supabase.from('vmp_vendor_company_links').delete().eq('company_id', testCompany2.id);
 
     const csvContent = `Invoice #,Date,Amount,Currency,Type
 INV-001,2024-01-15,1000.00,USD,INV`;
@@ -162,7 +154,7 @@ INV-001,2024-01-15,1000.00,USD,INV`;
     // Mock the adapter to capture company_id
     const originalIngest = vmpAdapter.ingestSOAFromCSV;
     let capturedCompanyId = null;
-    
+
     vmpAdapter.ingestSOAFromCSV = vi.fn(async (...args) => {
       capturedCompanyId = args[2]; // companyId is the 3rd parameter
       return originalIngest.apply(vmpAdapter, args);
@@ -173,7 +165,7 @@ INV-001,2024-01-15,1000.00,USD,INV`;
       .set(authHeaders)
       .attach('file', Buffer.from(csvContent), {
         filename: 'test-soa.csv',
-        contentType: 'text/csv'
+        contentType: 'text/csv',
       })
       .field('period_start', '2024-01-01')
       .field('period_end', '2024-01-31');
@@ -181,10 +173,10 @@ INV-001,2024-01-15,1000.00,USD,INV`;
     // Should not require company selection
     expect(response.statusCode).not.toBe(400);
     expect(response.body).not.toHaveProperty('requiresCompanySelection');
-    
+
     // Verify company was auto-selected
     expect(capturedCompanyId).toBe(testCompany1.id);
-    
+
     // Restore original method
     vmpAdapter.ingestSOAFromCSV = originalIngest;
   });
@@ -203,7 +195,7 @@ INV-001,2024-01-15,1000.00,USD,INV`;
       .set(authHeaders)
       .attach('file', Buffer.from(csvContent), {
         filename: 'test-soa.csv',
-        contentType: 'text/csv'
+        contentType: 'text/csv',
       })
       .field('period_start', '2024-01-01')
       .field('period_end', '2024-01-31');
@@ -214,7 +206,7 @@ INV-001,2024-01-15,1000.00,USD,INV`;
     expect(response.body).toHaveProperty('companies');
     expect(Array.isArray(response.body.companies)).toBe(true);
     expect(response.body.companies.length).toBe(2);
-    
+
     // Verify companies list includes both companies
     const companyIds = response.body.companies.map(c => c.id);
     expect(companyIds).toContain(testCompany1.id);
@@ -232,7 +224,7 @@ INV-001,2024-01-15,1000.00,USD,INV`;
     // Mock the adapter to capture company_id
     const originalIngest = vmpAdapter.ingestSOAFromCSV;
     let capturedCompanyId = null;
-    
+
     vmpAdapter.ingestSOAFromCSV = vi.fn(async (...args) => {
       capturedCompanyId = args[2]; // companyId is the 3rd parameter
       return originalIngest.apply(vmpAdapter, args);
@@ -243,7 +235,7 @@ INV-001,2024-01-15,1000.00,USD,INV`;
       .set(authHeaders)
       .attach('file', Buffer.from(csvContent), {
         filename: 'test-soa.csv',
-        contentType: 'text/csv'
+        contentType: 'text/csv',
       })
       .field('period_start', '2024-01-01')
       .field('period_end', '2024-01-31')
@@ -252,10 +244,10 @@ INV-001,2024-01-15,1000.00,USD,INV`;
     // Should not require company selection
     expect(response.statusCode).not.toBe(400);
     expect(response.body).not.toHaveProperty('requiresCompanySelection');
-    
+
     // Verify provided company was used
     expect(capturedCompanyId).toBe(testCompany2.id);
-    
+
     // Restore original method
     vmpAdapter.ingestSOAFromCSV = originalIngest;
   });
@@ -267,34 +259,29 @@ INV-001,2024-01-15,1000.00,USD,INV`;
   test('should fallback to company tenant_id if not available from user', async () => {
     // Create vendor without tenant_id
     const vendorWithoutTenant = await createTestVendor(supabase, {
-      name: `Test Vendor No Tenant ${Date.now()}`
+      name: `Test Vendor No Tenant ${Date.now()}`,
       // No tenant_id set
     });
-    
+
     // Create user for this vendor
     const userWithoutTenant = await createTestUser(supabase, {
-      vendor_id: vendorWithoutTenant.id
+      vendor_id: vendorWithoutTenant.id,
     });
-    
+
     // Create session for this user
     const sessionWithoutTenant = await createTestSession(
-      userWithoutTenant.id, 
+      userWithoutTenant.id,
       vendorWithoutTenant.id
     );
     // Don't pass tenant_id in headers to test fallback
-    const headersWithoutTenant = getTestAuthHeaders(
-      userWithoutTenant.id, 
-      vendorWithoutTenant.id
-    );
-    
+    const headersWithoutTenant = getTestAuthHeaders(userWithoutTenant.id, vendorWithoutTenant.id);
+
     // Link vendor to company (company has tenant_id)
-    await supabase
-      .from('vmp_vendor_company_links')
-      .insert({
-        vendor_id: vendorWithoutTenant.id,
-        company_id: testCompany1.id,
-        status: 'active'
-      });
+    await supabase.from('vmp_vendor_company_links').insert({
+      vendor_id: vendorWithoutTenant.id,
+      company_id: testCompany1.id,
+      status: 'active',
+    });
 
     const csvContent = `Invoice #,Date,Amount,Currency,Type
 INV-001,2024-01-15,1000.00,USD,INV`;
@@ -302,7 +289,7 @@ INV-001,2024-01-15,1000.00,USD,INV`;
     // Mock the adapter to capture tenant_id
     const originalIngest = vmpAdapter.ingestSOAFromCSV;
     let capturedTenantId = null;
-    
+
     vmpAdapter.ingestSOAFromCSV = vi.fn(async (...args) => {
       capturedTenantId = args[5]; // tenantId is the 6th parameter
       return originalIngest.apply(vmpAdapter, args);
@@ -313,16 +300,18 @@ INV-001,2024-01-15,1000.00,USD,INV`;
       .set(headersWithoutTenant)
       .attach('file', Buffer.from(csvContent), {
         filename: 'test-soa.csv',
-        contentType: 'text/csv'
+        contentType: 'text/csv',
       })
       .field('period_start', '2024-01-01')
       .field('period_end', '2024-01-31');
 
     // Verify tenant_id was retrieved from company (fallback)
     expect(capturedTenantId).toBe(testTenant.id);
-    
+
     // Cleanup
-    await cleanupTestData(supabase, 'vmp_vendor_company_links', { vendor_id: vendorWithoutTenant.id });
+    await cleanupTestData(supabase, 'vmp_vendor_company_links', {
+      vendor_id: vendorWithoutTenant.id,
+    });
     await cleanupTestData(supabase, 'vmp_vendor_users', { id: userWithoutTenant.id });
     await cleanupTestData(supabase, 'vmp_vendors', { id: vendorWithoutTenant.id });
     if (sessionWithoutTenant?.sessionId) {
@@ -332,9 +321,8 @@ INV-001,2024-01-15,1000.00,USD,INV`;
         // Ignore cleanup errors
       }
     }
-    
+
     // Restore original method
     vmpAdapter.ingestSOAFromCSV = originalIngest;
   });
 });
-

@@ -14,7 +14,7 @@ describe('Emergency Pay Override - Comprehensive Test Suite', () => {
 
   beforeEach(async () => {
     process.env.NODE_ENV = 'test';
-    
+
     try {
       // Get test user
       const testUser = await vmpAdapter.getUserByEmail('admin@acme.com');
@@ -28,7 +28,7 @@ describe('Emergency Pay Override - Comprehensive Test Suite', () => {
           const cases = await vmpAdapter.getInbox(testVendorId);
           if (cases && cases.length > 0) {
             testCaseId = cases[0].id;
-            
+
             // Get a test payment for this case
             const payments = await vmpAdapter.getPayments(testVendorId, { limit: 1 });
             if (payments && payments.length > 0) {
@@ -53,7 +53,7 @@ describe('Emergency Pay Override - Comprehensive Test Suite', () => {
         // Ignore cleanup errors
       }
     }
-    
+
     if (testSession?.sessionId) {
       try {
         await vmpAdapter.deleteSession(testSession.sessionId);
@@ -68,7 +68,7 @@ describe('Emergency Pay Override - Comprehensive Test Suite', () => {
     'x-test-auth': 'bypass',
     'x-test-user-id': userId,
     'x-test-vendor-id': null,
-    'x-test-is-internal': 'true'
+    'x-test-is-internal': 'true',
   });
 
   // Helper to get headers for regular user
@@ -86,7 +86,7 @@ describe('Emergency Pay Override - Comprehensive Test Suite', () => {
       const response = await request(app)
         .post(`/payments/${testPaymentId || 'test-payment-id'}/emergency-override`)
         .send({ reason: 'Test reason' });
-      
+
       expect(response.statusCode).toBe(302);
       expect(response.headers.location).toBe('/login');
     });
@@ -101,7 +101,7 @@ describe('Emergency Pay Override - Comprehensive Test Suite', () => {
         .post(`/payments/${testPaymentId}/emergency-override`)
         .set(getRegularAuthHeaders())
         .send({ reason: 'Test reason' });
-      
+
       expect(response.statusCode).toBe(403);
     });
 
@@ -110,7 +110,7 @@ describe('Emergency Pay Override - Comprehensive Test Suite', () => {
         .post('/payments/invalid-id/emergency-override')
         .set(getInternalAuthHeaders())
         .send({ reason: 'Test reason' });
-      
+
       expect(response.statusCode).toBe(400);
     });
 
@@ -124,7 +124,7 @@ describe('Emergency Pay Override - Comprehensive Test Suite', () => {
         .post(`/payments/${testPaymentId}/emergency-override`)
         .set(getInternalAuthHeaders())
         .send({});
-      
+
       expect(response.statusCode).toBe(400);
       expect(response.body.error).toContain('reason is required');
     });
@@ -139,7 +139,7 @@ describe('Emergency Pay Override - Comprehensive Test Suite', () => {
         .post(`/payments/${testPaymentId}/emergency-override`)
         .set(getInternalAuthHeaders())
         .send({ reason: '   ' });
-      
+
       expect(response.statusCode).toBe(400);
     });
 
@@ -155,16 +155,18 @@ describe('Emergency Pay Override - Comprehensive Test Suite', () => {
         .send({
           reason: 'Critical supplier relationship requires immediate payment',
           urgency_level: 'high',
-          case_id: testCaseId || null
+          case_id: testCaseId || null,
         });
-      
+
       expect(response.statusCode).toBe(200);
       expect(response.body.success).toBe(true);
       expect(response.body.overrideRequest).toBeDefined();
-      expect(response.body.overrideRequest.reason).toBe('Critical supplier relationship requires immediate payment');
+      expect(response.body.overrideRequest.reason).toBe(
+        'Critical supplier relationship requires immediate payment'
+      );
       expect(response.body.overrideRequest.urgency_level).toBe('high');
       expect(response.body.overrideRequest.status).toBe('pending');
-      
+
       // Store override ID for cleanup
       if (response.body.overrideRequest?.id) {
         testOverrideId = response.body.overrideRequest.id;
@@ -182,9 +184,9 @@ describe('Emergency Pay Override - Comprehensive Test Suite', () => {
         .set(getInternalAuthHeaders())
         .send({
           reason: 'Test reason',
-          urgency_level: 'invalid-level'
+          urgency_level: 'invalid-level',
         });
-      
+
       expect(response.statusCode).toBe(200);
       expect(response.body.overrideRequest.urgency_level).toBe('high');
     });
@@ -196,16 +198,16 @@ describe('Emergency Pay Override - Comprehensive Test Suite', () => {
       }
 
       const urgencyLevels = ['high', 'critical', 'emergency'];
-      
+
       for (const level of urgencyLevels) {
         const response = await request(app)
           .post(`/payments/${testPaymentId}/emergency-override`)
           .set(getInternalAuthHeaders())
           .send({
             reason: `Test reason for ${level}`,
-            urgency_level: level
+            urgency_level: level,
           });
-        
+
         expect(response.statusCode).toBe(200);
         expect(response.body.overrideRequest.urgency_level).toBe(level);
       }
@@ -238,9 +240,10 @@ describe('Emergency Pay Override - Comprehensive Test Suite', () => {
     });
 
     test('should redirect to login when not authenticated', async () => {
-      const response = await request(app)
-        .post(`/payments/emergency-override/${createdOverrideId || 'test-id'}/approve`);
-      
+      const response = await request(app).post(
+        `/payments/emergency-override/${createdOverrideId || 'test-id'}/approve`
+      );
+
       expect(response.statusCode).toBe(302);
       expect(response.headers.location).toBe('/login');
     });
@@ -254,7 +257,7 @@ describe('Emergency Pay Override - Comprehensive Test Suite', () => {
       const response = await request(app)
         .post(`/payments/emergency-override/${createdOverrideId}/approve`)
         .set(getRegularAuthHeaders());
-      
+
       expect(response.statusCode).toBe(403);
     });
 
@@ -262,7 +265,7 @@ describe('Emergency Pay Override - Comprehensive Test Suite', () => {
       const response = await request(app)
         .post('/payments/emergency-override/invalid-id/approve')
         .set(getInternalAuthHeaders());
-      
+
       expect(response.statusCode).toBe(400);
     });
 
@@ -276,7 +279,7 @@ describe('Emergency Pay Override - Comprehensive Test Suite', () => {
         .post(`/payments/emergency-override/${createdOverrideId}/approve`)
         .set(getInternalAuthHeaders())
         .send({ metadata: { approved_via: 'test' } });
-      
+
       expect(response.statusCode).toBe(200);
       expect(response.body.success).toBe(true);
       expect(response.body.overrideRequest.status).toBe('approved');
@@ -289,7 +292,7 @@ describe('Emergency Pay Override - Comprehensive Test Suite', () => {
       const response = await request(app)
         .post(`/payments/emergency-override/${fakeId}/approve`)
         .set(getInternalAuthHeaders());
-      
+
       expect(response.statusCode).toBe(500);
       expect(response.body.error).toBeDefined();
     });
@@ -324,7 +327,7 @@ describe('Emergency Pay Override - Comprehensive Test Suite', () => {
       const response = await request(app)
         .post(`/payments/emergency-override/${createdOverrideId || 'test-id'}/reject`)
         .send({ rejection_reason: 'Test rejection' });
-      
+
       expect(response.statusCode).toBe(302);
       expect(response.headers.location).toBe('/login');
     });
@@ -339,7 +342,7 @@ describe('Emergency Pay Override - Comprehensive Test Suite', () => {
         .post(`/payments/emergency-override/${createdOverrideId}/reject`)
         .set(getRegularAuthHeaders())
         .send({ rejection_reason: 'Test rejection' });
-      
+
       expect(response.statusCode).toBe(403);
     });
 
@@ -348,7 +351,7 @@ describe('Emergency Pay Override - Comprehensive Test Suite', () => {
         .post('/payments/emergency-override/invalid-id/reject')
         .set(getInternalAuthHeaders())
         .send({ rejection_reason: 'Test rejection' });
-      
+
       expect(response.statusCode).toBe(400);
     });
 
@@ -362,7 +365,7 @@ describe('Emergency Pay Override - Comprehensive Test Suite', () => {
         .post(`/payments/emergency-override/${createdOverrideId}/reject`)
         .set(getInternalAuthHeaders())
         .send({});
-      
+
       expect(response.statusCode).toBe(400);
       expect(response.body.error).toContain('rejection_reason is required');
     });
@@ -377,7 +380,7 @@ describe('Emergency Pay Override - Comprehensive Test Suite', () => {
         .post(`/payments/emergency-override/${createdOverrideId}/reject`)
         .set(getInternalAuthHeaders())
         .send({ rejection_reason: '   ' });
-      
+
       expect(response.statusCode).toBe(400);
     });
 
@@ -392,7 +395,7 @@ describe('Emergency Pay Override - Comprehensive Test Suite', () => {
         .post(`/payments/emergency-override/${createdOverrideId}/reject`)
         .set(getInternalAuthHeaders())
         .send({ rejection_reason: rejectionReason });
-      
+
       expect(response.statusCode).toBe(200);
       expect(response.body.success).toBe(true);
       expect(response.body.overrideRequest.status).toBe('rejected');
@@ -408,9 +411,8 @@ describe('Emergency Pay Override - Comprehensive Test Suite', () => {
 
   describe('GET /payments/emergency-overrides', () => {
     test('should redirect to login when not authenticated', async () => {
-      const response = await request(app)
-        .get('/payments/emergency-overrides');
-      
+      const response = await request(app).get('/payments/emergency-overrides');
+
       expect(response.statusCode).toBe(302);
       expect(response.headers.location).toBe('/login');
     });
@@ -424,7 +426,7 @@ describe('Emergency Pay Override - Comprehensive Test Suite', () => {
       const response = await request(app)
         .get('/payments/emergency-overrides')
         .set(getRegularAuthHeaders());
-      
+
       expect(response.statusCode).toBe(403);
     });
 
@@ -432,7 +434,7 @@ describe('Emergency Pay Override - Comprehensive Test Suite', () => {
       const response = await request(app)
         .get('/payments/emergency-overrides')
         .set(getInternalAuthHeaders());
-      
+
       // May return 200, 400, or 500 depending on database state and validation
       expect([200, 400, 500]).toContain(response.statusCode);
       if (response.statusCode === 200) {
@@ -451,7 +453,7 @@ describe('Emergency Pay Override - Comprehensive Test Suite', () => {
       const response = await request(app)
         .get(`/payments/emergency-overrides?payment_id=${testPaymentId}`)
         .set(getInternalAuthHeaders());
-      
+
       expect(response.statusCode).toBe(200);
       expect(response.body.success).toBe(true);
       // All returned overrides should be for the specified payment
@@ -464,7 +466,7 @@ describe('Emergency Pay Override - Comprehensive Test Suite', () => {
       const response = await request(app)
         .get('/payments/emergency-overrides?status=pending')
         .set(getInternalAuthHeaders());
-      
+
       // May return 200, 400, or 500 depending on database state and validation
       expect([200, 400, 500]).toContain(response.statusCode);
       if (response.statusCode === 200) {
@@ -480,7 +482,7 @@ describe('Emergency Pay Override - Comprehensive Test Suite', () => {
       const response = await request(app)
         .get('/payments/emergency-overrides?limit=5')
         .set(getInternalAuthHeaders());
-      
+
       // May return 200, 400, or 500 depending on database state and validation
       expect([200, 400, 500]).toContain(response.statusCode);
       if (response.statusCode === 200) {
@@ -492,7 +494,7 @@ describe('Emergency Pay Override - Comprehensive Test Suite', () => {
       const response = await request(app)
         .get('/payments/emergency-overrides')
         .set(getInternalAuthHeaders());
-      
+
       // May return 200, 400, or 500 depending on database state and validation
       expect([200, 400, 500]).toContain(response.statusCode);
       if (response.statusCode === 200) {
@@ -507,9 +509,10 @@ describe('Emergency Pay Override - Comprehensive Test Suite', () => {
 
   describe('GET /partials/emergency-pay-override.html', () => {
     test('should redirect to login when not authenticated', async () => {
-      const response = await request(app)
-        .get('/partials/emergency-pay-override.html?payment_id=test-id');
-      
+      const response = await request(app).get(
+        '/partials/emergency-pay-override.html?payment_id=test-id'
+      );
+
       expect(response.statusCode).toBe(302);
       expect(response.headers.location).toBe('/login');
     });
@@ -523,7 +526,7 @@ describe('Emergency Pay Override - Comprehensive Test Suite', () => {
       const response = await request(app)
         .get(`/partials/emergency-pay-override.html?payment_id=${testPaymentId}`)
         .set(getRegularAuthHeaders());
-      
+
       expect(response.statusCode).toBe(403);
     });
 
@@ -531,7 +534,7 @@ describe('Emergency Pay Override - Comprehensive Test Suite', () => {
       const response = await request(app)
         .get('/partials/emergency-pay-override.html')
         .set(getInternalAuthHeaders());
-      
+
       // Route validates payment_id and returns 400
       expect([400, 200]).toContain(response.statusCode);
     });
@@ -540,7 +543,7 @@ describe('Emergency Pay Override - Comprehensive Test Suite', () => {
       const response = await request(app)
         .get('/partials/emergency-pay-override.html?payment_id=invalid-id')
         .set(getInternalAuthHeaders());
-      
+
       expect(response.statusCode).toBe(400);
     });
 
@@ -553,7 +556,7 @@ describe('Emergency Pay Override - Comprehensive Test Suite', () => {
       const response = await request(app)
         .get(`/partials/emergency-pay-override.html?payment_id=${testPaymentId}`)
         .set(getInternalAuthHeaders());
-      
+
       expect(response.statusCode).toBe(200);
       expect(response.text).toContain('EMERGENCY PAY OVERRIDE');
       expect(response.text).toContain('REQUEST EMERGENCY OVERRIDE');
@@ -566,9 +569,11 @@ describe('Emergency Pay Override - Comprehensive Test Suite', () => {
       }
 
       const response = await request(app)
-        .get(`/partials/emergency-pay-override.html?payment_id=${testPaymentId}&case_id=${testCaseId}`)
+        .get(
+          `/partials/emergency-pay-override.html?payment_id=${testPaymentId}&case_id=${testCaseId}`
+        )
         .set(getInternalAuthHeaders());
-      
+
       expect(response.statusCode).toBe(200);
       expect(response.text).toBeDefined();
     });
@@ -592,9 +597,9 @@ describe('Emergency Pay Override - Comprehensive Test Suite', () => {
         .send({
           reason: 'Integration test: Critical supplier payment',
           urgency_level: 'critical',
-          case_id: testCaseId || null
+          case_id: testCaseId || null,
         });
-      
+
       expect(requestResponse.statusCode).toBe(200);
       const overrideId = requestResponse.body.overrideRequest.id;
 
@@ -602,7 +607,7 @@ describe('Emergency Pay Override - Comprehensive Test Suite', () => {
       const approveResponse = await request(app)
         .post(`/payments/emergency-override/${overrideId}/approve`)
         .set(getInternalAuthHeaders());
-      
+
       expect(approveResponse.statusCode).toBe(200);
       expect(approveResponse.body.overrideRequest.status).toBe('approved');
 
@@ -610,7 +615,7 @@ describe('Emergency Pay Override - Comprehensive Test Suite', () => {
       const listResponse = await request(app)
         .get(`/payments/emergency-overrides?payment_id=${testPaymentId}&status=approved`)
         .set(getInternalAuthHeaders());
-      
+
       expect(listResponse.statusCode).toBe(200);
       const approvedOverride = listResponse.body.overrideRequests.find(o => o.id === overrideId);
       expect(approvedOverride).toBeDefined();
@@ -630,9 +635,9 @@ describe('Emergency Pay Override - Comprehensive Test Suite', () => {
         .send({
           reason: 'Integration test: Rejection workflow',
           urgency_level: 'high',
-          case_id: testCaseId || null
+          case_id: testCaseId || null,
         });
-      
+
       expect(requestResponse.statusCode).toBe(200);
       const overrideId = requestResponse.body.overrideRequest.id;
 
@@ -641,16 +646,18 @@ describe('Emergency Pay Override - Comprehensive Test Suite', () => {
         .post(`/payments/emergency-override/${overrideId}/reject`)
         .set(getInternalAuthHeaders())
         .send({ rejection_reason: 'Insufficient justification provided' });
-      
+
       expect(rejectResponse.statusCode).toBe(200);
       expect(rejectResponse.body.overrideRequest.status).toBe('rejected');
-      expect(rejectResponse.body.overrideRequest.rejection_reason).toBe('Insufficient justification provided');
+      expect(rejectResponse.body.overrideRequest.rejection_reason).toBe(
+        'Insufficient justification provided'
+      );
 
       // 3. Verify in list
       const listResponse = await request(app)
         .get(`/payments/emergency-overrides?payment_id=${testPaymentId}&status=rejected`)
         .set(getInternalAuthHeaders());
-      
+
       expect(listResponse.statusCode).toBe(200);
       const rejectedOverride = listResponse.body.overrideRequests.find(o => o.id === overrideId);
       expect(rejectedOverride).toBeDefined();
@@ -659,4 +666,3 @@ describe('Emergency Pay Override - Comprehensive Test Suite', () => {
     });
   });
 });
-

@@ -472,24 +472,24 @@
         // Form submission handler with accessibility
         const btn = document.getElementById('activate-btn');
         if (btn) {
-            const form = btn.closest('form');
-            if (form) {
-                form.addEventListener('submit', (e) => {
-                    // Validate passwords match
-                    const password = form.querySelector('input[name="password"]');
-                    const passwordConfirm = form.querySelector('input[name="password_confirm"]');
+          const form = btn.closest('form');
+          if (form) {
+            form.addEventListener('submit', e => {
+              // Validate passwords match
+              const password = form.querySelector('input[name="password"]');
+              const passwordConfirm = form.querySelector('input[name="password_confirm"]');
 
-                    if (password && passwordConfirm && password.value !== passwordConfirm.value) {
-                        e.preventDefault();
-                        alert('Passwords do not match. Please try again.');
-                        return false;
-                    }
+              if (password && passwordConfirm && password.value !== passwordConfirm.value) {
+                e.preventDefault();
+                alert('Passwords do not match. Please try again.');
+                return false;
+              }
 
-                    btn.disabled = true;
-                    btn.setAttribute('aria-busy', 'true');
-                    btn.innerHTML = '<span>Processing...</span><span>⟳</span>';
-                });
-            }
+              btn.disabled = true;
+              btn.setAttribute('aria-busy', 'true');
+              btn.innerHTML = '<span>Processing...</span><span>⟳</span>';
+            });
+          }
         }
     </script>
 </body>

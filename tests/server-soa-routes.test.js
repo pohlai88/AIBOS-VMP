@@ -1,6 +1,6 @@
 /**
  * SOA Reconciliation Route Tests
- * 
+ *
  * Tests all SOA reconciliation routes (18 routes)
  * Covers authentication, authorization, validation, and business logic
  */
@@ -19,7 +19,7 @@ import {
   createTestInvoice,
   createTestSOAMatch,
   createTestSOAIssue,
-  cleanupTestData
+  cleanupTestData,
 } from './setup/test-helpers.js';
 
 describe('SOA Reconciliation Routes', () => {
@@ -36,32 +36,32 @@ describe('SOA Reconciliation Routes', () => {
 
   beforeEach(async () => {
     process.env.NODE_ENV = 'test';
-    
+
     supabase = createTestSupabaseClient();
-    
+
     // Create test data
     testVendor = await createTestVendor(supabase);
     testUser = await createTestUser(supabase, { vendor_id: testVendor.id });
     testSOACase = await createTestSOACase(supabase, {
       vendorId: testVendor.id,
-      companyId: null
+      companyId: null,
     });
     testSOALine = await createTestSOALine(supabase, {
       caseId: testSOACase.id,
-      vendorId: testVendor.id
+      vendorId: testVendor.id,
     });
     testInvoice = await createTestInvoice(supabase, {
-      vendorId: testVendor.id
+      vendorId: testVendor.id,
     });
     testMatch = await createTestSOAMatch(supabase, {
       soaItemId: testSOALine.id,
-      invoiceId: testInvoice.id
+      invoiceId: testInvoice.id,
     });
     testIssue = await createTestSOAIssue(supabase, {
       caseId: testSOACase.id,
-      soaItemId: testSOALine.id
+      soaItemId: testSOALine.id,
     });
-    
+
     // Create test session
     testSession = await createTestSession(testUser.id, testVendor.id);
     authHeaders = getTestAuthHeaders(testUser.id, testVendor.id);
@@ -96,16 +96,12 @@ describe('SOA Reconciliation Routes', () => {
     });
 
     test('should return 400 for invalid case ID', async () => {
-      const response = await request(app)
-        .get('/soa/recon/invalid-id')
-        .set(authHeaders);
+      const response = await request(app).get('/soa/recon/invalid-id').set(authHeaders);
       expect(response.statusCode).toBe(400);
     });
 
     test('should return 200 and render SOA reconciliation page', async () => {
-      const response = await request(app)
-        .get(`/soa/recon/${testSOACase.id}`)
-        .set(authHeaders);
+      const response = await request(app).get(`/soa/recon/${testSOACase.id}`).set(authHeaders);
       expect(response.statusCode).toBe(200);
       expect(response.text).toContain('<!doctype html>');
     });
@@ -146,33 +142,25 @@ describe('SOA Reconciliation Routes', () => {
 
   describe('POST /soa/match', () => {
     test('should return 401 for unauthenticated requests', async () => {
-      const response = await request(app)
-        .post('/soa/match')
-        .send({
-          soaItemId: testSOALine.id,
-          invoiceId: testInvoice.id
-        });
+      const response = await request(app).post('/soa/match').send({
+        soaItemId: testSOALine.id,
+        invoiceId: testInvoice.id,
+      });
       expect(response.statusCode).toBe(401);
     });
 
     test('should return 400 for missing soaItemId', async () => {
-      const response = await request(app)
-        .post('/soa/match')
-        .set(authHeaders)
-        .send({
-          invoiceId: testInvoice.id
-        });
+      const response = await request(app).post('/soa/match').set(authHeaders).send({
+        invoiceId: testInvoice.id,
+      });
       expect(response.statusCode).toBe(400);
       expect(response.body.error).toContain('soaItemId');
     });
 
     test('should return 400 for missing invoiceId', async () => {
-      const response = await request(app)
-        .post('/soa/match')
-        .set(authHeaders)
-        .send({
-          soaItemId: testSOALine.id
-        });
+      const response = await request(app).post('/soa/match').set(authHeaders).send({
+        soaItemId: testSOALine.id,
+      });
       expect(response.statusCode).toBe(400);
       expect(response.body.error).toContain('invoiceId');
     });
@@ -182,7 +170,7 @@ describe('SOA Reconciliation Routes', () => {
       const newSOALine = await createTestSOALine(supabase, {
         caseId: testSOACase.id,
         vendorId: testVendor.id,
-        status: 'extracted'
+        status: 'extracted',
       });
 
       const response = await request(app)
@@ -194,8 +182,8 @@ describe('SOA Reconciliation Routes', () => {
           matchData: {
             matchType: 'deterministic',
             isExactMatch: true,
-            confidence: 1.0
-          }
+            confidence: 1.0,
+          },
         });
 
       expect(response.statusCode).toBe(200);
@@ -213,15 +201,12 @@ describe('SOA Reconciliation Routes', () => {
 
   describe('POST /soa/match/:matchId/confirm', () => {
     test('should return 401 for unauthenticated requests', async () => {
-      const response = await request(app)
-        .post(`/soa/match/${testMatch.id}/confirm`);
+      const response = await request(app).post(`/soa/match/${testMatch.id}/confirm`);
       expect(response.statusCode).toBe(401);
     });
 
     test('should return 400 for invalid match ID', async () => {
-      const response = await request(app)
-        .post('/soa/match/invalid-id/confirm')
-        .set(authHeaders);
+      const response = await request(app).post('/soa/match/invalid-id/confirm').set(authHeaders);
       expect(response.statusCode).toBe(400);
     });
 
@@ -243,15 +228,12 @@ describe('SOA Reconciliation Routes', () => {
 
   describe('POST /soa/match/:matchId/reject', () => {
     test('should return 401 for unauthenticated requests', async () => {
-      const response = await request(app)
-        .post(`/soa/match/${testMatch.id}/reject`);
+      const response = await request(app).post(`/soa/match/${testMatch.id}/reject`);
       expect(response.statusCode).toBe(401);
     });
 
     test('should return 400 for invalid match ID', async () => {
-      const response = await request(app)
-        .post('/soa/match/invalid-id/reject')
-        .set(authHeaders);
+      const response = await request(app).post('/soa/match/invalid-id/reject').set(authHeaders);
       expect(response.statusCode).toBe(400);
     });
 
@@ -260,7 +242,7 @@ describe('SOA Reconciliation Routes', () => {
         .post(`/soa/match/${testMatch.id}/reject`)
         .set(authHeaders)
         .send({
-          reason: 'Test rejection reason'
+          reason: 'Test rejection reason',
         });
 
       expect(response.statusCode).toBe(200);
@@ -276,9 +258,7 @@ describe('SOA Reconciliation Routes', () => {
 
   describe('POST /soa/match/auto', () => {
     test('should return 401 for unauthenticated requests', async () => {
-      const response = await request(app)
-        .post('/soa/match/auto')
-        .send({ caseId: testSOACase.id });
+      const response = await request(app).post('/soa/match/auto').send({ caseId: testSOACase.id });
       expect(response.statusCode).toBe(401);
     });
 
@@ -295,7 +275,7 @@ describe('SOA Reconciliation Routes', () => {
       const matchingInvoice = await createTestInvoice(supabase, {
         vendorId: testVendor.id,
         invoice_number: testSOALine.invoice_number,
-        total_amount: testSOALine.amount
+        total_amount: testSOALine.amount,
       });
 
       const response = await request(app)
@@ -319,9 +299,7 @@ describe('SOA Reconciliation Routes', () => {
 
   describe('POST /soa/resolve', () => {
     test('should return 401 for unauthenticated requests', async () => {
-      const response = await request(app)
-        .post('/soa/resolve')
-        .send({ issueId: testIssue.id });
+      const response = await request(app).post('/soa/resolve').send({ issueId: testIssue.id });
       expect(response.statusCode).toBe(401);
     });
 
@@ -341,8 +319,8 @@ describe('SOA Reconciliation Routes', () => {
           issueId: testIssue.id,
           resolutionData: {
             notes: 'Test resolution',
-            action: 'corrected'
-          }
+            action: 'corrected',
+          },
         });
 
       expect(response.statusCode).toBe(200);
@@ -358,9 +336,7 @@ describe('SOA Reconciliation Routes', () => {
 
   describe('POST /soa/signoff', () => {
     test('should return 401 for unauthenticated requests', async () => {
-      const response = await request(app)
-        .post('/soa/signoff')
-        .send({ caseId: testSOACase.id });
+      const response = await request(app).post('/soa/signoff').send({ caseId: testSOACase.id });
       expect(response.statusCode).toBe(401);
     });
 
@@ -380,8 +356,8 @@ describe('SOA Reconciliation Routes', () => {
           caseId: testSOACase.id,
           acknowledgementData: {
             type: 'full',
-            notes: 'Test sign-off'
-          }
+            notes: 'Test sign-off',
+          },
         });
 
       expect(response.statusCode).toBe(200);
@@ -396,15 +372,12 @@ describe('SOA Reconciliation Routes', () => {
 
   describe('POST /api/soa/:statementId/recompute', () => {
     test('should return 401 for unauthenticated requests', async () => {
-      const response = await request(app)
-        .post(`/api/soa/${testSOACase.id}/recompute`);
+      const response = await request(app).post(`/api/soa/${testSOACase.id}/recompute`);
       expect(response.statusCode).toBe(401);
     });
 
     test('should return 400 for invalid statement ID', async () => {
-      const response = await request(app)
-        .post('/api/soa/invalid-id/recompute')
-        .set(authHeaders);
+      const response = await request(app).post('/api/soa/invalid-id/recompute').set(authHeaders);
       expect(response.statusCode).toBe(400);
     });
 
@@ -424,15 +397,12 @@ describe('SOA Reconciliation Routes', () => {
 
   describe('POST /api/soa/:statementId/signoff', () => {
     test('should return 401 for unauthenticated requests', async () => {
-      const response = await request(app)
-        .post(`/api/soa/${testSOACase.id}/signoff`);
+      const response = await request(app).post(`/api/soa/${testSOACase.id}/signoff`);
       expect(response.statusCode).toBe(401);
     });
 
     test('should return 400 for invalid statement ID', async () => {
-      const response = await request(app)
-        .post('/api/soa/invalid-id/signoff')
-        .set(authHeaders);
+      const response = await request(app).post('/api/soa/invalid-id/signoff').set(authHeaders);
       expect(response.statusCode).toBe(400);
     });
 
@@ -453,22 +423,17 @@ describe('SOA Reconciliation Routes', () => {
 
   describe('GET /api/soa/:statementId/export', () => {
     test('should return 401 for unauthenticated requests', async () => {
-      const response = await request(app)
-        .get(`/api/soa/${testSOACase.id}/export`);
+      const response = await request(app).get(`/api/soa/${testSOACase.id}/export`);
       expect(response.statusCode).toBe(401);
     });
 
     test('should return 400 for invalid statement ID', async () => {
-      const response = await request(app)
-        .get('/api/soa/invalid-id/export')
-        .set(authHeaders);
+      const response = await request(app).get('/api/soa/invalid-id/export').set(authHeaders);
       expect(response.statusCode).toBe(400);
     });
 
     test('should export SOA data successfully', async () => {
-      const response = await request(app)
-        .get(`/api/soa/${testSOACase.id}/export`)
-        .set(authHeaders);
+      const response = await request(app).get(`/api/soa/${testSOACase.id}/export`).set(authHeaders);
 
       expect(response.statusCode).toBe(200);
       expect(response.body).toHaveProperty('summary');
@@ -482,22 +447,17 @@ describe('SOA Reconciliation Routes', () => {
 
   describe('GET /soa/:statementId/lines', () => {
     test('should return 401 for unauthenticated requests', async () => {
-      const response = await request(app)
-        .get(`/soa/${testSOACase.id}/lines`);
+      const response = await request(app).get(`/soa/${testSOACase.id}/lines`);
       expect(response.statusCode).toBe(401);
     });
 
     test('should return 400 for invalid statement ID', async () => {
-      const response = await request(app)
-        .get('/soa/invalid-id/lines')
-        .set(authHeaders);
+      const response = await request(app).get('/soa/invalid-id/lines').set(authHeaders);
       expect(response.statusCode).toBe(400);
     });
 
     test('should return SOA lines successfully', async () => {
-      const response = await request(app)
-        .get(`/soa/${testSOACase.id}/lines`)
-        .set(authHeaders);
+      const response = await request(app).get(`/soa/${testSOACase.id}/lines`).set(authHeaders);
 
       expect(response.statusCode).toBe(200);
     });
@@ -518,8 +478,9 @@ describe('SOA Reconciliation Routes', () => {
 
   describe('GET /soa/:statementId/lines/:lineId/focus', () => {
     test('should return 401 for unauthenticated requests', async () => {
-      const response = await request(app)
-        .get(`/soa/${testSOACase.id}/lines/${testSOALine.id}/focus`);
+      const response = await request(app).get(
+        `/soa/${testSOACase.id}/lines/${testSOALine.id}/focus`
+      );
       expect(response.statusCode).toBe(401);
     });
 
@@ -545,15 +506,12 @@ describe('SOA Reconciliation Routes', () => {
 
   describe('POST /api/soa/lines/:lineId/match', () => {
     test('should return 401 for unauthenticated requests', async () => {
-      const response = await request(app)
-        .post(`/api/soa/lines/${testSOALine.id}/match`);
+      const response = await request(app).post(`/api/soa/lines/${testSOALine.id}/match`);
       expect(response.statusCode).toBe(401);
     });
 
     test('should return 400 for invalid line ID', async () => {
-      const response = await request(app)
-        .post('/api/soa/lines/invalid-id/match')
-        .set(authHeaders);
+      const response = await request(app).post('/api/soa/lines/invalid-id/match').set(authHeaders);
       expect(response.statusCode).toBe(400);
     });
 
@@ -561,7 +519,7 @@ describe('SOA Reconciliation Routes', () => {
       const newSOALine = await createTestSOALine(supabase, {
         caseId: testSOACase.id,
         vendorId: testVendor.id,
-        status: 'extracted'
+        status: 'extracted',
       });
 
       const response = await request(app)
@@ -571,7 +529,7 @@ describe('SOA Reconciliation Routes', () => {
           case_id: testSOACase.id,
           ledger_line_id: testInvoice.id,
           matched_amount: testSOALine.amount,
-          match_type: 'EXACT'
+          match_type: 'EXACT',
         });
 
       expect(response.statusCode).toBe(200);
@@ -587,8 +545,7 @@ describe('SOA Reconciliation Routes', () => {
 
   describe('POST /api/soa/lines/:lineId/dispute', () => {
     test('should return 401 for unauthenticated requests', async () => {
-      const response = await request(app)
-        .post(`/api/soa/lines/${testSOALine.id}/dispute`);
+      const response = await request(app).post(`/api/soa/lines/${testSOALine.id}/dispute`);
       expect(response.statusCode).toBe(401);
     });
 
@@ -606,7 +563,7 @@ describe('SOA Reconciliation Routes', () => {
         .send({
           case_id: testSOACase.id,
           issue_type: 'amount_mismatch',
-          description: 'Test dispute'
+          description: 'Test dispute',
         });
 
       expect(response.statusCode).toBe(200);
@@ -619,8 +576,7 @@ describe('SOA Reconciliation Routes', () => {
 
   describe('POST /api/soa/lines/:lineId/resolve', () => {
     test('should return 401 for unauthenticated requests', async () => {
-      const response = await request(app)
-        .post(`/api/soa/lines/${testSOALine.id}/resolve`);
+      const response = await request(app).post(`/api/soa/lines/${testSOALine.id}/resolve`);
       expect(response.statusCode).toBe(401);
     });
 
@@ -637,7 +593,7 @@ describe('SOA Reconciliation Routes', () => {
         .set(authHeaders)
         .send({
           case_id: testSOACase.id,
-          resolution_notes: 'Test resolution'
+          resolution_notes: 'Test resolution',
         });
 
       expect(response.statusCode).toBe(200);
@@ -650,8 +606,7 @@ describe('SOA Reconciliation Routes', () => {
 
   describe('POST /api/soa/lines/:lineId/evidence', () => {
     test('should return 401 for unauthenticated requests', async () => {
-      const response = await request(app)
-        .post(`/api/soa/lines/${testSOALine.id}/evidence`);
+      const response = await request(app).post(`/api/soa/lines/${testSOALine.id}/evidence`);
       expect(response.statusCode).toBe(401);
     });
 
@@ -666,4 +621,3 @@ describe('SOA Reconciliation Routes', () => {
     // This would require additional test setup for file uploads
   });
 });
-

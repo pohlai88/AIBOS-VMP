@@ -1,12 +1,12 @@
 /**
  * RLS Leak Test Suite
- * 
+ *
  * Tests that Row-Level Security (RLS) policies enforce:
  * 1. Vendor Isolation: Vendor A cannot access Vendor B data
  * 2. Tenant Isolation: Tenant A cannot access Tenant B data
  * 3. Cascade Security: Messages/evidence inherit case access control
  * 4. Anti-Enumeration: Guessed UUIDs return empty results (not 403)
- * 
+ *
  * These tests validate "Tenant Isolation Is Absolute" principle.
  */
 
@@ -28,14 +28,11 @@ let vendorBCaseId;
  * Helper: Create authenticated Supabase client for a user
  */
 async function createAuthenticatedClient(email, password) {
-  const supabase = createClient(
-    process.env.SUPABASE_URL,
-    process.env.SUPABASE_ANON_KEY
-  );
+  const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY);
 
   const { data, error } = await supabase.auth.signInWithPassword({
     email,
-    password
+    password,
   });
 
   if (error) {
@@ -122,7 +119,7 @@ describe('RLS: Vendor Isolation', () => {
         case_id: vendorBCaseId,
         sender_type: 'vendor',
         body: 'Unauthorized message',
-        channel_source: 'web'
+        channel_source: 'web',
       })
       .select();
 
@@ -148,9 +145,7 @@ describe('RLS: Tenant Isolation', () => {
     const vendorATenantId = vendorAData?.tenant_id;
 
     // Try to read ALL companies (should only see own tenant)
-    const { data: companies } = await vendorAClient
-      .from('vmp_companies')
-      .select('tenant_id');
+    const { data: companies } = await vendorAClient.from('vmp_companies').select('tenant_id');
 
     // All returned companies should be in vendor A's tenant
     const otherTenantCompanies = companies.filter(c => c.tenant_id !== vendorATenantId);
@@ -167,9 +162,7 @@ describe('RLS: Tenant Isolation', () => {
     const vendorATenantId = vendorAData?.tenant_id;
 
     // Try to read ALL vendors
-    const { data: vendors } = await vendorAClient
-      .from('vmp_vendors')
-      .select('tenant_id');
+    const { data: vendors } = await vendorAClient.from('vmp_vendors').select('tenant_id');
 
     // All returned vendors should be in vendor A's tenant
     const otherTenantVendors = vendors.filter(v => v.tenant_id !== vendorATenantId);
@@ -209,7 +202,7 @@ describe('RLS: Cascade Security', () => {
         case_id: vendorACaseId,
         file_name: 'test-evidence.pdf',
         storage_path: '/test/path.pdf',
-        uploaded_by_user_id: vendorACaseId // Use any UUID for test
+        uploaded_by_user_id: vendorACaseId, // Use any UUID for test
       })
       .select();
 
@@ -230,7 +223,7 @@ describe('RLS: Cascade Security', () => {
         case_id: vendorBCaseId,
         file_name: 'unauthorized.pdf',
         storage_path: '/test/path.pdf',
-        uploaded_by_user_id: vendorACaseId
+        uploaded_by_user_id: vendorACaseId,
       })
       .select();
 
@@ -276,16 +269,14 @@ describe('RLS: Anti-Enumeration', () => {
 
 describe('RLS: Helper Functions', () => {
   it('get_user_vendor_id returns correct vendor_id', async () => {
-    const { data } = await vendorAClient
-      .rpc('get_user_vendor_id');
+    const { data } = await vendorAClient.rpc('get_user_vendor_id');
 
     expect(data).toBeTruthy();
     expect(typeof data).toBe('string'); // UUID
   });
 
   it('get_user_company_ids returns array of company UUIDs', async () => {
-    const { data } = await vendorAClient
-      .rpc('get_user_company_ids');
+    const { data } = await vendorAClient.rpc('get_user_company_ids');
 
     expect(Array.isArray(data)).toBe(true);
     // Should have at least one company
@@ -293,15 +284,13 @@ describe('RLS: Helper Functions', () => {
   });
 
   it('can_access_case returns true for own cases', async () => {
-    const { data } = await vendorAClient
-      .rpc('can_access_case', { p_case_id: vendorACaseId });
+    const { data } = await vendorAClient.rpc('can_access_case', { p_case_id: vendorACaseId });
 
     expect(data).toBe(true);
   });
 
   it('can_access_case returns false for other vendor cases', async () => {
-    const { data } = await vendorAClient
-      .rpc('can_access_case', { p_case_id: vendorBCaseId });
+    const { data } = await vendorAClient.rpc('can_access_case', { p_case_id: vendorBCaseId });
 
     expect(data).toBe(false);
   });

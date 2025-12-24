@@ -1722,12 +1722,12 @@ $ audit.read --id CASE-8192
   </dialog>
 
   <script>
-    (function(){
+    (function () {
       // ===== Theme =====
       const root = document.documentElement;
       const themeBtn = document.getElementById('themeBtn');
       const saved = localStorage.getItem('theme');
-      if(saved) root.setAttribute('data-theme', saved);
+      if (saved) root.setAttribute('data-theme', saved);
       themeBtn.addEventListener('click', () => {
         const now = root.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
         root.setAttribute('data-theme', now);
@@ -1735,24 +1735,27 @@ $ audit.read --id CASE-8192
       });
 
       // ===== Smooth scrolling =====
-      document.querySelectorAll('a[href^="#"]').forEach(a=>{
-        a.addEventListener('click', (e)=>{
+      document.querySelectorAll('a[href^="#"]').forEach(a => {
+        a.addEventListener('click', e => {
           const id = a.getAttribute('href');
-          if(!id || id === '#') return;
+          if (!id || id === '#') return;
           const el = document.querySelector(id);
-          if(!el) return;
+          if (!el) return;
           e.preventDefault();
-          el.scrollIntoView({behavior:'smooth', block:'start'});
+          el.scrollIntoView({ behavior: 'smooth', block: 'start' });
         });
       });
 
       // ===== Reveal animations =====
-      const io = new IntersectionObserver((entries)=>{
-        entries.forEach(en=>{
-          if(en.isIntersecting) en.target.classList.add('is-on');
-        });
-      }, {threshold: 0.12});
-      document.querySelectorAll('.reveal').forEach(el=>io.observe(el));
+      const io = new IntersectionObserver(
+    entries => {
+          entries.forEach(en => {
+            if (en.isIntersecting) en.target.classList.add('is-on');
+          });
+        },
+    { threshold: 0.12 }
+  );
+      document.querySelectorAll('.reveal').forEach(el => io.observe(el));
 
       // ===== Live demo scoring =====
       const tMatch = document.getElementById('tMatch');
@@ -1767,14 +1770,14 @@ $ audit.read --id CASE-8192
 
       const fmtStamp = () => {
         const d = new Date();
-        const iso = d.toISOString().replace('T',' ').slice(0,19) + 'Z';
+        const iso = d.toISOString().replace('T', ' ').slice(0, 19) + 'Z';
         stamp.textContent = 'STAMP: ' + iso;
         termStamp.textContent = 'STAMP: ' + iso;
       };
       fmtStamp();
       setInterval(fmtStamp, 10000);
 
-      function recompute(){
+      function recompute() {
         // Base score is calm-high, toggles influence.
         let s = 62;
         s += tMatch.checked ? 10 : -6;
@@ -1783,9 +1786,9 @@ $ audit.read --id CASE-8192
         s += tAudit.checked ? 12 : -10;
 
         // Add a tiny “interactions” bump for balanced posture:
-        const onCount = [tMatch,tApproval,tTenant,tAudit].filter(t=>t.checked).length;
-        if(onCount === 4) s += 4;
-        if(onCount <= 1) s -= 6;
+        const onCount = [tMatch, tApproval, tTenant, tAudit].filter(t => t.checked).length;
+        if (onCount === 4) s += 4;
+        if (onCount <= 1) s -= 6;
 
         // Clamp
         s = Math.max(20, Math.min(98, s));
@@ -1795,26 +1798,26 @@ $ audit.read --id CASE-8192
 
         // Signal label
         let sig = 'stable';
-        if(s >= 90) sig = 'vault-ready';
-        else if(s >= 78) sig = 'controlled';
-        else if(s >= 62) sig = 'balanced';
+        if (s >= 90) sig = 'vault-ready';
+        else if (s >= 78) sig = 'controlled';
+        else if (s >= 62) sig = 'balanced';
         else sig = 'exposed';
         signal.textContent = 'SIGNAL: ' + sig;
       }
-      [tMatch,tApproval,tTenant,tAudit].forEach(t=>t.addEventListener('change', recompute));
+      [tMatch, tApproval, tTenant, tAudit].forEach(t => t.addEventListener('change', recompute));
       recompute();
 
       // ===== Copy story snippet =====
       const copyBtn = document.getElementById('copyBtn');
       const codeBlock = document.getElementById('codeBlock');
-      copyBtn.addEventListener('click', async ()=>{
-        try{
+      copyBtn.addEventListener('click', async () => {
+        try {
           await navigator.clipboard.writeText(codeBlock.innerText.trim());
           copyBtn.textContent = 'Copied';
-          setTimeout(()=>copyBtn.textContent='Copy', 900);
-        }catch{
+          setTimeout(() => (copyBtn.textContent = 'Copy'), 900);
+        } catch {
           copyBtn.textContent = 'Copy failed';
-          setTimeout(()=>copyBtn.textContent='Copy', 900);
+          setTimeout(() => (copyBtn.textContent = 'Copy'), 900);
         }
       });
 
@@ -1822,9 +1825,9 @@ $ audit.read --id CASE-8192
       const billM = document.getElementById('billM');
       const billY = document.getElementById('billY');
       const amts = Array.from(document.querySelectorAll('.amt'));
-      function setBilling(){
+      function setBilling() {
         const yearly = billY.checked;
-        amts.forEach(el=>{
+        amts.forEach(el => {
           const m = el.getAttribute('data-m');
           const y = el.getAttribute('data-y');
           el.textContent = '$' + (yearly ? y : m);
@@ -1838,12 +1841,12 @@ $ audit.read --id CASE-8192
 
       // ===== Play story (fake) =====
       const playBtn = document.getElementById('playBtn');
-      playBtn.addEventListener('click', ()=>{
+      playBtn.addEventListener('click', () => {
         const seq = [
           'Story: policies applied → exceptions become case notes.',
           'Story: audit narrative links PO/GRN/Invoice/JE.',
           'Story: overrides require "why" + evidence.',
-          'Story: stable migration → confidence → lock-in.'
+          'Story: stable migration → confidence → lock-in.',
         ];
         let i = 0;
         playBtn.disabled = true;
@@ -1851,8 +1854,8 @@ $ audit.read --id CASE-8192
         const tick = () => {
           signal.textContent = 'SIGNAL: ' + seq[i];
           i++;
-          if(i < seq.length) setTimeout(tick, 900);
-          else{
+          if (i < seq.length) setTimeout(tick, 900);
+          else {
             recompute();
             playBtn.disabled = false;
             playBtn.textContent = 'Play 35s story';
@@ -1864,9 +1867,9 @@ $ audit.read --id CASE-8192
       // ===== Demo CTA =====
       const demoBtn = document.getElementById('demoBtn');
       const demoMsg = document.getElementById('demoMsg');
-      demoBtn.addEventListener('click', ()=>{
+      demoBtn.addEventListener('click', () => {
         demoMsg.textContent = 'Request received. We’ll reply with a vault-grade walkthrough.';
-        setTimeout(()=>demoMsg.textContent='', 2600);
+        setTimeout(() => (demoMsg.textContent = ''), 2600);
       });
 
       // ===== Command palette =====
@@ -1877,31 +1880,30 @@ $ audit.read --id CASE-8192
       const cmdList = document.getElementById('cmdList');
 
       const items = [
-        {label:'Platform', href:'#platform', hint:'OS-style modules, audit trails, governance'},
-        {label:'How it works', href:'#how', hint:'Calm steps: map → policy → parallel → lock'},
-        {label:'Trust', href:'#trust', hint:'Tenant isolation, audit narrative, policy-as-config'},
-        {label:'Pricing', href:'#pricing', hint:'Tiers that scale with reality'},
-        {label:'FAQ', href:'#faq', hint:'Real questions finance asks'},
-        {label:'Request demo', href:'#cta', hint:'Talk to us'}
+        { label: 'Platform', href: '#platform', hint: 'OS-style modules, audit trails, governance' },
+        { label: 'How it works', href: '#how', hint: 'Calm steps: map → policy → parallel → lock' },
+        { label: 'Trust', href: '#trust', hint: 'Tenant isolation, audit narrative, policy-as-config' },
+        { label: 'Pricing', href: '#pricing', hint: 'Tiers that scale with reality' },
+        { label: 'FAQ', href: '#faq', hint: 'Real questions finance asks' },
+        { label: 'Request demo', href: '#cta', hint: 'Talk to us' },
       ];
 
-      function renderList(q=''){
+      function renderList(q = '') {
         const query = q.trim().toLowerCase();
-        const filtered = items.filter(it =>
-          !query ||
-          it.label.toLowerCase().includes(query) ||
-          it.hint.toLowerCase().includes(query)
+        const filtered = items.filter(
+      it =>
+            !query || it.label.toLowerCase().includes(query) || it.hint.toLowerCase().includes(query)
         );
 
         cmdList.innerHTML = '';
-        filtered.forEach(it=>{
+        filtered.forEach(it => {
           const b = document.createElement('button');
-          b.type='button';
-          b.className='miniBtn';
-          b.style.width='100%';
-          b.style.borderRadius='14px';
-          b.style.textAlign='left';
-          b.style.padding='12px 12px';
+          b.type = 'button';
+          b.className = 'miniBtn';
+          b.style.width = '100%';
+          b.style.borderRadius = '14px';
+          b.style.textAlign = 'left';
+          b.style.padding = '12px 12px';
           b.innerHTML = `
             <div style="display:flex; align-items:center; justify-content:space-between; gap: 10px;">
               <div>
@@ -1911,41 +1913,41 @@ $ audit.read --id CASE-8192
               <div style="color: rgba(237,237,237,.45); font-size: 12px;" class="mono">${it.href}</div>
             </div>
           `;
-          b.addEventListener('click', ()=>{
+          b.addEventListener('click', () => {
             cmd.close();
-            document.querySelector(it.href)?.scrollIntoView({behavior:'smooth', block:'start'});
+            document.querySelector(it.href)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
           });
           cmdList.appendChild(b);
         });
 
-        if(filtered.length === 0){
+        if (filtered.length === 0) {
           const p = document.createElement('p');
-          p.style.margin='8px 2px 0 2px';
-          p.style.color='rgba(237,237,237,.62)';
-          p.style.fontSize='12px';
-          p.textContent='No matches.';
+          p.style.margin = '8px 2px 0 2px';
+          p.style.color = 'rgba(237,237,237,.62)';
+          p.style.fontSize = '12px';
+          p.textContent = 'No matches.';
           cmdList.appendChild(p);
         }
       }
 
-      function openCmd(){
+      function openCmd() {
         renderList(cmdSearch.value || '');
         cmd.showModal();
-        setTimeout(()=>cmdSearch.focus(), 40);
+        setTimeout(() => cmdSearch.focus(), 40);
       }
 
       cmdBtn.addEventListener('click', openCmd);
-      cmdClose.addEventListener('click', ()=>cmd.close());
-      cmdSearch.addEventListener('input', ()=>renderList(cmdSearch.value));
+      cmdClose.addEventListener('click', () => cmd.close());
+      cmdSearch.addEventListener('input', () => renderList(cmdSearch.value));
 
       // Keyboard shortcut: Ctrl/Cmd + K
-      window.addEventListener('keydown', (e)=>{
+      window.addEventListener('keydown', e => {
         const k = e.key.toLowerCase();
-        if((e.ctrlKey || e.metaKey) && k === 'k'){
+        if ((e.ctrlKey || e.metaKey) && k === 'k') {
           e.preventDefault();
           openCmd();
         }
-        if(k === 'escape' && cmd.open){
+        if (k === 'escape' && cmd.open) {
           cmd.close();
         }
       });

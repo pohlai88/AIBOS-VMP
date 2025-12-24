@@ -114,22 +114,24 @@
 
 <script>
 function toggleGroupCompanies(groupCheckbox, groupId) {
-    const checkboxes = document.querySelectorAll(`.company-checkbox[data-group-id="${groupId}"]`);
-    checkboxes.forEach(cb => cb.checked = groupCheckbox.checked);
+  const checkboxes = document.querySelectorAll(`.company-checkbox[data-group-id="${groupId}"]`);
+  checkboxes.forEach(cb => (cb.checked = groupCheckbox.checked));
 }
 
 // Auto-check parent group if all children are checked
-document.addEventListener('change', (e) => {
-    if (e.target.classList.contains('company-checkbox')) {
-        const groupId = e.target.dataset.groupId;
-        if (groupId) {
-            const groupCb = document.querySelector(`.group-checkbox[data-group-id="${groupId}"]`);
-            const siblings = Array.from(document.querySelectorAll(`.company-checkbox[data-group-id="${groupId}"]`));
-            if (groupCb) {
-                groupCb.checked = siblings.every(cb => cb.checked);
-                groupCb.indeterminate = siblings.some(cb => cb.checked) && !groupCb.checked;
-            }
-        }
+document.addEventListener('change', e => {
+  if (e.target.classList.contains('company-checkbox')) {
+    const groupId = e.target.dataset.groupId;
+    if (groupId) {
+      const groupCb = document.querySelector(`.group-checkbox[data-group-id="${groupId}"]`);
+      const siblings = Array.from(
+        document.querySelectorAll(`.company-checkbox[data-group-id="${groupId}"]`)
+      );
+      if (groupCb) {
+        groupCb.checked = siblings.every(cb => cb.checked);
+        groupCb.indeterminate = siblings.some(cb => cb.checked) && !groupCb.checked;
+      }
     }
+  }
 });
 </script>

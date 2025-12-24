@@ -1,13 +1,13 @@
 #!/usr/bin/env node
 /**
  * Cleanup Script: Remove old custom auth tables and data
- * 
+ *
  * This script:
  * 1. Verifies mapping table exists and is populated
  * 2. Cleans up old password reset tokens
  * 3. Cleans up old sessions
  * 4. Archives vmp_vendor_users (removes password_hash)
- * 
+ *
  * WARNING: This will delete old auth data. Make sure migration is complete.
  */
 
@@ -88,10 +88,7 @@ async function cleanupOldAuth() {
     } else {
       const sessionCount = sessions?.length || 0;
       if (sessionCount > 0) {
-        const { error: deleteError } = await supabase
-          .from('vmp_sessions')
-          .delete()
-          .neq('id', ''); // Delete all
+        const { error: deleteError } = await supabase.from('vmp_sessions').delete().neq('id', ''); // Delete all
 
         if (deleteError) {
           console.error(`   ❌ Failed to delete sessions: ${deleteError.message}`);
@@ -129,8 +126,9 @@ async function cleanupOldAuth() {
     console.log('   ✅ Old sessions cleaned');
     console.log('   ✅ vmp_vendor_users archived (password_hash removed)');
     console.log('\n⚠️  Note: vmp_vendor_users table is kept for foreign key integrity.');
-    console.log('   Use vmp_auth_user_mapping for lookups between auth.users and vmp_vendor_users.');
-
+    console.log(
+      '   Use vmp_auth_user_mapping for lookups between auth.users and vmp_vendor_users.'
+    );
   } catch (error) {
     console.error('\n❌ Cleanup failed:', error);
     throw error;
@@ -142,8 +140,7 @@ cleanupOldAuth()
     console.log('\n✅ Cleanup script completed');
     process.exit(0);
   })
-  .catch((error) => {
+  .catch(error => {
     console.error('\n❌ Cleanup script failed:', error);
     process.exit(1);
   });
-

@@ -12,14 +12,14 @@ describe('Server Branch Coverage - Target 95%', () => {
 
   beforeEach(async () => {
     process.env.NODE_ENV = 'test';
-    
+
     try {
       const testUser = await vmpAdapter.getUserByEmail('admin@acme.com');
       if (testUser) {
         testUserId = testUser.id;
         testVendorId = testUser.vendor_id;
         testSession = await createTestSession(testUserId, testVendorId);
-        
+
         if (testVendorId) {
           const cases = await vmpAdapter.getInbox(testVendorId);
           if (cases && cases.length > 0) {
@@ -61,7 +61,7 @@ describe('Server Branch Coverage - Target 95%', () => {
         display_name: 'Test Display Name',
         vendor_id: testVendorId,
         is_active: true,
-        vmp_vendors: { id: testVendorId, name: 'Test Vendor' }
+        vmp_vendors: { id: testVendorId, name: 'Test Vendor' },
       });
 
       const session = await vmpAdapter.createSession(testUserId, {});
@@ -90,7 +90,7 @@ describe('Server Branch Coverage - Target 95%', () => {
         display_name: null,
         vendor_id: testVendorId,
         is_active: true,
-        vmp_vendors: { id: testVendorId, name: 'Test Vendor' }
+        vmp_vendors: { id: testVendorId, name: 'Test Vendor' },
       });
 
       const session = await vmpAdapter.createSession(testUserId, {});
@@ -212,7 +212,10 @@ describe('Server Branch Coverage - Target 95%', () => {
       const originalGetCaseDetail = vmpAdapter.getCaseDetail;
       vmpAdapter.getCaseDetail = vi.fn().mockResolvedValue(null);
 
-      const response = await authenticatedRequest('get', `/partials/case-checklist.html?case_id=${testCaseId}`);
+      const response = await authenticatedRequest(
+        'get',
+        `/partials/case-checklist.html?case_id=${testCaseId}`
+      );
       expect(response.statusCode).toBe(200);
 
       vmpAdapter.getCaseDetail = originalGetCaseDetail;
@@ -227,11 +230,14 @@ describe('Server Branch Coverage - Target 95%', () => {
       // Mock ensureChecklistSteps to throw, then getChecklistSteps to succeed
       const originalEnsureChecklistSteps = vmpAdapter.ensureChecklistSteps;
       const originalGetChecklistSteps = vmpAdapter.getChecklistSteps;
-      
+
       vmpAdapter.ensureChecklistSteps = vi.fn().mockRejectedValue(new Error('Ensure failed'));
       vmpAdapter.getChecklistSteps = vi.fn().mockResolvedValue([]);
 
-      const response = await authenticatedRequest('get', `/partials/case-checklist.html?case_id=${testCaseId}`);
+      const response = await authenticatedRequest(
+        'get',
+        `/partials/case-checklist.html?case_id=${testCaseId}`
+      );
       expect(response.statusCode).toBe(200);
 
       vmpAdapter.ensureChecklistSteps = originalEnsureChecklistSteps;
@@ -246,11 +252,14 @@ describe('Server Branch Coverage - Target 95%', () => {
 
       const originalEnsureChecklistSteps = vmpAdapter.ensureChecklistSteps;
       const originalGetChecklistSteps = vmpAdapter.getChecklistSteps;
-      
+
       vmpAdapter.ensureChecklistSteps = vi.fn().mockRejectedValue(new Error('Ensure failed'));
       vmpAdapter.getChecklistSteps = vi.fn().mockRejectedValue(new Error('Get failed'));
 
-      const response = await authenticatedRequest('get', `/partials/case-checklist.html?case_id=${testCaseId}`);
+      const response = await authenticatedRequest(
+        'get',
+        `/partials/case-checklist.html?case_id=${testCaseId}`
+      );
       expect(response.statusCode).toBe(200); // Should still render with empty array
 
       vmpAdapter.ensureChecklistSteps = originalEnsureChecklistSteps;
@@ -266,13 +275,18 @@ describe('Server Branch Coverage - Target 95%', () => {
       // Mock getEvidence to return evidence, but getEvidenceSignedUrl to fail
       const originalGetEvidence = vmpAdapter.getEvidence;
       const originalGetEvidenceSignedUrl = vmpAdapter.getEvidenceSignedUrl;
-      
-      vmpAdapter.getEvidence = vi.fn().mockResolvedValue([
-        { id: '1', storage_path: 'path/to/file.pdf' }
-      ]);
-      vmpAdapter.getEvidenceSignedUrl = vi.fn().mockRejectedValue(new Error('URL generation failed'));
 
-      const response = await authenticatedRequest('get', `/partials/case-evidence.html?case_id=${testCaseId}`);
+      vmpAdapter.getEvidence = vi
+        .fn()
+        .mockResolvedValue([{ id: '1', storage_path: 'path/to/file.pdf' }]);
+      vmpAdapter.getEvidenceSignedUrl = vi
+        .fn()
+        .mockRejectedValue(new Error('URL generation failed'));
+
+      const response = await authenticatedRequest(
+        'get',
+        `/partials/case-evidence.html?case_id=${testCaseId}`
+      );
       expect(response.statusCode).toBe(200); // Should handle URL errors gracefully
 
       vmpAdapter.getEvidence = originalGetEvidence;
@@ -294,8 +308,9 @@ describe('Server Branch Coverage - Target 95%', () => {
       const originalGetMessages = vmpAdapter.getMessages;
       vmpAdapter.getMessages = vi.fn().mockRejectedValue(new Error('Get messages failed'));
 
-      const response = await authenticatedRequest('post', `/cases/${testCaseId}/messages`)
-        .send({ body: 'Test message' });
+      const response = await authenticatedRequest('post', `/cases/${testCaseId}/messages`).send({
+        body: 'Test message',
+      });
 
       expect(response.statusCode).toBe(500);
 
@@ -349,7 +364,7 @@ describe('Server Branch Coverage - Target 95%', () => {
       // Mock successful upload but failed refresh
       const originalUploadEvidence = vmpAdapter.uploadEvidence;
       const originalGetEvidence = vmpAdapter.getEvidence;
-      
+
       // Mock upload to succeed quickly
       vmpAdapter.uploadEvidence = vi.fn().mockResolvedValue(undefined);
       // Mock refresh to fail
@@ -377,7 +392,7 @@ describe('Server Branch Coverage - Target 95%', () => {
       // Create a route that throws an error with status
       const testError = new Error('Test error');
       testError.status = 400;
-      
+
       // Error handler should use err.status
       // This is tested indirectly through route errors
       expect(app._router).toBeDefined();
@@ -427,4 +442,3 @@ describe('Server Branch Coverage - Target 95%', () => {
     });
   });
 });
-

@@ -59,14 +59,16 @@
 
 <script>
     function filterActivityLog(portType) {
-        const url = portType 
-            ? `/partials/port-activity-log.html?port_type=${portType}`
-            : '/partials/port-activity-log.html';
-        htmx.ajax('GET', url, { target: '#port-activity-log-container', swap: 'innerHTML' });
-        
-        // Simple tab active state logic
-        event.target.parentElement.querySelectorAll('button').forEach(b => b.classList.remove('bg-[var(--vmp-bg)]', 'shadow-sm'));
-        event.target.classList.add('bg-[var(--vmp-bg)]', 'shadow-sm');
+      const url = portType
+        ? `/partials/port-activity-log.html?port_type=${portType}`
+        : '/partials/port-activity-log.html';
+      htmx.ajax('GET', url, { target: '#port-activity-log-container', swap: 'innerHTML' });
+    
+      // Simple tab active state logic
+      event.target.parentElement
+    .querySelectorAll('button')
+    .forEach(b => b.classList.remove('bg-[var(--vmp-bg)]', 'shadow-sm'));
+      event.target.classList.add('bg-[var(--vmp-bg)]', 'shadow-sm');
     }
 </script>
 {% endblock %}

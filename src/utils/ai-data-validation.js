@@ -21,21 +21,20 @@ export async function validateCaseData(caseData, checklistSteps, evidence) {
       actionableRequests: [],
       escalationRequired: false,
       escalationReason: null,
-      confidence: 1.0
+      confidence: 1.0,
     };
 
     // 1. Check required checklist steps have evidence
-    const requiredSteps = checklistSteps.filter(step => 
-      step.required_evidence_type && 
-      step.status !== 'waived' &&
-      step.status !== 'verified'
+    const requiredSteps = checklistSteps.filter(
+      step => step.required_evidence_type && step.status !== 'waived' && step.status !== 'verified'
     );
 
     for (const step of requiredSteps) {
-      const hasEvidence = evidence.some(ev => 
-        ev.checklist_step_id === step.id && 
-        ev.evidence_type === step.required_evidence_type &&
-        ev.status === 'verified'
+      const hasEvidence = evidence.some(
+        ev =>
+          ev.checklist_step_id === step.id &&
+          ev.evidence_type === step.required_evidence_type &&
+          ev.status === 'verified'
       );
 
       if (!hasEvidence) {
@@ -43,7 +42,7 @@ export async function validateCaseData(caseData, checklistSteps, evidence) {
           stepId: step.id,
           stepLabel: step.label,
           evidenceType: step.required_evidence_type,
-          description: step.description || `Missing ${step.required_evidence_type}`
+          description: step.description || `Missing ${step.required_evidence_type}`,
         });
         validation.isValid = false;
       }
@@ -56,9 +55,7 @@ export async function validateCaseData(caseData, checklistSteps, evidence) {
     // 3. Calculate completeness score
     const totalRequired = requiredSteps.length;
     const completedRequired = totalRequired - validation.missingRequired.length;
-    validation.completeness = totalRequired > 0 
-      ? completedRequired / totalRequired 
-      : 1.0;
+    validation.completeness = totalRequired > 0 ? completedRequired / totalRequired : 1.0;
 
     // 4. Generate actionable requests
     validation.actionableRequests = generateActionableRequests(
@@ -97,7 +94,7 @@ export async function validateCaseData(caseData, checklistSteps, evidence) {
       actionableRequests: [],
       escalationRequired: true,
       escalationReason: 'Validation error occurred',
-      confidence: 0.0
+      confidence: 0.0,
     };
   }
 }
@@ -137,8 +134,8 @@ function validateInvoiceCase(caseData, evidence) {
   const issues = [];
 
   // Check if invoice PDF is present
-  const hasInvoicePDF = evidence.some(ev => 
-    ev.evidence_type === 'invoice_pdf' && ev.status === 'verified'
+  const hasInvoicePDF = evidence.some(
+    ev => ev.evidence_type === 'invoice_pdf' && ev.status === 'verified'
   );
 
   if (!hasInvoicePDF) {
@@ -146,7 +143,7 @@ function validateInvoiceCase(caseData, evidence) {
       type: 'missing_critical_evidence',
       severity: 'high',
       message: 'Invoice PDF is required but not found',
-      evidenceType: 'invoice_pdf'
+      evidenceType: 'invoice_pdf',
     });
   }
 
@@ -166,8 +163,8 @@ function validatePaymentCase(caseData, evidence) {
   const issues = [];
 
   // Check if remittance advice is present
-  const hasRemittance = evidence.some(ev => 
-    ev.evidence_type === 'remittance' && ev.status === 'verified'
+  const hasRemittance = evidence.some(
+    ev => ev.evidence_type === 'remittance' && ev.status === 'verified'
   );
 
   if (!hasRemittance) {
@@ -175,7 +172,7 @@ function validatePaymentCase(caseData, evidence) {
       type: 'missing_critical_evidence',
       severity: 'high',
       message: 'Remittance advice is required but not found',
-      evidenceType: 'remittance'
+      evidenceType: 'remittance',
     });
   }
 
@@ -189,8 +186,8 @@ function validateOnboardingCase(caseData, evidence) {
   const issues = [];
 
   // Check for company registration
-  const hasCompanyReg = evidence.some(ev => 
-    ev.evidence_type === 'company_registration' && ev.status === 'verified'
+  const hasCompanyReg = evidence.some(
+    ev => ev.evidence_type === 'company_registration' && ev.status === 'verified'
   );
 
   if (!hasCompanyReg) {
@@ -198,13 +195,13 @@ function validateOnboardingCase(caseData, evidence) {
       type: 'missing_critical_evidence',
       severity: 'high',
       message: 'Company registration certificate is required',
-      evidenceType: 'company_registration'
+      evidenceType: 'company_registration',
     });
   }
 
   // Check for bank letter
-  const hasBankLetter = evidence.some(ev => 
-    ev.evidence_type === 'bank_letter' && ev.status === 'verified'
+  const hasBankLetter = evidence.some(
+    ev => ev.evidence_type === 'bank_letter' && ev.status === 'verified'
   );
 
   if (!hasBankLetter) {
@@ -212,7 +209,7 @@ function validateOnboardingCase(caseData, evidence) {
       type: 'missing_critical_evidence',
       severity: 'high',
       message: 'Bank letter with account details is required',
-      evidenceType: 'bank_letter'
+      evidenceType: 'bank_letter',
     });
   }
 
@@ -226,8 +223,8 @@ function validateSOACase(caseData, evidence) {
   const issues = [];
 
   // Check if SOA document is present
-  const hasSOADoc = evidence.some(ev => 
-    ev.evidence_type === 'soa_document' && ev.status === 'verified'
+  const hasSOADoc = evidence.some(
+    ev => ev.evidence_type === 'soa_document' && ev.status === 'verified'
   );
 
   if (!hasSOADoc) {
@@ -235,7 +232,7 @@ function validateSOACase(caseData, evidence) {
       type: 'missing_critical_evidence',
       severity: 'high',
       message: 'SOA document is required but not found',
-      evidenceType: 'soa_document'
+      evidenceType: 'soa_document',
     });
   }
 
@@ -258,9 +255,9 @@ function generateActionableRequests(missingRequired, dataIssues, caseData) {
         type: 'upload',
         evidenceType: missing.evidenceType,
         stepId: missing.stepId,
-        description: missing.description
+        description: missing.description,
       },
-      template: getTemplateForEvidenceType(missing.evidenceType)
+      template: getTemplateForEvidenceType(missing.evidenceType),
     });
   }
 
@@ -274,9 +271,9 @@ function generateActionableRequests(missingRequired, dataIssues, caseData) {
         action: {
           type: 'upload',
           evidenceType: issue.evidenceType,
-          description: issue.message
+          description: issue.message,
         },
-        template: getTemplateForEvidenceType(issue.evidenceType)
+        template: getTemplateForEvidenceType(issue.evidenceType),
       });
     } else if (issue.type === 'data_inconsistency') {
       requests.push({
@@ -285,8 +282,8 @@ function generateActionableRequests(missingRequired, dataIssues, caseData) {
         message: issue.message,
         action: {
           type: 'message',
-          suggestedMessage: issue.suggestedMessage || `Please clarify: ${issue.message}`
-        }
+          suggestedMessage: issue.suggestedMessage || `Please clarify: ${issue.message}`,
+        },
       });
     }
   }
@@ -311,7 +308,7 @@ function checkEscalationThreshold(completeness, missingCount, caseData, dataIssu
   if (completeness < 0.3 && daysOld > 7) {
     return {
       required: true,
-      reason: `Case is ${daysOld.toFixed(0)} days old with only ${(completeness * 100).toFixed(0)}% completeness`
+      reason: `Case is ${daysOld.toFixed(0)} days old with only ${(completeness * 100).toFixed(0)}% completeness`,
     };
   }
 
@@ -320,7 +317,7 @@ function checkEscalationThreshold(completeness, missingCount, caseData, dataIssu
   if (criticalIssues.length > 0) {
     return {
       required: true,
-      reason: `${criticalIssues.length} critical data issue(s) detected`
+      reason: `${criticalIssues.length} critical data issue(s) detected`,
     };
   }
 
@@ -331,7 +328,7 @@ function checkEscalationThreshold(completeness, missingCount, caseData, dataIssu
     if (missingPercentage > 0.5) {
       return {
         required: true,
-        reason: `After 14 days, ${(missingPercentage * 100).toFixed(0)}% of required evidence is still missing`
+        reason: `After 14 days, ${(missingPercentage * 100).toFixed(0)}% of required evidence is still missing`,
       };
     }
   }
@@ -342,14 +339,14 @@ function checkEscalationThreshold(completeness, missingCount, caseData, dataIssu
     if (slaDate < new Date() && completeness < 1.0) {
       return {
         required: true,
-        reason: 'SLA deadline passed with incomplete evidence'
+        reason: 'SLA deadline passed with incomplete evidence',
       };
     }
   }
 
   return {
     required: false,
-    reason: null
+    reason: null,
   };
 }
 
@@ -377,50 +374,52 @@ function getTemplateForEvidenceType(evidenceType) {
     invoice_pdf: {
       name: 'Invoice Template',
       description: 'Upload original invoice in PDF format',
-      requirements: ['Invoice number', 'Date', 'Amount', 'Vendor details', 'Line items']
+      requirements: ['Invoice number', 'Date', 'Amount', 'Vendor details', 'Line items'],
     },
     grn: {
       name: 'GRN Template',
       description: 'Upload signed Goods Receipt Note',
-      requirements: ['GRN number', 'Date', 'Received quantity', 'Signature']
+      requirements: ['GRN number', 'Date', 'Received quantity', 'Signature'],
     },
     po_number: {
       name: 'PO Template',
       description: 'Upload Purchase Order document',
-      requirements: ['PO number', 'Date', 'Items', 'Amount']
+      requirements: ['PO number', 'Date', 'Items', 'Amount'],
     },
     remittance: {
       name: 'Remittance Template',
       description: 'Upload bank remittance advice',
-      requirements: ['Payment reference', 'Date', 'Amount', 'Bank details']
+      requirements: ['Payment reference', 'Date', 'Amount', 'Bank details'],
     },
     bank_statement: {
       name: 'Bank Statement Template',
       description: 'Upload bank statement showing transaction',
-      requirements: ['Transaction date', 'Amount', 'Reference number']
+      requirements: ['Transaction date', 'Amount', 'Reference number'],
     },
     company_registration: {
       name: 'Company Registration Template',
       description: 'Upload official company registration certificate',
-      requirements: ['Company name', 'Registration number', 'Issue date', 'Issuing authority']
+      requirements: ['Company name', 'Registration number', 'Issue date', 'Issuing authority'],
     },
     bank_letter: {
       name: 'Bank Letter Template',
       description: 'Upload bank confirmation letter',
-      requirements: ['Account number', 'Bank name', 'Account holder name', 'Bank stamp/signature']
+      requirements: ['Account number', 'Bank name', 'Account holder name', 'Bank stamp/signature'],
     },
     tax_id: {
       name: 'Tax ID Template',
       description: 'Upload Tax ID or VAT certificate',
-      requirements: ['Tax ID number', 'Company name', 'Issue date']
-    }
+      requirements: ['Tax ID number', 'Company name', 'Issue date'],
+    },
   };
 
-  return templates[evidenceType] || {
-    name: 'Document Template',
-    description: 'Upload required document',
-    requirements: []
-  };
+  return (
+    templates[evidenceType] || {
+      name: 'Document Template',
+      description: 'Upload required document',
+      requirements: [],
+    }
+  );
 }
 
 /**
@@ -429,9 +428,10 @@ function getTemplateForEvidenceType(evidenceType) {
 export function generateValidationResponse(validation, caseData) {
   if (validation.isValid && validation.completeness === 1.0) {
     return {
-      message: 'All required documents have been submitted and verified. Your case is ready for processing.',
+      message:
+        'All required documents have been submitted and verified. Your case is ready for processing.',
       type: 'success',
-      actions: []
+      actions: [],
     };
   }
 
@@ -440,29 +440,25 @@ export function generateValidationResponse(validation, caseData) {
 
   // Add messages for missing required items
   if (validation.missingRequired.length > 0) {
-    const missingList = validation.missingRequired
-      .map(m => `- ${m.stepLabel}`)
-      .join('\n');
-    
+    const missingList = validation.missingRequired.map(m => `- ${m.stepLabel}`).join('\n');
+
     messages.push(`The following required documents are still missing:\n${missingList}`);
-    
+
     // Add upload actions
     validation.missingRequired.forEach(missing => {
       actions.push({
         type: 'upload',
         label: `Upload ${missing.stepLabel}`,
         evidenceType: missing.evidenceType,
-        stepId: missing.stepId
+        stepId: missing.stepId,
       });
     });
   }
 
   // Add messages for data issues
   if (validation.dataIssues.length > 0) {
-    const issuesList = validation.dataIssues
-      .map(issue => `- ${issue.message}`)
-      .join('\n');
-    
+    const issuesList = validation.dataIssues.map(issue => `- ${issue.message}`).join('\n');
+
     messages.push(`Please address the following issues:\n${issuesList}`);
   }
 
@@ -472,7 +468,9 @@ export function generateValidationResponse(validation, caseData) {
 
   // Add escalation notice if required
   if (validation.escalationRequired) {
-    messages.push(`\n⚠️ This case has been escalated to a human agent: ${validation.escalationReason}`);
+    messages.push(
+      `\n⚠️ This case has been escalated to a human agent: ${validation.escalationReason}`
+    );
   }
 
   return {
@@ -480,7 +478,6 @@ export function generateValidationResponse(validation, caseData) {
     type: validation.escalationRequired ? 'warning' : 'info',
     actions,
     completeness: validation.completeness,
-    missingCount: validation.missingRequired.length
+    missingCount: validation.missingRequired.length,
   };
 }
-

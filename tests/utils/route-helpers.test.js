@@ -8,13 +8,13 @@ import {
   validateRequiredQuery,
   handleRouteError,
   handlePartialError,
-  asyncRoute
+  asyncRoute,
 } from '../../src/utils/route-helpers.js';
 import {
   ValidationError,
   NotFoundError,
   ForbiddenError,
-  UnauthorizedError
+  UnauthorizedError,
 } from '../../src/utils/errors.js';
 
 describe('Route Helpers', () => {
@@ -101,17 +101,17 @@ describe('Route Helpers', () => {
 
     beforeEach(() => {
       mockReq = {
-        user: null
+        user: null,
       };
       mockRes = {
         status: vi.fn().mockReturnThis(),
-        redirect: vi.fn()
+        redirect: vi.fn(),
       };
     });
 
     test('should return false and redirect when user is not authenticated', () => {
       const result = requireAuth(mockReq, mockRes);
-      
+
       expect(result).toBe(false);
       expect(mockRes.status).toHaveBeenCalledWith(401);
       expect(mockRes.redirect).toHaveBeenCalledWith('/login');
@@ -119,9 +119,9 @@ describe('Route Helpers', () => {
 
     test('should return true when user is authenticated', () => {
       mockReq.user = { id: 'user-123', email: 'test@example.com' };
-      
+
       const result = requireAuth(mockReq, mockRes);
-      
+
       expect(result).toBe(true);
       expect(mockRes.status).not.toHaveBeenCalled();
       expect(mockRes.redirect).not.toHaveBeenCalled();
@@ -129,9 +129,9 @@ describe('Route Helpers', () => {
 
     test('should handle user object with minimal properties', () => {
       mockReq.user = { id: 'user-123' };
-      
+
       const result = requireAuth(mockReq, mockRes);
-      
+
       expect(result).toBe(true);
     });
   });
@@ -145,18 +145,18 @@ describe('Route Helpers', () => {
 
     beforeEach(() => {
       mockReq = {
-        user: null
+        user: null,
       };
       mockRes = {
         status: vi.fn().mockReturnThis(),
         redirect: vi.fn(),
-        render: vi.fn()
+        render: vi.fn(),
       };
     });
 
     test('should redirect to login when user is not authenticated', () => {
       const result = requireInternal(mockReq, mockRes);
-      
+
       expect(result).toBe(false);
       expect(mockRes.status).toHaveBeenCalledWith(401);
       expect(mockRes.redirect).toHaveBeenCalledWith('/login');
@@ -165,24 +165,24 @@ describe('Route Helpers', () => {
 
     test('should return 403 when user is not internal', () => {
       mockReq.user = { id: 'user-123', isInternal: false };
-      
+
       const result = requireInternal(mockReq, mockRes);
-      
+
       expect(result).toBe(false);
       expect(mockRes.status).toHaveBeenCalledWith(403);
       expect(mockRes.render).toHaveBeenCalledWith('pages/error.html', {
         error: {
           status: 403,
-          message: 'Access denied. Internal users only.'
-        }
+          message: 'Access denied. Internal users only.',
+        },
       });
     });
 
     test('should return true when user is internal', () => {
       mockReq.user = { id: 'user-123', isInternal: true };
-      
+
       const result = requireInternal(mockReq, mockRes);
-      
+
       expect(result).toBe(true);
       expect(mockRes.status).not.toHaveBeenCalled();
       expect(mockRes.render).not.toHaveBeenCalled();
@@ -190,34 +190,39 @@ describe('Route Helpers', () => {
 
     test('should use custom template when provided', () => {
       mockReq.user = { id: 'user-123', isInternal: false };
-      
+
       const result = requireInternal(mockReq, mockRes, 'partials/error.html');
-      
+
       expect(result).toBe(false);
       // Partial templates receive error as a string
       expect(mockRes.render).toHaveBeenCalledWith('partials/error.html', {
-        error: 'Access denied. Internal users only.'
+        error: 'Access denied. Internal users only.',
       });
     });
-    
+
     test('should use custom message when provided for partial template', () => {
       mockReq.user = { id: 'user-123', isInternal: false };
-      
-      const result = requireInternal(mockReq, mockRes, 'partials/case_checklist.html', 'Only internal staff can verify evidence');
-      
+
+      const result = requireInternal(
+        mockReq,
+        mockRes,
+        'partials/case_checklist.html',
+        'Only internal staff can verify evidence'
+      );
+
       expect(result).toBe(false);
       expect(mockRes.status).toHaveBeenCalledWith(403);
       // Partial templates receive error as a string
       expect(mockRes.render).toHaveBeenCalledWith('partials/case_checklist.html', {
-        error: 'Only internal staff can verify evidence'
+        error: 'Only internal staff can verify evidence',
       });
     });
 
     test('should handle user without isInternal property', () => {
       mockReq.user = { id: 'user-123' };
-      
+
       const result = requireInternal(mockReq, mockRes);
-      
+
       expect(result).toBe(false);
       expect(mockRes.status).toHaveBeenCalledWith(403);
     });
@@ -233,13 +238,13 @@ describe('Route Helpers', () => {
     beforeEach(() => {
       mockRes = {
         status: vi.fn().mockReturnThis(),
-        render: vi.fn()
+        render: vi.fn(),
       };
     });
 
     test('should return true for valid UUID', () => {
       const result = validateUUIDParam('123e4567-e89b-12d3-a456-426614174000', mockRes);
-      
+
       expect(result).toBe(true);
       expect(mockRes.status).not.toHaveBeenCalled();
       expect(mockRes.render).not.toHaveBeenCalled();
@@ -247,21 +252,21 @@ describe('Route Helpers', () => {
 
     test('should return false and render error for invalid UUID', () => {
       const result = validateUUIDParam('invalid-uuid', mockRes);
-      
+
       expect(result).toBe(false);
       expect(mockRes.status).toHaveBeenCalledWith(400);
       expect(mockRes.render).toHaveBeenCalledWith('pages/error.html', {
         error: {
           status: 400,
-          message: 'Invalid ID format'
-        }
+          message: 'Invalid ID format',
+        },
       });
     });
 
     test('should return false for null or undefined', () => {
       const result1 = validateUUIDParam(null, mockRes);
       const result2 = validateUUIDParam(undefined, mockRes);
-      
+
       expect(result1).toBe(false);
       expect(result2).toBe(false);
       expect(mockRes.status).toHaveBeenCalledWith(400);
@@ -269,13 +274,13 @@ describe('Route Helpers', () => {
 
     test('should use custom template when provided', () => {
       const result = validateUUIDParam('invalid', mockRes, 'partials/error.html');
-      
+
       expect(result).toBe(false);
       expect(mockRes.render).toHaveBeenCalledWith('partials/error.html', {
         error: {
           status: 400,
-          message: 'Invalid ID format'
-        }
+          message: 'Invalid ID format',
+        },
       });
     });
   });
@@ -290,52 +295,60 @@ describe('Route Helpers', () => {
     beforeEach(() => {
       mockRes = {
         status: vi.fn().mockReturnThis(),
-        render: vi.fn()
+        render: vi.fn(),
       };
     });
 
     test('should return true for valid parameter', () => {
       const result = validateRequiredQuery('value', 'param_name', mockRes, 'template.html', {});
-      
+
       expect(result).toBe(true);
       expect(mockRes.status).not.toHaveBeenCalled();
       expect(mockRes.render).not.toHaveBeenCalled();
     });
 
     test('should return false and render error for missing parameter', () => {
-      const result = validateRequiredQuery(null, 'case_id', mockRes, 'partials/template.html', { caseId: null });
-      
+      const result = validateRequiredQuery(null, 'case_id', mockRes, 'partials/template.html', {
+        caseId: null,
+      });
+
       expect(result).toBe(false);
       expect(mockRes.status).toHaveBeenCalledWith(400);
       expect(mockRes.render).toHaveBeenCalledWith('partials/template.html', {
         caseId: null,
-        error: 'case_id is required'
+        error: 'case_id is required',
       });
     });
 
     test('should return false for empty string', () => {
       const result = validateRequiredQuery('', 'param_name', mockRes, 'template.html', {});
-      
+
       expect(result).toBe(false);
       expect(mockRes.status).toHaveBeenCalledWith(400);
     });
 
     test('should return false for whitespace-only string', () => {
       const result = validateRequiredQuery('   ', 'param_name', mockRes, 'template.html', {});
-      
+
       expect(result).toBe(false);
       expect(mockRes.status).toHaveBeenCalledWith(400);
     });
 
     test('should include defaultData in error response', () => {
       const defaultData = { caseId: null, messages: [] };
-      const result = validateRequiredQuery(null, 'case_id', mockRes, 'partials/template.html', defaultData);
-      
+      const result = validateRequiredQuery(
+        null,
+        'case_id',
+        mockRes,
+        'partials/template.html',
+        defaultData
+      );
+
       expect(result).toBe(false);
       expect(mockRes.render).toHaveBeenCalledWith('partials/template.html', {
         caseId: null,
         messages: [],
-        error: 'case_id is required'
+        error: 'case_id is required',
       });
     });
   });
@@ -352,13 +365,13 @@ describe('Route Helpers', () => {
       mockReq = {
         path: '/test/path',
         method: 'GET',
-        user: { id: 'user-123' }
+        user: { id: 'user-123' },
       };
       mockRes = {
         status: vi.fn().mockReturnThis(),
-        render: vi.fn()
+        render: vi.fn(),
       };
-      
+
       // Mock logError (it uses console.error internally)
       consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     });
@@ -370,56 +383,56 @@ describe('Route Helpers', () => {
     test('should handle ValidationError with 400 status', () => {
       const error = new ValidationError('Invalid input', 'field');
       handleRouteError(error, mockReq, mockRes);
-      
+
       expect(mockRes.status).toHaveBeenCalledWith(400);
       expect(mockRes.render).toHaveBeenCalledWith('pages/error.html', {
         error: {
           status: 400,
           message: 'Invalid input',
-          code: 'VALIDATION_ERROR'
-        }
+          code: 'VALIDATION_ERROR',
+        },
       });
     });
 
     test('should handle NotFoundError with 404 status', () => {
       const error = new NotFoundError('Resource');
       handleRouteError(error, mockReq, mockRes);
-      
+
       expect(mockRes.status).toHaveBeenCalledWith(404);
       expect(mockRes.render).toHaveBeenCalledWith('pages/error.html', {
         error: {
           status: 404,
           message: 'Resource not found',
-          code: 'NOT_FOUND'
-        }
+          code: 'NOT_FOUND',
+        },
       });
     });
 
     test('should handle ForbiddenError with 403 status', () => {
       const error = new ForbiddenError();
       handleRouteError(error, mockReq, mockRes);
-      
+
       expect(mockRes.status).toHaveBeenCalledWith(403);
       expect(mockRes.render).toHaveBeenCalledWith('pages/error.html', {
         error: {
           status: 403,
           message: 'Access denied',
-          code: 'FORBIDDEN'
-        }
+          code: 'FORBIDDEN',
+        },
       });
     });
 
     test('should handle UnauthorizedError with 401 status', () => {
       const error = new UnauthorizedError();
       handleRouteError(error, mockReq, mockRes);
-      
+
       expect(mockRes.status).toHaveBeenCalledWith(401);
       expect(mockRes.render).toHaveBeenCalledWith('pages/error.html', {
         error: {
           status: 401,
           message: 'Authentication required',
-          code: 'UNAUTHORIZED'
-        }
+          code: 'UNAUTHORIZED',
+        },
       });
     });
 
@@ -427,41 +440,41 @@ describe('Route Helpers', () => {
       const error = new Error('Custom error');
       error.statusCode = 418;
       handleRouteError(error, mockReq, mockRes);
-      
+
       expect(mockRes.status).toHaveBeenCalledWith(418);
       expect(mockRes.render).toHaveBeenCalledWith('pages/error.html', {
         error: {
           status: 418,
           message: 'Custom error',
-          code: 'INTERNAL_ERROR'
-        }
+          code: 'INTERNAL_ERROR',
+        },
       });
     });
 
     test('should handle generic Error with 500 status', () => {
       const error = new Error('Generic error');
       handleRouteError(error, mockReq, mockRes);
-      
+
       expect(mockRes.status).toHaveBeenCalledWith(500);
       expect(mockRes.render).toHaveBeenCalledWith('pages/error.html', {
         error: {
           status: 500,
           message: 'Generic error',
-          code: 'INTERNAL_ERROR'
-        }
+          code: 'INTERNAL_ERROR',
+        },
       });
     });
 
     test('should use custom template when provided', () => {
       const error = new Error('Test error');
       handleRouteError(error, mockReq, mockRes, 'partials/error.html');
-      
+
       expect(mockRes.render).toHaveBeenCalledWith('partials/error.html', {
         error: {
           status: 500,
           message: 'Test error',
-          code: 'INTERNAL_ERROR'
-        }
+          code: 'INTERNAL_ERROR',
+        },
       });
     });
 
@@ -469,29 +482,29 @@ describe('Route Helpers', () => {
       const error = new Error('Test error');
       const defaultData = { caseId: '123', messages: [] };
       handleRouteError(error, mockReq, mockRes, 'pages/error.html', defaultData);
-      
+
       expect(mockRes.render).toHaveBeenCalledWith('pages/error.html', {
         caseId: '123',
         messages: [],
         error: {
           status: 500,
           message: 'Test error',
-          code: 'INTERNAL_ERROR'
-        }
+          code: 'INTERNAL_ERROR',
+        },
       });
     });
 
     test('should handle error without message', () => {
       const error = new Error();
       handleRouteError(error, mockReq, mockRes);
-      
+
       expect(mockRes.status).toHaveBeenCalledWith(500);
       expect(mockRes.render).toHaveBeenCalledWith('pages/error.html', {
         error: {
           status: 500,
           message: 'An error occurred',
-          code: 'INTERNAL_ERROR'
-        }
+          code: 'INTERNAL_ERROR',
+        },
       });
     });
 
@@ -499,13 +512,13 @@ describe('Route Helpers', () => {
       const error = new Error('Test error');
       error.code = 'CUSTOM_CODE';
       handleRouteError(error, mockReq, mockRes);
-      
+
       expect(mockRes.render).toHaveBeenCalledWith('pages/error.html', {
         error: {
           status: 500,
           message: 'Test error',
-          code: 'CUSTOM_CODE'
-        }
+          code: 'CUSTOM_CODE',
+        },
       });
     });
 
@@ -513,7 +526,7 @@ describe('Route Helpers', () => {
       mockReq.user = null;
       const error = new Error('Test error');
       handleRouteError(error, mockReq, mockRes);
-      
+
       expect(mockRes.status).toHaveBeenCalledWith(500);
       expect(consoleErrorSpy).toHaveBeenCalled();
     });
@@ -531,13 +544,13 @@ describe('Route Helpers', () => {
       mockReq = {
         path: '/partials/test.html',
         method: 'GET',
-        user: { id: 'user-123' }
+        user: { id: 'user-123' },
       };
       mockRes = {
         status: vi.fn().mockReturnThis(),
-        render: vi.fn()
+        render: vi.fn(),
       };
-      
+
       consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     });
 
@@ -548,10 +561,10 @@ describe('Route Helpers', () => {
     test('should return 200 status for graceful degradation', () => {
       const error = new Error('Test error');
       handlePartialError(error, mockReq, mockRes, 'partials/template.html', {});
-      
+
       expect(mockRes.status).toHaveBeenCalledWith(200);
       expect(mockRes.render).toHaveBeenCalledWith('partials/template.html', {
-        error: 'Test error'
+        error: 'Test error',
       });
     });
 
@@ -559,21 +572,21 @@ describe('Route Helpers', () => {
       const error = new Error('Test error');
       const defaultData = { caseId: '123', messages: [] };
       handlePartialError(error, mockReq, mockRes, 'partials/template.html', defaultData);
-      
+
       expect(mockRes.status).toHaveBeenCalledWith(200);
       expect(mockRes.render).toHaveBeenCalledWith('partials/template.html', {
         caseId: '123',
         messages: [],
-        error: 'Test error'
+        error: 'Test error',
       });
     });
 
     test('should handle error without message', () => {
       const error = new Error();
       handlePartialError(error, mockReq, mockRes, 'partials/template.html', {});
-      
+
       expect(mockRes.render).toHaveBeenCalledWith('partials/template.html', {
-        error: 'An error occurred'
+        error: 'An error occurred',
       });
     });
 
@@ -581,7 +594,7 @@ describe('Route Helpers', () => {
       mockReq.user = null;
       const error = new Error('Test error');
       handlePartialError(error, mockReq, mockRes, 'partials/template.html', {});
-      
+
       expect(mockRes.status).toHaveBeenCalledWith(200);
       expect(consoleErrorSpy).toHaveBeenCalled();
     });
@@ -589,7 +602,7 @@ describe('Route Helpers', () => {
     test('should log error with context', () => {
       const error = new Error('Test error');
       handlePartialError(error, mockReq, mockRes, 'partials/template.html', {});
-      
+
       expect(consoleErrorSpy).toHaveBeenCalled();
     });
   });
@@ -605,11 +618,11 @@ describe('Route Helpers', () => {
       mockReq = {
         path: '/test',
         method: 'GET',
-        user: { id: 'user-123' }
+        user: { id: 'user-123' },
       };
       mockRes = {
         status: vi.fn().mockReturnThis(),
-        render: vi.fn()
+        render: vi.fn(),
       };
       mockNext = vi.fn();
     });
@@ -617,9 +630,9 @@ describe('Route Helpers', () => {
     test('should execute handler successfully', async () => {
       const handler = vi.fn().mockResolvedValue(undefined);
       const wrapped = asyncRoute(handler);
-      
+
       await wrapped(mockReq, mockRes, mockNext);
-      
+
       expect(handler).toHaveBeenCalledWith(mockReq, mockRes, mockNext);
       expect(mockNext).not.toHaveBeenCalled();
     });
@@ -628,17 +641,17 @@ describe('Route Helpers', () => {
       const error = new Error('Test error');
       const handler = vi.fn().mockRejectedValue(error);
       const wrapped = asyncRoute(handler);
-      
+
       mockReq.path = '/partials/test.html';
-      
+
       const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-      
+
       await wrapped(mockReq, mockRes, mockNext);
-      
+
       expect(handler).toHaveBeenCalled();
       expect(mockRes.status).toHaveBeenCalledWith(200);
       expect(mockRes.render).toHaveBeenCalled();
-      
+
       consoleErrorSpy.mockRestore();
     });
 
@@ -646,17 +659,17 @@ describe('Route Helpers', () => {
       const error = new Error('Test error');
       const handler = vi.fn().mockRejectedValue(error);
       const wrapped = asyncRoute(handler);
-      
+
       mockReq.path = '/pages/test';
-      
+
       const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-      
+
       await wrapped(mockReq, mockRes, mockNext);
-      
+
       expect(handler).toHaveBeenCalled();
       expect(mockRes.status).toHaveBeenCalledWith(500);
       expect(mockRes.render).toHaveBeenCalled();
-      
+
       consoleErrorSpy.mockRestore();
     });
 
@@ -664,18 +677,17 @@ describe('Route Helpers', () => {
       const error = new Error('Test error');
       const handler = vi.fn().mockRejectedValue(error);
       const wrapped = asyncRoute(handler);
-      
+
       mockReq.path = '/api/test';
-      
+
       const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-      
+
       await wrapped(mockReq, mockRes, mockNext);
-      
+
       expect(handler).toHaveBeenCalled();
       expect(mockRes.status).toHaveBeenCalledWith(500);
-      
+
       consoleErrorSpy.mockRestore();
     });
   });
 });
-

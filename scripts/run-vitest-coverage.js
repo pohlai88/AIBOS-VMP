@@ -2,7 +2,7 @@
 
 /**
  * Vitest Coverage Runner Script
- * 
+ *
  * Wrapper script to run Vitest with coverage
  */
 
@@ -29,12 +29,11 @@ const child = spawn(command, args, {
   },
 });
 
-child.on('error', (error) => {
+child.on('error', error => {
   console.error('Error running vitest coverage:', error);
   process.exit(1);
 });
 
-child.on('exit', (code) => {
+child.on('exit', code => {
   process.exit(code || 0);
 });
-

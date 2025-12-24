@@ -12,7 +12,7 @@ export async function applyDecision({
   tenantId,
   vendorId,
   note = null,
-  reason = null
+  reason = null,
 }) {
   if (!entity || !id || !action) {
     throw new ValidationError('entity, id, and action are required for applyDecision');
@@ -28,7 +28,7 @@ export async function applyDecision({
     APPROVE: 'resolved',
     REJECT: 'blocked',
     WITHDRAW: 'waiting_supplier',
-    CANCEL: 'blocked'
+    CANCEL: 'blocked',
   };
 
   const nextStatus = actionToStatus[action];

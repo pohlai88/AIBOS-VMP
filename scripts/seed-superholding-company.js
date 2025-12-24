@@ -2,7 +2,7 @@
 /**
  * Seed Superholding Company for Super Admin
  * Creates a "Superholding" or "Super Company" and links it to the super admin account
- * 
+ *
  * Usage: node scripts/seed-superholding-company.js [email]
  * Example: node scripts/seed-superholding-company.js jackwee2020@gmail.com
  */
@@ -23,8 +23,8 @@ if (!supabaseUrl || !supabaseServiceKey) {
 const supabase = createClient(supabaseUrl, supabaseServiceKey, {
   auth: {
     autoRefreshToken: false,
-    persistSession: false
-  }
+    persistSession: false,
+  },
 });
 
 const targetEmail = (process.argv[2] || 'jackwee2020@gmail.com').toLowerCase().trim();
@@ -99,7 +99,7 @@ async function seedSuperholdingCompany() {
       country_code: 'SG',
       currency_code: 'SGD',
       tax_id: 'SUPER-001',
-      group_id: null // Top-level company, not in a group
+      group_id: null, // Top-level company, not in a group
     };
 
     const { data: company, error: companyError } = await supabase
@@ -124,14 +124,17 @@ async function seedSuperholdingCompany() {
     console.log('\n📋 Step 4: Linking vendor to Superholding Company...');
     const { data: link, error: linkError } = await supabase
       .from('vmp_vendor_company_links')
-      .upsert({
-        vendor_id: vendor.id,
-        company_id: company.id,
-        status: 'active',
-        erp_vendor_code: 'SUPER-VENDOR-001'
-      }, {
-        onConflict: 'vendor_id,company_id'
-      })
+      .upsert(
+        {
+          vendor_id: vendor.id,
+          company_id: company.id,
+          status: 'active',
+          erp_vendor_code: 'SUPER-VENDOR-001',
+        },
+        {
+          onConflict: 'vendor_id,company_id',
+        }
+      )
       .select()
       .single();
 
@@ -151,7 +154,7 @@ async function seedSuperholdingCompany() {
     console.log('   Note: Super admin has scope_group_id=null and scope_company_id=null');
     console.log('   This allows full access to all companies.');
     console.log('   If you want to scope to this company only, we can set scope_company_id.');
-    
+
     // Keep super admin privileges (null scopes = full access)
     // But we can verify the user is properly configured
     const { data: updatedUser, error: updateError } = await supabase
@@ -164,10 +167,14 @@ async function seedSuperholdingCompany() {
       console.warn('   ⚠️  Could not verify user scope:', updateError.message);
     } else {
       console.log('   ✅ User scope verified');
-      console.log(`      Scope Group: ${updatedUser.scope_group_id || 'null (Super Admin - Full Access)'}`);
-      console.log(`      Scope Company: ${updatedUser.scope_company_id || 'null (Super Admin - Full Access)'}`);
+      console.log(
+        `      Scope Group: ${updatedUser.scope_group_id || 'null (Super Admin - Full Access)'}`
+      );
+      console.log(
+        `      Scope Company: ${updatedUser.scope_company_id || 'null (Super Admin - Full Access)'}`
+      );
       console.log(`      Is Internal: ${updatedUser.is_internal ? 'Yes' : 'No'}`);
-      
+
       if (updatedUser.scope_group_id === null && updatedUser.scope_company_id === null) {
         console.log('   ✅ User has Super Admin privileges (can access all companies)');
       }
@@ -175,8 +182,11 @@ async function seedSuperholdingCompany() {
 
     // Step 6: Verify Supabase Auth user metadata
     console.log('\n📋 Step 6: Verifying Supabase Auth user metadata...');
-    const { data: { users }, error: listError } = await supabase.auth.admin.listUsers();
-    
+    const {
+      data: { users },
+      error: listError,
+    } = await supabase.auth.admin.listUsers();
+
     if (listError) {
       console.warn('   ⚠️  Could not list users:', listError.message);
     } else {
@@ -213,7 +223,6 @@ async function seedSuperholdingCompany() {
     console.log(`   - Can view org tree with all companies`);
     console.log(`\n✨ The super admin is now linked to the Superholding Company!`);
     console.log(`   You can see this company in the org tree sidebar.\n`);
-
   } catch (error) {
     console.error('\n❌ Error:', error);
     console.error('   Stack:', error.stack);
@@ -225,8 +234,7 @@ seedSuperholdingCompany()
   .then(() => {
     process.exit(0);
   })
-  .catch((error) => {
+  .catch(error => {
     console.error('\n❌ Script failed:', error);
     process.exit(1);
   });
-

@@ -68,13 +68,14 @@
       if (expiresAt) {
         acceptUrl.searchParams.set('expires_at', expiresAt);
       }
-      
+    
       window.location.href = acceptUrl.toString();
     } else {
       // Invalid or missing tokens
-      document.getElementById('error').textContent = 'Invalid invite link. Please check your email for a valid invitation.';
+      document.getElementById('error').textContent =
+    'Invalid invite link. Please check your email for a valid invitation.';
       document.getElementById('error').style.display = 'block';
-      
+    
       // Redirect to login after 3 seconds
       setTimeout(() => {
         window.location.href = '/login';

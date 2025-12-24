@@ -22,17 +22,48 @@ import { attachSupabaseClient } from './src/middleware/supabase-client.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 import { vmpAdapter } from './src/adapters/supabase.js';
-import { createErrorResponse, logError, NotFoundError, ValidationError, VMPError, DatabaseError } from './src/utils/errors.js';
-import { requireAuth, requireInternal, validateUUIDParam, validateRequired, validateRequiredQuery, handleRouteError, handlePartialError } from './src/utils/route-helpers.js';
-import { parseEmailWebhook, extractCaseReference, extractVendorIdentifier } from './src/utils/email-parser.js';
-import { parseWhatsAppWebhook, extractCaseReferenceFromWhatsApp, extractVendorIdentifierFromWhatsApp } from './src/utils/whatsapp-parser.js';
-import { classifyMessageIntent, extractStructuredData, findBestMatchingCase } from './src/utils/ai-message-parser.js';
+import {
+  createErrorResponse,
+  logError,
+  NotFoundError,
+  ValidationError,
+  VMPError,
+  DatabaseError,
+} from './src/utils/errors.js';
+import {
+  requireAuth,
+  requireInternal,
+  validateUUIDParam,
+  validateRequired,
+  validateRequiredQuery,
+  handleRouteError,
+  handlePartialError,
+} from './src/utils/route-helpers.js';
+import {
+  parseEmailWebhook,
+  extractCaseReference,
+  extractVendorIdentifier,
+} from './src/utils/email-parser.js';
+import {
+  parseWhatsAppWebhook,
+  extractCaseReferenceFromWhatsApp,
+  extractVendorIdentifierFromWhatsApp,
+} from './src/utils/whatsapp-parser.js';
+import {
+  classifyMessageIntent,
+  extractStructuredData,
+  findBestMatchingCase,
+} from './src/utils/ai-message-parser.js';
 import { validateCaseData, generateValidationResponse } from './src/utils/ai-data-validation.js';
 import { parseSearchIntent, generateSearchSuggestions } from './src/utils/ai-search.js';
 import { checkAndSendSLAReminders, getSLAReminderStats } from './src/utils/sla-reminders.js';
 // Export utilities removed (not currently used in server routes)
 import { sendInviteEmail } from './src/utils/notifications.js';
-import { detectPeriodFromFilename, formatUserFriendlyError, getPeriodSuggestions } from './src/utils/soa-upload-helpers.js';
+import {
+  detectPeriodFromFilename,
+  formatUserFriendlyError,
+  getPeriodSuggestions,
+} from './src/utils/soa-upload-helpers.js';
 
 // Timeout wrapper for async operations (local helper)
 const withTimeout = async (promise, timeoutMs = 10000, operationName = 'operation') => {
@@ -55,7 +86,7 @@ const withTimeout = async (promise, timeoutMs = 10000, operationName = 'operatio
 };
 
 // Helper to safely extract string from query/param (handles string | string[])
-const getStringParam = (value) => {
+const getStringParam = value => {
   if (Array.isArray(value)) return value[0] || '';
   return typeof value === 'string' ? value : '';
 };
@@ -90,8 +121,8 @@ const supabaseAdmin = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_K
   db: { schema: 'public' },
   auth: {
     autoRefreshToken: false,
-    persistSession: false
-  }
+    persistSession: false,
+  },
 });
 
 // Alias for backward compatibility with existing code
@@ -102,11 +133,11 @@ const supabase = supabaseAdmin;
 // Falls back to service role if anon key not provided (for admin auth operations)
 const supabaseAuth = env.SUPABASE_ANON_KEY
   ? createClient(env.SUPABASE_URL, env.SUPABASE_ANON_KEY, {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false
-    }
-  })
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
+    })
   : supabase; // Fallback to service role client if anon key not set
 
 const app = express();
@@ -127,7 +158,7 @@ const upload = multer({
       'application/msword',
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
       'application/vnd.ms-excel',
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     ];
 
     if (allowedMimes.includes(file.mimetype)) {
@@ -135,26 +166,57 @@ const upload = multer({
     } else {
       // Multer FileFilterCallback accepts Error | null as first parameter
       // @ts-expect-error - Multer types are correctly defined but TypeScript inference is incorrect
-      cb(new Error(`File type ${file.mimetype} not allowed. Allowed types: PDF, images, Word, Excel`), false);
+      cb(
+        new Error(
+          `File type ${file.mimetype} not allowed. Allowed types: PDF, images, Word, Excel`
+        ),
+        false
+      );
     }
-  }
+  },
 });
 
 // --- SECURITY MIDDLEWARE ---
-app.use(helmet({
-  contentSecurityPolicy: {
-    directives: {
-      defaultSrc: ["'self'"],
-      styleSrc: ["'self'", "'unsafe-inline'", "https://cdn.tailwindcss.com", "https://fonts.googleapis.com"],
-      styleSrcElem: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
-      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://unpkg.com", "https://cdn.tailwindcss.com", "https://cdn.jsdelivr.net"],
-      scriptSrcAttr: ["'unsafe-hashes'"], // Allow inline event handlers (onclick, etc.)
-      fontSrc: ["'self'", "data:", "https://fonts.gstatic.com", "https://cdn.jsdelivr.net", "https://raw.githubusercontent.com", "https://fonts.googleapis.com"],
-      imgSrc: ["'self'", "data:", "https:"],
-      connectSrc: ["'self'", env.SUPABASE_URL, "https://fonts.googleapis.com", "https://fonts.gstatic.com"],
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        styleSrc: [
+          "'self'",
+          "'unsafe-inline'",
+          'https://cdn.tailwindcss.com',
+          'https://fonts.googleapis.com',
+        ],
+        styleSrcElem: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
+        scriptSrc: [
+          "'self'",
+          "'unsafe-inline'",
+          "'unsafe-eval'",
+          'https://unpkg.com',
+          'https://cdn.tailwindcss.com',
+          'https://cdn.jsdelivr.net',
+        ],
+        scriptSrcAttr: ["'unsafe-hashes'"], // Allow inline event handlers (onclick, etc.)
+        fontSrc: [
+          "'self'",
+          'data:',
+          'https://fonts.gstatic.com',
+          'https://cdn.jsdelivr.net',
+          'https://raw.githubusercontent.com',
+          'https://fonts.googleapis.com',
+        ],
+        imgSrc: ["'self'", 'data:', 'https:'],
+        connectSrc: [
+          "'self'",
+          env.SUPABASE_URL,
+          'https://fonts.googleapis.com',
+          'https://fonts.gstatic.com',
+        ],
+      },
     },
-  },
-}));
+  })
+);
 
 // Rate limiting
 const limiter = rateLimit({
@@ -214,11 +276,11 @@ nunjucksEnv.addGlobal('url', (p = '') => {
 });
 
 // Add custom filters
-nunjucksEnv.addFilter('upper', (str) => {
+nunjucksEnv.addFilter('upper', str => {
   return str ? String(str).toUpperCase() : '';
 });
 
-nunjucksEnv.addFilter('tojson', (obj) => {
+nunjucksEnv.addFilter('tojson', obj => {
   return JSON.stringify(obj);
 });
 
@@ -242,7 +304,20 @@ nunjucksEnv.addFilter('date', (date, format) => {
     if (isNaN(d.getTime())) return '';
 
     // Format patterns
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
     const patterns = {
       '%b %d': () => {
         return `${months[d.getMonth()]} ${d.getDate()}`;
@@ -262,7 +337,7 @@ nunjucksEnv.addFilter('date', (date, format) => {
         const month = String(d.getMonth() + 1).padStart(2, '0');
         const day = String(d.getDate()).padStart(2, '0');
         return `${year}-${month}-${day}`;
-      }
+      },
     };
 
     if (format && patterns[format]) {
@@ -278,7 +353,7 @@ nunjucksEnv.addFilter('date', (date, format) => {
 });
 
 // File size formatting filter (human-readable bytes)
-nunjucksEnv.addFilter('filesizeformat', (bytes) => {
+nunjucksEnv.addFilter('filesizeformat', bytes => {
   if (!bytes || bytes === 0) return '0 B';
 
   try {
@@ -378,17 +453,21 @@ if (process.env.SESSION_DB_URL) {
   sessionStore = new PgSession({
     conString: process.env.SESSION_DB_URL,
     tableName: 'session',
-    createTableIfMissing: true
+    createTableIfMissing: true,
   });
 } else if (env.NODE_ENV === 'development') {
   // Development: Use MemoryStore with warning (for local dev without DB config)
   console.warn('⚠️  WARNING: Using MemoryStore for sessions in development.');
   console.warn('   Set SESSION_DB_URL in .env for PostgreSQL session store.');
-  console.warn('   Format: postgresql://postgres.[project-ref]:[password]@aws-0-[region].pooler.supabase.com:6543/postgres');
+  console.warn(
+    '   Format: postgresql://postgres.[project-ref]:[password]@aws-0-[region].pooler.supabase.com:6543/postgres'
+  );
   sessionStore = undefined; // Will use MemoryStore (express-session default)
 } else {
   // Production without SESSION_DB_URL: Error
-  throw new Error('SESSION_DB_URL must be set for production session store. See docs/development/DEPLOYMENT_GUIDE.md for setup instructions.');
+  throw new Error(
+    'SESSION_DB_URL must be set for production session store. See docs/development/DEPLOYMENT_GUIDE.md for setup instructions.'
+  );
 }
 
 app.use(
@@ -403,7 +482,7 @@ app.use(
       httpOnly: true,
       sameSite: 'lax',
       maxAge: 24 * 60 * 60 * 1000, // 24 hours
-    }
+    },
   })
 );
 
@@ -416,7 +495,16 @@ app.use(attachSupabaseClient);
 // --- MIDDLEWARE: Supabase Auth (Session Lookup) ---
 app.use(async (req, res, next) => {
   // Skip auth for public routes
-  const publicRoutes = ['/login', '/', '/health', '/manifesto', '/accept', '/sign-up', '/forgot-password', '/reset-password'];
+  const publicRoutes = [
+    '/login',
+    '/',
+    '/health',
+    '/manifesto',
+    '/accept',
+    '/sign-up',
+    '/forgot-password',
+    '/reset-password',
+  ];
   if (publicRoutes.includes(req.path) || req.path.startsWith('/partials/login-')) {
     return next();
   }
@@ -439,7 +527,7 @@ app.use(async (req, res, next) => {
       displayName: 'Test User',
       vendorId: vendorId,
       vendor: { id: vendorId, name: 'Test Vendor', tenant_id: tenantId || '' },
-      isInternal: isInternal || false
+      isInternal: isInternal || false,
     };
     return next();
   }
@@ -467,7 +555,7 @@ app.use(async (req, res, next) => {
       if (!vendor) {
         vendor = {
           id: devVendorId || 'dev-vendor-id',
-          name: 'Development Vendor'
+          name: 'Development Vendor',
         };
       }
 
@@ -484,7 +572,7 @@ app.use(async (req, res, next) => {
         vendor: vendor,
         isInternal: false,
         user_tier: 'institutional',
-        is_active: true
+        is_active: true,
       };
       return next();
     }
@@ -506,7 +594,7 @@ app.use(async (req, res, next) => {
     if (req.session.refreshToken) {
       const { data: sessionData, error: sessionError } = await supabaseAuth.auth.setSession({
         access_token: req.session.authToken,
-        refresh_token: req.session.refreshToken
+        refresh_token: req.session.refreshToken,
       });
 
       if (!sessionError && sessionData?.session) {
@@ -524,17 +612,23 @@ app.use(async (req, res, next) => {
             req.session.refreshToken = sessionData.session.refresh_token;
           }
           // Save updated session
-          req.session.save((err) => {
-            if (err) logError(err, { operation: 'authMiddleware-saveRefreshedSession', path: req.path });
+          req.session.save(err => {
+            if (err)
+              logError(err, { operation: 'authMiddleware-saveRefreshedSession', path: req.path });
           });
         }
       } else {
         // setSession failed, try to refresh token if error indicates expiration
-        if (sessionError?.message?.includes('expired') || sessionError?.message?.includes('invalid')) {
+        if (
+          sessionError?.message?.includes('expired') ||
+          sessionError?.message?.includes('invalid')
+        ) {
           // Try to refresh using refresh token
-          const { data: refreshData, error: refreshError } = await supabaseAuth.auth.refreshSession({
-            refresh_token: req.session.refreshToken
-          });
+          const { data: refreshData, error: refreshError } = await supabaseAuth.auth.refreshSession(
+            {
+              refresh_token: req.session.refreshToken,
+            }
+          );
 
           if (!refreshError && refreshData?.session) {
             // Token refreshed successfully
@@ -543,15 +637,17 @@ app.use(async (req, res, next) => {
             if (refreshData.session.refresh_token) {
               req.session.refreshToken = refreshData.session.refresh_token;
             }
-            req.session.save((err) => {
-              if (err) logError(err, { operation: 'authMiddleware-saveRefreshedSession', path: req.path });
+            req.session.save(err => {
+              if (err)
+                logError(err, { operation: 'authMiddleware-saveRefreshedSession', path: req.path });
             });
 
             // Set the new session and get user
-            const { data: newSessionData, error: newSessionError } = await supabaseAuth.auth.setSession({
-              access_token: refreshData.session.access_token,
-              refresh_token: refreshData.session.refresh_token
-            });
+            const { data: newSessionData, error: newSessionError } =
+              await supabaseAuth.auth.setSession({
+                access_token: refreshData.session.access_token,
+                refresh_token: refreshData.session.refresh_token,
+              });
 
             if (!newSessionError && newSessionData?.session) {
               sessionSet = true;
@@ -564,7 +660,7 @@ app.use(async (req, res, next) => {
             logError(refreshError || new Error('Token refresh failed'), {
               operation: 'authMiddleware-refreshToken',
               path: req.path,
-              willTryFallback: true
+              willTryFallback: true,
             });
           }
         } else {
@@ -572,7 +668,7 @@ app.use(async (req, res, next) => {
           logError(sessionError || new Error('setSession failed'), {
             operation: 'authMiddleware-setSession',
             path: req.path,
-            willTryFallback: true
+            willTryFallback: true,
           });
         }
       }
@@ -587,7 +683,7 @@ app.use(async (req, res, next) => {
       // If token is expired and we have refresh token, try to refresh
       if (error && error.message?.includes('expired') && req.session.refreshToken) {
         const { data: refreshData, error: refreshError } = await supabaseAuth.auth.refreshSession({
-          refresh_token: req.session.refreshToken
+          refresh_token: req.session.refreshToken,
         });
 
         if (!refreshError && refreshData?.session) {
@@ -597,8 +693,9 @@ app.use(async (req, res, next) => {
           if (refreshData.session.refresh_token) {
             req.session.refreshToken = refreshData.session.refresh_token;
           }
-          req.session.save((err) => {
-            if (err) logError(err, { operation: 'authMiddleware-saveRefreshedSession', path: req.path });
+          req.session.save(err => {
+            if (err)
+              logError(err, { operation: 'authMiddleware-saveRefreshedSession', path: req.path });
           });
 
           // Retry getUser with new token
@@ -617,9 +714,9 @@ app.use(async (req, res, next) => {
         hasToken: !!req.session.authToken,
         hasRefreshToken: !!req.session.refreshToken,
         sessionSet: sessionSet,
-        refreshedSession: refreshedSession
+        refreshedSession: refreshedSession,
       });
-      req.session.destroy((err) => {
+      req.session.destroy(err => {
         if (err) logError(err, { operation: 'authMiddleware', path: req.path });
       });
       return res.redirect('/login');
@@ -630,9 +727,9 @@ app.use(async (req, res, next) => {
       logError(new Error('Invalid user.id from Supabase Auth'), {
         userId: user.id,
         path: req.path,
-        userEmail: user.email
+        userEmail: user.email,
       });
-      req.session.destroy((err) => {
+      req.session.destroy(err => {
         if (err) logError(err, { operation: 'authMiddleware', path: req.path });
       });
       return res.redirect('/login');
@@ -644,9 +741,9 @@ app.use(async (req, res, next) => {
       logError(new Error('user.id is not a valid UUID format'), {
         userId: user.id,
         path: req.path,
-        userEmail: user.email
+        userEmail: user.email,
       });
-      req.session.destroy((err) => {
+      req.session.destroy(err => {
         if (err) logError(err, { operation: 'authMiddleware', path: req.path });
       });
       return res.redirect('/login');
@@ -655,7 +752,7 @@ app.use(async (req, res, next) => {
     // Check if user is active (stored in user_metadata)
     const isActive = user.user_metadata?.is_active !== false;
     if (!isActive) {
-      req.session.destroy((err) => {
+      req.session.destroy(err => {
         if (err) logError(err, { operation: 'authMiddleware', path: req.path });
       });
       return res.redirect('/login');
@@ -680,16 +777,16 @@ app.use(async (req, res, next) => {
           vmp_vendors: null,
           user_tier: 'institutional',
           is_internal: false,
-          is_active: true
+          is_active: true,
         };
       } else {
         logError(contextError, {
           operation: 'authMiddleware-getVendorContext',
           userId: user.id,
           userEmail: user.email,
-          path: req.path
+          path: req.path,
         });
-        req.session.destroy((err) => {
+        req.session.destroy(err => {
           if (err) logError(err, { operation: 'authMiddleware', path: req.path });
         });
         return res.redirect('/login');
@@ -700,9 +797,9 @@ app.use(async (req, res, next) => {
       logError(new Error('User context not found'), {
         userId: user.id,
         userEmail: user.email,
-        path: req.path
+        path: req.path,
       });
-      req.session.destroy((err) => {
+      req.session.destroy(err => {
         if (err) logError(err, { operation: 'authMiddleware', path: req.path });
       });
       return res.redirect('/login');
@@ -719,16 +816,16 @@ app.use(async (req, res, next) => {
       displayName: userContext.display_name || userContext.email,
       vendorId: userContext.vendor_id || null,
       vendor: userContext.vmp_vendors || null,
-      user_tier: (userContext.user_tier === 'independent' ? 'independent' : 'institutional'),
+      user_tier: userContext.user_tier === 'independent' ? 'independent' : 'institutional',
       isInternal: isInternal,
       role: isInternal ? 'admin' : 'operator', // For UI display (ADMIN/OPERATOR badge)
-      is_active: userContext.is_active !== false
+      is_active: userContext.is_active !== false,
     };
 
     next();
   } catch (error) {
     logError(error, { operation: 'authMiddleware', path: req.path });
-    req.session.destroy((err) => {
+    req.session.destroy(err => {
       if (err) logError(err, { operation: 'authMiddleware', path: req.path });
     });
     return res.redirect('/login');
@@ -765,13 +862,20 @@ app.get('/', (req, res) => {
   const hash = req.url.split('#')[1] || '';
 
   // If recovery token is present, redirect to reset-password page
-  if (type === 'recovery' && (accessToken || tokenHash || hash.includes('access_token') || hash.includes('token_hash'))) {
+  if (
+    type === 'recovery' &&
+    (accessToken || tokenHash || hash.includes('access_token') || hash.includes('token_hash'))
+  ) {
     // Preserve the token in the redirect
     if (accessToken) {
-      return res.redirect(`/reset-password?access_token=${encodeURIComponent(accessToken)}&type=recovery`);
+      return res.redirect(
+        `/reset-password?access_token=${encodeURIComponent(accessToken)}&type=recovery`
+      );
     }
     if (tokenHash) {
-      return res.redirect(`/reset-password?token_hash=${encodeURIComponent(tokenHash)}&type=recovery`);
+      return res.redirect(
+        `/reset-password?token_hash=${encodeURIComponent(tokenHash)}&type=recovery`
+      );
     }
     // If token is in hash, redirect with hash preserved
     if (hash) {
@@ -836,7 +940,7 @@ app.post('/forgot-password', passwordResetLimiter, async (req, res) => {
     if (!validateRequired(email, 'email')) {
       return res.render('pages/forgot_password.html', {
         error: 'Email is required',
-        success: null
+        success: null,
       });
     }
 
@@ -845,29 +949,27 @@ app.post('/forgot-password', passwordResetLimiter, async (req, res) => {
     if (!emailRegex.test(email)) {
       return res.render('pages/forgot_password.html', {
         error: 'Please enter a valid email address',
-        success: null
+        success: null,
       });
     }
 
     // Use Supabase Auth password reset (handles email sending automatically)
-    const { error } = await supabaseAuth.auth.resetPasswordForEmail(
-      email.toLowerCase().trim(),
-      {
-        redirectTo: `${env.BASE_URL}${env.BASE_PATH || ''}/reset-password`
-      }
-    );
+    const { error } = await supabaseAuth.auth.resetPasswordForEmail(email.toLowerCase().trim(), {
+      redirectTo: `${env.BASE_URL}${env.BASE_PATH || ''}/reset-password`,
+    });
 
     // Always show success (security best practice - don't reveal if email exists)
     // Supabase Auth handles email sending automatically via configured SMTP
     res.render('pages/forgot_password.html', {
       error: null,
-      success: 'If an account with that email exists, a password reset link has been sent. Please check your email.'
+      success:
+        'If an account with that email exists, a password reset link has been sent. Please check your email.',
     });
   } catch (error) {
     logError(error, { path: req.path, operation: 'forgot-password' });
     res.render('pages/forgot_password.html', {
       error: 'An error occurred. Please try again later.',
-      success: null
+      success: null,
     });
   }
 });
@@ -893,7 +995,7 @@ app.get('/reset-password', async (req, res) => {
       success: null,
       token: access_token,
       supabase_url: env.SUPABASE_URL,
-      supabase_anon_key: env.SUPABASE_ANON_KEY
+      supabase_anon_key: env.SUPABASE_ANON_KEY,
     });
   }
 
@@ -919,13 +1021,16 @@ app.get('/reset-password', async (req, res) => {
           error: 'Invalid or missing reset token',
           token: null,
           supabase_url: env.SUPABASE_URL,
-          supabase_anon_key: env.SUPABASE_ANON_KEY
+          supabase_anon_key: env.SUPABASE_ANON_KEY,
         });
       }
 
-      const { data: { session }, error: verifyError } = await supabaseAuth.auth.verifyOtp({
+      const {
+        data: { session },
+        error: verifyError,
+      } = await supabaseAuth.auth.verifyOtp({
         token_hash: tokenHash,
-        type: 'recovery'
+        type: 'recovery',
       });
 
       if (verifyError || !session) {
@@ -933,14 +1038,15 @@ app.get('/reset-password', async (req, res) => {
           path: req.path,
           operation: 'reset-password-get',
           errorMessage: verifyError?.message,
-          errorStatus: verifyError?.status
+          errorStatus: verifyError?.status,
         });
 
         // Provide more specific error messages
         let errorMessage = 'Invalid or expired reset link. Please request a new password reset.';
         if (verifyError?.message) {
           if (verifyError.message.includes('expired') || verifyError.message.includes('invalid')) {
-            errorMessage = 'This reset link has expired or is invalid. Please request a new password reset.';
+            errorMessage =
+              'This reset link has expired or is invalid. Please request a new password reset.';
           } else if (verifyError.message.includes('token')) {
             errorMessage = 'Invalid reset token. Please request a new password reset.';
           }
@@ -951,7 +1057,7 @@ app.get('/reset-password', async (req, res) => {
           success: null,
           token: null,
           supabase_url: env.SUPABASE_URL,
-          supabase_anon_key: env.SUPABASE_ANON_KEY
+          supabase_anon_key: env.SUPABASE_ANON_KEY,
         });
       }
 
@@ -962,7 +1068,7 @@ app.get('/reset-password', async (req, res) => {
         success: null,
         token: session.access_token,
         supabase_url: env.SUPABASE_URL,
-        supabase_anon_key: env.SUPABASE_ANON_KEY
+        supabase_anon_key: env.SUPABASE_ANON_KEY,
       });
     } catch (error) {
       logError(error, { path: req.path, operation: 'reset-password-get' });
@@ -971,7 +1077,7 @@ app.get('/reset-password', async (req, res) => {
         success: null,
         token: null,
         supabase_url: env.SUPABASE_URL,
-        supabase_anon_key: env.SUPABASE_ANON_KEY
+        supabase_anon_key: env.SUPABASE_ANON_KEY,
       });
     }
   }
@@ -987,7 +1093,7 @@ app.get('/reset-password', async (req, res) => {
     success: null,
     token: null, // Will be extracted from hash by client-side JS
     supabase_url: env.SUPABASE_URL,
-    supabase_anon_key: env.SUPABASE_ANON_KEY
+    supabase_anon_key: env.SUPABASE_ANON_KEY,
   });
 });
 
@@ -1008,7 +1114,7 @@ app.post('/reset-password', async (req, res) => {
         success: null,
         token: null,
         supabase_url: env.SUPABASE_URL,
-        supabase_anon_key: env.SUPABASE_ANON_KEY
+        supabase_anon_key: env.SUPABASE_ANON_KEY,
       });
     }
 
@@ -1018,7 +1124,7 @@ app.post('/reset-password', async (req, res) => {
         success: null,
         token: token,
         supabase_url: env.SUPABASE_URL,
-        supabase_anon_key: env.SUPABASE_ANON_KEY
+        supabase_anon_key: env.SUPABASE_ANON_KEY,
       });
     }
 
@@ -1028,7 +1134,7 @@ app.post('/reset-password', async (req, res) => {
         success: null,
         token: token,
         supabase_url: env.SUPABASE_URL,
-        supabase_anon_key: env.SUPABASE_ANON_KEY
+        supabase_anon_key: env.SUPABASE_ANON_KEY,
       });
     }
 
@@ -1038,16 +1144,19 @@ app.post('/reset-password', async (req, res) => {
         success: null,
         token: token,
         supabase_url: env.SUPABASE_URL,
-        supabase_anon_key: env.SUPABASE_ANON_KEY
+        supabase_anon_key: env.SUPABASE_ANON_KEY,
       });
     }
 
     // Update password using Supabase Auth
     // For password reset, we need to set the session first using the access_token
     // Then update the password
-    const { data: { session }, error: sessionError } = await supabaseAuth.auth.setSession({
+    const {
+      data: { session },
+      error: sessionError,
+    } = await supabaseAuth.auth.setSession({
       access_token: token,
-      refresh_token: '' // Not needed for password reset
+      refresh_token: '', // Not needed for password reset
     });
 
     if (sessionError || !session) {
@@ -1055,7 +1164,7 @@ app.post('/reset-password', async (req, res) => {
         path: req.path,
         operation: 'reset-password-session',
         errorMessage: sessionError?.message,
-        errorStatus: sessionError?.status
+        errorStatus: sessionError?.status,
       });
 
       return res.render('pages/reset_password.html', {
@@ -1063,13 +1172,13 @@ app.post('/reset-password', async (req, res) => {
         success: null,
         token: null,
         supabase_url: env.SUPABASE_URL,
-        supabase_anon_key: env.SUPABASE_ANON_KEY
+        supabase_anon_key: env.SUPABASE_ANON_KEY,
       });
     }
 
     // Now update the password with the active session
     const { data, error } = await supabaseAuth.auth.updateUser({
-      password: password
+      password: password,
     });
 
     if (error) {
@@ -1077,14 +1186,15 @@ app.post('/reset-password', async (req, res) => {
         path: req.path,
         operation: 'reset-password-update',
         errorMessage: error.message,
-        errorStatus: error.status
+        errorStatus: error.status,
       });
 
       // Provide more specific error messages
       let errorMessage = 'Invalid or expired reset link. Please request a new password reset.';
       if (error.message) {
         if (error.message.includes('expired') || error.message.includes('invalid')) {
-          errorMessage = 'This reset link has expired or is invalid. Please request a new password reset.';
+          errorMessage =
+            'This reset link has expired or is invalid. Please request a new password reset.';
         } else if (error.message.includes('token')) {
           errorMessage = 'Invalid reset token. Please request a new password reset.';
         } else {
@@ -1097,7 +1207,7 @@ app.post('/reset-password', async (req, res) => {
         success: null,
         token: null,
         supabase_url: env.SUPABASE_URL,
-        supabase_anon_key: env.SUPABASE_ANON_KEY
+        supabase_anon_key: env.SUPABASE_ANON_KEY,
       });
     }
 
@@ -1105,14 +1215,15 @@ app.post('/reset-password', async (req, res) => {
     if (!data || !data.user) {
       logError(new Error('Password update returned no user data'), {
         path: req.path,
-        operation: 'reset-password-update'
+        operation: 'reset-password-update',
       });
       return res.render('pages/reset_password.html', {
-        error: 'Password update completed but verification failed. Please try logging in or request a new reset.',
+        error:
+          'Password update completed but verification failed. Please try logging in or request a new reset.',
         success: null,
         token: null,
         supabase_url: env.SUPABASE_URL,
-        supabase_anon_key: env.SUPABASE_ANON_KEY
+        supabase_anon_key: env.SUPABASE_ANON_KEY,
       });
     }
 
@@ -1122,7 +1233,7 @@ app.post('/reset-password', async (req, res) => {
       success: 'Password reset successful! Redirecting to login...',
       token: null,
       supabase_url: env.SUPABASE_URL,
-      supabase_anon_key: env.SUPABASE_ANON_KEY
+      supabase_anon_key: env.SUPABASE_ANON_KEY,
     });
 
     // Redirect after showing success message (client-side will handle this)
@@ -1133,11 +1244,12 @@ app.post('/reset-password', async (req, res) => {
     // Check if it's a validation error (invalid token)
     if (error instanceof ValidationError) {
       return res.render('pages/reset_password.html', {
-        error: error.message || 'Invalid or expired reset token. Please request a new password reset.',
+        error:
+          error.message || 'Invalid or expired reset token. Please request a new password reset.',
         success: null,
         token: null,
         supabase_url: env.SUPABASE_URL,
-        supabase_anon_key: env.SUPABASE_ANON_KEY
+        supabase_anon_key: env.SUPABASE_ANON_KEY,
       });
     }
 
@@ -1146,7 +1258,7 @@ app.post('/reset-password', async (req, res) => {
       success: null,
       token: req.body.token || null,
       supabase_url: env.SUPABASE_URL,
-      supabase_anon_key: env.SUPABASE_ANON_KEY
+      supabase_anon_key: env.SUPABASE_ANON_KEY,
     });
   }
 });
@@ -1161,14 +1273,14 @@ app.post('/sign-up', async (req, res) => {
       name,
       customer_company,
       message,
-      user_tier = 'institutional' // Default to institutional
+      user_tier = 'institutional', // Default to institutional
     } = req.body;
 
     // Validate tier
     if (!['institutional', 'independent'].includes(user_tier)) {
       return res.render('pages/sign_up.html', {
         error: 'Invalid access tier selected',
-        success: null
+        success: null,
       });
     }
 
@@ -1176,14 +1288,14 @@ app.post('/sign-up', async (req, res) => {
     if (!validateRequired(email, 'email')) {
       return res.render('pages/sign_up.html', {
         error: 'Email is required',
-        success: null
+        success: null,
       });
     }
 
     if (!validateRequired(name, 'name')) {
       return res.render('pages/sign_up.html', {
         error: 'Your name is required',
-        success: null
+        success: null,
       });
     }
 
@@ -1192,7 +1304,7 @@ app.post('/sign-up', async (req, res) => {
       if (!validateRequired(company, 'company')) {
         return res.render('pages/sign_up.html', {
           error: 'Organization name is required for Institutional Nodes',
-          success: null
+          success: null,
         });
       }
     }
@@ -1202,7 +1314,7 @@ app.post('/sign-up', async (req, res) => {
     if (!emailRegex.test(email)) {
       return res.render('pages/sign_up.html', {
         error: 'Please enter a valid email address',
-        success: null
+        success: null,
       });
     }
 
@@ -1220,8 +1332,8 @@ app.post('/sign-up', async (req, res) => {
           user_metadata: {
             display_name: name.trim(),
             user_tier: 'independent',
-            is_active: true
-          }
+            is_active: true,
+          },
         });
 
         if (authError || !authData.user) {
@@ -1231,18 +1343,18 @@ app.post('/sign-up', async (req, res) => {
               path: req.path,
               operation: 'create-independent-user',
               error_type: 'permissions',
-              hint: 'Check SUPABASE_SERVICE_ROLE_KEY configuration'
+              hint: 'Check SUPABASE_SERVICE_ROLE_KEY configuration',
             });
             return res.render('pages/sign_up.html', {
               error: 'System configuration error. Please contact support.',
-              success: null
+              success: null,
             });
           }
 
           logError(authError, { path: req.path, operation: 'create-independent-user' });
           return res.render('pages/sign_up.html', {
             error: 'Failed to create account. Please try again.',
-            success: null
+            success: null,
           });
         }
 
@@ -1254,10 +1366,12 @@ app.post('/sign-up', async (req, res) => {
         );
 
         // Sign in the user to get a session
-        const { data: signInData, error: signInError } = await supabaseAuth.auth.signInWithPassword({
-          email: email.toLowerCase().trim(),
-          password: tempPassword
-        });
+        const { data: signInData, error: signInError } = await supabaseAuth.auth.signInWithPassword(
+          {
+            email: email.toLowerCase().trim(),
+            password: tempPassword,
+          }
+        );
 
         if (signInError || !signInData.session) {
           logError(signInError, { path: req.path, operation: 'sign-in-independent' });
@@ -1267,7 +1381,7 @@ app.post('/sign-up', async (req, res) => {
           });
           return res.render('pages/sign_up.html', {
             error: 'Account created but failed to log in. Please try logging in.',
-            success: null
+            success: null,
           });
         }
 
@@ -1278,12 +1392,12 @@ app.post('/sign-up', async (req, res) => {
           req.session.refreshToken = signInData.session.refresh_token;
         }
 
-        req.session.save((err) => {
+        req.session.save(err => {
           if (err) {
             logError(err, { path: req.path, operation: 'createSession-independent' });
             return res.render('pages/sign_up.html', {
               error: 'Account created but failed to log in. Please try logging in.',
-              success: null
+              success: null,
             });
           }
           // Redirect to home immediately
@@ -1294,7 +1408,7 @@ app.post('/sign-up', async (req, res) => {
         logError(error, { path: req.path, operation: 'independent-sign-up' });
         return res.render('pages/sign_up.html', {
           error: 'An error occurred while creating your account. Please try again.',
-          success: null
+          success: null,
         });
       }
     }
@@ -1302,17 +1416,15 @@ app.post('/sign-up', async (req, res) => {
     // Institutional track (existing flow)
     // Store access request
     try {
-      const { error: insertError } = await supabase
-        .from('vmp_access_requests')
-        .insert({
-          email: email.toLowerCase().trim(),
-          name: name.trim(),
-          company: company.trim(),
-          customer_company: customer_company?.trim() || null,
-          message: message?.trim() || null,
-          status: 'pending',
-          user_tier: 'institutional'
-        });
+      const { error: insertError } = await supabase.from('vmp_access_requests').insert({
+        email: email.toLowerCase().trim(),
+        name: name.trim(),
+        company: company.trim(),
+        customer_company: customer_company?.trim() || null,
+        message: message?.trim() || null,
+        status: 'pending',
+        user_tier: 'institutional',
+      });
 
       if (insertError) {
         logError(insertError, { path: req.path, operation: 'store-access-request' });
@@ -1324,13 +1436,14 @@ app.post('/sign-up', async (req, res) => {
     // Render success message
     res.render('pages/sign_up.html', {
       error: null,
-      success: 'Your access request has been submitted. An administrator will review your request and send an invitation email if approved.'
+      success:
+        'Your access request has been submitted. An administrator will review your request and send an invitation email if approved.',
     });
   } catch (error) {
     logError(error, { path: req.path, operation: 'sign-up' });
     res.render('pages/sign_up.html', {
       error: 'An error occurred. Please try again later.',
-      success: null
+      success: null,
     });
   }
 });
@@ -1351,8 +1464,11 @@ async function renderHomePage(req, res) {
         openCount: 0,
         soaCount: 0,
         paidCount: 0,
-        welcomeMessage: req.query.welcome === 'independent' ? 'Welcome! Your Independent Investigator account is ready.' : null,
-        isIndependent: true
+        welcomeMessage:
+          req.query.welcome === 'independent'
+            ? 'Welcome! Your Independent Investigator account is ready.'
+            : null,
+        isIndependent: true,
       });
     }
 
@@ -1369,7 +1485,9 @@ async function renderHomePage(req, res) {
         const rawCases = await vmpAdapter.getInbox(VENDOR_ID_HARDCODED);
 
         // Calculate metrics
-        actionCount = rawCases.filter(c => c.status === 'blocked' || c.status === 'waiting_supplier').length;
+        actionCount = rawCases.filter(
+          c => c.status === 'blocked' || c.status === 'waiting_supplier'
+        ).length;
         openCount = rawCases.filter(c => c.status === 'open').length;
         const soaCases = rawCases.filter(c => c.case_type === 'soa');
         soaCount = soaCases.length;
@@ -1382,7 +1500,11 @@ async function renderHomePage(req, res) {
             soaNetVariance += summary.net_variance || 0;
           } catch (error) {
             // Skip if summary calculation fails (case might not have SOA items yet)
-            logError(error, { path: '/home', operation: 'calculateSOAVariance', caseId: soaCase.id });
+            logError(error, {
+              path: '/home',
+              operation: 'calculateSOAVariance',
+              caseId: soaCase.id,
+            });
           }
         }
       } catch (error) {
@@ -1397,7 +1519,7 @@ async function renderHomePage(req, res) {
       soaCount: soaCount,
       soaNetVariance: soaNetVariance,
       paidCount: paidCount,
-      isIndependent: false
+      isIndependent: false,
     });
   } catch (error) {
     logError(error, { path: '/home', operation: 'renderHomePage' });
@@ -1408,7 +1530,7 @@ async function renderHomePage(req, res) {
       soaCount: 0,
       paidCount: 0,
       error: error.message,
-      isIndependent: req.user?.user_tier === 'independent'
+      isIndependent: req.user?.user_tier === 'independent',
     });
   }
 }
@@ -1436,8 +1558,9 @@ app.get('/case-dashboard', async (req, res) => {
       return res.status(500).render('pages/error.html', {
         error: {
           status: 500,
-          message: 'Vendor ID not available. Please ensure you are logged in or DEMO_VENDOR_ID is configured.'
-        }
+          message:
+            'Vendor ID not available. Please ensure you are logged in or DEMO_VENDOR_ID is configured.',
+        },
       });
     }
 
@@ -1446,7 +1569,7 @@ app.get('/case-dashboard', async (req, res) => {
       title: 'Case Dashboard',
       user: req.user,
       posture: selectedPosture,
-      isInternal: req.user?.isInternal || false
+      isInternal: req.user?.isInternal || false,
     });
   } catch (error) {
     handleRouteError(error, req, res);
@@ -1466,7 +1589,7 @@ app.get('/new-case', async (req, res) => {
     // 2. Render response (new_case.html is a modal component)
     res.render('pages/new_case.html', {
       user: req.user,
-      isInternal: req.user?.isInternal || false
+      isInternal: req.user?.isInternal || false,
     });
   } catch (error) {
     handleRouteError(error, req, res);
@@ -1496,7 +1619,7 @@ app.get('/scanner', async (req, res) => {
           id: c.id,
           title: `Case ${c.case_number}`,
           status: c.status,
-          timestamp: c.updated_at || c.created_at
+          timestamp: c.updated_at || c.created_at,
         }));
         activities = [...recentCases];
       } catch (error) {
@@ -1509,7 +1632,7 @@ app.get('/scanner', async (req, res) => {
       title: 'Live Feed',
       user: req.user,
       activities: activities,
-      isInternal: req.user?.isInternal || false
+      isInternal: req.user?.isInternal || false,
     });
   } catch (error) {
     handleRouteError(error, req, res);
@@ -1530,7 +1653,7 @@ app.get('/help', async (req, res) => {
     res.render('pages/help.html', {
       title: 'Help & Support',
       user: req.user,
-      isInternal: req.user?.isInternal || false
+      isInternal: req.user?.isInternal || false,
     });
   } catch (error) {
     handleRouteError(error, req, res);
@@ -1557,8 +1680,9 @@ app.get('/cases/:id', async (req, res) => {
       return res.status(500).render('pages/error.html', {
         error: {
           status: 500,
-          message: 'Vendor ID not available. Please ensure you are logged in or DEMO_VENDOR_ID is configured.'
-        }
+          message:
+            'Vendor ID not available. Please ensure you are logged in or DEMO_VENDOR_ID is configured.',
+        },
       });
     }
 
@@ -1571,8 +1695,8 @@ app.get('/cases/:id', async (req, res) => {
         return res.status(404).render('pages/error.html', {
           error: {
             status: 404,
-            message: 'Case not found'
-          }
+            message: 'Case not found',
+          },
         });
       }
     } catch (adapterError) {
@@ -1604,7 +1728,7 @@ app.get('/cases/:id', async (req, res) => {
       caseDetail,
       isInternal: req.user?.isInternal || false,
       user: req.user,
-      validationResult
+      validationResult,
     });
   } catch (error) {
     handleRouteError(error, req, res);
@@ -1635,7 +1759,9 @@ const caseInboxPartial = async (req, res) => {
     const vendorId = req.user.vendorId || env.DEMO_VENDOR_ID;
     if (!vendorId) {
       return handlePartialError(
-        new Error('Vendor ID not available. Please ensure you are logged in or DEMO_VENDOR_ID is configured.'),
+        new Error(
+          'Vendor ID not available. Please ensure you are logged in or DEMO_VENDOR_ID is configured.'
+        ),
         req,
         res,
         'partials/case_inbox.html',
@@ -1651,11 +1777,11 @@ const caseInboxPartial = async (req, res) => {
       if (!c.sla_due_at) {
         return { ...c, hours_remaining: null, is_overdue: false, sla_status: null };
       }
-      
+
       const dueAt = new Date(c.sla_due_at);
       const hoursRemaining = Math.round((dueAt.getTime() - now.getTime()) / (1000 * 60 * 60));
       const isOverdue = hoursRemaining < 0;
-      
+
       // Determine SLA status: 'overdue', 'urgent' (<24h), 'warning' (<48h), 'ok'
       let slaStatus = 'ok';
       if (isOverdue) {
@@ -1665,12 +1791,12 @@ const caseInboxPartial = async (req, res) => {
       } else if (hoursRemaining <= 48) {
         slaStatus = 'warning';
       }
-      
+
       return {
         ...c,
         hours_remaining: hoursRemaining,
         is_overdue: isOverdue,
-        sla_status: slaStatus
+        sla_status: slaStatus,
       };
     });
 
@@ -1696,7 +1822,7 @@ const caseDetailPartial = async (req, res) => {
     const defaultData = {
       caseId: null,
       caseDetail: null,
-      isInternal: req.user?.isInternal || false
+      isInternal: req.user?.isInternal || false,
     };
 
     if (!caseId) {
@@ -1752,13 +1878,13 @@ const caseDetailPartial = async (req, res) => {
       caseId,
       caseDetail,
       isInternal: req.user?.isInternal || false,
-      validationResult
+      validationResult,
     });
   } catch (error) {
     handlePartialError(error, req, res, 'partials/case_detail.html', {
       caseId: req.query.case_id || null,
       caseDetail: null,
-      isInternal: req.user?.isInternal || false
+      isInternal: req.user?.isInternal || false,
     });
   }
 };
@@ -1819,7 +1945,7 @@ const caseThreadPartial = async (req, res) => {
       // Return with error message for graceful degradation (HTMX partial)
       return handlePartialError(adapterError, req, res, 'partials/case_thread.html', {
         caseId,
-        messages: []
+        messages: [],
       });
     }
 
@@ -1828,7 +1954,7 @@ const caseThreadPartial = async (req, res) => {
   } catch (error) {
     handlePartialError(error, req, res, 'partials/case_thread.html', {
       caseId: req.query.case_id || null,
-      messages: []
+      messages: [],
     });
   }
 };
@@ -1888,14 +2014,17 @@ const caseActivityPartial = async (req, res) => {
     } catch (adapterError) {
       return res.render('partials/case_activity.html', {
         activities: [],
-        error: adapterError.message || 'Failed to load activity feed'
+        error: adapterError.message || 'Failed to load activity feed',
       });
     }
 
     // 4. Render response
     res.render('partials/case_activity.html', { activities, error: null });
   } catch (error) {
-    handlePartialError(error, req, res, 'partials/case_activity.html', { activities: [], error: error.message || 'Failed to load activity' });
+    handlePartialError(error, req, res, 'partials/case_activity.html', {
+      activities: [],
+      error: error.message || 'Failed to load activity',
+    });
   }
 };
 
@@ -1936,12 +2065,12 @@ const supplierCaseListPartial = async (req, res) => {
     res.render('partials/supplier_case_list.html', {
       cases,
       status: status || null,
-      isInternal: req.user?.isInternal || false
+      isInternal: req.user?.isInternal || false,
     });
   } catch (error) {
     handlePartialError(error, req, res, 'partials/supplier_case_list.html', {
       cases: [],
-      status: req.query?.status || null
+      status: req.query?.status || null,
     });
   }
 };
@@ -1960,7 +2089,11 @@ const caseChecklistPartial = async (req, res) => {
 
     // 2. Input validation
     const caseId = req.query.case_id;
-    const defaultData = { caseId: null, checklistSteps: [], isInternal: req.user?.isInternal || false };
+    const defaultData = {
+      caseId: null,
+      checklistSteps: [],
+      isInternal: req.user?.isInternal || false,
+    };
 
     if (!caseId) {
       return res.render('partials/case_checklist.html', defaultData);
@@ -1971,16 +2104,34 @@ const caseChecklistPartial = async (req, res) => {
     // 3. Business logic with scope verification
     const vendorId = req.user.vendorId || env.DEMO_VENDOR_ID;
     if (!vendorId) {
-      return handlePartialError(new ValidationError('Vendor ID not available'), req, res, 'partials/case_checklist.html', defaultData);
+      return handlePartialError(
+        new ValidationError('Vendor ID not available'),
+        req,
+        res,
+        'partials/case_checklist.html',
+        defaultData
+      );
     }
 
     try {
       const caseDetail = await vmpAdapter.getCaseDetail(caseId, vendorId);
       if (!caseDetail || caseDetail.vendor_id !== vendorId) {
-        return handlePartialError(new NotFoundError('Case'), req, res, 'partials/case_checklist.html', defaultData);
+        return handlePartialError(
+          new NotFoundError('Case'),
+          req,
+          res,
+          'partials/case_checklist.html',
+          defaultData
+        );
       }
     } catch (adapterError) {
-      return handlePartialError(adapterError, req, res, 'partials/case_checklist.html', defaultData);
+      return handlePartialError(
+        adapterError,
+        req,
+        res,
+        'partials/case_checklist.html',
+        defaultData
+      );
     }
 
     // Load checklist steps
@@ -1992,9 +2143,17 @@ const caseChecklistPartial = async (req, res) => {
     }
 
     // 4. Render response
-    res.render('partials/case_checklist.html', { caseId, checklistSteps, isInternal: req.user?.isInternal || false });
+    res.render('partials/case_checklist.html', {
+      caseId,
+      checklistSteps,
+      isInternal: req.user?.isInternal || false,
+    });
   } catch (error) {
-    handlePartialError(error, req, res, 'partials/case_checklist.html', { caseId: req.query.case_id || null, checklistSteps: [], isInternal: req.user?.isInternal || false });
+    handlePartialError(error, req, res, 'partials/case_checklist.html', {
+      caseId: req.query.case_id || null,
+      checklistSteps: [],
+      isInternal: req.user?.isInternal || false,
+    });
   }
 };
 
@@ -2052,7 +2211,7 @@ const caseEvidencePartial = async (req, res) => {
 
       // Generate signed URLs for each evidence file (in parallel with timeout protection)
       // Use Promise.allSettled to ensure all promises complete even if some fail
-      const urlPromises = evidence.map(async (ev) => {
+      const urlPromises = evidence.map(async ev => {
         // Add timeout wrapper to prevent hanging
         const timeoutPromise = new Promise((_, reject) => {
           setTimeout(() => reject(new Error('Signed URL generation timeout')), 3000); // 3 second timeout per URL
@@ -2062,7 +2221,12 @@ const caseEvidencePartial = async (req, res) => {
           const signedUrlPromise = vmpAdapter.getEvidenceSignedUrl(ev.storage_path, 3600); // 1 hour expiry
           ev.download_url = await Promise.race([signedUrlPromise, timeoutPromise]);
         } catch (urlError) {
-          logError(urlError, { path: req.path, caseId, storagePath: ev.storage_path, operation: 'getEvidenceSignedUrl' });
+          logError(urlError, {
+            path: req.path,
+            caseId,
+            storagePath: ev.storage_path,
+            operation: 'getEvidenceSignedUrl',
+          });
           ev.download_url = '#'; // Fallback
         }
       });
@@ -2080,7 +2244,7 @@ const caseEvidencePartial = async (req, res) => {
       mime_type: ev.mime_type || 'application/octet-stream',
       size: ev.size_bytes || 0,
       created_at: ev.created_at,
-      url: ev.download_url || '#'
+      url: ev.download_url || '#',
     }));
 
     // 5. Render response
@@ -2088,7 +2252,7 @@ const caseEvidencePartial = async (req, res) => {
   } catch (error) {
     handlePartialError(error, req, res, 'partials/case_evidence.html', {
       caseId: req.query.case_id || null,
-      documents: []
+      documents: [],
     });
   }
 };
@@ -2110,8 +2274,8 @@ app.get('/templates/:type-template.pdf', async (req, res) => {
       return res.status(400).render('pages/error.html', {
         error: {
           status: 400,
-          message: 'Invalid template type'
-        }
+          message: 'Invalid template type',
+        },
       });
     }
 
@@ -2140,8 +2304,8 @@ Generated: ${new Date().toISOString()}
     res.status(500).render('pages/error.html', {
       error: {
         status: 500,
-        message: 'Failed to download template'
-      }
+        message: 'Failed to download template',
+      },
     });
   }
 });
@@ -2158,7 +2322,7 @@ const escalationPartial = async (req, res) => {
       caseId: null,
       caseDetail: null,
       isInternal: req.user?.isInternal || false,
-      directorInfo: null
+      directorInfo: null,
     };
 
     if (!caseId) {
@@ -2197,11 +2361,19 @@ const escalationPartial = async (req, res) => {
 
       // If Level 3 escalation, fetch Director info
       if (caseDetail.escalation_level >= 3) {
-        const groupId = caseDetail.group_id || (caseDetail.vmp_companies && caseDetail.vmp_companies.group_id) || null;
+        const groupId =
+          caseDetail.group_id ||
+          (caseDetail.vmp_companies && caseDetail.vmp_companies.group_id) ||
+          null;
         try {
           directorInfo = await vmpAdapter.getGroupDirectorInfo(groupId);
         } catch (directorError) {
-          logError(directorError, { path: req.path, caseId, groupId, operation: 'getGroupDirectorInfo' });
+          logError(directorError, {
+            path: req.path,
+            caseId,
+            groupId,
+            operation: 'getGroupDirectorInfo',
+          });
         }
       }
     } catch (adapterError) {
@@ -2213,14 +2385,14 @@ const escalationPartial = async (req, res) => {
       caseId,
       caseDetail,
       isInternal: req.user?.isInternal || false,
-      directorInfo: directorInfo || null
+      directorInfo: directorInfo || null,
     });
   } catch (error) {
     handlePartialError(error, req, res, 'partials/escalation.html', {
       caseId: req.query.case_id || null,
       caseDetail: null,
       isInternal: req.user?.isInternal || false,
-      directorInfo: null
+      directorInfo: null,
     });
   }
 };
@@ -2276,7 +2448,7 @@ app.get('/partials/case-row.html', async (req, res) => {
     // 4. Render response
     res.render('partials/case_row.html', {
       case: caseData,
-      error: null
+      error: null,
     });
   } catch (error) {
     handlePartialError(error, req, res, 'partials/case_row.html', { case: null });
@@ -2297,14 +2469,26 @@ app.get(`${BASE_PATH}/vendor/partials/case-row.html`, async (req, res) => {
 
     const vendorId = req.user.vendorId || env.DEMO_VENDOR_ID;
     if (!vendorId) {
-      return handlePartialError(new ValidationError('Vendor ID not available'), req, res, 'partials/case_row.html', defaultData);
+      return handlePartialError(
+        new ValidationError('Vendor ID not available'),
+        req,
+        res,
+        'partials/case_row.html',
+        defaultData
+      );
     }
 
     let caseData = null;
     try {
       caseData = await vmpAdapter.getCaseDetail(caseId, vendorId);
       if (!caseData || caseData.vendor_id !== vendorId) {
-        return handlePartialError(new NotFoundError('Case'), req, res, 'partials/case_row.html', defaultData);
+        return handlePartialError(
+          new NotFoundError('Case'),
+          req,
+          res,
+          'partials/case_row.html',
+          defaultData
+        );
       }
     } catch (adapterError) {
       return handlePartialError(adapterError, req, res, 'partials/case_row.html', defaultData);
@@ -2384,7 +2568,12 @@ app.post('/cases/:id/messages', async (req, res) => {
       messageCreated = true;
     } catch (createError) {
       // Still try to return refreshed thread (graceful degradation)
-      logError(createError, { path: req.path, caseId, userId: req.user.id, operation: 'createMessage' });
+      logError(createError, {
+        path: req.path,
+        caseId,
+        userId: req.user.id,
+        operation: 'createMessage',
+      });
     }
 
     // 6. AI AP ENFORCER - Trigger AI analysis for vendor messages
@@ -2397,18 +2586,16 @@ app.post('/cases/:id/messages', async (req, res) => {
         const extractedData = await extractStructuredData(body.trim(), '');
 
         // AI Enforcer Logic: Detect data-poor requests and inject system guidance
-        const needsInvoiceNumber = (
+        const needsInvoiceNumber =
           (intentAnalysis.intent === 'payment_inquiry' ||
             intentAnalysis.intent === 'invoice_inquiry' ||
             intentAnalysis.intent === 'general_inquiry') &&
-          (!extractedData.invoiceNumbers || extractedData.invoiceNumbers.length === 0)
-        );
+          (!extractedData.invoiceNumbers || extractedData.invoiceNumbers.length === 0);
 
-        const needsPONumber = (
+        const needsPONumber =
           intentAnalysis.intent === 'invoice_inquiry' &&
           (!extractedData.poNumbers || extractedData.poNumbers.length === 0) &&
-          (!extractedData.invoiceNumbers || extractedData.invoiceNumbers.length === 0)
-        );
+          (!extractedData.invoiceNumbers || extractedData.invoiceNumbers.length === 0);
 
         // Inject AI system message if data is missing
         if (needsInvoiceNumber) {
@@ -2429,7 +2616,7 @@ app.post('/cases/:id/messages', async (req, res) => {
           try {
             await vmpAdapter.createMessage(
               caseId,
-              "AI_ENFORCER: To help resolve this inquiry, please provide either an Invoice Number or PO Number for reference.",
+              'AI_ENFORCER: To help resolve this inquiry, please provide either an Invoice Number or PO Number for reference.',
               'ai',
               'portal',
               null,
@@ -2461,7 +2648,7 @@ app.post('/cases/:id/messages', async (req, res) => {
   } catch (error) {
     handlePartialError(error, req, res, 'partials/case_thread.html', {
       caseId: req.params.id || null,
-      messages: []
+      messages: [],
     });
   }
 });
@@ -2481,7 +2668,7 @@ app.post('/cases/:id/evidence', upload.single('file'), async (req, res) => {
       return res.status(400).render('partials/case_evidence.html', {
         caseId,
         evidence: [],
-        error: 'File is required'
+        error: 'File is required',
       });
     }
 
@@ -2489,7 +2676,7 @@ app.post('/cases/:id/evidence', upload.single('file'), async (req, res) => {
       return res.status(400).render('partials/case_evidence.html', {
         caseId: null,
         evidence: [],
-        error: 'Case ID is required'
+        error: 'Case ID is required',
       });
     }
 
@@ -2498,7 +2685,7 @@ app.post('/cases/:id/evidence', upload.single('file'), async (req, res) => {
       return res.status(400).render('partials/case_evidence.html', {
         caseId,
         evidence: [],
-        error: 'File is required'
+        error: 'File is required',
       });
     }
 
@@ -2506,7 +2693,7 @@ app.post('/cases/:id/evidence', upload.single('file'), async (req, res) => {
       return res.status(400).render('partials/case_evidence.html', {
         caseId,
         evidence: [],
-        error: 'Evidence type is required'
+        error: 'Evidence type is required',
       });
     }
 
@@ -2516,7 +2703,7 @@ app.post('/cases/:id/evidence', upload.single('file'), async (req, res) => {
       return res.status(401).render('partials/case_evidence.html', {
         caseId,
         evidence: [],
-        error: 'Authentication required'
+        error: 'Authentication required',
       });
     }
 
@@ -2526,7 +2713,7 @@ app.post('/cases/:id/evidence', upload.single('file'), async (req, res) => {
       return res.status(403).render('partials/case_evidence.html', {
         caseId,
         evidence: [],
-        error: 'Vendor context required'
+        error: 'Vendor context required',
       });
     }
     try {
@@ -2535,14 +2722,14 @@ app.post('/cases/:id/evidence', upload.single('file'), async (req, res) => {
         return res.status(404).render('partials/case_evidence.html', {
           caseId,
           evidence: [],
-          error: 'Case not found or access denied'
+          error: 'Case not found or access denied',
         });
       }
     } catch (checkError) {
       return res.status(404).render('partials/case_evidence.html', {
         caseId,
         evidence: [],
-        error: 'Case not found'
+        error: 'Case not found',
       });
     }
 
@@ -2554,7 +2741,7 @@ app.post('/cases/:id/evidence', upload.single('file'), async (req, res) => {
           buffer: file.buffer,
           originalname: file.originalname,
           mimetype: file.mimetype,
-          size: file.size
+          size: file.size,
         },
         evidence_type,
         checklist_step_id || null,
@@ -2562,11 +2749,16 @@ app.post('/cases/:id/evidence', upload.single('file'), async (req, res) => {
         user.id
       );
     } catch (uploadError) {
-      logError(uploadError, { path: req.path, userId: req.user?.id, caseId, operation: 'uploadEvidence' });
+      logError(uploadError, {
+        path: req.path,
+        userId: req.user?.id,
+        caseId,
+        operation: 'uploadEvidence',
+      });
       return res.status(500).render('partials/case_evidence.html', {
         caseId,
         evidence: [],
-        error: `Failed to upload evidence: ${uploadError.message}`
+        error: `Failed to upload evidence: ${uploadError.message}`,
       });
     }
 
@@ -2575,7 +2767,7 @@ app.post('/cases/:id/evidence', upload.single('file'), async (req, res) => {
       // Get updated evidence
       const evidence = await vmpAdapter.getEvidence(caseId);
       // Generate signed URLs in parallel with timeout protection
-      const urlPromises = evidence.map(async (ev) => {
+      const urlPromises = evidence.map(async ev => {
         // Add timeout wrapper to prevent hanging
         const timeoutPromise = new Promise((_, reject) => {
           setTimeout(() => reject(new Error('Signed URL generation timeout')), 3000); // 3 second timeout per URL
@@ -2594,19 +2786,29 @@ app.post('/cases/:id/evidence', upload.single('file'), async (req, res) => {
       // Return evidence partial (HTMX will refresh checklist separately)
       return res.render('partials/case_evidence.html', { caseId, evidence });
     } catch (error) {
-      logError(error, { path: req.path, userId: req.user?.id, caseId, operation: 'refreshEvidenceAfterUpload' });
+      logError(error, {
+        path: req.path,
+        userId: req.user?.id,
+        caseId,
+        operation: 'refreshEvidenceAfterUpload',
+      });
       return res.status(500).render('partials/case_evidence.html', {
         caseId,
         evidence: [],
-        error: 'Evidence uploaded but failed to refresh view'
+        error: 'Evidence uploaded but failed to refresh view',
       });
     }
   } catch (error) {
-    logError(error, { path: req.path, userId: req.user?.id, caseId: req.params.id, operation: 'postEvidence' });
+    logError(error, {
+      path: req.path,
+      userId: req.user?.id,
+      caseId: req.params.id,
+      operation: 'postEvidence',
+    });
     res.status(500).render('partials/case_evidence.html', {
       caseId: req.params.id || null,
       evidence: [],
-      error: error.message
+      error: error.message,
     });
   }
 });
@@ -2625,7 +2827,7 @@ app.post('/cases/:id/documents', upload.single('document'), async (req, res) => 
       return res.status(400).render('partials/case_evidence.html', {
         caseId: null,
         documents: [],
-        error: 'Case ID is required'
+        error: 'Case ID is required',
       });
     }
 
@@ -2635,7 +2837,7 @@ app.post('/cases/:id/documents', upload.single('document'), async (req, res) => 
       return res.status(400).render('partials/case_evidence.html', {
         caseId,
         documents: [],
-        error: 'File is required'
+        error: 'File is required',
       });
     }
 
@@ -2645,7 +2847,7 @@ app.post('/cases/:id/documents', upload.single('document'), async (req, res) => 
       return res.status(401).render('partials/case_evidence.html', {
         caseId,
         documents: [],
-        error: 'Authentication required'
+        error: 'Authentication required',
       });
     }
 
@@ -2654,7 +2856,7 @@ app.post('/cases/:id/documents', upload.single('document'), async (req, res) => 
       return res.status(403).render('partials/case_evidence.html', {
         caseId,
         documents: [],
-        error: 'Vendor context required'
+        error: 'Vendor context required',
       });
     }
     try {
@@ -2663,14 +2865,14 @@ app.post('/cases/:id/documents', upload.single('document'), async (req, res) => 
         return res.status(404).render('partials/case_evidence.html', {
           caseId,
           documents: [],
-          error: 'Case not found or access denied'
+          error: 'Case not found or access denied',
         });
       }
     } catch (checkError) {
       return res.status(404).render('partials/case_evidence.html', {
         caseId,
         documents: [],
-        error: 'Case not found'
+        error: 'Case not found',
       });
     }
 
@@ -2682,7 +2884,7 @@ app.post('/cases/:id/documents', upload.single('document'), async (req, res) => 
           buffer: file.buffer,
           originalname: file.originalname,
           mimetype: file.mimetype,
-          size: file.size
+          size: file.size,
         },
         'general', // Default evidence type for simple document uploads
         null, // No checklist step required
@@ -2690,11 +2892,16 @@ app.post('/cases/:id/documents', upload.single('document'), async (req, res) => 
         user.id
       );
     } catch (uploadError) {
-      logError(uploadError, { path: req.path, userId: req.user?.id, caseId, operation: 'uploadDocument' });
+      logError(uploadError, {
+        path: req.path,
+        userId: req.user?.id,
+        caseId,
+        operation: 'uploadDocument',
+      });
       return res.status(500).render('partials/case_evidence.html', {
         caseId,
         documents: [],
-        error: `Failed to upload document: ${uploadError.message}`
+        error: `Failed to upload document: ${uploadError.message}`,
       });
     }
 
@@ -2703,11 +2910,16 @@ app.post('/cases/:id/documents', upload.single('document'), async (req, res) => 
       let evidence = await vmpAdapter.getEvidence(caseId);
 
       // Generate signed URLs for each evidence file
-      const urlPromises = evidence.map(async (ev) => {
+      const urlPromises = evidence.map(async ev => {
         try {
           ev.download_url = await vmpAdapter.getEvidenceSignedUrl(ev.storage_path, 3600);
         } catch (urlError) {
-          logError(urlError, { path: req.path, caseId, storagePath: ev.storage_path, operation: 'getEvidenceSignedUrl' });
+          logError(urlError, {
+            path: req.path,
+            caseId,
+            storagePath: ev.storage_path,
+            operation: 'getEvidenceSignedUrl',
+          });
           ev.download_url = '#';
         }
       });
@@ -2720,24 +2932,34 @@ app.post('/cases/:id/documents', upload.single('document'), async (req, res) => 
         mime_type: ev.mime_type || 'application/octet-stream',
         size: ev.size_bytes || 0,
         created_at: ev.created_at,
-        url: ev.download_url || '#'
+        url: ev.download_url || '#',
       }));
 
       return res.render('partials/case_evidence.html', { caseId, documents });
     } catch (refreshError) {
-      logError(refreshError, { path: req.path, userId: req.user?.id, caseId, operation: 'refreshDocumentsAfterUpload' });
+      logError(refreshError, {
+        path: req.path,
+        userId: req.user?.id,
+        caseId,
+        operation: 'refreshDocumentsAfterUpload',
+      });
       return res.status(500).render('partials/case_evidence.html', {
         caseId,
         documents: [],
-        error: 'Document uploaded but failed to refresh list'
+        error: 'Document uploaded but failed to refresh list',
       });
     }
   } catch (error) {
-    logError(error, { path: req.path, userId: req.user?.id, caseId: req.params.id, operation: 'postDocument' });
+    logError(error, {
+      path: req.path,
+      userId: req.user?.id,
+      caseId: req.params.id,
+      operation: 'postDocument',
+    });
     res.status(500).render('partials/case_evidence.html', {
       caseId: req.params.id || null,
       documents: [],
-      error: error.message
+      error: error.message,
     });
   }
 });
@@ -2746,7 +2968,15 @@ app.post('/cases/:id/documents', upload.single('document'), async (req, res) => 
 app.post('/cases/:id/verify-evidence', async (req, res) => {
   try {
     // 1. Authentication & Authorization
-    if (!requireInternal(req, res, 'partials/case_checklist.html', 'Only internal staff can verify evidence')) return;
+    if (
+      !requireInternal(
+        req,
+        res,
+        'partials/case_checklist.html',
+        'Only internal staff can verify evidence'
+      )
+    )
+      return;
 
     // 2. Input validation
     const caseId = req.params.id;
@@ -2756,7 +2986,7 @@ app.post('/cases/:id/verify-evidence', async (req, res) => {
     const defaultData = {
       caseId,
       checklistSteps: [],
-      isInternal: req.user?.isInternal || false
+      isInternal: req.user?.isInternal || false,
     };
 
     if (!checklist_step_id) {
@@ -2790,10 +3020,18 @@ app.post('/cases/:id/verify-evidence', async (req, res) => {
       }
     } catch (verifyError) {
       // Use VMPError for proper statusCode support
-      const wrappedError = verifyError instanceof VMPError
-        ? verifyError
-        : new DatabaseError('Failed to verify evidence', verifyError, { caseId });
-      return handlePartialError(wrappedError, req, res, 'partials/case_checklist.html', defaultData, true);
+      const wrappedError =
+        verifyError instanceof VMPError
+          ? verifyError
+          : new DatabaseError('Failed to verify evidence', verifyError, { caseId });
+      return handlePartialError(
+        wrappedError,
+        req,
+        res,
+        'partials/case_checklist.html',
+        defaultData,
+        true
+      );
     }
 
     // 4. Create notification for vendor (evidence verified)
@@ -2829,16 +3067,31 @@ app.post('/cases/:id/verify-evidence', async (req, res) => {
         checklistSteps = await vmpAdapter.getChecklistSteps(caseId);
       }
 
-      return res.render('partials/case_checklist.html', { caseId, checklistSteps, isInternal: req.user.isInternal });
+      return res.render('partials/case_checklist.html', {
+        caseId,
+        checklistSteps,
+        isInternal: req.user.isInternal,
+      });
     } catch (error) {
-      const wrappedError = new DatabaseError('Evidence verified but failed to refresh checklist', error, { caseId });
-      return handlePartialError(wrappedError, req, res, 'partials/case_checklist.html', defaultData, true);
+      const wrappedError = new DatabaseError(
+        'Evidence verified but failed to refresh checklist',
+        error,
+        { caseId }
+      );
+      return handlePartialError(
+        wrappedError,
+        req,
+        res,
+        'partials/case_checklist.html',
+        defaultData,
+        true
+      );
     }
   } catch (error) {
     handlePartialError(error, req, res, 'partials/case_checklist.html', {
       caseId: req.params.id || null,
       checklistSteps: [],
-      isInternal: req.user?.isInternal || false
+      isInternal: req.user?.isInternal || false,
     });
   }
 });
@@ -2847,7 +3100,15 @@ app.post('/cases/:id/verify-evidence', async (req, res) => {
 app.post('/cases/:id/reject-evidence', async (req, res) => {
   try {
     // 1. Authentication & Authorization
-    if (!requireInternal(req, res, 'partials/case_checklist.html', 'Only internal staff can reject evidence')) return;
+    if (
+      !requireInternal(
+        req,
+        res,
+        'partials/case_checklist.html',
+        'Only internal staff can reject evidence'
+      )
+    )
+      return;
 
     // 2. Input validation
     const caseId = req.params.id;
@@ -2857,7 +3118,7 @@ app.post('/cases/:id/reject-evidence', async (req, res) => {
     const defaultData = {
       caseId,
       checklistSteps: [],
-      isInternal: req.user?.isInternal || false
+      isInternal: req.user?.isInternal || false,
     };
 
     if (!checklist_step_id || !reason || !reason.trim()) {
@@ -2891,10 +3152,18 @@ app.post('/cases/:id/reject-evidence', async (req, res) => {
         logError(logError, { path: req.path, caseId, operation: 'logDecision-reject' });
       }
     } catch (rejectError) {
-      const wrappedError = rejectError instanceof VMPError
-        ? rejectError
-        : new DatabaseError('Failed to reject evidence', rejectError, { caseId });
-      return handlePartialError(wrappedError, req, res, 'partials/case_checklist.html', defaultData, true);
+      const wrappedError =
+        rejectError instanceof VMPError
+          ? rejectError
+          : new DatabaseError('Failed to reject evidence', rejectError, { caseId });
+      return handlePartialError(
+        wrappedError,
+        req,
+        res,
+        'partials/case_checklist.html',
+        defaultData,
+        true
+      );
     }
 
     // 4. Create notification for vendor (evidence rejected)
@@ -2930,17 +3199,39 @@ app.post('/cases/:id/reject-evidence', async (req, res) => {
         checklistSteps = await vmpAdapter.getChecklistSteps(caseId);
       }
 
-      return res.render('partials/case_checklist.html', { caseId, checklistSteps, isInternal: req.user.isInternal });
+      return res.render('partials/case_checklist.html', {
+        caseId,
+        checklistSteps,
+        isInternal: req.user.isInternal,
+      });
     } catch (error) {
-      const wrappedError = new DatabaseError('Evidence rejected but failed to refresh checklist', error, { caseId });
-      return handlePartialError(wrappedError, req, res, 'partials/case_checklist.html', defaultData, true);
+      const wrappedError = new DatabaseError(
+        'Evidence rejected but failed to refresh checklist',
+        error,
+        { caseId }
+      );
+      return handlePartialError(
+        wrappedError,
+        req,
+        res,
+        'partials/case_checklist.html',
+        defaultData,
+        true
+      );
     }
   } catch (error) {
-    handlePartialError(error, req, res, 'partials/case_checklist.html', {
-      caseId: req.params.id || null,
-      checklistSteps: [],
-      isInternal: req.user?.isInternal || false
-    }, true);
+    handlePartialError(
+      error,
+      req,
+      res,
+      'partials/case_checklist.html',
+      {
+        caseId: req.params.id || null,
+        checklistSteps: [],
+        isInternal: req.user?.isInternal || false,
+      },
+      true
+    );
   }
 });
 
@@ -2948,7 +3239,15 @@ app.post('/cases/:id/reject-evidence', async (req, res) => {
 app.post('/cases/:id/reassign', async (req, res) => {
   try {
     // 1. Authentication & Authorization
-    if (!requireInternal(req, res, 'partials/case_detail.html', 'Only internal staff can reassign cases')) return;
+    if (
+      !requireInternal(
+        req,
+        res,
+        'partials/case_detail.html',
+        'Only internal staff can reassign cases'
+      )
+    )
+      return;
 
     // 2. Input validation
     const caseId = req.params.id;
@@ -2986,10 +3285,18 @@ app.post('/cases/:id/reassign', async (req, res) => {
         logError(logError, { path: req.path, caseId, operation: 'logDecision-reassign' });
       }
     } catch (reassignError) {
-      const wrappedError = reassignError instanceof VMPError
-        ? reassignError
-        : new DatabaseError('Failed to reassign case', reassignError, { caseId });
-      return handlePartialError(wrappedError, req, res, 'partials/case_detail.html', defaultData, true);
+      const wrappedError =
+        reassignError instanceof VMPError
+          ? reassignError
+          : new DatabaseError('Failed to reassign case', reassignError, { caseId });
+      return handlePartialError(
+        wrappedError,
+        req,
+        res,
+        'partials/case_detail.html',
+        defaultData,
+        true
+      );
     }
 
     // 4. Return refreshed case detail
@@ -3001,23 +3308,53 @@ app.post('/cases/:id/reassign', async (req, res) => {
         caseDetail = await vmpAdapter.getCaseDetail(caseId, vendorId);
       }
 
-      return res.render('partials/case_detail.html', { caseId, caseDetail, isInternal: req.user.isInternal });
+      return res.render('partials/case_detail.html', {
+        caseId,
+        caseDetail,
+        isInternal: req.user.isInternal,
+      });
     } catch (error) {
-      const wrappedError = new DatabaseError('Case reassigned but failed to refresh detail', error, { caseId });
-      return handlePartialError(wrappedError, req, res, 'partials/case_detail.html', defaultData, true);
+      const wrappedError = new DatabaseError(
+        'Case reassigned but failed to refresh detail',
+        error,
+        { caseId }
+      );
+      return handlePartialError(
+        wrappedError,
+        req,
+        res,
+        'partials/case_detail.html',
+        defaultData,
+        true
+      );
     }
   } catch (error) {
-    handlePartialError(error, req, res, 'partials/case_detail.html', {
-      caseId: req.params.id || null,
-      caseDetail: null
-    }, true);
+    handlePartialError(
+      error,
+      req,
+      res,
+      'partials/case_detail.html',
+      {
+        caseId: req.params.id || null,
+        caseDetail: null,
+      },
+      true
+    );
   }
 });
 
 // Internal Ops - Update Case Status (legacy + canonical alias)
 const updateCaseStatusHandler = async (req, res) => {
   try {
-    if (!requireInternal(req, res, 'partials/case_detail.html', 'Only internal staff can update case status')) return;
+    if (
+      !requireInternal(
+        req,
+        res,
+        'partials/case_detail.html',
+        'Only internal staff can update case status'
+      )
+    )
+      return;
 
     const caseId = req.params.id;
     if (!validateUUIDParam(caseId, res, 'partials/case_detail.html')) return;
@@ -3027,9 +3364,14 @@ const updateCaseStatusHandler = async (req, res) => {
     const nextStatus = status || action; // future mapping to applyDecision will replace this
     const defaultData = { caseId, caseDetail: null };
 
-    if (!nextStatus || !['open', 'waiting_supplier', 'waiting_internal', 'resolved', 'blocked'].includes(nextStatus)) {
+    if (
+      !nextStatus ||
+      !['open', 'waiting_supplier', 'waiting_internal', 'resolved', 'blocked'].includes(nextStatus)
+    ) {
       return handlePartialError(
-        new ValidationError('status must be one of: open, waiting_supplier, waiting_internal, resolved, blocked'),
+        new ValidationError(
+          'status must be one of: open, waiting_supplier, waiting_internal, resolved, blocked'
+        ),
         req,
         res,
         'partials/case_detail.html',
@@ -3049,16 +3391,24 @@ const updateCaseStatusHandler = async (req, res) => {
           tenantId: req.user.vendor?.tenant_id || null,
           vendorId: req.user.vendorId || null,
           note,
-          reason
+          reason,
         });
       } else {
         await vmpAdapter.updateCaseStatus(caseId, nextStatus, req.user.id, { note, reason });
       }
     } catch (updateError) {
-      const wrappedError = updateError instanceof VMPError
-        ? updateError
-        : new DatabaseError('Failed to update case status', updateError, { caseId });
-      return handlePartialError(wrappedError, req, res, 'partials/case_detail.html', defaultData, true);
+      const wrappedError =
+        updateError instanceof VMPError
+          ? updateError
+          : new DatabaseError('Failed to update case status', updateError, { caseId });
+      return handlePartialError(
+        wrappedError,
+        req,
+        res,
+        'partials/case_detail.html',
+        defaultData,
+        true
+      );
     }
 
     try {
@@ -3069,16 +3419,38 @@ const updateCaseStatusHandler = async (req, res) => {
         caseDetail = await vmpAdapter.getCaseDetail(caseId, vendorId);
       }
 
-      return res.render('partials/case_detail.html', { caseId, caseDetail, isInternal: req.user.isInternal });
+      return res.render('partials/case_detail.html', {
+        caseId,
+        caseDetail,
+        isInternal: req.user.isInternal,
+      });
     } catch (error) {
-      const wrappedError = new DatabaseError('Case status updated but failed to refresh detail', error, { caseId });
-      return handlePartialError(wrappedError, req, res, 'partials/case_detail.html', defaultData, true);
+      const wrappedError = new DatabaseError(
+        'Case status updated but failed to refresh detail',
+        error,
+        { caseId }
+      );
+      return handlePartialError(
+        wrappedError,
+        req,
+        res,
+        'partials/case_detail.html',
+        defaultData,
+        true
+      );
     }
   } catch (error) {
-    handlePartialError(error, req, res, 'partials/case_detail.html', {
-      caseId: req.params.id || null,
-      caseDetail: null
-    }, true);
+    handlePartialError(
+      error,
+      req,
+      res,
+      'partials/case_detail.html',
+      {
+        caseId: req.params.id || null,
+        caseDetail: null,
+      },
+      true
+    );
   }
 };
 
@@ -3103,7 +3475,7 @@ app.post('/cases/:id/escalate', async (req, res) => {
       caseId,
       caseDetail: null,
       isInternal: req.user?.isInternal || false,
-      directorInfo: null
+      directorInfo: null,
     };
 
     const escalationLevel = parseInt(escalation_level, 10);
@@ -3144,7 +3516,12 @@ app.post('/cases/:id/escalate', async (req, res) => {
         directorInfo = await vmpAdapter.getGroupDirectorInfo(groupId);
       } catch (directorError) {
         // Continue with mock data for Sprint 1
-        logError(directorError, { path: req.path, caseId, groupId, operation: 'getGroupDirectorInfo' });
+        logError(directorError, {
+          path: req.path,
+          caseId,
+          groupId,
+          operation: 'getGroupDirectorInfo',
+        });
       }
 
       // Log Break Glass event
@@ -3158,12 +3535,7 @@ app.post('/cases/:id/escalate', async (req, res) => {
 
     // 5. Perform escalation
     try {
-      await vmpAdapter.escalateCase(
-        caseId,
-        escalationLevel,
-        req.user.id,
-        reason || null
-      );
+      await vmpAdapter.escalateCase(caseId, escalationLevel, req.user.id, reason || null);
 
       // Log decision
       try {
@@ -3189,7 +3561,12 @@ app.post('/cases/:id/escalate', async (req, res) => {
         try {
           directorInfo = await vmpAdapter.getGroupDirectorInfo(groupId);
         } catch (directorError) {
-          logError(directorError, { path: req.path, caseId, groupId, operation: 'getGroupDirectorInfo' });
+          logError(directorError, {
+            path: req.path,
+            caseId,
+            groupId,
+            operation: 'getGroupDirectorInfo',
+          });
         }
       }
 
@@ -3198,14 +3575,14 @@ app.post('/cases/:id/escalate', async (req, res) => {
         caseId,
         caseDetail,
         isInternal: req.user?.isInternal || false,
-        directorInfo: directorInfo || null
+        directorInfo: directorInfo || null,
       });
     } catch (escalateError) {
       return handlePartialError(escalateError, req, res, 'partials/escalation.html', {
         caseId,
         caseDetail,
         isInternal: req.user?.isInternal || false,
-        directorInfo: null
+        directorInfo: null,
       });
     }
   } catch (error) {
@@ -3213,7 +3590,7 @@ app.post('/cases/:id/escalate', async (req, res) => {
       caseId: req.params.id || null,
       caseDetail: null,
       isInternal: req.user?.isInternal || false,
-      directorInfo: null
+      directorInfo: null,
     });
   }
 });
@@ -3236,7 +3613,7 @@ app.get('/ops/ingest', async (req, res) => {
       title: 'Data Ingest',
       orgTree,
       user: req.user,
-      isInternal: true
+      isInternal: true,
     });
   } catch (error) {
     handleRouteError(error, req, res);
@@ -3252,23 +3629,25 @@ app.post('/ops/ingest/invoices', upload.single('csv_file'), async (req, res) => 
     // 2. Input validation
     if (!req.file) {
       return res.status(400).json({
-        error: 'CSV file is required'
+        error: 'CSV file is required',
       });
     }
 
     // Validate file type
-    if (req.file.mimetype !== 'text/csv' &&
+    if (
+      req.file.mimetype !== 'text/csv' &&
       req.file.mimetype !== 'application/vnd.ms-excel' &&
-      !req.file.originalname.endsWith('.csv')) {
+      !req.file.originalname.endsWith('.csv')
+    ) {
       return res.status(400).json({
-        error: 'File must be a CSV file'
+        error: 'File must be a CSV file',
       });
     }
 
     const { company_id } = req.body;
     if (!company_id) {
       return res.status(400).json({
-        error: 'company_id is required'
+        error: 'company_id is required',
       });
     }
 
@@ -3290,12 +3669,12 @@ app.post('/ops/ingest/invoices', upload.single('csv_file'), async (req, res) => 
       upserted: result.upserted,
       failed: result.failed,
       errors: result.errors,
-      failures: result.failures
+      failures: result.failures,
     });
   } catch (error) {
     logError(error, { path: req.path, userId: req.user?.id });
     res.status(500).json({
-      error: error.message || 'Failed to ingest invoices'
+      error: error.message || 'Failed to ingest invoices',
     });
   }
 });
@@ -3309,23 +3688,25 @@ app.post('/ops/ingest/payments', upload.single('csv_file'), async (req, res) => 
     // 2. Input validation
     if (!req.file) {
       return res.status(400).json({
-        error: 'CSV file is required'
+        error: 'CSV file is required',
       });
     }
 
     // Validate file type
-    if (req.file.mimetype !== 'text/csv' &&
+    if (
+      req.file.mimetype !== 'text/csv' &&
       req.file.mimetype !== 'application/vnd.ms-excel' &&
-      !req.file.originalname.endsWith('.csv')) {
+      !req.file.originalname.endsWith('.csv')
+    ) {
       return res.status(400).json({
-        error: 'File must be a CSV file'
+        error: 'File must be a CSV file',
       });
     }
 
     const { company_id } = req.body;
     if (!company_id) {
       return res.status(400).json({
-        error: 'company_id is required'
+        error: 'company_id is required',
       });
     }
 
@@ -3348,12 +3729,12 @@ app.post('/ops/ingest/payments', upload.single('csv_file'), async (req, res) => 
       failed: result.failed,
       invoicesUpdated: result.invoicesUpdated,
       errors: result.errors,
-      failures: result.failures
+      failures: result.failures,
     });
   } catch (error) {
     logError(error, { path: req.path, userId: req.user?.id });
     res.status(500).json({
-      error: error.message || 'Failed to ingest payments'
+      error: error.message || 'Failed to ingest payments',
     });
   }
 });
@@ -3367,27 +3748,31 @@ app.post('/ops/ingest/remittances', upload.array('remittance_files', 50), async 
     // 2. Input validation
     if (!req.files || req.files.length === 0) {
       return res.status(400).json({
-        error: 'At least one PDF file is required'
+        error: 'At least one PDF file is required',
       });
     }
 
     // Validate all files are PDFs
-    const filesArray = Array.isArray(req.files) ? req.files : (req.files ? Object.values(req.files).flat() : []);
-    const invalidFiles = filesArray.filter(file =>
-      file.mimetype !== 'application/pdf' && !file.originalname.endsWith('.pdf')
+    const filesArray = Array.isArray(req.files)
+      ? req.files
+      : req.files
+        ? Object.values(req.files).flat()
+        : [];
+    const invalidFiles = filesArray.filter(
+      file => file.mimetype !== 'application/pdf' && !file.originalname.endsWith('.pdf')
     );
 
     if (invalidFiles.length > 0) {
       return res.status(400).json({
         error: 'All files must be PDF format',
-        invalidFiles: invalidFiles.map(f => f.originalname)
+        invalidFiles: invalidFiles.map(f => f.originalname),
       });
     }
 
     const { company_id } = req.body;
     if (!company_id) {
       return res.status(400).json({
-        error: 'company_id is required'
+        error: 'company_id is required',
       });
     }
 
@@ -3409,12 +3794,12 @@ app.post('/ops/ingest/remittances', upload.array('remittance_files', 50), async 
       processed: result.processed,
       failed: result.failed,
       results: result.results,
-      errors: result.errors
+      errors: result.errors,
     });
   } catch (error) {
     logError(error, { path: req.path, userId: req.user?.id });
     res.status(500).json({
-      error: error.message || 'Failed to ingest remittances'
+      error: error.message || 'Failed to ingest remittances',
     });
   }
 });
@@ -3433,7 +3818,7 @@ app.get('/payments', async (req, res) => {
     res.render('pages/payments.html', {
       title: 'Payments',
       user: req.user,
-      isInternal: req.user?.isInternal || false
+      isInternal: req.user?.isInternal || false,
     });
   } catch (error) {
     handleRouteError(error, req, res);
@@ -3454,24 +3839,20 @@ app.get('/partials/payment-list.html', async (req, res) => {
     if (date_from) filters.date_from = date_from;
     if (date_to) filters.date_to = date_to;
 
-    const payments = await vmpAdapter.getPayments(
-      req.user.vendorId,
-      company_id || null,
-      filters
-    );
+    const payments = await vmpAdapter.getPayments(req.user.vendorId, company_id || null, filters);
 
     // 3. Render response
     res.render('partials/payment_list.html', {
       payments: payments || [],
       isInternal: req.user?.isInternal || false,
       query: req.query,
-      error: null
+      error: null,
     });
   } catch (error) {
     handlePartialError(error, req, res, 'partials/payment_list.html', {
       payments: [],
       isInternal: req.user?.isInternal || false,
-      query: req.query
+      query: req.query,
     });
   }
 });
@@ -3497,8 +3878,8 @@ app.get('/payments/:id', async (req, res) => {
         return res.status(404).render('pages/error.html', {
           error: {
             status: 404,
-            message: 'Payment not found'
-          }
+            message: 'Payment not found',
+          },
         });
       }
 
@@ -3517,8 +3898,8 @@ app.get('/payments/:id', async (req, res) => {
         return res.status(404).render('pages/error.html', {
           error: {
             status: 404,
-            message: 'Payment not found'
-          }
+            message: 'Payment not found',
+          },
         });
       } else {
         // Other errors: throw to be handled by catch block
@@ -3532,7 +3913,7 @@ app.get('/payments/:id', async (req, res) => {
       paymentDetail,
       paymentStatusInfo,
       isInternal: req.user?.isInternal || false,
-      user: req.user
+      user: req.user,
     });
   } catch (error) {
     handleRouteError(error, req, res);
@@ -3549,7 +3930,7 @@ app.get('/payments/history', async (req, res) => {
     res.render('pages/payment_history.html', {
       title: 'Payment History',
       user: req.user,
-      isInternal: req.user?.isInternal || false
+      isInternal: req.user?.isInternal || false,
     });
   } catch (error) {
     handleRouteError(error, req, res);
@@ -3563,7 +3944,16 @@ app.get('/partials/payment-history.html', async (req, res) => {
     if (!requireAuth(req, res)) return;
 
     // 2. Business logic
-    const { payment_ref, invoice_num, date_from, date_to, company_id, amount_min, amount_max, status } = req.query;
+    const {
+      payment_ref,
+      invoice_num,
+      date_from,
+      date_to,
+      company_id,
+      amount_min,
+      amount_max,
+      status,
+    } = req.query;
     const filters = {};
     if (payment_ref) filters.payment_ref = payment_ref;
     if (invoice_num) filters.invoice_num = invoice_num;
@@ -3573,11 +3963,7 @@ app.get('/partials/payment-history.html', async (req, res) => {
     if (amount_max) filters.amount_max = amount_max;
     if (status) filters.status = status;
 
-    const payments = await vmpAdapter.getPayments(
-      req.user.vendorId,
-      company_id || null,
-      filters
-    );
+    const payments = await vmpAdapter.getPayments(req.user.vendorId, company_id || null, filters);
 
     // Sort chronologically (oldest first for timeline)
     const sortedPayments = (payments || []).sort((a, b) => {
@@ -3591,7 +3977,7 @@ app.get('/partials/payment-history.html', async (req, res) => {
       payments: sortedPayments,
       isInternal: req.user?.isInternal || false,
       query: req.query,
-      error: null
+      error: null,
     });
   } catch (error) {
     logError(error, { path: req.path, userId: req.user?.id });
@@ -3599,7 +3985,7 @@ app.get('/partials/payment-history.html', async (req, res) => {
       payments: [],
       isInternal: req.user?.isInternal || false,
       query: req.query,
-      error: error.message || 'Failed to load payment history'
+      error: error.message || 'Failed to load payment history',
     });
   }
 });
@@ -3620,8 +4006,8 @@ app.get('/payments/:id/receipt', async (req, res) => {
       return res.status(404).render('pages/error.html', {
         error: {
           status: 404,
-          message: 'Payment not found or access denied'
-        }
+          message: 'Payment not found or access denied',
+        },
       });
     }
 
@@ -3647,7 +4033,10 @@ Generated: ${new Date().toISOString()}
       `.trim();
 
       res.setHeader('Content-Type', 'text/plain');
-      res.setHeader('Content-Disposition', `attachment; filename="payment-receipt-${payment.payment_ref}.txt"`);
+      res.setHeader(
+        'Content-Disposition',
+        `attachment; filename="payment-receipt-${payment.payment_ref}.txt"`
+      );
       res.send(receiptText);
     }
   } catch (error) {
@@ -3655,8 +4044,8 @@ Generated: ${new Date().toISOString()}
     res.status(500).render('pages/error.html', {
       error: {
         status: 500,
-        message: error.message || 'Failed to download receipt'
-      }
+        message: error.message || 'Failed to download receipt',
+      },
     });
   }
 });
@@ -3668,7 +4057,16 @@ app.get('/payments/history/export', async (req, res) => {
     if (!requireAuth(req, res)) return;
 
     // 2. Business logic - Apply same filters as history view
-    const { payment_ref, invoice_num, date_from, date_to, company_id, amount_min, amount_max, status } = req.query;
+    const {
+      payment_ref,
+      invoice_num,
+      date_from,
+      date_to,
+      company_id,
+      amount_min,
+      amount_max,
+      status,
+    } = req.query;
     const filters = {};
     if (payment_ref) filters.payment_ref = payment_ref;
     if (invoice_num) filters.invoice_num = invoice_num;
@@ -3678,41 +4076,43 @@ app.get('/payments/history/export', async (req, res) => {
     if (amount_max) filters.amount_max = amount_max;
     if (status) filters.status = status;
 
-    const payments = await vmpAdapter.getPayments(
-      req.user.vendorId,
-      company_id || null,
-      filters
-    );
+    const payments = await vmpAdapter.getPayments(req.user.vendorId, company_id || null, filters);
 
     // 3. Generate CSV
     const csvRows = [];
 
     // CSV Header
-    csvRows.push([
-      'Payment Date',
-      'Payment Reference',
-      'Amount',
-      'Currency',
-      'Company',
-      'Invoice Number',
-      'Remittance Available',
-      'Source System',
-      'Description'
-    ].join(','));
+    csvRows.push(
+      [
+        'Payment Date',
+        'Payment Reference',
+        'Amount',
+        'Currency',
+        'Company',
+        'Invoice Number',
+        'Remittance Available',
+        'Source System',
+        'Description',
+      ].join(',')
+    );
 
     // CSV Data Rows
     for (const payment of payments || []) {
-      csvRows.push([
-        payment.payment_date || '',
-        payment.payment_ref || '',
-        payment.amount || '0.00',
-        payment.currency_code || 'USD',
-        payment.vmp_companies?.name || '',
-        payment.vmp_invoices?.invoice_num || payment.invoice_num || '',
-        payment.remittance_url ? 'Yes' : 'No',
-        payment.source_system || 'manual',
-        (payment.description || '').replace(/"/g, '""') // Escape quotes in CSV
-      ].map(field => `"${field}"`).join(','));
+      csvRows.push(
+        [
+          payment.payment_date || '',
+          payment.payment_ref || '',
+          payment.amount || '0.00',
+          payment.currency_code || 'USD',
+          payment.vmp_companies?.name || '',
+          payment.vmp_invoices?.invoice_num || payment.invoice_num || '',
+          payment.remittance_url ? 'Yes' : 'No',
+          payment.source_system || 'manual',
+          (payment.description || '').replace(/"/g, '""'), // Escape quotes in CSV
+        ]
+          .map(field => `"${field}"`)
+          .join(',')
+      );
     }
 
     const csvContent = csvRows.join('\n');
@@ -3725,7 +4125,7 @@ app.get('/payments/history/export', async (req, res) => {
   } catch (error) {
     logError(error, { path: req.path, userId: req.user?.id });
     res.status(500).json({
-      error: error.message || 'Failed to export payment history'
+      error: error.message || 'Failed to export payment history',
     });
   }
 });
@@ -3744,7 +4144,7 @@ app.get('/settings', async (req, res) => {
     res.render('pages/settings.html', {
       title: 'Settings & Configuration',
       user: req.user,
-      isInternal: req.user?.isInternal || false
+      isInternal: req.user?.isInternal || false,
     });
   } catch (error) {
     handleRouteError(error, req, res);
@@ -3765,8 +4165,8 @@ app.get('/profile', async (req, res) => {
         return res.status(404).render('pages/error.html', {
           error: {
             status: 404,
-            message: 'Vendor profile not found'
-          }
+            message: 'Vendor profile not found',
+          },
         });
       }
     } catch (adapterError) {
@@ -3779,7 +4179,7 @@ app.get('/profile', async (req, res) => {
       title: 'Profile',
       vendorProfile,
       user: req.user,
-      isInternal: req.user?.isInternal || false
+      isInternal: req.user?.isInternal || false,
     });
   } catch (error) {
     handleRouteError(error, req, res);
@@ -3808,11 +4208,11 @@ app.get('/partials/profile-form.html', async (req, res) => {
     // 3. Render response
     res.render('partials/profile_form.html', {
       vendorProfile,
-      error: null
+      error: null,
     });
   } catch (error) {
     handlePartialError(error, req, res, 'partials/profile_form.html', {
-      vendorProfile: null
+      vendorProfile: null,
     });
   }
 });
@@ -3829,7 +4229,9 @@ app.post('/profile/contact', async (req, res) => {
     // At least one field must be provided
     if (!address && !phone && !website) {
       return handlePartialError(
-        new ValidationError('At least one contact field (address, phone, website) must be provided'),
+        new ValidationError(
+          'At least one contact field (address, phone, website) must be provided'
+        ),
         req,
         res,
         'partials/profile_form.html',
@@ -3841,7 +4243,7 @@ app.post('/profile/contact', async (req, res) => {
     const updatedVendor = await vmpAdapter.updateVendorContact(req.user.vendorId, {
       address: address || null,
       phone: phone || null,
-      website: website || null
+      website: website || null,
     });
 
     // 4. Fetch updated profile to render
@@ -3851,12 +4253,12 @@ app.post('/profile/contact', async (req, res) => {
     res.render('partials/profile_form.html', {
       vendorProfile,
       error: null,
-      success: 'Contact information updated successfully'
+      success: 'Contact information updated successfully',
     });
   } catch (error) {
     logError(error, { path: req.path, userId: req.user?.id });
     handlePartialError(error, req, res, 'partials/profile_form.html', {
-      vendorProfile: null
+      vendorProfile: null,
     });
   }
 });
@@ -3868,27 +4270,28 @@ app.post('/profile/bank-details', async (req, res) => {
     if (!requireAuth(req, res)) return;
 
     // 2. Input validation
-    const { account_name, account_number, bank_name, swift_code, branch_address, currency } = req.body;
+    const { account_name, account_number, bank_name, swift_code, branch_address, currency } =
+      req.body;
 
     // Validate required fields using validateRequired helper
     if (!validateRequired(account_name, 'account_name')) {
       return res.status(400).json({
-        error: 'account_name is required'
+        error: 'account_name is required',
       });
     }
     if (!validateRequired(account_number, 'account_number')) {
       return res.status(400).json({
-        error: 'account_number is required'
+        error: 'account_number is required',
       });
     }
     if (!validateRequired(bank_name, 'bank_name')) {
       return res.status(400).json({
-        error: 'bank_name is required'
+        error: 'bank_name is required',
       });
     }
     if (!validateRequired(swift_code, 'swift_code')) {
       return res.status(400).json({
-        error: 'swift_code is required'
+        error: 'swift_code is required',
       });
     }
 
@@ -3901,7 +4304,7 @@ app.post('/profile/bank-details', async (req, res) => {
         bank_name: bank_name.trim(),
         swift_code: swift_code.trim(),
         branch_address: branch_address?.trim() || null,
-        currency: currency?.trim() || null
+        currency: currency?.trim() || null,
       },
       req.user.id
     );
@@ -3911,7 +4314,7 @@ app.post('/profile/bank-details', async (req, res) => {
   } catch (error) {
     logError(error, { path: req.path, userId: req.user?.id });
     res.status(500).json({
-      error: error.message || 'Failed to request bank details change'
+      error: error.message || 'Failed to request bank details change',
     });
   }
 });
@@ -3926,8 +4329,8 @@ const supplierDashboardHandler = async (req, res) => {
         user: req.user,
         error: {
           status: 403,
-          message: 'Supplier dashboard is only available to vendors'
-        }
+          message: 'Supplier dashboard is only available to vendors',
+        },
       });
     }
 
@@ -3957,7 +4360,12 @@ const supplierDashboardHandler = async (req, res) => {
         pendingPayments = payments.slice(1, 6);
       }
     } catch (paymentError) {
-      logError(paymentError, { path: req.path, userId: req.user?.id, vendorId: req.user.vendorId, operation: 'getPayments' });
+      logError(paymentError, {
+        path: req.path,
+        userId: req.user?.id,
+        vendorId: req.user.vendorId,
+        operation: 'getPayments',
+      });
     }
 
     res.render('pages/supplier_dashboard.html', {
@@ -3969,7 +4377,7 @@ const supplierDashboardHandler = async (req, res) => {
       openCount,
       cases,
       recent_payment: recentPayment,
-      pending_payments: pendingPayments
+      pending_payments: pendingPayments,
     });
   } catch (error) {
     handleRouteError(error, req, res);
@@ -4021,11 +4429,11 @@ app.get('/partials/supplier-case-list.html', async (req, res) => {
 
     // 4. Render response
     res.render('partials/supplier_case_list.html', {
-      cases
+      cases,
     });
   } catch (error) {
     handlePartialError(error, req, res, 'partials/supplier_case_list.html', {
-      cases: []
+      cases: [],
     });
   }
 });
@@ -4060,10 +4468,12 @@ app.get('/supplier/radar', async (req, res) => {
 
       // Get pending invoices (not paid, not cancelled)
       const allInvoices = await vmpAdapter.getInvoices(req.user.vendorId, null, {});
-      pendingInvoices = (allInvoices || []).filter(inv => {
-        const status = inv.status?.toLowerCase() || '';
-        return status !== 'paid' && status !== 'cancelled' && status !== 'void';
-      }).slice(0, 5); // Limit to 5 most recent
+      pendingInvoices = (allInvoices || [])
+        .filter(inv => {
+          const status = inv.status?.toLowerCase() || '';
+          return status !== 'paid' && status !== 'cancelled' && status !== 'void';
+        })
+        .slice(0, 5); // Limit to 5 most recent
     } catch (adapterError) {
       logError(adapterError, { path: req.path, userId: req.user?.id, vendorId: req.user.vendorId });
       // Continue with empty data
@@ -4072,12 +4482,12 @@ app.get('/supplier/radar', async (req, res) => {
     // 4. Render response
     res.render('partials/supplier_financial_radar.html', {
       last_payment: lastPayment,
-      pending_invoices: pendingInvoices
+      pending_invoices: pendingInvoices,
     });
   } catch (error) {
     handlePartialError(error, req, res, 'partials/supplier_financial_radar.html', {
       last_payment: null,
-      pending_invoices: []
+      pending_invoices: [],
     });
   }
 });
@@ -4090,11 +4500,7 @@ app.get('/supplier/radar', async (req, res) => {
 async function getOrgTopology(tenantId) {
   try {
     // 1. Fetch the Tenant Details (with timeout protection)
-    const tenantQuery = supabase
-      .from('vmp_tenants')
-      .select('id, name')
-      .eq('id', tenantId)
-      .single();
+    const tenantQuery = supabase.from('vmp_tenants').select('id, name').eq('id', tenantId).single();
 
     const { data: tenant, error: tenantError } = await withTimeout(
       tenantQuery,
@@ -4103,7 +4509,10 @@ async function getOrgTopology(tenantId) {
     );
 
     if (tenantError || !tenant) {
-      logError(tenantError || new Error('Tenant not found'), { tenantId, operation: 'getOrgTopology' });
+      logError(tenantError || new Error('Tenant not found'), {
+        tenantId,
+        operation: 'getOrgTopology',
+      });
       return null;
     }
 
@@ -4140,7 +4549,7 @@ async function getOrgTopology(tenantId) {
     // Add code field for display (use country_code as fallback)
     const companiesWithCode = (companies || []).map(company => ({
       ...company,
-      code: company.country_code || 'ENT' // Use country_code as display code
+      code: company.country_code || 'ENT', // Use country_code as display code
     }));
 
     if (companiesError) {
@@ -4152,20 +4561,21 @@ async function getOrgTopology(tenantId) {
     const groupsWithCompanies = (groups || []).map(group => {
       return {
         ...group,
-        companies: companiesWithCode.filter(c => c.group_id === group.id)
+        companies: companiesWithCode.filter(c => c.group_id === group.id),
       };
     });
 
     // Find "Orphan" companies (Ungrouped)
     const knownGroupIds = new Set((groups || []).map(g => g.id));
-    const ungroupedCompanies = companiesWithCode.filter(c => !c.group_id || !knownGroupIds.has(c.group_id));
+    const ungroupedCompanies = companiesWithCode.filter(
+      c => !c.group_id || !knownGroupIds.has(c.group_id)
+    );
 
     return {
       tenant: tenant || { name: 'NexusCanon Global' },
       groups: groupsWithCompanies,
-      ungroupedCompanies: ungroupedCompanies
+      ungroupedCompanies: ungroupedCompanies,
     };
-
   } catch (err) {
     logError(err, { tenantId, operation: 'getOrgTopology' });
     return null; // Return null to trigger the "No Topology" state
@@ -4182,7 +4592,7 @@ app.get('/ops', async (req, res) => {
     res.render('pages/ops_command_center.html', {
       title: 'Command Center',
       user: req.user,
-      isInternal: true
+      isInternal: true,
     });
   } catch (error) {
     handleRouteError(error, req, res);
@@ -4198,7 +4608,7 @@ app.get('/partials/org-tree-sidebar.html', async (req, res) => {
         orgTree: null,
         error: 'Authentication required. Please log in.',
         user: null,
-        currentScope: { type: null, id: null }
+        currentScope: { type: null, id: null },
       });
     }
 
@@ -4215,14 +4625,14 @@ app.get('/partials/org-tree-sidebar.html', async (req, res) => {
         vendorId: req.user.vendorId,
         isInternal: req.user.isInternal,
         userContextIsInternal: userContext?.is_internal,
-        path: req.path
+        path: req.path,
       });
 
       return res.status(200).render('partials/org_tree_sidebar.html', {
         orgTree: null,
         error: `Access denied. Internal users only. (User: ${req.user.email}, isInternal: ${req.user.isInternal})`,
         user: req.user,
-        currentScope: { type: null, id: null }
+        currentScope: { type: null, id: null },
       });
     }
     const tenantId = userContext.vmp_vendors?.tenant_id || '00000000-0000-0000-0000-000000000001'; // Fallback to seed tenant
@@ -4237,7 +4647,8 @@ app.get('/partials/org-tree-sidebar.html', async (req, res) => {
     if (scopeId && orgTree) {
       // Check if ID belongs to a Group or Company
       const isGroup = orgTree.groups?.some(g => g.id === scopeId);
-      const isCompany = orgTree.groups?.some(g => g.companies?.some(c => c.id === scopeId)) ||
+      const isCompany =
+        orgTree.groups?.some(g => g.companies?.some(c => c.id === scopeId)) ||
         orgTree.ungroupedCompanies?.some(c => c.id === scopeId);
 
       if (isGroup) {
@@ -4252,7 +4663,7 @@ app.get('/partials/org-tree-sidebar.html', async (req, res) => {
       orgTree,
       error: null,
       user: req.user,
-      currentScope
+      currentScope,
     });
   } catch (error) {
     // Enhanced error logging
@@ -4260,7 +4671,7 @@ app.get('/partials/org-tree-sidebar.html', async (req, res) => {
       operation: 'getOrgTree',
       userId: req.user?.id,
       userEmail: req.user?.email,
-      path: req.path
+      path: req.path,
     });
 
     handlePartialError(error, req, res, 'partials/org_tree_sidebar.html', {
@@ -4268,8 +4679,8 @@ app.get('/partials/org-tree-sidebar.html', async (req, res) => {
       user: req.user || null,
       currentScope: {
         type: req.query.scope_type || null,
-        id: req.query.scope_id || null
-      }
+        id: req.query.scope_id || null,
+      },
     });
   }
 });
@@ -4285,7 +4696,7 @@ app.get('/ops/dashboard', async (req, res) => {
     const tenantId = userContext.vmp_vendors?.tenant_id;
     if (!tenantId) {
       return res.status(400).render('pages/error.html', {
-        error: { status: 400, message: 'User must be associated with a tenant' }
+        error: { status: 400, message: 'User must be associated with a tenant' },
       });
     }
 
@@ -4320,7 +4731,7 @@ app.get('/ops/dashboard', async (req, res) => {
       scopeId: finalScopeId,
       dashboardMetrics,
       user: req.user,
-      isInternal: true
+      isInternal: true,
     });
   } catch (error) {
     handleRouteError(error, req, res);
@@ -4340,7 +4751,7 @@ app.get('/partials/scoped-dashboard.html', async (req, res) => {
     if (!scope_type || !scope_id) {
       return res.status(400).render('partials/scoped_dashboard.html', {
         ...defaultData,
-        error: 'scope_type and scope_id are required'
+        error: 'scope_type and scope_id are required',
       });
     }
 
@@ -4350,11 +4761,11 @@ app.get('/partials/scoped-dashboard.html', async (req, res) => {
     // 4. Render response
     res.render('partials/scoped_dashboard.html', {
       dashboard,
-      error: null
+      error: null,
     });
   } catch (error) {
     handlePartialError(error, req, res, 'partials/scoped_dashboard.html', {
-      dashboard: null
+      dashboard: null,
     });
   }
 });
@@ -4391,7 +4802,7 @@ app.get('/ops/cases', async (req, res) => {
       scopeType: finalScopeType,
       scopeId: finalScopeId,
       user: req.user,
-      isInternal: true
+      isInternal: true,
     });
   } catch (error) {
     handleRouteError(error, req, res);
@@ -4408,11 +4819,21 @@ app.get('/partials/ops-case-queue.html', async (req, res) => {
     const { scope_type, scope_id, status, owner_team, case_type } = req.query;
     const defaultData = { cases: [] };
 
-    if (!validateRequiredQuery(scope_type, 'scope_type', res, 'partials/ops_case_queue.html', defaultData)) {
+    if (
+      !validateRequiredQuery(
+        scope_type,
+        'scope_type',
+        res,
+        'partials/ops_case_queue.html',
+        defaultData
+      )
+    ) {
       return;
     }
 
-    if (!validateRequiredQuery(scope_id, 'scope_id', res, 'partials/ops_case_queue.html', defaultData)) {
+    if (
+      !validateRequiredQuery(scope_id, 'scope_id', res, 'partials/ops_case_queue.html', defaultData)
+    ) {
       return;
     }
 
@@ -4430,13 +4851,13 @@ app.get('/partials/ops-case-queue.html', async (req, res) => {
       filters: { status, owner_team, case_type },
       scopeType: scope_type,
       scopeId: scope_id,
-      error: null
+      error: null,
     });
   } catch (error) {
     handlePartialError(error, req, res, 'partials/ops_case_queue.html', {
       cases: [],
       scopeType: req.query.scope_type || null,
-      scopeId: req.query.scope_id || null
+      scopeId: req.query.scope_id || null,
     });
   }
 });
@@ -4473,7 +4894,7 @@ app.get('/ops/vendors', async (req, res) => {
       scopeType: finalScopeType,
       scopeId: finalScopeId,
       user: req.user,
-      isInternal: true
+      isInternal: true,
     });
   } catch (error) {
     handleRouteError(error, req, res);
@@ -4504,7 +4925,7 @@ app.get('/partials/decision-log.html', async (req, res) => {
     } catch (adapterError) {
       return handlePartialError(adapterError, req, res, 'partials/decision_log.html', {
         caseId: case_id,
-        decisions: []
+        decisions: [],
       });
     }
 
@@ -4512,12 +4933,12 @@ app.get('/partials/decision-log.html', async (req, res) => {
     res.render('partials/decision_log.html', {
       caseId: case_id,
       decisions,
-      error: null
+      error: null,
     });
   } catch (error) {
     handlePartialError(error, req, res, 'partials/decision_log.html', {
       caseId: req.query.case_id || null,
-      decisions: []
+      decisions: [],
     });
   }
 });
@@ -4549,7 +4970,7 @@ app.get('/partials/timeline.html', async (req, res) => {
 
       // Get case messages for timeline
       const messages = await vmpAdapter.getCaseMessages(case_id, vendorId);
-      
+
       // Transform messages into timeline items
       timelineItems = (messages || []).map(msg => ({
         date: msg.created_at,
@@ -4558,14 +4979,13 @@ app.get('/partials/timeline.html', async (req, res) => {
         status: msg.message_type === 'internal' ? 'internal' : 'default',
         meta: {
           from: msg.sender_name || 'System',
-          type: msg.message_type || 'message'
-        }
+          type: msg.message_type || 'message',
+        },
       }));
-
     } catch (adapterError) {
       return handlePartialError(adapterError, req, res, 'partials/timeline.html', {
         caseId: case_id,
-        timelineItems: []
+        timelineItems: [],
       });
     }
 
@@ -4573,12 +4993,12 @@ app.get('/partials/timeline.html', async (req, res) => {
     res.render('partials/timeline.html', {
       caseId: case_id,
       timelineItems,
-      error: null
+      error: null,
     });
   } catch (error) {
     handlePartialError(error, req, res, 'partials/timeline.html', {
       caseId: req.query.case_id || null,
-      timelineItems: []
+      timelineItems: [],
     });
   }
 });
@@ -4591,15 +5011,15 @@ app.get('/partials/truth-panel.html', async (req, res) => {
 
     // 2. Input validation (case_id is optional for partials - can render empty state)
     const { case_id } = req.query;
-    const defaultData = { 
-      caseId: null, 
-      invoice: null, 
-      purchaseOrder: null, 
-      grn: null, 
+    const defaultData = {
+      caseId: null,
+      invoice: null,
+      purchaseOrder: null,
+      grn: null,
       payment: null,
       linkedCases: [],
       linkedPayments: [],
-      evidenceCount: 0
+      evidenceCount: 0,
     };
 
     if (!case_id) {
@@ -4626,11 +5046,11 @@ app.get('/partials/truth-panel.html', async (req, res) => {
 
       // Get case detail to find linked invoice_id
       const caseDetail = await vmpAdapter.getCaseDetail(case_id, vendorId);
-      
+
       if (caseDetail && caseDetail.invoice_id) {
         // Get invoice
         invoice = await vmpAdapter.getInvoice(caseDetail.invoice_id, vendorId);
-        
+
         // Get linked cases for this invoice
         if (invoice) {
           const allCases = await vmpAdapter.getInbox(vendorId);
@@ -4641,7 +5061,6 @@ app.get('/partials/truth-panel.html', async (req, res) => {
       // Get evidence count
       const evidence = await vmpAdapter.getCaseEvidence(case_id, vendorId);
       evidenceCount = (evidence || []).length;
-
     } catch (adapterError) {
       return handlePartialError(adapterError, req, res, 'partials/truth_panel.html', defaultData);
     }
@@ -4656,7 +5075,7 @@ app.get('/partials/truth-panel.html', async (req, res) => {
       linkedCases,
       linkedPayments,
       evidenceCount,
-      error: null
+      error: null,
     });
   } catch (error) {
     handlePartialError(error, req, res, 'partials/truth_panel.html', {
@@ -4667,7 +5086,7 @@ app.get('/partials/truth-panel.html', async (req, res) => {
       payment: null,
       linkedCases: [],
       linkedPayments: [],
-      evidenceCount: 0
+      evidenceCount: 0,
     });
   }
 });
@@ -4684,13 +5103,13 @@ app.get('/partials/vendor-directory.html', async (req, res) => {
       vendors: [],
       filters: { status: null },
       scopeType: null,
-      scopeId: null
+      scopeId: null,
     };
 
     if (!scope_type || !scope_id) {
       return res.status(400).render('partials/vendor_directory.html', {
         ...defaultData,
-        error: 'scope_type and scope_id are required'
+        error: 'scope_type and scope_id are required',
       });
     }
 
@@ -4706,14 +5125,14 @@ app.get('/partials/vendor-directory.html', async (req, res) => {
       filters: { status },
       scopeType: scope_type,
       scopeId: scope_id,
-      error: null
+      error: null,
     });
   } catch (error) {
     handlePartialError(error, req, res, 'partials/vendor_directory.html', {
       vendors: [],
       filters: { status: req.query.status || null },
       scopeType: req.query.scope_type || null,
-      scopeId: req.query.scope_id || null
+      scopeId: req.query.scope_id || null,
     });
   }
 });
@@ -4737,8 +5156,8 @@ app.get('/ops/cases/:id', async (req, res) => {
         return res.status(404).render('pages/error.html', {
           error: {
             status: 404,
-            message: 'Case not found'
-          }
+            message: 'Case not found',
+          },
         });
       }
     } catch (adapterError) {
@@ -4756,7 +5175,7 @@ app.get('/ops/cases/:id', async (req, res) => {
       caseId,
       caseDetail,
       isInternal: true,
-      user: req.user
+      user: req.user,
     });
   } catch (error) {
     handleRouteError(error, req, res);
@@ -4839,7 +5258,7 @@ app.get('/ops/sla-analytics', async (req, res) => {
     const tenantId = userContext.vmp_vendors?.tenant_id;
     if (!tenantId) {
       return res.status(400).render('pages/error.html', {
-        error: { status: 400, message: 'User must be associated with a tenant' }
+        error: { status: 400, message: 'User must be associated with a tenant' },
       });
     }
 
@@ -4860,17 +5279,22 @@ app.get('/ops/sla-analytics', async (req, res) => {
     // 4. Fetch SLA metrics
     const dateRange = {
       startDate: start_date || null,
-      endDate: end_date || null
+      endDate: end_date || null,
     };
 
     // Get pagination options from query params
     const paginationOptions = {
       limit: req.query.limit ? parseInt(getStringParam(req.query.limit)) : undefined,
       offset: req.query.offset ? parseInt(getStringParam(req.query.offset)) : undefined,
-      forceRefresh: req.query.refresh === 'true'
+      forceRefresh: req.query.refresh === 'true',
     };
 
-    const slaMetrics = await vmpAdapter.getSLAMetrics(tenantId, userScope, dateRange, paginationOptions);
+    const slaMetrics = await vmpAdapter.getSLAMetrics(
+      tenantId,
+      userScope,
+      dateRange,
+      paginationOptions
+    );
 
     // 5. Determine scope type for UI display
     let finalScopeType = slaMetrics.scope.type || 'tenant';
@@ -4884,7 +5308,7 @@ app.get('/ops/sla-analytics', async (req, res) => {
       slaMetrics,
       dateRange: slaMetrics.dateRange,
       user: req.user,
-      isInternal: true
+      isInternal: true,
     });
   } catch (error) {
     handleRouteError(error, req, res);
@@ -4902,7 +5326,7 @@ app.get('/partials/sla-analytics.html', async (req, res) => {
     const tenantId = userContext.vmp_vendors?.tenant_id;
     if (!tenantId) {
       return res.status(400).json({
-        error: 'User must be associated with a tenant'
+        error: 'User must be associated with a tenant',
       });
     }
 
@@ -4922,30 +5346,35 @@ app.get('/partials/sla-analytics.html', async (req, res) => {
 
     const dateRange = {
       startDate: start_date || null,
-      endDate: end_date || null
+      endDate: end_date || null,
     };
 
     // Get pagination options from query params
     const paginationOptions = {
       limit: req.query.limit ? parseInt(getStringParam(req.query.limit)) : undefined,
       offset: req.query.offset ? parseInt(getStringParam(req.query.offset)) : undefined,
-      forceRefresh: req.query.refresh === 'true'
+      forceRefresh: req.query.refresh === 'true',
     };
 
-    const slaMetrics = await vmpAdapter.getSLAMetrics(tenantId, userScope, dateRange, paginationOptions);
+    const slaMetrics = await vmpAdapter.getSLAMetrics(
+      tenantId,
+      userScope,
+      dateRange,
+      paginationOptions
+    );
 
     // 4. Render response
     res.render('partials/sla_analytics.html', {
       slaMetrics,
       dateRange: slaMetrics.dateRange,
       scopeType: slaMetrics.scope.type || 'tenant',
-      scopeId: slaMetrics.scope.id || null
+      scopeId: slaMetrics.scope.id || null,
     });
   } catch (error) {
     logError(error, { path: req.path, userId: req.user?.id });
     return res.status(500).json({
       error: 'Failed to load SLA analytics',
-      message: error.message
+      message: error.message,
     });
   }
 });
@@ -4956,7 +5385,7 @@ app.get('/partials/compliance-docs.html', async (req, res) => {
     if (!req.user) {
       return res.status(401).render('partials/compliance_docs.html', {
         complianceDocs: [],
-        error: 'Authentication required'
+        error: 'Authentication required',
       });
     }
 
@@ -4965,22 +5394,26 @@ app.get('/partials/compliance-docs.html', async (req, res) => {
     try {
       complianceDocs = await vmpAdapter.getComplianceDocuments(req.user.vendorId);
     } catch (adapterError) {
-      logError(adapterError, { path: req.path, userId: req.user?.id, operation: 'loadComplianceDocuments' });
+      logError(adapterError, {
+        path: req.path,
+        userId: req.user?.id,
+        operation: 'loadComplianceDocuments',
+      });
       return res.render('partials/compliance_docs.html', {
         complianceDocs: [],
-        error: 'Failed to load compliance documents'
+        error: 'Failed to load compliance documents',
       });
     }
 
     res.render('partials/compliance_docs.html', {
       complianceDocs,
-      error: null
+      error: null,
     });
   } catch (error) {
     logError(error, { path: req.path, userId: req.user?.id });
     res.status(500).render('partials/compliance_docs.html', {
       complianceDocs: [],
-      error: error.message || 'Failed to load compliance documents'
+      error: error.message || 'Failed to load compliance documents',
     });
   }
 });
@@ -4997,18 +5430,18 @@ app.get('/partials/contract-library.html', async (req, res) => {
       contracts = await vmpAdapter.getContractLibrary(req.user.vendorId);
     } catch (adapterError) {
       return handlePartialError(adapterError, req, res, 'partials/contract_library.html', {
-        contracts: []
+        contracts: [],
       });
     }
 
     // 3. Render response
     res.render('partials/contract_library.html', {
       contracts,
-      error: null
+      error: null,
     });
   } catch (error) {
     handlePartialError(error, req, res, 'partials/contract_library.html', {
-      contracts: []
+      contracts: [],
     });
   }
 });
@@ -5026,13 +5459,13 @@ app.get('/partials/notification-badge.html', async (req, res) => {
     // 3. Render response
     res.render('partials/notification_badge.html', {
       unreadCount,
-      error: null
+      error: null,
     });
   } catch (error) {
     logError(error, { path: req.path, userId: req.user?.id });
     res.render('partials/notification_badge.html', {
       unreadCount: 0,
-      error: null
+      error: null,
     });
   }
 });
@@ -5051,7 +5484,7 @@ app.get('/notifications', async (req, res) => {
       title: 'Notifications',
       user: req.user,
       notifications: notifications || [],
-      unreadCount: (notifications || []).filter(n => !n.is_read).length
+      unreadCount: (notifications || []).filter(n => !n.is_read).length,
     });
   } catch (error) {
     handleRouteError(error, req, res);
@@ -5073,7 +5506,7 @@ app.post('/notifications/:id/read', async (req, res) => {
       .from('vmp_notifications')
       .update({
         is_read: true,
-        read_at: new Date().toISOString()
+        read_at: new Date().toISOString(),
       })
       .eq('id', notificationId)
       .eq('user_id', req.user.id)
@@ -5084,7 +5517,7 @@ app.post('/notifications/:id/read', async (req, res) => {
 
     if (error) {
       return res.status(500).json({
-        error: error.message || 'Failed to mark notification as read'
+        error: error.message || 'Failed to mark notification as read',
       });
     }
 
@@ -5095,7 +5528,7 @@ app.post('/notifications/:id/read', async (req, res) => {
       const unreadCount = unreadNotifications ? unreadNotifications.length : 0;
       res.render('partials/notification_badge.html', {
         unreadCount,
-        error: null
+        error: null,
       });
     } else {
       res.redirect('/notifications');
@@ -5103,7 +5536,7 @@ app.post('/notifications/:id/read', async (req, res) => {
   } catch (error) {
     logError(error, { path: req.path, userId: req.user?.id, notificationId: req.params.id });
     res.status(500).json({
-      error: error.message || 'Failed to mark notification as read'
+      error: error.message || 'Failed to mark notification as read',
     });
   }
 });
@@ -5119,7 +5552,7 @@ app.post('/notifications/mark-all-read', async (req, res) => {
       .from('vmp_notifications')
       .update({
         is_read: true,
-        read_at: new Date().toISOString()
+        read_at: new Date().toISOString(),
       })
       .eq('user_id', req.user.id)
       .eq('is_read', false);
@@ -5128,7 +5561,7 @@ app.post('/notifications/mark-all-read', async (req, res) => {
 
     if (error) {
       return res.status(500).json({
-        error: error.message || 'Failed to mark all notifications as read'
+        error: error.message || 'Failed to mark all notifications as read',
       });
     }
 
@@ -5137,7 +5570,7 @@ app.post('/notifications/mark-all-read', async (req, res) => {
   } catch (error) {
     logError(error, { path: req.path, userId: req.user?.id });
     res.status(500).json({
-      error: error.message || 'Failed to mark all notifications as read'
+      error: error.message || 'Failed to mark all notifications as read',
     });
   }
 });
@@ -5163,7 +5596,7 @@ app.post('/ports/email', express.json({ limit: '10mb' }), async (req, res) => {
       logError(parseError, { path: req.path, provider, operation: 'parseEmailWebhook' });
       return res.status(400).json({
         error: 'Failed to parse email webhook',
-        message: parseError.message
+        message: parseError.message,
       });
     }
 
@@ -5171,7 +5604,7 @@ app.post('/ports/email', express.json({ limit: '10mb' }), async (req, res) => {
     const senderEmail = extractVendorIdentifier(emailData);
     if (!senderEmail) {
       return res.status(400).json({
-        error: 'Could not extract sender email from webhook'
+        error: 'Could not extract sender email from webhook',
       });
     }
 
@@ -5183,7 +5616,7 @@ app.post('/ports/email', express.json({ limit: '10mb' }), async (req, res) => {
       logError(vendorError, { path: req.path, senderEmail, operation: 'findVendorByEmail' });
       return res.status(500).json({
         error: 'Failed to find vendor',
-        message: vendorError.message
+        message: vendorError.message,
       });
     }
 
@@ -5191,7 +5624,7 @@ app.post('/ports/email', express.json({ limit: '10mb' }), async (req, res) => {
       // Vendor not found - could create case manually or return error
       return res.status(404).json({
         error: 'Vendor not found',
-        message: `No vendor found for email: ${senderEmail}. Please ensure the sender is registered.`
+        message: `No vendor found for email: ${senderEmail}. Please ensure the sender is registered.`,
       });
     }
 
@@ -5236,10 +5669,15 @@ app.post('/ports/email', express.json({ limit: '10mb' }), async (req, res) => {
     try {
       caseId = await vmpAdapter.findOrCreateCaseFromEmail(emailData, vendorInfo, caseReference);
     } catch (caseError) {
-      logError(caseError, { path: req.path, vendorInfo, caseReference, operation: 'findOrCreateCaseFromEmail' });
+      logError(caseError, {
+        path: req.path,
+        vendorInfo,
+        caseReference,
+        operation: 'findOrCreateCaseFromEmail',
+      });
       return res.status(500).json({
         error: 'Failed to find or create case',
-        message: caseError.message
+        message: caseError.message,
       });
     }
 
@@ -5252,7 +5690,7 @@ app.post('/ports/email', express.json({ limit: '10mb' }), async (req, res) => {
         aiIntent: aiAnalysis?.intent,
         aiConfidence: aiAnalysis?.confidence,
         matchedCase: matchedCase?.caseNum || null,
-        caseId: caseId
+        caseId: caseId,
       });
     } catch (logError) {
       // Don't fail if logging fails
@@ -5274,7 +5712,7 @@ app.post('/ports/email', express.json({ limit: '10mb' }), async (req, res) => {
       extractedPONumbers: extractedData?.poNumbers || [],
       extractedPaymentRefs: extractedData?.paymentReferences || [],
       urgency: extractedData?.urgency || 'normal',
-      matchedCaseConfidence: matchedCase?.confidence || null
+      matchedCaseConfidence: matchedCase?.confidence || null,
     };
 
     try {
@@ -5292,7 +5730,7 @@ app.post('/ports/email', express.json({ limit: '10mb' }), async (req, res) => {
       await vmpAdapter.logPortActivity('email', 'message_processed', 'success', {
         messageId: emailData.messageId,
         caseId: caseId,
-        vendorId: vendorInfo.vendorId
+        vendorId: vendorInfo.vendorId,
       });
     } catch (messageError) {
       logError(messageError, { path: req.path, caseId, operation: 'createMessage' });
@@ -5302,7 +5740,7 @@ app.post('/ports/email', express.json({ limit: '10mb' }), async (req, res) => {
         await vmpAdapter.logPortActivity('email', 'error', 'error', {
           messageId: emailData.messageId,
           caseId: caseId,
-          errorMessage: messageError.message
+          errorMessage: messageError.message,
         });
       } catch (logError) {
         // Don't fail if logging fails
@@ -5317,7 +5755,7 @@ app.post('/ports/email', express.json({ limit: '10mb' }), async (req, res) => {
         await vmpAdapter.logPortActivity('email', 'case_created', 'success', {
           messageId: emailData.messageId,
           caseId: caseId,
-          vendorId: vendorInfo.vendorId
+          vendorId: vendorInfo.vendorId,
         });
       } catch (logError) {
         // Don't fail if logging fails
@@ -5331,7 +5769,7 @@ app.post('/ports/email', express.json({ limit: '10mb' }), async (req, res) => {
         caseId,
         operation: 'emailAttachments',
         attachmentsCount: emailData.attachments.length,
-        attachmentNames: emailData.attachments.map(att => att.filename).join(', ')
+        attachmentNames: emailData.attachments.map(att => att.filename).join(', '),
       });
     }
 
@@ -5341,14 +5779,13 @@ app.post('/ports/email', express.json({ limit: '10mb' }), async (req, res) => {
       caseId,
       message: 'Email processed successfully',
       caseCreated: !caseReference,
-      attachmentsCount: emailData.attachments?.length || 0
+      attachmentsCount: emailData.attachments?.length || 0,
     });
-
   } catch (error) {
     logError(error, { path: req.path, operation: 'emailWebhook' });
     return res.status(500).json({
       error: 'Internal server error',
-      message: error.message
+      message: error.message,
     });
   }
 });
@@ -5374,7 +5811,7 @@ app.post('/ports/whatsapp', express.json({ limit: '10mb' }), async (req, res) =>
       logError(parseError, { path: req.path, provider, operation: 'parseWhatsAppWebhook' });
       return res.status(400).json({
         error: 'Failed to parse WhatsApp webhook',
-        message: parseError.message
+        message: parseError.message,
       });
     }
 
@@ -5383,7 +5820,7 @@ app.post('/ports/whatsapp', express.json({ limit: '10mb' }), async (req, res) =>
       return res.status(200).json({
         success: true,
         message: 'Status update received',
-        skipped: true
+        skipped: true,
       });
     }
 
@@ -5391,7 +5828,7 @@ app.post('/ports/whatsapp', express.json({ limit: '10mb' }), async (req, res) =>
     const phoneNumber = extractVendorIdentifierFromWhatsApp(whatsappData);
     if (!phoneNumber) {
       return res.status(400).json({
-        error: 'Could not extract phone number from webhook'
+        error: 'Could not extract phone number from webhook',
       });
     }
 
@@ -5403,14 +5840,14 @@ app.post('/ports/whatsapp', express.json({ limit: '10mb' }), async (req, res) =>
       logError(vendorError, { path: req.path, phoneNumber, operation: 'findVendorByPhone' });
       return res.status(500).json({
         error: 'Failed to find vendor',
-        message: vendorError.message
+        message: vendorError.message,
       });
     }
 
     if (!vendorInfo) {
       return res.status(404).json({
         error: 'Vendor not found',
-        message: `No vendor found for phone number: ${phoneNumber}. Please ensure the phone number is registered with a vendor account.`
+        message: `No vendor found for phone number: ${phoneNumber}. Please ensure the phone number is registered with a vendor account.`,
       });
     }
 
@@ -5420,7 +5857,9 @@ app.post('/ports/whatsapp', express.json({ limit: '10mb' }), async (req, res) =>
     // 8. Find or create case
     // Convert WhatsApp data to email-like format for reuse
     const emailLikeData = {
-      from: whatsappData.fromName ? `${whatsappData.fromName} <${whatsappData.from}@whatsapp>` : `${whatsappData.from}@whatsapp`,
+      from: whatsappData.fromName
+        ? `${whatsappData.fromName} <${whatsappData.from}@whatsapp>`
+        : `${whatsappData.from}@whatsapp`,
       to: whatsappData.to || '',
       subject: `WhatsApp Message from ${whatsappData.fromName || whatsappData.from}`,
       text: whatsappData.text || '',
@@ -5431,21 +5870,26 @@ app.post('/ports/whatsapp', express.json({ limit: '10mb' }), async (req, res) =>
         content: null, // Media URLs need to be downloaded separately
         size: 0,
         url: media.url,
-        mediaId: media.id
+        mediaId: media.id,
       })),
       headers: {},
       messageId: whatsappData.messageId,
-      timestamp: whatsappData.timestamp
+      timestamp: whatsappData.timestamp,
     };
 
     let caseId;
     try {
       caseId = await vmpAdapter.findOrCreateCaseFromEmail(emailLikeData, vendorInfo, caseReference);
     } catch (caseError) {
-      logError(caseError, { path: req.path, vendorInfo, caseReference, operation: 'findOrCreateCaseFromWhatsApp' });
+      logError(caseError, {
+        path: req.path,
+        vendorInfo,
+        caseReference,
+        operation: 'findOrCreateCaseFromWhatsApp',
+      });
       return res.status(500).json({
         error: 'Failed to find or create case',
-        message: caseError.message
+        message: caseError.message,
       });
     }
 
@@ -5454,7 +5898,7 @@ app.post('/ports/whatsapp', express.json({ limit: '10mb' }), async (req, res) =>
       await vmpAdapter.logPortActivity('whatsapp', 'webhook_received', 'success', {
         messageId: whatsappData.messageId,
         from: whatsappData.from,
-        provider: whatsappData.provider
+        provider: whatsappData.provider,
       });
     } catch (logError) {
       // Don't fail if logging fails
@@ -5462,7 +5906,8 @@ app.post('/ports/whatsapp', express.json({ limit: '10mb' }), async (req, res) =>
     }
 
     // 10. Create message from WhatsApp
-    const messageBody = whatsappData.text || `WhatsApp message from ${whatsappData.fromName || whatsappData.from}`;
+    const messageBody =
+      whatsappData.text || `WhatsApp message from ${whatsappData.fromName || whatsappData.from}`;
     const whatsappMetadata = {
       from: whatsappData.from,
       fromName: whatsappData.fromName,
@@ -5471,7 +5916,7 @@ app.post('/ports/whatsapp', express.json({ limit: '10mb' }), async (req, res) =>
       messageType: whatsappData.messageType,
       provider: whatsappData.provider,
       media: whatsappData.media,
-      metadata: whatsappData.metadata
+      metadata: whatsappData.metadata,
     };
 
     try {
@@ -5489,7 +5934,7 @@ app.post('/ports/whatsapp', express.json({ limit: '10mb' }), async (req, res) =>
       await vmpAdapter.logPortActivity('whatsapp', 'message_processed', 'success', {
         messageId: whatsappData.messageId,
         caseId: caseId,
-        vendorId: vendorInfo.vendorId
+        vendorId: vendorInfo.vendorId,
       });
     } catch (messageError) {
       logError(messageError, { path: req.path, caseId, operation: 'createMessage' });
@@ -5499,7 +5944,7 @@ app.post('/ports/whatsapp', express.json({ limit: '10mb' }), async (req, res) =>
         await vmpAdapter.logPortActivity('whatsapp', 'error', 'error', {
           messageId: whatsappData.messageId,
           caseId: caseId,
-          errorMessage: messageError.message
+          errorMessage: messageError.message,
         });
       } catch (logError) {
         // Don't fail if logging fails
@@ -5514,7 +5959,7 @@ app.post('/ports/whatsapp', express.json({ limit: '10mb' }), async (req, res) =>
         await vmpAdapter.logPortActivity('whatsapp', 'case_created', 'success', {
           messageId: whatsappData.messageId,
           caseId: caseId,
-          vendorId: vendorInfo.vendorId
+          vendorId: vendorInfo.vendorId,
         });
       } catch (logError) {
         // Don't fail if logging fails
@@ -5530,7 +5975,7 @@ app.post('/ports/whatsapp', express.json({ limit: '10mb' }), async (req, res) =>
         mimeType: media.mimeType,
         url: media.url,
         id: media.id,
-        filename: media.filename
+        filename: media.filename,
       }));
 
       logError(null, {
@@ -5538,7 +5983,7 @@ app.post('/ports/whatsapp', express.json({ limit: '10mb' }), async (req, res) =>
         caseId,
         operation: 'whatsappMediaReceived',
         mediaCount: whatsappData.media.length,
-        media: mediaInfo
+        media: mediaInfo,
       });
     }
 
@@ -5548,14 +5993,13 @@ app.post('/ports/whatsapp', express.json({ limit: '10mb' }), async (req, res) =>
       caseId,
       message: 'WhatsApp message processed successfully',
       caseCreated: !caseReference,
-      mediaCount: whatsappData.media?.length || 0
+      mediaCount: whatsappData.media?.length || 0,
     });
-
   } catch (error) {
     logError(error, { path: req.path, operation: 'whatsappWebhook' });
     return res.status(500).json({
       error: 'Internal server error',
-      message: error.message
+      message: error.message,
     });
   }
 });
@@ -5574,7 +6018,7 @@ app.get('/ops/ports', async (req, res) => {
     res.render('pages/ops_ports.html', {
       title: 'Port Configuration',
       user: req.user,
-      isInternal: true
+      isInternal: true,
     });
   } catch (error) {
     handleRouteError(error, req, res);
@@ -5597,7 +6041,7 @@ app.get('/partials/port-configuration.html', async (req, res) => {
 
     // 3. Render response
     res.render('partials/port_configuration.html', {
-      ports: ports || []
+      ports: ports || [],
     });
   } catch (error) {
     handlePartialError(error, req, res, 'partials/port_configuration.html', { ports: [] });
@@ -5618,7 +6062,7 @@ app.post('/ops/ports/:portType', async (req, res) => {
     if (!validPortTypes.includes(portType)) {
       return res.status(400).json({
         error: 'Invalid port type',
-        message: `Port type must be one of: ${validPortTypes.join(', ')}`
+        message: `Port type must be one of: ${validPortTypes.join(', ')}`,
       });
     }
 
@@ -5636,11 +6080,12 @@ app.post('/ops/ports/:portType', async (req, res) => {
     }
     if (configuration !== undefined) {
       try {
-        updates.configuration = typeof configuration === 'string' ? JSON.parse(configuration) : configuration;
+        updates.configuration =
+          typeof configuration === 'string' ? JSON.parse(configuration) : configuration;
       } catch (parseError) {
         return res.status(400).json({
           error: 'Invalid configuration JSON',
-          message: parseError.message
+          message: parseError.message,
         });
       }
     }
@@ -5652,14 +6097,13 @@ app.post('/ops/ports/:portType', async (req, res) => {
     return res.status(200).json({
       success: true,
       port: updatedPort,
-      message: 'Port configuration updated successfully'
+      message: 'Port configuration updated successfully',
     });
-
   } catch (error) {
     logError(error, { path: req.path, userId: req.user?.id, portType: req.params.portType });
     return res.status(500).json({
       error: 'Failed to update port configuration',
-      message: error.message
+      message: error.message,
     });
   }
 });
@@ -5685,10 +6129,13 @@ app.get('/partials/port-activity-log.html', async (req, res) => {
     // 4. Render response
     res.render('partials/port_activity_log.html', {
       activities: activities || [],
-      portType: portType || 'all'
+      portType: portType || 'all',
     });
   } catch (error) {
-    handlePartialError(error, req, res, 'partials/port_activity_log.html', { activities: [], portType: null });
+    handlePartialError(error, req, res, 'partials/port_activity_log.html', {
+      activities: [],
+      portType: null,
+    });
   }
 });
 
@@ -5702,12 +6149,21 @@ app.get('/partials/remittance-viewer.html', async (req, res) => {
     const { payment_id } = req.query;
     const defaultData = { remittanceUrl: null, payment: null };
 
-    if (!validateRequiredQuery(payment_id, 'payment_id', res, 'partials/remittance_viewer.html', defaultData)) {
+    if (
+      !validateRequiredQuery(
+        payment_id,
+        'payment_id',
+        res,
+        'partials/remittance_viewer.html',
+        defaultData
+      )
+    ) {
       return;
     }
 
     // Validate UUID format
-    if (!validateUUIDParam(getStringParam(payment_id), res, 'partials/remittance_viewer.html')) return;
+    if (!validateUUIDParam(getStringParam(payment_id), res, 'partials/remittance_viewer.html'))
+      return;
 
     // 3. Business logic - Get payment detail to retrieve remittance URL
     const payment = await vmpAdapter.getPaymentDetail(payment_id, req.user.vendorId);
@@ -5726,7 +6182,7 @@ app.get('/partials/remittance-viewer.html', async (req, res) => {
       return res.render('partials/remittance_viewer.html', {
         remittanceUrl: null,
         payment: payment,
-        error: 'No remittance document available for this payment'
+        error: 'No remittance document available for this payment',
       });
     }
 
@@ -5734,12 +6190,12 @@ app.get('/partials/remittance-viewer.html', async (req, res) => {
     res.render('partials/remittance_viewer.html', {
       remittanceUrl: payment.remittance_url,
       payment: payment,
-      error: null
+      error: null,
     });
   } catch (error) {
     handlePartialError(error, req, res, 'partials/remittance_viewer.html', {
       remittanceUrl: null,
-      payment: null
+      payment: null,
     });
   }
 });
@@ -5754,7 +6210,7 @@ app.get('/invoices', async (req, res) => {
     res.render('pages/invoices.html', {
       title: 'Invoices',
       user: req.user,
-      isInternal: req.user?.isInternal || false
+      isInternal: req.user?.isInternal || false,
     });
   } catch (error) {
     handleRouteError(error, req, res);
@@ -5773,24 +6229,20 @@ app.get('/partials/invoice-list.html', async (req, res) => {
     if (status) filters.status = status;
     if (search) filters.search = search;
 
-    const invoices = await vmpAdapter.getInvoices(
-      req.user.vendorId,
-      company_id || null,
-      filters
-    );
+    const invoices = await vmpAdapter.getInvoices(req.user.vendorId, company_id || null, filters);
 
     // 3. Render response
     res.render('partials/invoice_list.html', {
       invoices: invoices || [],
       isInternal: req.user?.isInternal || false,
       query: req.query,
-      error: null
+      error: null,
     });
   } catch (error) {
     handlePartialError(error, req, res, 'partials/invoice_list.html', {
       invoices: [],
       isInternal: req.user?.isInternal || false,
-      query: req.query
+      query: req.query,
     });
   }
 });
@@ -5834,7 +6286,7 @@ app.get('/partials/invoice-card-feed.html', async (req, res) => {
       isInternal: req.user?.isInternal || false,
       query: req.query,
       error: null,
-      request: req
+      request: req,
     });
   } catch (error) {
     handlePartialError(error, req, res, 'partials/invoice_card_feed.html', {
@@ -5844,7 +6296,7 @@ app.get('/partials/invoice-card-feed.html', async (req, res) => {
       has_more: false,
       isInternal: req.user?.isInternal || false,
       query: req.query,
-      request: req
+      request: req,
     });
   }
 });
@@ -5866,8 +6318,8 @@ app.get('/invoices/:id', async (req, res) => {
       return res.status(404).render('pages/error.html', {
         error: {
           status: 404,
-          message: 'Invoice not found or access denied'
-        }
+          message: 'Invoice not found or access denied',
+        },
       });
     }
 
@@ -5877,7 +6329,7 @@ app.get('/invoices/:id', async (req, res) => {
       invoiceId,
       invoice,
       user: req.user,
-      isInternal: req.user?.isInternal || false
+      isInternal: req.user?.isInternal || false,
     });
   } catch (error) {
     handleRouteError(error, req, res);
@@ -5894,10 +6346,18 @@ app.get('/partials/invoice-detail.html', async (req, res) => {
     const invoiceId = req.query.invoice_id;
     const defaultData = {
       invoice: null,
-      isInternal: req.user?.isInternal || false
+      isInternal: req.user?.isInternal || false,
     };
 
-    if (!validateRequiredQuery(invoiceId, 'invoice_id', res, 'partials/invoice_detail.html', defaultData)) {
+    if (
+      !validateRequiredQuery(
+        invoiceId,
+        'invoice_id',
+        res,
+        'partials/invoice_detail.html',
+        defaultData
+      )
+    ) {
       return;
     }
 
@@ -5921,12 +6381,12 @@ app.get('/partials/invoice-detail.html', async (req, res) => {
     res.render('partials/invoice_detail.html', {
       invoice,
       isInternal: req.user?.isInternal || false,
-      error: null
+      error: null,
     });
   } catch (error) {
     handlePartialError(error, req, res, 'partials/invoice_detail.html', {
       invoice: null,
-      isInternal: req.user?.isInternal || false
+      isInternal: req.user?.isInternal || false,
     });
   }
 });
@@ -5941,7 +6401,15 @@ app.get('/partials/matching-status.html', async (req, res) => {
     const invoiceId = req.query.invoice_id;
     const defaultData = { matchingStatus: null };
 
-    if (!validateRequiredQuery(invoiceId, 'invoice_id', res, 'partials/matching_status.html', defaultData)) {
+    if (
+      !validateRequiredQuery(
+        invoiceId,
+        'invoice_id',
+        res,
+        'partials/matching_status.html',
+        defaultData
+      )
+    ) {
       return;
     }
 
@@ -5965,11 +6433,11 @@ app.get('/partials/matching-status.html', async (req, res) => {
     // 4. Render response
     res.render('partials/matching_status.html', {
       matchingStatus,
-      error: null
+      error: null,
     });
   } catch (error) {
     handlePartialError(error, req, res, 'partials/matching_status.html', {
-      matchingStatus: null
+      matchingStatus: null,
     });
   }
 });
@@ -5990,7 +6458,7 @@ app.post('/invoices/:id/open-case', async (req, res) => {
     const invoice = await vmpAdapter.getInvoiceDetail(invoiceId, req.user.vendorId);
     if (!invoice) {
       return res.status(404).json({
-        error: 'Invoice not found or access denied'
+        error: 'Invoice not found or access denied',
       });
     }
 
@@ -6007,7 +6475,7 @@ app.post('/invoices/:id/open-case', async (req, res) => {
   } catch (error) {
     logError(error, { path: req.path, userId: req.user?.id, invoiceId: req.params.id });
     res.status(500).json({
-      error: error.message || 'Failed to create case from invoice'
+      error: error.message || 'Failed to create case from invoice',
     });
   }
 });
@@ -6026,7 +6494,7 @@ app.post('/invoices/:id/request-grn', async (req, res) => {
     const invoice = await vmpAdapter.getInvoiceDetail(invoiceId, req.user.vendorId);
     if (!invoice) {
       return res.status(404).json({
-        error: 'Invoice not found or access denied'
+        error: 'Invoice not found or access denied',
       });
     }
 
@@ -6046,13 +6514,13 @@ app.post('/invoices/:id/request-grn', async (req, res) => {
     const updatedMatchingStatus = await vmpAdapter.getMatchingStatus(invoiceId);
     res.render('partials/matching_status.html', {
       matchingStatus: updatedMatchingStatus,
-      error: null
+      error: null,
     });
   } catch (error) {
     logError(error, { path: req.path, userId: req.user?.id, invoiceId: req.params.id });
     res.status(500).render('partials/matching_status.html', {
       matchingStatus: null,
-      error: error.message || 'Failed to request GRN'
+      error: error.message || 'Failed to request GRN',
     });
   }
 });
@@ -6071,7 +6539,7 @@ app.post('/invoices/:id/dispute-amount', async (req, res) => {
     const invoice = await vmpAdapter.getInvoiceDetail(invoiceId, req.user.vendorId);
     if (!invoice) {
       return res.status(404).json({
-        error: 'Invoice not found or access denied'
+        error: 'Invoice not found or access denied',
       });
     }
 
@@ -6103,13 +6571,13 @@ app.post('/invoices/:id/dispute-amount', async (req, res) => {
     const updatedMatchingStatus = await vmpAdapter.getMatchingStatus(invoiceId);
     res.render('partials/matching_status.html', {
       matchingStatus: updatedMatchingStatus,
-      error: null
+      error: null,
     });
   } catch (error) {
     logError(error, { path: req.path, userId: req.user?.id, invoiceId: req.params.id });
     res.status(500).render('partials/matching_status.html', {
       matchingStatus: null,
-      error: error.message || 'Failed to dispute amount'
+      error: error.message || 'Failed to dispute amount',
     });
   }
 });
@@ -6128,16 +6596,23 @@ app.post('/invoices/:id/report-exception', async (req, res) => {
     if (!exception_type) {
       return res.status(400).render('partials/matching_status.html', {
         matchingStatus: null,
-        error: 'Exception type is required'
+        error: 'Exception type is required',
       });
     }
 
     // Validate exception type
-    const validExceptionTypes = ['missing_grn', 'amount_mismatch', 'date_mismatch', 'missing_po', 'po_status', 'grn_status'];
+    const validExceptionTypes = [
+      'missing_grn',
+      'amount_mismatch',
+      'date_mismatch',
+      'missing_po',
+      'po_status',
+      'grn_status',
+    ];
     if (!validExceptionTypes.includes(exception_type)) {
       return res.status(400).render('partials/matching_status.html', {
         matchingStatus: null,
-        error: 'Invalid exception type'
+        error: 'Invalid exception type',
       });
     }
 
@@ -6146,7 +6621,7 @@ app.post('/invoices/:id/report-exception', async (req, res) => {
     if (!invoice) {
       return res.status(404).render('partials/matching_status.html', {
         matchingStatus: null,
-        error: 'Invoice not found or access denied'
+        error: 'Invoice not found or access denied',
       });
     }
 
@@ -6157,7 +6632,7 @@ app.post('/invoices/:id/report-exception', async (req, res) => {
       date_mismatch: 'Date Mismatch',
       missing_po: 'Missing PO',
       po_status: 'PO Status Issue',
-      grn_status: 'GRN Status Issue'
+      grn_status: 'GRN Status Issue',
     };
 
     let caseSubject = `${exceptionLabels[exception_type]}: Invoice ${invoice.invoice_num}`;
@@ -6178,13 +6653,13 @@ app.post('/invoices/:id/report-exception', async (req, res) => {
     const updatedMatchingStatus = await vmpAdapter.getMatchingStatus(invoiceId);
     res.render('partials/matching_status.html', {
       matchingStatus: updatedMatchingStatus,
-      error: null
+      error: null,
     });
   } catch (error) {
     logError(error, { path: req.path, userId: req.user?.id, invoiceId: req.params.id });
     res.status(500).render('partials/matching_status.html', {
       matchingStatus: null,
-      error: error.message || 'Failed to report exception'
+      error: error.message || 'Failed to report exception',
     });
   }
 });
@@ -6205,7 +6680,7 @@ app.get('/soa/recon/:caseId', async (req, res) => {
     if (!caseId || !isValidUUID(caseId)) {
       return res.status(400).render('pages/error.html', {
         error: { status: 400, message: 'Invalid case ID' },
-        user: req.user
+        user: req.user,
       });
     }
 
@@ -6221,7 +6696,7 @@ app.get('/soa/recon/:caseId', async (req, res) => {
       caseId: caseId,
       soaLines: soaLines || [],
       summary: summary,
-      issues: issues || []
+      issues: issues || [],
     });
   } catch (error) {
     handleRouteError(error, req, res);
@@ -6238,7 +6713,7 @@ app.get('/partials/soa-recon-workspace.html', async (req, res) => {
     const caseId = getStringParam(req.query.case_id);
     if (!caseId || !isValidUUID(caseId)) {
       return res.status(400).render('partials/error_message.html', {
-        error: { message: 'Invalid case ID' }
+        error: { message: 'Invalid case ID' },
       });
     }
 
@@ -6252,14 +6727,14 @@ app.get('/partials/soa-recon-workspace.html', async (req, res) => {
       caseId: caseId,
       soaLines: soaLines || [],
       summary: summary,
-      issues: issues || []
+      issues: issues || [],
     });
   } catch (error) {
     handlePartialError(error, req, res, 'partials/soa_recon_workspace.html', {
       caseId: req.query.case_id,
       soaLines: [],
       summary: null,
-      issues: []
+      issues: [],
     });
   }
 });
@@ -6274,7 +6749,7 @@ app.post('/soa/match', async (req, res) => {
     const { soaItemId, invoiceId, matchData } = req.body;
     if (!soaItemId || !invoiceId) {
       return res.status(400).json({
-        error: 'soaItemId and invoiceId are required'
+        error: 'soaItemId and invoiceId are required',
       });
     }
 
@@ -6284,13 +6759,13 @@ app.post('/soa/match', async (req, res) => {
     // 4. Render response
     res.json({
       success: true,
-      match: match
+      match: match,
     });
   } catch (error) {
     logError(error, { path: req.path, userId: req.user?.id });
     res.status(500).json({
       error: 'Failed to create SOA match',
-      message: error.message
+      message: error.message,
     });
   }
 });
@@ -6305,7 +6780,7 @@ app.post('/soa/match/:matchId/confirm', async (req, res) => {
     const matchId = getStringParam(req.params.matchId);
     if (!matchId || !isValidUUID(matchId)) {
       return res.status(400).json({
-        error: 'Invalid match ID'
+        error: 'Invalid match ID',
       });
     }
 
@@ -6315,13 +6790,13 @@ app.post('/soa/match/:matchId/confirm', async (req, res) => {
     // 4. Render response
     res.json({
       success: true,
-      match: match
+      match: match,
     });
   } catch (error) {
     logError(error, { path: req.path, userId: req.user?.id });
     res.status(500).json({
       error: 'Failed to confirm SOA match',
-      message: error.message
+      message: error.message,
     });
   }
 });
@@ -6336,7 +6811,7 @@ app.post('/soa/match/:matchId/reject', async (req, res) => {
     const matchId = getStringParam(req.params.matchId);
     if (!matchId || !isValidUUID(matchId)) {
       return res.status(400).json({
-        error: 'Invalid match ID'
+        error: 'Invalid match ID',
       });
     }
 
@@ -6348,13 +6823,13 @@ app.post('/soa/match/:matchId/reject', async (req, res) => {
     // 4. Render response
     res.json({
       success: true,
-      match: match
+      match: match,
     });
   } catch (error) {
     logError(error, { path: req.path, userId: req.user?.id });
     res.status(500).json({
       error: 'Failed to reject SOA match',
-      message: error.message
+      message: error.message,
     });
   }
 });
@@ -6369,14 +6844,14 @@ app.post('/soa/match/auto', async (req, res) => {
     const { caseId } = req.body;
     if (!caseId || !isValidUUID(caseId)) {
       return res.status(400).json({
-        error: 'Invalid case ID'
+        error: 'Invalid case ID',
       });
     }
 
     // 3. Business logic
     const soaLines = await vmpAdapter.getSOALines(caseId, req.user.vendorId, 'extracted');
     const { batchMatchSOALines } = await import('../utils/soa-matching-engine.js');
-    
+
     const matchResults = await batchMatchSOALines(
       soaLines,
       req.user.vendorId,
@@ -6398,7 +6873,7 @@ app.post('/soa/match/auto', async (req, res) => {
           soaDate: result.soaLine.invoice_date,
           invoiceDate: result.match.invoice.invoice_date,
           matchedBy: 'system',
-          metadata: { pass: result.pass }
+          metadata: { pass: result.pass },
         };
 
         const match = await vmpAdapter.createSOAMatch(
@@ -6415,13 +6890,13 @@ app.post('/soa/match/auto', async (req, res) => {
       success: true,
       matchesCreated: createdMatches.length,
       totalLines: soaLines.length,
-      results: matchResults
+      results: matchResults,
     });
   } catch (error) {
     logError(error, { path: req.path, userId: req.user?.id });
     res.status(500).json({
       error: 'Failed to run autonomous matching',
-      message: error.message
+      message: error.message,
     });
   }
 });
@@ -6436,7 +6911,7 @@ app.post('/soa/resolve', async (req, res) => {
     const { issueId, resolutionData } = req.body;
     if (!issueId || !isValidUUID(issueId)) {
       return res.status(400).json({
-        error: 'Invalid issue ID'
+        error: 'Invalid issue ID',
       });
     }
 
@@ -6446,13 +6921,13 @@ app.post('/soa/resolve', async (req, res) => {
     // 4. Render response
     res.json({
       success: true,
-      issue: issue
+      issue: issue,
     });
   } catch (error) {
     logError(error, { path: req.path, userId: req.user?.id });
     res.status(500).json({
       error: 'Failed to resolve SOA issue',
-      message: error.message
+      message: error.message,
     });
   }
 });
@@ -6467,7 +6942,7 @@ app.post('/soa/signoff', async (req, res) => {
     const { caseId, acknowledgementData } = req.body;
     if (!caseId || !isValidUUID(caseId)) {
       return res.status(400).json({
-        error: 'Invalid case ID'
+        error: 'Invalid case ID',
       });
     }
 
@@ -6482,13 +6957,13 @@ app.post('/soa/signoff', async (req, res) => {
     // 4. Render response
     res.json({
       success: true,
-      acknowledgement: acknowledgement
+      acknowledgement: acknowledgement,
     });
   } catch (error) {
     logError(error, { path: req.path, userId: req.user?.id });
     res.status(500).json({
       error: 'Failed to sign off SOA',
-      message: error.message
+      message: error.message,
     });
   }
 });
@@ -6517,7 +6992,7 @@ CN-001,2024-01-25,100.00,USD,CN,Credit note`;
     res.status(500).json({
       error: 'Failed to generate template',
       message: error.message,
-      userFriendly: true
+      userFriendly: true,
     });
   }
 });
@@ -6532,19 +7007,22 @@ app.post('/api/soa/preview', upload.single('file'), async (req, res) => {
     if (!req.file) {
       return res.status(400).json({
         error: 'File is required for preview',
-        userFriendly: true
+        userFriendly: true,
       });
     }
 
     // Detect file type
-    const isCSV = req.file.mimetype === 'text/csv' ||
+    const isCSV =
+      req.file.mimetype === 'text/csv' ||
       req.file.mimetype === 'application/vnd.ms-excel' ||
       req.file.originalname.toLowerCase().endsWith('.csv');
-    
-    const isPDF = req.file.mimetype === 'application/pdf' ||
+
+    const isPDF =
+      req.file.mimetype === 'application/pdf' ||
       req.file.originalname.toLowerCase().endsWith('.pdf');
 
-    const isExcel = req.file.mimetype === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
+    const isExcel =
+      req.file.mimetype === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
       req.file.mimetype === 'application/vnd.ms-excel' ||
       req.file.originalname.toLowerCase().endsWith('.xlsx') ||
       req.file.originalname.toLowerCase().endsWith('.xls');
@@ -6552,7 +7030,7 @@ app.post('/api/soa/preview', upload.single('file'), async (req, res) => {
     if (!isCSV && !isPDF && !isExcel) {
       return res.status(400).json({
         error: 'File must be a CSV, PDF, or Excel file',
-        userFriendly: true
+        userFriendly: true,
       });
     }
 
@@ -6562,7 +7040,7 @@ app.post('/api/soa/preview', upload.single('file'), async (req, res) => {
       fileType: isCSV ? 'csv' : isPDF ? 'pdf' : 'excel',
       lines: [],
       detectedPeriod: null,
-      errors: []
+      errors: [],
     };
 
     // Detect period from filename
@@ -6576,11 +7054,11 @@ app.post('/api/soa/preview', upload.single('file'), async (req, res) => {
           skip_empty_lines: true,
           trim: true,
           relax_column_count: true,
-          cast: false
+          cast: false,
         });
         preview.lines = records.slice(0, 5).map((r, i) => ({
           lineNumber: i + 2,
-          data: r
+          data: r,
         }));
       } else if (isExcel) {
         const ExcelJS = (await import('exceljs')).default;
@@ -6596,7 +7074,7 @@ app.post('/api/soa/preview', upload.single('file'), async (req, res) => {
             });
             preview.lines.push({
               lineNumber: i,
-              data: rowData
+              data: rowData,
             });
           }
         }
@@ -6607,7 +7085,7 @@ app.post('/api/soa/preview', upload.single('file'), async (req, res) => {
           const lines = pdfData.text.split('\n').slice(0, 10);
           preview.lines = lines.map((line, i) => ({
             lineNumber: i + 1,
-            data: { text: line.trim() }
+            data: { text: line.trim() },
           }));
         }
       }
@@ -6618,14 +7096,14 @@ app.post('/api/soa/preview', upload.single('file'), async (req, res) => {
     // 4. Return preview
     res.json({
       success: true,
-      preview: preview
+      preview: preview,
     });
   } catch (error) {
     logError(error, { path: req.path, userId: req.user?.id });
     res.status(500).json({
       error: 'Failed to generate preview',
       message: error.message,
-      userFriendly: true
+      userFriendly: true,
     });
   }
 });
@@ -6639,19 +7117,22 @@ app.post('/api/soa/ingest', upload.single('file'), async (req, res) => {
     // 2. Input validation
     if (!req.file) {
       return res.status(400).json({
-        error: 'File is required'
+        error: 'File is required',
       });
     }
 
     // Detect file type (CSV, PDF, or Excel)
-    const isCSV = req.file.mimetype === 'text/csv' ||
+    const isCSV =
+      req.file.mimetype === 'text/csv' ||
       req.file.mimetype === 'application/vnd.ms-excel' ||
       req.file.originalname.toLowerCase().endsWith('.csv');
-    
-    const isPDF = req.file.mimetype === 'application/pdf' ||
+
+    const isPDF =
+      req.file.mimetype === 'application/pdf' ||
       req.file.originalname.toLowerCase().endsWith('.pdf');
 
-    const isExcel = req.file.mimetype === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
+    const isExcel =
+      req.file.mimetype === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
       req.file.mimetype === 'application/vnd.ms-excel' ||
       req.file.originalname.toLowerCase().endsWith('.xlsx') ||
       req.file.originalname.toLowerCase().endsWith('.xls');
@@ -6660,7 +7141,7 @@ app.post('/api/soa/ingest', upload.single('file'), async (req, res) => {
       return res.status(400).json({
         error: 'File must be a CSV, PDF, or Excel file (.xlsx, .xls)',
         userFriendly: true,
-        supportedFormats: ['CSV', 'PDF', 'Excel (.xlsx, .xls)']
+        supportedFormats: ['CSV', 'PDF', 'Excel (.xlsx, .xls)'],
       });
     }
 
@@ -6668,14 +7149,15 @@ app.post('/api/soa/ingest', upload.single('file'), async (req, res) => {
     const vendorId = req.user.vendorId;
     if (!vendorId && !req.user.isInternal) {
       return res.status(400).json({
-        error: 'You must be associated with a vendor to upload SOA statements. Please contact support if you believe this is an error.',
-        userFriendly: true
+        error:
+          'You must be associated with a vendor to upload SOA statements. Please contact support if you believe this is an error.',
+        userFriendly: true,
       });
     }
 
     // P0 Improvement: Auto-default tenant_id from logged-in user (always set from user)
     let tenantId = req.user.vendor?.tenant_id || null;
-    
+
     // P0 Improvement: Get companies for vendor and auto-select if only one
     let finalCompanyId = req.body.company_id || req.user.companyId;
     if (!finalCompanyId && vendorId) {
@@ -6683,8 +7165,9 @@ app.post('/api/soa/ingest', upload.single('file'), async (req, res) => {
         const vendorCompanies = await vmpAdapter.getVendorCompanies(vendorId);
         if (vendorCompanies.length === 0) {
           return res.status(400).json({
-            error: 'No companies are linked to your vendor account. Please contact support to link a company.',
-            userFriendly: true
+            error:
+              'No companies are linked to your vendor account. Please contact support to link a company.',
+            userFriendly: true,
           });
         } else if (vendorCompanies.length === 1) {
           // Auto-select if only one company
@@ -6698,15 +7181,15 @@ app.post('/api/soa/ingest', upload.single('file'), async (req, res) => {
             companies: vendorCompanies.map(c => ({
               id: c.id,
               name: c.name,
-              legal_name: c.legal_name
-            }))
+              legal_name: c.legal_name,
+            })),
           });
         }
       } catch (companyError) {
         logError(companyError, { operation: 'getVendorCompanies', vendorId });
         return res.status(500).json({
           error: 'Failed to retrieve company information. Please try again or contact support.',
-          userFriendly: true
+          userFriendly: true,
         });
       }
     }
@@ -6722,7 +7205,7 @@ app.post('/api/soa/ingest', upload.single('file'), async (req, res) => {
           .select('tenant_id')
           .eq('id', finalCompanyId)
           .single();
-        
+
         if (!companyError && company?.tenant_id) {
           tenantId = company.tenant_id;
         }
@@ -6735,7 +7218,7 @@ app.post('/api/soa/ingest', upload.single('file'), async (req, res) => {
     // P1 Improvement: Smart period detection from filename
     let periodStart = req.body.period_start;
     let periodEnd = req.body.period_end;
-    
+
     if (!periodStart || !periodEnd) {
       // Try to detect from filename
       const detectedPeriod = detectPeriodFromFilename(req.file.originalname);
@@ -6752,7 +7235,7 @@ app.post('/api/soa/ingest', upload.single('file'), async (req, res) => {
         error: 'Please specify the statement period (start and end dates)',
         userFriendly: true,
         requiresPeriodSelection: true,
-        suggestions: suggestions
+        suggestions: suggestions,
       });
     }
 
@@ -6764,20 +7247,20 @@ app.post('/api/soa/ingest', upload.single('file'), async (req, res) => {
         error: `Date format is incorrect. Found start: "${periodStart}", end: "${periodEnd}". Please use format: YYYY-MM-DD (e.g., 2024-01-15)`,
         userFriendly: true,
         field: 'date',
-        expectedFormat: 'YYYY-MM-DD'
+        expectedFormat: 'YYYY-MM-DD',
       });
     }
     if (startDate > endDate) {
       return res.status(400).json({
         error: `The start date (${periodStart}) must be before the end date (${periodEnd}). Please check and correct the dates.`,
-        userFriendly: true
+        userFriendly: true,
       });
     }
 
     // 3. Business logic - Ingest SOA from CSV, PDF, or Excel
     // tenantId is now auto-defaulted from user (or company fallback) above
     let result;
-    
+
     if (isCSV) {
       result = await vmpAdapter.ingestSOAFromCSV(
         req.file.buffer,
@@ -6809,7 +7292,7 @@ app.post('/api/soa/ingest', upload.single('file'), async (req, res) => {
       return res.status(400).json({
         error: 'Unsupported file type. Please use CSV, PDF, or Excel (.xlsx, .xls)',
         userFriendly: true,
-        supportedFormats: ['CSV', 'PDF', 'Excel (.xlsx, .xls)']
+        supportedFormats: ['CSV', 'PDF', 'Excel (.xlsx, .xls)'],
       });
     }
 
@@ -6838,7 +7321,7 @@ app.post('/api/soa/ingest', upload.single('file'), async (req, res) => {
               soaDate: matchResult.soaLine.invoice_date,
               invoiceDate: matchResult.match.invoice.invoice_date,
               matchedBy: 'system',
-              metadata: { pass: matchResult.pass }
+              metadata: { pass: matchResult.pass },
             };
 
             await vmpAdapter.createSOAMatch(
@@ -6848,9 +7331,9 @@ app.post('/api/soa/ingest', upload.single('file'), async (req, res) => {
             );
             matchesCreated++;
           } catch (matchError) {
-            logError(matchError, { 
-              operation: 'autoMatchSOA', 
-              soaLineId: matchResult.soaLineId 
+            logError(matchError, {
+              operation: 'autoMatchSOA',
+              soaLineId: matchResult.soaLineId,
             });
           }
         }
@@ -6865,10 +7348,7 @@ app.post('/api/soa/ingest', upload.single('file'), async (req, res) => {
         caseStatus = 'open'; // ACTION_REQUIRED per PRD
       }
 
-      await supabase
-        .from('vmp_cases')
-        .update({ status: caseStatus })
-        .eq('id', result.caseId);
+      await supabase.from('vmp_cases').update({ status: caseStatus }).eq('id', result.caseId);
 
       // 5. Return response
       res.json({
@@ -6882,15 +7362,15 @@ app.post('/api/soa/ingest', upload.single('file'), async (req, res) => {
         errors: result.errors,
         extraction_method: result.extractionMethod || (isCSV ? 'csv' : isPDF ? 'pdf' : 'excel'),
         confidence: result.confidence || (isCSV ? 1.0 : isPDF ? 0.85 : 0.9),
-        message: `SOA ingested from ${isCSV ? 'CSV' : isPDF ? 'PDF' : 'Excel'}: ${result.inserted} lines, ${matchesCreated} auto-matched`
+        message: `SOA ingested from ${isCSV ? 'CSV' : isPDF ? 'PDF' : 'Excel'}: ${result.inserted} lines, ${matchesCreated} auto-matched`,
       });
     } catch (matchError) {
       // Log matching error but don't fail the ingestion
-      logError(matchError, { 
-        operation: 'autoMatchAfterIngest', 
-        caseId: result.caseId 
+      logError(matchError, {
+        operation: 'autoMatchAfterIngest',
+        caseId: result.caseId,
       });
-      
+
       res.json({
         success: true,
         case_id: result.caseId,
@@ -6903,24 +7383,26 @@ app.post('/api/soa/ingest', upload.single('file'), async (req, res) => {
         extraction_method: result.extractionMethod || (isCSV ? 'csv' : isPDF ? 'pdf' : 'excel'),
         confidence: result.confidence || (isCSV ? 1.0 : isPDF ? 0.85 : 0.9),
         warning: 'SOA ingested but automatic matching failed. Please run manual matching.',
-        message: `SOA ingested from ${isCSV ? 'CSV' : isPDF ? 'PDF' : 'Excel'}: ${result.inserted} lines (matching will be done manually)`
+        message: `SOA ingested from ${isCSV ? 'CSV' : isPDF ? 'PDF' : 'Excel'}: ${result.inserted} lines (matching will be done manually)`,
       });
     }
   } catch (error) {
     logError(error, { path: req.path, userId: req.user?.id });
-    
+
     // P0 Improvement: User-friendly error messages
     const userFriendlyError = formatUserFriendlyError(error.message, {
       row: error.row,
       field: error.field,
       value: error.value,
-      expectedFormat: error.expectedFormat
+      expectedFormat: error.expectedFormat,
     });
-    
+
     res.status(500).json({
-      error: userFriendlyError || 'Failed to process SOA file. Please check the file format and try again.',
+      error:
+        userFriendlyError ||
+        'Failed to process SOA file. Please check the file format and try again.',
       message: error.message, // Keep technical message for debugging
-      userFriendly: true
+      userFriendly: true,
     });
   }
 });
@@ -6935,14 +7417,14 @@ app.post('/api/soa/:statementId/recompute', async (req, res) => {
     const statementId = getStringParam(req.params.statementId);
     if (!statementId || !isValidUUID(statementId)) {
       return res.status(400).json({
-        error: 'Invalid statement ID'
+        error: 'Invalid statement ID',
       });
     }
 
     // 3. Business logic - Run matching and update summary
     const soaLines = await vmpAdapter.getSOALines(statementId, req.user.vendorId);
     const { batchMatchSOALines } = await import('../utils/soa-matching-engine.js');
-    
+
     const matchResults = await batchMatchSOALines(
       soaLines.filter(l => l.status === 'extracted'),
       req.user.vendorId,
@@ -6963,14 +7445,10 @@ app.post('/api/soa/:statementId/recompute', async (req, res) => {
           soaDate: result.soaLine.invoice_date,
           invoiceDate: result.match.invoice.invoice_date,
           matchedBy: 'system',
-          metadata: { pass: result.pass }
+          metadata: { pass: result.pass },
         };
 
-        await vmpAdapter.createSOAMatch(
-          result.soaLineId,
-          result.match.invoice.id,
-          matchData
-        );
+        await vmpAdapter.createSOAMatch(result.soaLineId, result.match.invoice.id, matchData);
       }
     }
 
@@ -6979,13 +7457,13 @@ app.post('/api/soa/:statementId/recompute', async (req, res) => {
     // 4. Render response (HTMX toast)
     res.render('partials/toast_message.html', {
       message: `Recomputed: ${matchResults.filter(r => r.match).length} matches created`,
-      type: 'success'
+      type: 'success',
     });
   } catch (error) {
     logError(error, { path: req.path, userId: req.user?.id });
     res.status(500).render('partials/toast_message.html', {
       message: 'Failed to recompute: ' + error.message,
-      type: 'error'
+      type: 'error',
     });
   }
 });
@@ -7001,7 +7479,7 @@ app.post('/api/soa/:statementId/signoff', async (req, res) => {
     if (!statementId || !isValidUUID(statementId)) {
       return res.status(400).render('partials/toast_message.html', {
         message: 'Invalid statement ID',
-        type: 'error'
+        type: 'error',
       });
     }
 
@@ -7010,7 +7488,7 @@ app.post('/api/soa/:statementId/signoff', async (req, res) => {
     if (summary.net_variance != 0 || summary.unmatched_lines > 0) {
       return res.status(400).render('partials/toast_message.html', {
         message: 'Cannot sign off: variances must be resolved',
-        type: 'error'
+        type: 'error',
       });
     }
 
@@ -7025,13 +7503,13 @@ app.post('/api/soa/:statementId/signoff', async (req, res) => {
     // 5. Render response (HTMX toast)
     res.render('partials/toast_message.html', {
       message: 'SOA reconciliation signed off successfully',
-      type: 'success'
+      type: 'success',
     });
   } catch (error) {
     logError(error, { path: req.path, userId: req.user?.id });
     res.status(500).render('partials/toast_message.html', {
       message: 'Failed to sign off: ' + error.message,
-      type: 'error'
+      type: 'error',
     });
   }
 });
@@ -7047,7 +7525,7 @@ app.get('/api/soa/:statementId/export', async (req, res) => {
     if (!statementId || !isValidUUID(statementId)) {
       return res.status(400).render('partials/toast_message.html', {
         message: 'Invalid statement ID',
-        type: 'error'
+        type: 'error',
       });
     }
 
@@ -7063,13 +7541,13 @@ app.get('/api/soa/:statementId/export', async (req, res) => {
       statement_id: statementId,
       summary: summary,
       lines: soaLines,
-      issues: issues
+      issues: issues,
     });
   } catch (error) {
     logError(error, { path: req.path, userId: req.user?.id });
     res.status(500).render('partials/toast_message.html', {
       message: 'Failed to export: ' + error.message,
-      type: 'error'
+      type: 'error',
     });
   }
 });
@@ -7084,7 +7562,7 @@ app.get('/soa/:statementId/lines', async (req, res) => {
     const statementId = getStringParam(req.params.statementId);
     if (!statementId || !isValidUUID(statementId)) {
       return res.status(400).render('partials/error_message.html', {
-        error: { message: 'Invalid statement ID' }
+        error: { message: 'Invalid statement ID' },
       });
     }
 
@@ -7095,21 +7573,22 @@ app.get('/soa/:statementId/lines', async (req, res) => {
     // Filter by search query
     if (q) {
       const query = q.toLowerCase();
-      soaLines = soaLines.filter(line => 
-        (line.invoice_number && line.invoice_number.toLowerCase().includes(query)) ||
-        (line.description && line.description.toLowerCase().includes(query))
+      soaLines = soaLines.filter(
+        line =>
+          (line.invoice_number && line.invoice_number.toLowerCase().includes(query)) ||
+          (line.description && line.description.toLowerCase().includes(query))
       );
     }
 
     // 4. Render response
     res.render('partials/soa_lines_list.html', {
       soaLines: soaLines || [],
-      caseId: statementId
+      caseId: statementId,
     });
   } catch (error) {
     handlePartialError(error, req, res, 'partials/soa_lines_list.html', {
       soaLines: [],
-      caseId: req.params.statementId
+      caseId: req.params.statementId,
     });
   }
 });
@@ -7125,7 +7604,7 @@ app.get('/soa/:statementId/lines/:lineId/focus', async (req, res) => {
     const lineId = getStringParam(req.params.lineId);
     if (!statementId || !isValidUUID(statementId) || !lineId || !isValidUUID(lineId)) {
       return res.status(400).render('partials/error_message.html', {
-        error: { message: 'Invalid statement or line ID' }
+        error: { message: 'Invalid statement or line ID' },
       });
     }
 
@@ -7135,13 +7614,13 @@ app.get('/soa/:statementId/lines/:lineId/focus', async (req, res) => {
 
     if (!line) {
       return res.status(404).render('partials/error_message.html', {
-        error: { message: 'SOA line not found' }
+        error: { message: 'SOA line not found' },
       });
     }
 
     // Get suggested matches (invoices that could match)
     const invoices = await vmpAdapter.getInvoices(req.user.vendorId, req.user.companyId || null, {
-      status: ['pending', 'approved', 'paid']
+      status: ['pending', 'approved', 'paid'],
     });
 
     // Simple matching suggestions (can be enhanced with matching engine)
@@ -7149,7 +7628,11 @@ app.get('/soa/:statementId/lines/:lineId/focus', async (req, res) => {
       .filter(inv => {
         const soaDoc = (line.invoice_number || '').toLowerCase().replace(/[\s\-_.,]/g, '');
         const invDoc = (inv.invoice_number || '').toLowerCase().replace(/[\s\-_.,]/g, '');
-        return soaDoc && invDoc && (soaDoc === invDoc || soaDoc.includes(invDoc) || invDoc.includes(soaDoc));
+        return (
+          soaDoc &&
+          invDoc &&
+          (soaDoc === invDoc || soaDoc.includes(invDoc) || invDoc.includes(soaDoc))
+        );
       })
       .slice(0, 5)
       .map(inv => ({
@@ -7159,7 +7642,7 @@ app.get('/soa/:statementId/lines/:lineId/focus', async (req, res) => {
         posting_date: inv.invoice_date,
         amount_open: inv.total_amount,
         confidence: 0.85,
-        match_type: 'PROBABILISTIC'
+        match_type: 'PROBABILISTIC',
       }));
 
     // Get evidence for this line (from case evidence)
@@ -7170,13 +7653,13 @@ app.get('/soa/:statementId/lines/:lineId/focus', async (req, res) => {
       line: line,
       suggestions: suggestions,
       evidence: evidence,
-      statement: { id: statementId, vendor_id: req.user.vendorId }
+      statement: { id: statementId, vendor_id: req.user.vendorId },
     });
   } catch (error) {
     handlePartialError(error, req, res, 'partials/soa_line_focus.html', {
       line: null,
       suggestions: [],
-      evidence: []
+      evidence: [],
     });
   }
 });
@@ -7192,7 +7675,7 @@ app.post('/api/soa/lines/:lineId/match', async (req, res) => {
     if (!lineId || !isValidUUID(lineId)) {
       return res.status(400).render('partials/toast_message.html', {
         message: 'Invalid line ID',
-        type: 'error'
+        type: 'error',
       });
     }
 
@@ -7200,7 +7683,7 @@ app.post('/api/soa/lines/:lineId/match', async (req, res) => {
     if (!ledger_line_id) {
       return res.status(400).render('partials/toast_message.html', {
         message: 'ledger_line_id is required',
-        type: 'error'
+        type: 'error',
       });
     }
 
@@ -7211,7 +7694,7 @@ app.post('/api/soa/lines/:lineId/match', async (req, res) => {
     if (!soaLine) {
       return res.status(404).render('partials/toast_message.html', {
         message: 'SOA line not found',
-        type: 'error'
+        type: 'error',
       });
     }
 
@@ -7220,7 +7703,7 @@ app.post('/api/soa/lines/:lineId/match', async (req, res) => {
     if (!invoice) {
       return res.status(404).render('partials/toast_message.html', {
         message: 'Invoice not found',
-        type: 'error'
+        type: 'error',
       });
     }
 
@@ -7233,13 +7716,13 @@ app.post('/api/soa/lines/:lineId/match', async (req, res) => {
       matchCriteria: {
         invoice_number: true,
         amount: true,
-        currency: true
+        currency: true,
       },
       soaAmount: parseFloat(matched_amount || soaLine.amount),
       invoiceAmount: parseFloat(invoice.total_amount),
       soaDate: soaLine.invoice_date,
       invoiceDate: invoice.invoice_date,
-      matchedBy: 'manual'
+      matchedBy: 'manual',
     };
 
     const match = await vmpAdapter.createSOAMatch(lineId, ledger_line_id, matchData);
@@ -7248,13 +7731,13 @@ app.post('/api/soa/lines/:lineId/match', async (req, res) => {
     // 4. Render response
     res.render('partials/toast_message.html', {
       message: `Match created. Net variance: ${summary.net_variance.toFixed(2)}`,
-      type: 'success'
+      type: 'success',
     });
   } catch (error) {
     logError(error, { path: req.path, userId: req.user?.id });
     res.status(500).render('partials/toast_message.html', {
       message: 'Failed to create match: ' + error.message,
-      type: 'error'
+      type: 'error',
     });
   }
 });
@@ -7270,7 +7753,7 @@ app.post('/api/soa/lines/:lineId/dispute', async (req, res) => {
     if (!lineId || !isValidUUID(lineId)) {
       return res.status(400).render('partials/toast_message.html', {
         message: 'Invalid line ID',
-        type: 'error'
+        type: 'error',
       });
     }
 
@@ -7283,7 +7766,7 @@ app.post('/api/soa/lines/:lineId/dispute', async (req, res) => {
     if (!soaLine) {
       return res.status(404).render('partials/toast_message.html', {
         message: 'SOA line not found',
-        type: 'error'
+        type: 'error',
       });
     }
 
@@ -7296,25 +7779,22 @@ app.post('/api/soa/lines/:lineId/dispute', async (req, res) => {
       amountDelta: parseFloat(amount_delta || 0),
       detectedBy: 'manual',
       expectedValue: null,
-      actualValue: null
+      actualValue: null,
     });
 
     // Update line status
-    await supabase
-      .from('vmp_soa_items')
-      .update({ status: 'discrepancy' })
-      .eq('id', lineId);
+    await supabase.from('vmp_soa_items').update({ status: 'discrepancy' }).eq('id', lineId);
 
     // 4. Render response
     res.render('partials/toast_message.html', {
       message: 'Line marked as disputed',
-      type: 'success'
+      type: 'success',
     });
   } catch (error) {
     logError(error, { path: req.path, userId: req.user?.id });
     res.status(500).render('partials/toast_message.html', {
       message: 'Failed to dispute line: ' + error.message,
-      type: 'error'
+      type: 'error',
     });
   }
 });
@@ -7330,7 +7810,7 @@ app.post('/api/soa/lines/:lineId/resolve', async (req, res) => {
     if (!lineId || !isValidUUID(lineId)) {
       return res.status(400).render('partials/toast_message.html', {
         message: 'Invalid line ID',
-        type: 'error'
+        type: 'error',
       });
     }
 
@@ -7343,7 +7823,7 @@ app.post('/api/soa/lines/:lineId/resolve', async (req, res) => {
     if (!soaLine) {
       return res.status(404).render('partials/toast_message.html', {
         message: 'SOA line not found',
-        type: 'error'
+        type: 'error',
       });
     }
 
@@ -7354,26 +7834,23 @@ app.post('/api/soa/lines/:lineId/resolve', async (req, res) => {
     for (const issue of lineIssues) {
       await vmpAdapter.resolveSOAIssue(issue.id, req.user.id, {
         action: 'corrected',
-        notes: resolution || 'Line resolved'
+        notes: resolution || 'Line resolved',
       });
     }
 
     // Update line status
-    await supabase
-      .from('vmp_soa_items')
-      .update({ status: 'resolved' })
-      .eq('id', lineId);
+    await supabase.from('vmp_soa_items').update({ status: 'resolved' }).eq('id', lineId);
 
     // 4. Render response
     res.render('partials/toast_message.html', {
       message: 'Line resolved',
-      type: 'success'
+      type: 'success',
     });
   } catch (error) {
     logError(error, { path: req.path, userId: req.user?.id });
     res.status(500).render('partials/toast_message.html', {
       message: 'Failed to resolve line: ' + error.message,
-      type: 'error'
+      type: 'error',
     });
   }
 });
@@ -7389,14 +7866,14 @@ app.post('/api/soa/lines/:lineId/evidence', upload.single('file'), async (req, r
     if (!lineId || !isValidUUID(lineId)) {
       return res.status(400).render('partials/toast_message.html', {
         message: 'Invalid line ID',
-        type: 'error'
+        type: 'error',
       });
     }
 
     if (!req.file) {
       return res.status(400).render('partials/toast_message.html', {
         message: 'File is required',
-        type: 'error'
+        type: 'error',
       });
     }
 
@@ -7407,7 +7884,7 @@ app.post('/api/soa/lines/:lineId/evidence', upload.single('file'), async (req, r
     if (!soaLine) {
       return res.status(404).render('partials/toast_message.html', {
         message: 'SOA line not found',
-        type: 'error'
+        type: 'error',
       });
     }
 
@@ -7424,13 +7901,13 @@ app.post('/api/soa/lines/:lineId/evidence', upload.single('file'), async (req, r
     // 4. Render response
     res.render('partials/toast_message.html', {
       message: 'Evidence uploaded successfully',
-      type: 'success'
+      type: 'success',
     });
   } catch (error) {
     logError(error, { path: req.path, userId: req.user?.id });
     res.status(500).render('partials/toast_message.html', {
       message: 'Failed to upload evidence: ' + error.message,
-      type: 'error'
+      type: 'error',
     });
   }
 });
@@ -7450,7 +7927,7 @@ app.post('/api/dn/propose', async (req, res) => {
     if (!soa_statement_id || !vendor_id || !reason_code || !amount) {
       return res.status(400).render('partials/toast_message.html', {
         message: 'Missing required fields',
-        type: 'error'
+        type: 'error',
       });
     }
 
@@ -7463,19 +7940,19 @@ app.post('/api/dn/propose', async (req, res) => {
       amount: parseFloat(amount),
       reasonCode: reason_code,
       notes: note || null,
-      userId: req.user.id
+      userId: req.user.id,
     });
 
     // 4. Render response
     res.render('partials/toast_message.html', {
       message: `Debit Note ${dn.dn_no} created (DRAFT)`,
-      type: 'success'
+      type: 'success',
     });
   } catch (error) {
     logError(error, { path: req.path, userId: req.user?.id });
     res.status(500).render('partials/toast_message.html', {
       message: 'Failed to propose DN: ' + error.message,
-      type: 'error'
+      type: 'error',
     });
   }
 });
@@ -7488,7 +7965,7 @@ app.post('/api/dn/:dnId/approve', async (req, res) => {
     if (!req.user.isInternal) {
       return res.status(403).render('partials/toast_message.html', {
         message: 'Only finance users can approve debit notes',
-        type: 'error'
+        type: 'error',
       });
     }
 
@@ -7497,7 +7974,7 @@ app.post('/api/dn/:dnId/approve', async (req, res) => {
     if (!dnId || !isValidUUID(dnId)) {
       return res.status(400).render('partials/toast_message.html', {
         message: 'Invalid DN ID',
-        type: 'error'
+        type: 'error',
       });
     }
 
@@ -7507,13 +7984,13 @@ app.post('/api/dn/:dnId/approve', async (req, res) => {
     // 4. Render response
     res.render('partials/toast_message.html', {
       message: `Debit Note ${dn.dn_no} approved`,
-      type: 'success'
+      type: 'success',
     });
   } catch (error) {
     logError(error, { path: req.path, userId: req.user?.id });
     res.status(500).render('partials/toast_message.html', {
       message: 'Failed to approve DN: ' + error.message,
-      type: 'error'
+      type: 'error',
     });
   }
 });
@@ -7526,7 +8003,7 @@ app.post('/api/dn/:dnId/post', async (req, res) => {
     if (!req.user.isInternal) {
       return res.status(403).render('partials/toast_message.html', {
         message: 'Only finance users can post debit notes',
-        type: 'error'
+        type: 'error',
       });
     }
 
@@ -7535,7 +8012,7 @@ app.post('/api/dn/:dnId/post', async (req, res) => {
     if (!dnId || !isValidUUID(dnId)) {
       return res.status(400).render('partials/toast_message.html', {
         message: 'Invalid DN ID',
-        type: 'error'
+        type: 'error',
       });
     }
 
@@ -7552,13 +8029,13 @@ app.post('/api/dn/:dnId/post', async (req, res) => {
     // 4. Render response
     res.render('partials/toast_message.html', {
       message: `Debit Note ${dn.dn_no} posted to ledger`,
-      type: 'success'
+      type: 'success',
     });
   } catch (error) {
     logError(error, { path: req.path, userId: req.user?.id });
     res.status(500).render('partials/toast_message.html', {
       message: 'Failed to post DN: ' + error.message,
-      type: 'error'
+      type: 'error',
     });
   }
 });
@@ -7576,7 +8053,7 @@ app.get('/ops/invites/new', async (req, res) => {
     res.render('pages/ops_invite_new.html', {
       title: 'Invite Supplier',
       user: req.user,
-      isInternal: true
+      isInternal: true,
     });
   } catch (error) {
     handleRouteError(error, req, res);
@@ -7595,11 +8072,11 @@ app.get('/partials/invite-form.html', async (req, res) => {
     // 3. Render response
     res.render('partials/invite_form.html', {
       orgTree,
-      error: null
+      error: null,
     });
   } catch (error) {
     handlePartialError(error, req, res, 'partials/invite_form.html', {
-      orgTree: null
+      orgTree: null,
     });
   }
 });
@@ -7612,7 +8089,10 @@ app.get('/ops/access-requests', async (req, res) => {
 
     // 2. Get filter status from query
     const statusParam = getStringParam(req.query.status);
-    const statusFilter = statusParam && ['pending', 'approved', 'rejected', 'invited'].includes(statusParam) ? statusParam : null;
+    const statusFilter =
+      statusParam && ['pending', 'approved', 'rejected', 'invited'].includes(statusParam)
+        ? statusParam
+        : null;
 
     // 3. Business logic - Get access requests
     const requests = await vmpAdapter.getAccessRequests(statusFilter, 100);
@@ -7623,7 +8103,7 @@ app.get('/ops/access-requests', async (req, res) => {
       requests,
       statusFilter,
       user: req.user,
-      isInternal: true
+      isInternal: true,
     });
   } catch (error) {
     handleRouteError(error, req, res);
@@ -7644,7 +8124,7 @@ app.post('/ops/access-requests/:id/status', async (req, res) => {
 
     if (!status || !['approved', 'rejected', 'invited'].includes(status)) {
       return res.status(400).json({
-        error: 'Invalid status. Must be: approved, rejected, or invited'
+        error: 'Invalid status. Must be: approved, rejected, or invited',
       });
     }
 
@@ -7673,7 +8153,11 @@ app.post('/ops/access-requests/:id/status', async (req, res) => {
             .eq('name', updatedRequest.company.trim())
             .single();
 
-          const { data: existingVendor } = await withTimeout(existingVendorQuery, 5000, 'checkExistingVendor');
+          const { data: existingVendor } = await withTimeout(
+            existingVendorQuery,
+            5000,
+            'checkExistingVendor'
+          );
 
           if (existingVendor) {
             vendorId = existingVendor.id;
@@ -7683,12 +8167,16 @@ app.post('/ops/access-requests/:id/status', async (req, res) => {
               .insert({
                 tenant_id: tenantId,
                 name: updatedRequest.company.trim(),
-                status: 'invited'
+                status: 'invited',
               })
               .select('id')
               .single();
 
-            const { data: newVendor, error: vendorError } = await withTimeout(newVendorQuery, 5000, 'createVendor');
+            const { data: newVendor, error: vendorError } = await withTimeout(
+              newVendorQuery,
+              5000,
+              'createVendor'
+            );
             if (vendorError || !newVendor) {
               throw new Error('Failed to create vendor');
             }
@@ -7725,7 +8213,7 @@ app.post('/ops/access-requests/:id/status', async (req, res) => {
           return res.json({
             success: true,
             message: 'Access request approved and invite sent',
-            invite_url: invite.invite_url
+            invite_url: invite.invite_url,
           });
         } catch (inviteError) {
           logError(inviteError, { path: req.path, operation: 'auto-create-invite' });
@@ -7738,12 +8226,12 @@ app.post('/ops/access-requests/:id/status', async (req, res) => {
     res.json({
       success: true,
       message: `Access request ${status}`,
-      request: updatedRequest
+      request: updatedRequest,
     });
   } catch (error) {
     logError(error, { path: req.path, userId: req.user?.id });
     res.status(500).json({
-      error: error.message || 'Failed to update access request status'
+      error: error.message || 'Failed to update access request status',
     });
   }
 });
@@ -7759,13 +8247,13 @@ app.post('/ops/invites', async (req, res) => {
 
     if (!validateRequired(vendor_name, 'vendor_name')) {
       return res.status(400).json({
-        error: 'vendor_name is required'
+        error: 'vendor_name is required',
       });
     }
 
     if (!validateRequired(email, 'email')) {
       return res.status(400).json({
-        error: 'email is required'
+        error: 'email is required',
       });
     }
 
@@ -7773,7 +8261,7 @@ app.post('/ops/invites', async (req, res) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
       return res.status(400).json({
-        error: 'Invalid email format'
+        error: 'Invalid email format',
       });
     }
 
@@ -7781,7 +8269,7 @@ app.post('/ops/invites', async (req, res) => {
     const userContext = await vmpAdapter.getVendorContext(req.user.id);
     if (!userContext.vmp_vendors?.tenant_id) {
       return res.status(400).json({
-        error: 'User must be associated with a tenant'
+        error: 'User must be associated with a tenant',
       });
     }
 
@@ -7798,7 +8286,11 @@ app.post('/ops/invites', async (req, res) => {
         .eq('name', vendor_name.trim())
         .single();
 
-      const { data: existingVendor } = await withTimeout(existingVendorQuery, 5000, 'checkExistingVendor');
+      const { data: existingVendor } = await withTimeout(
+        existingVendorQuery,
+        5000,
+        'checkExistingVendor'
+      );
 
       if (existingVendor) {
         vendorId = existingVendor.id;
@@ -7809,21 +8301,29 @@ app.post('/ops/invites', async (req, res) => {
           .insert({
             tenant_id: tenantId,
             name: vendor_name.trim(),
-            status: 'invited'
+            status: 'invited',
           })
           .select('id')
           .single();
 
-        const { data: newVendor, error: vendorError } = await withTimeout(newVendorQuery, 5000, 'createVendor');
+        const { data: newVendor, error: vendorError } = await withTimeout(
+          newVendorQuery,
+          5000,
+          'createVendor'
+        );
         if (vendorError || !newVendor) {
           throw new Error('Failed to create vendor');
         }
         vendorId = newVendor.id;
       }
     } catch (vendorError) {
-      logError(vendorError, { path: req.path, userId: req.user?.id, operation: 'createOrGetVendor' });
+      logError(vendorError, {
+        path: req.path,
+        userId: req.user?.id,
+        operation: 'createOrGetVendor',
+      });
       return res.status(500).json({
-        error: 'Failed to create or find vendor'
+        error: 'Failed to create or find vendor',
       });
     }
 
@@ -7833,17 +8333,15 @@ app.post('/ops/invites', async (req, res) => {
       if (Array.isArray(company_ids)) {
         companyIdsArray = company_ids;
       } else if (typeof company_ids === 'string') {
-        companyIdsArray = company_ids.split(',').map(id => id.trim()).filter(id => id);
+        companyIdsArray = company_ids
+          .split(',')
+          .map(id => id.trim())
+          .filter(id => id);
       }
     }
 
     // Create invite
-    const invite = await vmpAdapter.createInvite(
-      vendorId,
-      email,
-      companyIdsArray,
-      req.user.id
-    );
+    const invite = await vmpAdapter.createInvite(vendorId, email, companyIdsArray, req.user.id);
 
     const inviteUrl = `${req.protocol}://${req.get('host')}${invite.invite_url}`;
 
@@ -7870,22 +8368,22 @@ app.post('/ops/invites', async (req, res) => {
         email: invite.email,
         expires_at: invite.expires_at,
         link: inviteUrl,
-        invite_url: invite.invite_url // Relative URL path
+        invite_url: invite.invite_url, // Relative URL path
       },
       vendor: {
         id: vendorId,
-        name: vendor_name.trim()
+        name: vendor_name.trim(),
       },
       companies: companyIdsArray.length > 0 ? companyIdsArray : null,
       email: {
         sent: emailSent,
-        error: emailError || null
-      }
+        error: emailError || null,
+      },
     });
   } catch (error) {
     logError(error, { path: req.path, userId: req.user?.id });
     res.status(500).json({
-      error: error.message || 'Failed to create invite'
+      error: error.message || 'Failed to create invite',
     });
   }
 });
@@ -7893,7 +8391,7 @@ app.post('/ops/invites', async (req, res) => {
 // GET: Supabase Invite Handler (Public Route - No Auth Required)
 // Handles Supabase Auth invite links with tokens in URL hash
 // Hash fragments are client-side only, so we need a page that extracts them
-// 
+//
 // IMPORTANT: Supabase Dashboard must be configured with correct redirect URLs:
 // - Site URL: http://localhost:9000 (or your BASE_URL)
 // - Redirect URLs: http://localhost:9000/supabase-invite, http://localhost:9000/accept
@@ -7903,7 +8401,7 @@ app.get('/supabase-invite', async (req, res) => {
   // and redirect to /accept with tokens in query params
   res.render('pages/supabase_invite_handler.html', {
     supabase_url: env.SUPABASE_URL,
-    supabase_anon_key: env.SUPABASE_ANON_KEY
+    supabase_anon_key: env.SUPABASE_ANON_KEY,
   });
 });
 
@@ -7919,10 +8417,16 @@ app.get('/accept', async (req, res) => {
       try {
         // Get user info from Supabase Auth using access_token
         const accessTokenStr = getStringParam(access_token);
-        const { data: { user }, error: userError } = await supabaseAuth.auth.getUser(accessTokenStr);
+        const {
+          data: { user },
+          error: userError,
+        } = await supabaseAuth.auth.getUser(accessTokenStr);
 
         if (userError || !user) {
-          logError(userError || new Error('No user returned'), { path: req.path, operation: 'supabase-invite-get-user' });
+          logError(userError || new Error('No user returned'), {
+            path: req.path,
+            operation: 'supabase-invite-get-user',
+          });
           return res.render('pages/accept.html', {
             error: 'Invalid or expired invite link. Please request a new invite.',
             invite: null,
@@ -7930,7 +8434,7 @@ app.get('/accept', async (req, res) => {
             token: null,
             vendorName: null,
             tenantName: null,
-            supabaseInvite: false
+            supabaseInvite: false,
           });
         }
 
@@ -7939,7 +8443,7 @@ app.get('/accept', async (req, res) => {
           logError(new Error('Invalid user.id from Supabase Auth'), {
             userId: user.id,
             path: req.path,
-            userEmail: user.email
+            userEmail: user.email,
           });
           return res.render('pages/accept.html', {
             error: 'Invalid user data. Please contact support.',
@@ -7948,7 +8452,7 @@ app.get('/accept', async (req, res) => {
             token: null,
             vendorName: null,
             tenantName: null,
-            supabaseInvite: false
+            supabaseInvite: false,
           });
         }
 
@@ -7957,7 +8461,7 @@ app.get('/accept', async (req, res) => {
           logError(new Error('user.id is not a valid UUID format'), {
             userId: user.id,
             path: req.path,
-            userEmail: user.email
+            userEmail: user.email,
           });
           return res.render('pages/accept.html', {
             error: 'Invalid user data. Please contact support.',
@@ -7966,7 +8470,7 @@ app.get('/accept', async (req, res) => {
             token: null,
             vendorName: null,
             tenantName: null,
-            supabaseInvite: false
+            supabaseInvite: false,
           });
         }
 
@@ -7981,7 +8485,7 @@ app.get('/accept', async (req, res) => {
           if (refreshTokenStr) {
             req.session.refreshToken = refreshTokenStr;
           }
-          req.session.save((err) => {
+          req.session.save(err => {
             if (err) {
               logError(err, { path: req.path, operation: 'createSession' });
             }
@@ -8007,13 +8511,14 @@ app.get('/accept', async (req, res) => {
             supabaseUser: {
               email: user.email,
               access_token: getStringParam(access_token),
-              refresh_token: getStringParam(refresh_token)
-            }
+              refresh_token: getStringParam(refresh_token),
+            },
           });
         }
 
         // Extract companies and vendor info
-        const companies = invite.vmp_vendor_company_links?.map(link => link.vmp_companies).filter(c => c) || [];
+        const companies =
+          invite.vmp_vendor_company_links?.map(link => link.vmp_companies).filter(c => c) || [];
         const vendorName = invite.vmp_vendors?.name || 'Vendor';
         const tenantName = invite.vmp_vendors?.vmp_tenants?.name || 'Organization';
 
@@ -8023,7 +8528,7 @@ app.get('/accept', async (req, res) => {
             id: invite.id,
             email: invite.email,
             vendor: invite.vmp_vendors,
-            companies: companies
+            companies: companies,
           },
           token: null, // No custom token for Supabase invites
           vendorName: vendorName,
@@ -8032,8 +8537,8 @@ app.get('/accept', async (req, res) => {
           supabaseUser: {
             email: user.email,
             access_token: access_token,
-            refresh_token: refresh_token
-          }
+            refresh_token: refresh_token,
+          },
         });
       } catch (error) {
         logError(error, { path: req.path, operation: 'supabase-invite-handler' });
@@ -8044,7 +8549,7 @@ app.get('/accept', async (req, res) => {
           token: null,
           vendorName: null,
           tenantName: null,
-          supabaseInvite: false
+          supabaseInvite: false,
         });
       }
     }
@@ -8059,7 +8564,7 @@ app.get('/accept', async (req, res) => {
       token: null,
       vendorName: null,
       tenantName: null,
-      supabaseInvite: false
+      supabaseInvite: false,
     };
 
     // Use validateRequiredQuery helper for standardization
@@ -8073,26 +8578,27 @@ app.get('/accept', async (req, res) => {
     if (!invite) {
       return res.render('pages/accept.html', {
         ...defaultData,
-        error: 'Invalid or expired invite token'
+        error: 'Invalid or expired invite token',
       });
     }
 
     if (invite.expired) {
       return res.render('pages/accept.html', {
         ...defaultData,
-        error: 'This invite has expired. Please request a new invite.'
+        error: 'This invite has expired. Please request a new invite.',
       });
     }
 
     if (invite.used) {
       return res.render('pages/accept.html', {
         ...defaultData,
-        error: 'This invite has already been used.'
+        error: 'This invite has already been used.',
       });
     }
 
     // Extract companies from vendor-company links
-    const companies = invite.vmp_vendor_company_links?.map(link => link.vmp_companies).filter(c => c) || [];
+    const companies =
+      invite.vmp_vendor_company_links?.map(link => link.vmp_companies).filter(c => c) || [];
 
     // Extract vendor and tenant names
     const vendorName = invite.vmp_vendors?.name || 'Vendor';
@@ -8105,11 +8611,11 @@ app.get('/accept', async (req, res) => {
         id: invite.id,
         email: invite.email,
         vendor: invite.vmp_vendors,
-        companies: companies
+        companies: companies,
       },
       token: token,
       vendorName: vendorName,
-      tenantName: tenantName
+      tenantName: tenantName,
     });
   } catch (error) {
     logError(error, { path: req.path });
@@ -8117,7 +8623,7 @@ app.get('/accept', async (req, res) => {
       error: error.message || 'Failed to load invite',
       invite: null,
       companies: [],
-      token: req.query.token || null
+      token: req.query.token || null,
     });
   }
 });
@@ -8133,7 +8639,7 @@ app.post('/accept', async (req, res) => {
       companies: [],
       token: null,
       vendorName: null,
-      tenantName: null
+      tenantName: null,
     };
 
     // Handle Supabase Auth invite (user already has access_token from Supabase)
@@ -8143,13 +8649,19 @@ app.post('/accept', async (req, res) => {
     if (supabaseAccessToken) {
       try {
         // Get user info from Supabase
-        const { data: { user }, error: userError } = await supabaseAuth.auth.getUser(supabaseAccessToken);
+        const {
+          data: { user },
+          error: userError,
+        } = await supabaseAuth.auth.getUser(supabaseAccessToken);
 
         if (userError || !user) {
-          logError(userError || new Error('No user returned'), { path: req.path, operation: 'supabase-invite-post' });
+          logError(userError || new Error('No user returned'), {
+            path: req.path,
+            operation: 'supabase-invite-post',
+          });
           return res.status(400).render('pages/accept.html', {
             ...defaultData,
-            error: 'Invalid or expired invite link. Please request a new invite.'
+            error: 'Invalid or expired invite link. Please request a new invite.',
           });
         }
 
@@ -8158,11 +8670,11 @@ app.post('/accept', async (req, res) => {
           logError(new Error('Invalid user.id from Supabase Auth'), {
             userId: user.id,
             path: req.path,
-            userEmail: user.email
+            userEmail: user.email,
           });
           return res.status(400).render('pages/accept.html', {
             ...defaultData,
-            error: 'Invalid user data. Please contact support.'
+            error: 'Invalid user data. Please contact support.',
           });
         }
 
@@ -8171,11 +8683,11 @@ app.post('/accept', async (req, res) => {
           logError(new Error('user.id is not a valid UUID format'), {
             userId: user.id,
             path: req.path,
-            userEmail: user.email
+            userEmail: user.email,
           });
           return res.status(400).render('pages/accept.html', {
             ...defaultData,
-            error: 'Invalid user data. Please contact support.'
+            error: 'Invalid user data. Please contact support.',
           });
         }
 
@@ -8185,14 +8697,15 @@ app.post('/accept', async (req, res) => {
         if (!invite) {
           return res.status(400).render('pages/accept.html', {
             ...defaultData,
-            error: 'No invite found for this email. Please contact your administrator.'
+            error: 'No invite found for this email. Please contact your administrator.',
           });
         }
 
         // Validate password if provided
         if (password) {
           if (password.length < 8) {
-            const companies = invite.vmp_vendor_company_links?.map(link => link.vmp_companies).filter(c => c) || [];
+            const companies =
+              invite.vmp_vendor_company_links?.map(link => link.vmp_companies).filter(c => c) || [];
             return res.status(400).render('pages/accept.html', {
               error: 'Password must be at least 8 characters long',
               invite: { id: invite.id, email: invite.email, vendor: invite.vmp_vendors, companies },
@@ -8200,12 +8713,17 @@ app.post('/accept', async (req, res) => {
               vendorName: invite.vmp_vendors?.name || 'Vendor',
               tenantName: invite.vmp_vendors?.vmp_tenants?.name || 'Organization',
               supabaseInvite: true,
-              supabaseUser: { email: user.email, access_token: supabaseAccessToken, refresh_token: supabaseRefreshToken }
+              supabaseUser: {
+                email: user.email,
+                access_token: supabaseAccessToken,
+                refresh_token: supabaseRefreshToken,
+              },
             });
           }
 
           if (password !== password_confirm) {
-            const companies = invite.vmp_vendor_company_links?.map(link => link.vmp_companies).filter(c => c) || [];
+            const companies =
+              invite.vmp_vendor_company_links?.map(link => link.vmp_companies).filter(c => c) || [];
             return res.status(400).render('pages/accept.html', {
               error: 'Passwords do not match',
               invite: { id: invite.id, email: invite.email, vendor: invite.vmp_vendors, companies },
@@ -8213,20 +8731,24 @@ app.post('/accept', async (req, res) => {
               vendorName: invite.vmp_vendors?.name || 'Vendor',
               tenantName: invite.vmp_vendors?.vmp_tenants?.name || 'Organization',
               supabaseInvite: true,
-              supabaseUser: { email: user.email, access_token: supabaseAccessToken, refresh_token: supabaseRefreshToken }
+              supabaseUser: {
+                email: user.email,
+                access_token: supabaseAccessToken,
+                refresh_token: supabaseRefreshToken,
+              },
             });
           }
 
           // Update password in Supabase Auth
           const { error: updateError } = await supabaseAuth.auth.updateUser({
-            password: password
+            password: password,
           });
 
           if (updateError) {
             logError(updateError, { path: req.path, operation: 'supabase-update-password' });
             return res.status(400).render('pages/accept.html', {
               ...defaultData,
-              error: 'Failed to set password. Please try again.'
+              error: 'Failed to set password. Please try again.',
             });
           }
         }
@@ -8244,10 +8766,7 @@ app.post('/accept', async (req, res) => {
 
         // Create onboarding case
         const companyId = invite.vmp_vendor_company_links?.[0]?.company_id || null;
-        const onboardingCase = await vmpAdapter.createOnboardingCase(
-          invite.vendor_id,
-          companyId
-        );
+        const onboardingCase = await vmpAdapter.createOnboardingCase(invite.vendor_id, companyId);
 
         // Create session
         req.session.userId = vendorUser.id;
@@ -8255,11 +8774,11 @@ app.post('/accept', async (req, res) => {
         if (supabaseRefreshToken) {
           req.session.refreshToken = supabaseRefreshToken;
         }
-        req.session.save((err) => {
+        req.session.save(err => {
           if (err) {
             logError(err, { path: req.path, operation: 'createSession' });
             return res.status(500).render('pages/error.html', {
-              error: { status: 500, message: 'Failed to create session' }
+              error: { status: 500, message: 'Failed to create session' },
             });
           }
           res.redirect(`/cases/${onboardingCase.id}`);
@@ -8269,7 +8788,7 @@ app.post('/accept', async (req, res) => {
         logError(error, { path: req.path, operation: 'supabase-invite-accept' });
         return res.status(500).render('pages/accept.html', {
           ...defaultData,
-          error: 'An error occurred while accepting the invite. Please try again.'
+          error: 'An error occurred while accepting the invite. Please try again.',
         });
       }
     }
@@ -8279,43 +8798,46 @@ app.post('/accept', async (req, res) => {
     if (!validateRequired(token, 'token')) {
       return res.status(400).render('pages/accept.html', {
         ...defaultData,
-        error: 'Invite token is required'
+        error: 'Invite token is required',
       });
     }
 
     if (!validateRequired(password, 'password')) {
       const invite = await vmpAdapter.getInviteByToken(token).catch(() => null);
-      const companies = invite?.vmp_vendor_company_links?.map(link => link.vmp_companies).filter(c => c) || [];
+      const companies =
+        invite?.vmp_vendor_company_links?.map(link => link.vmp_companies).filter(c => c) || [];
       return res.status(400).render('pages/accept.html', {
         ...defaultData,
         error: 'Password is required',
         invite: invite,
         token: token,
-        companies: companies
+        companies: companies,
       });
     }
 
     if (password.length < 8) {
       const invite = await vmpAdapter.getInviteByToken(token).catch(() => null);
-      const companies = invite?.vmp_vendor_company_links?.map(link => link.vmp_companies).filter(c => c) || [];
+      const companies =
+        invite?.vmp_vendor_company_links?.map(link => link.vmp_companies).filter(c => c) || [];
       return res.status(400).render('pages/accept.html', {
         ...defaultData,
         error: 'Password must be at least 8 characters long',
         invite: invite,
         token: token,
-        companies: companies
+        companies: companies,
       });
     }
 
     if (password !== password_confirm) {
       const invite = await vmpAdapter.getInviteByToken(token).catch(() => null);
-      const companies = invite?.vmp_vendor_company_links?.map(link => link.vmp_companies).filter(c => c) || [];
+      const companies =
+        invite?.vmp_vendor_company_links?.map(link => link.vmp_companies).filter(c => c) || [];
       return res.status(400).render('pages/accept.html', {
         ...defaultData,
         error: 'Passwords do not match',
         invite: invite,
         token: token,
-        companies: companies
+        companies: companies,
       });
     }
 
@@ -8328,18 +8850,15 @@ app.post('/accept', async (req, res) => {
 
     // 3. Create onboarding case
     const companyId = invite.vmp_vendor_company_links?.[0]?.company_id || null;
-    const onboardingCase = await vmpAdapter.createOnboardingCase(
-      invite.vendor_id,
-      companyId
-    );
+    const onboardingCase = await vmpAdapter.createOnboardingCase(invite.vendor_id, companyId);
 
     // 4. Create session and log user in (express-session stores userId in session)
     req.session.userId = user.id;
-    req.session.save((err) => {
+    req.session.save(err => {
       if (err) {
         logError(err, { path: req.path, operation: 'createSession' });
         return res.status(500).render('pages/error.html', {
-          error: { status: 500, message: 'Failed to create session' }
+          error: { status: 500, message: 'Failed to create session' },
         });
       }
       // 5. Redirect to onboarding case
@@ -8359,8 +8878,9 @@ app.post('/accept', async (req, res) => {
     res.status(500).render('pages/accept.html', {
       error: error.message || 'Failed to create account',
       invite: invite,
-      companies: invite?.vmp_vendor_company_links?.map(link => link.vmp_companies).filter(c => c) || [],
-      token: req.body.token || null
+      companies:
+        invite?.vmp_vendor_company_links?.map(link => link.vmp_companies).filter(c => c) || [],
+      token: req.body.token || null,
     });
   }
 });
@@ -8385,21 +8905,25 @@ app.post('/cases/:id/approve-onboarding', async (req, res) => {
         caseId,
         caseDetail,
         isInternal: req.user.isInternal,
-        user: req.user
+        user: req.user,
       });
     } catch (refreshError) {
-      logError(refreshError, { path: req.path, userId: req.user?.id, operation: 'refreshCaseDetailAfterApproval' });
+      logError(refreshError, {
+        path: req.path,
+        userId: req.user?.id,
+        operation: 'refreshCaseDetailAfterApproval',
+      });
       // Return JSON fallback if refresh fails
       res.json({
         success: true,
         message: 'Onboarding approved successfully. Vendor account activated.',
-        caseId: updatedCase.id
+        caseId: updatedCase.id,
       });
     }
   } catch (error) {
     logError(error, { path: req.path, userId: req.user?.id });
     res.status(500).json({
-      error: error.message || 'Failed to approve onboarding'
+      error: error.message || 'Failed to approve onboarding',
     });
   }
 });
@@ -8417,7 +8941,7 @@ app.get('/login', (req, res) => {
 
   res.render('pages/login.html', {
     error: null,
-    password_reset: passwordReset
+    password_reset: passwordReset,
   });
 });
 
@@ -8445,21 +8969,24 @@ app.post('/login', async (req, res) => {
     if (!email || !password) {
       return res.render('pages/login.html', {
         error: 'Email and password are required',
-        password_reset: null
+        password_reset: null,
       });
     }
 
     // Use Supabase Auth for authentication
     const { data: authData, error: authError } = await supabaseAuth.auth.signInWithPassword({
       email: email.toLowerCase().trim(),
-      password: password
+      password: password,
     });
 
     if (authError || !authData.user) {
       // Provide more specific error messages
       let errorMessage = 'Invalid email or password';
       if (authError) {
-        if (authError.message?.includes('Invalid login credentials') || authError.message?.includes('Email not confirmed')) {
+        if (
+          authError.message?.includes('Invalid login credentials') ||
+          authError.message?.includes('Email not confirmed')
+        ) {
           errorMessage = 'Invalid email or password. Please check your credentials and try again.';
         } else if (authError.message?.includes('Email rate limit')) {
           errorMessage = 'Too many login attempts. Please wait a few minutes and try again.';
@@ -8467,13 +8994,17 @@ app.post('/login', async (req, res) => {
           errorMessage = 'No account found with this email address.';
         } else {
           // Log unexpected errors for debugging
-          logError(authError, { path: req.path, operation: 'login', email: email.toLowerCase().trim() });
+          logError(authError, {
+            path: req.path,
+            operation: 'login',
+            email: email.toLowerCase().trim(),
+          });
         }
       }
 
       return res.render('pages/login.html', {
         error: errorMessage,
-        password_reset: null
+        password_reset: null,
       });
     }
 
@@ -8482,7 +9013,7 @@ app.post('/login', async (req, res) => {
     if (!isActive) {
       return res.render('pages/login.html', {
         error: 'Account is inactive. Please contact support.',
-        password_reset: null
+        password_reset: null,
       });
     }
 
@@ -8491,11 +9022,11 @@ app.post('/login', async (req, res) => {
     req.session.authToken = authData.session.access_token;
     req.session.refreshToken = authData.session.refresh_token;
 
-    req.session.save((err) => {
+    req.session.save(err => {
       if (err) {
         logError(err, { path: req.path, operation: 'createSession' });
         return res.status(500).render('pages/error.html', {
-          error: { status: 500, message: 'Failed to create session' }
+          error: { status: 500, message: 'Failed to create session' },
         });
       }
       // Redirect to home
@@ -8505,7 +9036,7 @@ app.post('/login', async (req, res) => {
     logError(error, { path: req.path, operation: 'login' });
     res.render('pages/login.html', {
       error: 'An error occurred during login. Please try again.',
-      password_reset: null
+      password_reset: null,
     });
   }
 });
@@ -8517,7 +9048,7 @@ app.post('/login', async (req, res) => {
 // 3c. Logout Handler
 app.post('/logout', async (req, res) => {
   // Destroy session (express-session handles cleanup in PostgreSQL)
-  req.session.destroy((err) => {
+  req.session.destroy(err => {
     if (err) {
       logError(err, { path: req.path, operation: 'logout' });
     }
@@ -8624,7 +9155,7 @@ app.get('/partials/file-upload-dropzone.html', (req, res) => {
   res.render('partials/file_upload_dropzone.html', {
     maxSize: 10485760,
     acceptedTypes: [],
-    multiple: false
+    multiple: false,
   });
 });
 
@@ -8672,12 +9203,12 @@ app.get('/api/command-palette/search', async (req, res) => {
       // Return suggestions for empty/short queries
       const suggestions = await generateSearchSuggestions(query, [], {
         vendorId: req.user.vendorId,
-        isInternal: req.user.isInternal
+        isInternal: req.user.isInternal,
       });
       return res.json({
         results: [],
         suggestions,
-        intent: { type: 'general', confidence: 0 }
+        intent: { type: 'general', confidence: 0 },
       });
     }
 
@@ -8700,7 +9231,9 @@ app.get('/api/command-palette/search', async (req, res) => {
         const subject = (caseItem.subject || '').toLowerCase();
         const caseNum = (caseItem.case_num || '').toLowerCase();
         const id = (caseItem.id || '').toLowerCase();
-        return subject.includes(searchTerm) || caseNum.includes(searchTerm) || id.includes(searchTerm);
+        return (
+          subject.includes(searchTerm) || caseNum.includes(searchTerm) || id.includes(searchTerm)
+        );
       });
 
       // Apply intent filters
@@ -8718,7 +9251,7 @@ app.get('/api/command-palette/search', async (req, res) => {
           action: 'navigate',
           icon: '📋',
           metadata: `${caseItem.case_num || ''} ${caseItem.subject || ''}`,
-          timestamp: caseItem.created_at
+          timestamp: caseItem.created_at,
         });
       });
     } catch (caseError) {
@@ -8739,7 +9272,9 @@ app.get('/api/command-palette/search', async (req, res) => {
         filteredInvoices = filteredInvoices.filter(i => i.status === intent.filters.status);
       }
       if (intent.filters.amount) {
-        filteredInvoices = filteredInvoices.filter(i => Math.abs(i.amount - intent.filters.amount) < 100);
+        filteredInvoices = filteredInvoices.filter(
+          i => Math.abs(i.amount - intent.filters.amount) < 100
+        );
       }
 
       filteredInvoices.slice(0, 5).forEach(invoice => {
@@ -8752,7 +9287,7 @@ app.get('/api/command-palette/search', async (req, res) => {
           action: 'navigate',
           icon: '🧾',
           metadata: `${invoice.invoice_num || ''} ${invoice.vmp_companies?.name || ''}`,
-          timestamp: invoice.created_at
+          timestamp: invoice.created_at,
         });
       });
     } catch (invoiceError) {
@@ -8773,7 +9308,9 @@ app.get('/api/command-palette/search', async (req, res) => {
         filteredPayments = filteredPayments.filter(p => p.status === intent.filters.status);
       }
       if (intent.filters.amount) {
-        filteredPayments = filteredPayments.filter(p => Math.abs(p.amount - intent.filters.amount) < 100);
+        filteredPayments = filteredPayments.filter(
+          p => Math.abs(p.amount - intent.filters.amount) < 100
+        );
       }
       if (intent.filters.dateRange) {
         const now = new Date();
@@ -8785,7 +9322,9 @@ app.get('/api/command-palette/search', async (req, res) => {
         } else if (intent.filters.dateRange === 'month') {
           rangeStart.setMonth(now.getMonth() - 1);
         }
-        filteredPayments = filteredPayments.filter(p => new Date(p.payment_date || p.created_at) >= rangeStart);
+        filteredPayments = filteredPayments.filter(
+          p => new Date(p.payment_date || p.created_at) >= rangeStart
+        );
       }
 
       filteredPayments.slice(0, 5).forEach(payment => {
@@ -8798,7 +9337,7 @@ app.get('/api/command-palette/search', async (req, res) => {
           action: 'navigate',
           icon: '💰',
           metadata: `${payment.payment_ref || ''} ${payment.vmp_companies?.name || ''}`,
-          timestamp: payment.payment_date || payment.created_at
+          timestamp: payment.payment_date || payment.created_at,
         });
       });
     } catch (paymentError) {
@@ -8815,7 +9354,7 @@ app.get('/api/command-palette/search', async (req, res) => {
         url: '/cases/new',
         action: 'navigate',
         icon: '➕',
-        shortcut: '⌘N'
+        shortcut: '⌘N',
       });
     }
 
@@ -8827,7 +9366,7 @@ app.get('/api/command-palette/search', async (req, res) => {
         hint: 'Browse all invoices',
         url: '/invoices',
         action: 'navigate',
-        icon: '📋'
+        icon: '📋',
       });
     }
 
@@ -8839,7 +9378,7 @@ app.get('/api/command-palette/search', async (req, res) => {
         hint: 'Browse payment timeline',
         url: '/payments/history',
         action: 'navigate',
-        icon: '💰'
+        icon: '💰',
       });
     }
 
@@ -8847,13 +9386,13 @@ app.get('/api/command-palette/search', async (req, res) => {
     const { enhanceSearchResults } = await import('./src/utils/ai-search.js');
     const enhancedResults = await enhanceSearchResults(results, intent, {
       vendorId: req.user.vendorId,
-      isInternal: req.user.isInternal
+      isInternal: req.user.isInternal,
     });
 
     // Generate suggestions
     const suggestions = await generateSearchSuggestions(query, [], {
       vendorId: req.user.vendorId,
-      isInternal: req.user.isInternal
+      isInternal: req.user.isInternal,
     });
 
     // 9. Return enhanced results
@@ -8861,9 +9400,8 @@ app.get('/api/command-palette/search', async (req, res) => {
       results: enhancedResults,
       intent,
       suggestions,
-      totalResults: enhancedResults.length
+      totalResults: enhancedResults.length,
     });
-
   } catch (error) {
     logError(error, { path: req.path, operation: 'commandPaletteSearch' });
     return res.json({ results: [] });
@@ -8887,7 +9425,7 @@ app.post('/api/bulk-actions/:listType/:action', async (req, res) => {
     if (!ids || !Array.isArray(ids) || ids.length === 0) {
       return res.status(400).json({
         error: 'No items selected',
-        message: 'Please select at least one item to perform the action'
+        message: 'Please select at least one item to perform the action',
       });
     }
 
@@ -8897,7 +9435,7 @@ app.post('/api/bulk-actions/:listType/:action', async (req, res) => {
       if (!uuidPattern.test(id)) {
         return res.status(400).json({
           error: 'Invalid ID format',
-          message: `Invalid ID: ${id}`
+          message: `Invalid ID: ${id}`,
         });
       }
     }
@@ -8908,14 +9446,14 @@ app.post('/api/bulk-actions/:listType/:action', async (req, res) => {
     if (!validListTypes.includes(listType)) {
       return res.status(400).json({
         error: 'Invalid list type',
-        message: `List type must be one of: ${validListTypes.join(', ')}`
+        message: `List type must be one of: ${validListTypes.join(', ')}`,
       });
     }
 
     if (!validActions.includes(action)) {
       return res.status(400).json({
         error: 'Invalid action',
-        message: `Action must be one of: ${validActions.join(', ')}`
+        message: `Action must be one of: ${validActions.join(', ')}`,
       });
     }
 
@@ -8938,7 +9476,7 @@ app.post('/api/bulk-actions/:listType/:action', async (req, res) => {
       logError(actionError, { path: req.path, listType, action, ids, operation: 'bulkAction' });
       return res.status(500).json({
         error: 'Failed to execute bulk action',
-        message: actionError.message
+        message: actionError.message,
       });
     }
 
@@ -8948,14 +9486,13 @@ app.post('/api/bulk-actions/:listType/:action', async (req, res) => {
       action,
       listType,
       processed: results.length,
-      results
+      results,
     });
-
   } catch (error) {
     logError(error, { path: req.path, operation: 'bulkAction' });
     return res.status(500).json({
       error: 'Internal server error',
-      message: error.message
+      message: error.message,
     });
   }
 });
@@ -9030,7 +9567,11 @@ async function executeBulkInvoiceAction(action, invoiceIds, user) {
       // Verify invoice access
       const invoice = await vmpAdapter.getInvoiceDetail(invoiceId, user.vendorId);
       if (!invoice) {
-        results.push({ id: invoiceId, success: false, error: 'Invoice not found or access denied' });
+        results.push({
+          id: invoiceId,
+          success: false,
+          error: 'Invoice not found or access denied',
+        });
         continue;
       }
 
@@ -9039,7 +9580,11 @@ async function executeBulkInvoiceAction(action, invoiceIds, user) {
         case 'reject':
         case 'close':
           // These actions don't apply to invoices directly
-          results.push({ id: invoiceId, success: false, error: 'Action not applicable to invoices' });
+          results.push({
+            id: invoiceId,
+            success: false,
+            error: 'Action not applicable to invoices',
+          });
           break;
 
         case 'export':
@@ -9068,7 +9613,11 @@ async function executeBulkPaymentAction(action, paymentIds, user) {
       // Verify payment access
       const payment = await vmpAdapter.getPaymentDetail(paymentId, user.vendorId);
       if (!payment) {
-        results.push({ id: paymentId, success: false, error: 'Payment not found or access denied' });
+        results.push({
+          id: paymentId,
+          success: false,
+          error: 'Payment not found or access denied',
+        });
         continue;
       }
 
@@ -9077,7 +9626,11 @@ async function executeBulkPaymentAction(action, paymentIds, user) {
         case 'reject':
         case 'close':
           // These actions don't apply to payments directly
-          results.push({ id: paymentId, success: false, error: 'Action not applicable to payments' });
+          results.push({
+            id: paymentId,
+            success: false,
+            error: 'Action not applicable to payments',
+          });
           break;
 
         case 'export':
@@ -9113,14 +9666,14 @@ app.post('/api/push/subscribe', async (req, res) => {
     if (!subscription || !subscription.endpoint) {
       return res.status(400).json({
         error: 'Invalid subscription',
-        message: 'Subscription object with endpoint is required'
+        message: 'Subscription object with endpoint is required',
       });
     }
 
     if (!subscription.keys || !subscription.keys.p256dh || !subscription.keys.auth) {
       return res.status(400).json({
         error: 'Invalid subscription',
-        message: 'Subscription must include p256dh and auth keys'
+        message: 'Subscription must include p256dh and auth keys',
       });
     }
 
@@ -9136,7 +9689,7 @@ app.post('/api/push/subscribe', async (req, res) => {
     if (!storedSubscription) {
       return res.status(500).json({
         error: 'Failed to store subscription',
-        message: 'Could not save push subscription to database'
+        message: 'Could not save push subscription to database',
       });
     }
 
@@ -9146,15 +9699,14 @@ app.post('/api/push/subscribe', async (req, res) => {
       message: 'Push subscription registered',
       subscription: {
         id: storedSubscription.id,
-        endpoint: storedSubscription.endpoint
-      }
+        endpoint: storedSubscription.endpoint,
+      },
     });
-
   } catch (error) {
     logError(error, { path: req.path, operation: 'pushSubscribe', userId: req.user?.id });
     return res.status(500).json({
       error: 'Internal server error',
-      message: error.message
+      message: error.message,
     });
   }
 });
@@ -9171,7 +9723,7 @@ app.post('/api/push/unsubscribe', async (req, res) => {
     if (!endpoint) {
       return res.status(400).json({
         error: 'Invalid request',
-        message: 'Subscription endpoint is required'
+        message: 'Subscription endpoint is required',
       });
     }
 
@@ -9181,21 +9733,20 @@ app.post('/api/push/unsubscribe', async (req, res) => {
     if (!removed) {
       return res.status(404).json({
         error: 'Subscription not found',
-        message: 'No active subscription found for this endpoint'
+        message: 'No active subscription found for this endpoint',
       });
     }
 
     // 4. Return success
     return res.json({
       success: true,
-      message: 'Push subscription removed'
+      message: 'Push subscription removed',
     });
-
   } catch (error) {
     logError(error, { path: req.path, operation: 'pushUnsubscribe', userId: req.user?.id });
     return res.status(500).json({
       error: 'Internal server error',
-      message: error.message
+      message: error.message,
     });
   }
 });
@@ -9218,7 +9769,7 @@ app.get('/api/cases/:id/validate', async (req, res) => {
     const vendorId = req.user.vendorId || env.DEMO_VENDOR_ID;
     if (!vendorId) {
       return res.status(500).json({
-        error: 'Vendor ID not available'
+        error: 'Vendor ID not available',
       });
     }
 
@@ -9226,14 +9777,14 @@ app.get('/api/cases/:id/validate', async (req, res) => {
     const caseDetail = await vmpAdapter.getCaseDetail(caseId, vendorId);
     if (!caseDetail) {
       return res.status(404).json({
-        error: 'Case not found'
+        error: 'Case not found',
       });
     }
 
     // Verify access: return 404 to prevent enumeration when vendor mismatch
     if (caseDetail.vendor_id !== vendorId && !req.user?.isInternal) {
       return res.status(404).json({
-        error: 'Case not found'
+        error: 'Case not found',
       });
     }
 
@@ -9251,14 +9802,13 @@ app.get('/api/cases/:id/validate', async (req, res) => {
     return res.json({
       validation: validationResult,
       response,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
-
   } catch (error) {
     logError(error, { path: req.path, operation: 'validateCase', userId: req.user?.id });
     return res.status(500).json({
       error: 'Internal server error',
-      message: error.message
+      message: error.message,
     });
   }
 });
@@ -9277,7 +9827,7 @@ app.post('/api/cases/:id/auto-respond', async (req, res) => {
     const vendorId = req.user.vendorId || env.DEMO_VENDOR_ID;
     if (!vendorId) {
       return res.status(500).json({
-        error: 'Vendor ID not available'
+        error: 'Vendor ID not available',
       });
     }
 
@@ -9285,14 +9835,14 @@ app.post('/api/cases/:id/auto-respond', async (req, res) => {
     const caseDetail = await vmpAdapter.getCaseDetail(caseId, vendorId);
     if (!caseDetail) {
       return res.status(404).json({
-        error: 'Case not found'
+        error: 'Case not found',
       });
     }
 
     // Verify access (internal only for auto-respond)
     if (!req.user?.isInternal) {
       return res.status(403).json({
-        error: 'Access denied - internal users only'
+        error: 'Access denied - internal users only',
       });
     }
 
@@ -9321,14 +9871,13 @@ app.post('/api/cases/:id/auto-respond', async (req, res) => {
       success: true,
       message: 'Auto-response sent',
       response,
-      validation: validationResult
+      validation: validationResult,
     });
-
   } catch (error) {
     logError(error, { path: req.path, operation: 'autoRespond', userId: req.user?.id });
     return res.status(500).json({
       error: 'Internal server error',
-      message: error.message
+      message: error.message,
     });
   }
 });
@@ -9363,7 +9912,7 @@ app.get('/api/demo/status', async (req, res) => {
 
     // 3. Return result
     res.json({
-      hasDemoData: data && data.length > 0
+      hasDemoData: data && data.length > 0,
     });
   } catch (error) {
     logError(error, { path: req.path, userId: req.user?.id });
@@ -9407,39 +9956,35 @@ app.post('/api/demo/seed', async (req, res) => {
     // 4. Create demo data (sequential operations with error handling)
     try {
       // 4.1 Create Emergency Override test case
-      const { error: caseError } = await supabase
-        .from('vmp_cases')
-        .insert({
-          id: demoCaseId,
-          tenant_id: tenantId,
-          company_id: companyId,
-          vendor_id: vendorId,
-          case_type: 'invoice',
-          status: 'blocked',
-          subject: 'SIMULATION: URGENT - Stopped Shipment',
-          owner_team: 'ap',
-          sla_due_at: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(), // 1 day ago
-          escalation_level: 3,
-          tags: ['demo_data']
-        });
+      const { error: caseError } = await supabase.from('vmp_cases').insert({
+        id: demoCaseId,
+        tenant_id: tenantId,
+        company_id: companyId,
+        vendor_id: vendorId,
+        case_type: 'invoice',
+        status: 'blocked',
+        subject: 'SIMULATION: URGENT - Stopped Shipment',
+        owner_team: 'ap',
+        sla_due_at: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(), // 1 day ago
+        escalation_level: 3,
+        tags: ['demo_data'],
+      });
 
       if (caseError) throw caseError;
 
       // 4.2 Create linked invoice
-      const { error: invoiceError } = await supabase
-        .from('vmp_invoices')
-        .insert({
-          id: demoInvoiceId,
-          vendor_id: vendorId,
-          company_id: companyId,
-          invoice_num: 'SIM-INV-999',
-          invoice_date: new Date().toISOString().split('T')[0],
-          amount: 5000.00,
-          currency_code: 'USD',
-          status: 'disputed',
-          source_system: 'simulation',
-          description: 'Demo invoice for Emergency Override testing'
-        });
+      const { error: invoiceError } = await supabase.from('vmp_invoices').insert({
+        id: demoInvoiceId,
+        vendor_id: vendorId,
+        company_id: companyId,
+        invoice_num: 'SIM-INV-999',
+        invoice_date: new Date().toISOString().split('T')[0],
+        amount: 5000.0,
+        currency_code: 'USD',
+        status: 'disputed',
+        source_system: 'simulation',
+        description: 'Demo invoice for Emergency Override testing',
+      });
 
       if (invoiceError) throw invoiceError;
 
@@ -9463,46 +10008,57 @@ app.post('/api/demo/seed', async (req, res) => {
       );
 
       // 4.5 Create Bank Change test case
-      const { error: bankCaseError } = await supabase
-        .from('vmp_cases')
-        .insert({
-          id: bankChangeCaseId,
-          tenant_id: tenantId,
-          company_id: companyId,
-          vendor_id: vendorId,
-          case_type: 'general',
-          status: 'waiting_internal',
-          subject: 'SIMULATION: Request to Update Bank Details',
-          owner_team: 'finance',
-          sla_due_at: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(), // 2 days from now
-          escalation_level: 0,
-          tags: ['demo_data']
-        });
+      const { error: bankCaseError } = await supabase.from('vmp_cases').insert({
+        id: bankChangeCaseId,
+        tenant_id: tenantId,
+        company_id: companyId,
+        vendor_id: vendorId,
+        case_type: 'general',
+        status: 'waiting_internal',
+        subject: 'SIMULATION: Request to Update Bank Details',
+        owner_team: 'finance',
+        sla_due_at: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(), // 2 days from now
+        escalation_level: 0,
+        tags: ['demo_data'],
+      });
 
       if (bankCaseError) throw bankCaseError;
 
       // 4.6 Create additional demo cases for variety
       const demoCases = [
-        { type: 'onboarding', status: 'waiting_supplier', subject: 'SIMULATION: New Vendor Onboarding', team: 'procurement' },
-        { type: 'invoice', status: 'waiting_supplier', subject: 'SIMULATION: Missing GRN for Invoice', team: 'ap' },
-        { type: 'payment', status: 'open', subject: 'SIMULATION: Payment Status Inquiry', team: 'ap' }
+        {
+          type: 'onboarding',
+          status: 'waiting_supplier',
+          subject: 'SIMULATION: New Vendor Onboarding',
+          team: 'procurement',
+        },
+        {
+          type: 'invoice',
+          status: 'waiting_supplier',
+          subject: 'SIMULATION: Missing GRN for Invoice',
+          team: 'ap',
+        },
+        {
+          type: 'payment',
+          status: 'open',
+          subject: 'SIMULATION: Payment Status Inquiry',
+          team: 'ap',
+        },
       ];
 
       for (const demoCase of demoCases) {
-        const { error: additionalCaseError } = await supabase
-          .from('vmp_cases')
-          .insert({
-            tenant_id: tenantId,
-            company_id: companyId,
-            vendor_id: vendorId,
-            case_type: demoCase.type,
-            status: demoCase.status,
-            subject: demoCase.subject,
-            owner_team: demoCase.team,
-            sla_due_at: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(), // 3 days from now
-            escalation_level: 0,
-            tags: ['demo_data']
-          });
+        const { error: additionalCaseError } = await supabase.from('vmp_cases').insert({
+          tenant_id: tenantId,
+          company_id: companyId,
+          vendor_id: vendorId,
+          case_type: demoCase.type,
+          status: demoCase.status,
+          subject: demoCase.subject,
+          owner_team: demoCase.team,
+          sla_due_at: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(), // 3 days from now
+          escalation_level: 0,
+          tags: ['demo_data'],
+        });
 
         if (additionalCaseError) {
           console.warn('Failed to create additional demo case:', additionalCaseError);
@@ -9514,7 +10070,7 @@ app.post('/api/demo/seed', async (req, res) => {
       res.json({
         success: true,
         message: 'Demo data seeded successfully',
-        caseId: demoCaseId
+        caseId: demoCaseId,
       });
     } catch (dbError) {
       // If any operation fails, attempt cleanup
@@ -9562,28 +10118,16 @@ app.post('/api/demo/reset', async (req, res) => {
     // 3. Delete existing demo data (respecting foreign key constraints)
     if (caseIds.length > 0) {
       // 3.1 Delete messages
-      await supabase
-        .from('vmp_messages')
-        .delete()
-        .in('case_id', caseIds);
+      await supabase.from('vmp_messages').delete().in('case_id', caseIds);
 
       // 3.2 Delete checklist steps
-      await supabase
-        .from('vmp_checklist_steps')
-        .delete()
-        .in('case_id', caseIds);
+      await supabase.from('vmp_checklist_steps').delete().in('case_id', caseIds);
 
       // 3.3 Delete evidence
-      await supabase
-        .from('vmp_evidence')
-        .delete()
-        .in('case_id', caseIds);
+      await supabase.from('vmp_evidence').delete().in('case_id', caseIds);
 
       // 3.4 Delete cases
-      await supabase
-        .from('vmp_cases')
-        .delete()
-        .in('id', caseIds);
+      await supabase.from('vmp_cases').delete().in('id', caseIds);
     }
 
     // 3.5 Delete demo invoices
@@ -9606,9 +10150,8 @@ app.post('/api/demo/reset', async (req, res) => {
     res.json({
       success: true,
       message: 'Demo data cleared. Please click "Launch Simulator" again to re-seed.',
-      note: 'For full reset, clear first then seed separately'
+      note: 'For full reset, clear first then seed separately',
     });
-
   } catch (error) {
     logError(error, { path: req.path, userId: req.user?.id });
     res.status(500).json({ error: 'Failed to reset demo data: ' + error.message });
@@ -9694,7 +10237,7 @@ app.delete('/api/demo/clear', async (req, res) => {
     res.json({
       success: true,
       message: 'Demo data cleared successfully',
-      deletedCases: caseIds.length
+      deletedCases: caseIds.length,
     });
   } catch (error) {
     logError(error, { path: req.path, userId: req.user?.id });
@@ -9711,7 +10254,7 @@ app.use((err, req, res, next) => {
   logError(err, {
     path: req.path,
     method: req.method,
-    userId: req.user?.id
+    userId: req.user?.id,
   });
 
   // Create standardized error response
@@ -9723,7 +10266,11 @@ app.use((err, req, res, next) => {
       status: errorResponse.status,
       message: errorResponse.body.error.message,
       code: errorResponse.body.error.code,
-      ...(env.NODE_ENV !== 'production' && 'details' in errorResponse.body.error && errorResponse.body.error.details ? { details: errorResponse.body.error.details } : {})
+      ...(env.NODE_ENV !== 'production' &&
+      'details' in errorResponse.body.error &&
+      errorResponse.body.error.details
+        ? { details: errorResponse.body.error.details }
+        : {}),
     },
   });
 });
@@ -9739,7 +10286,9 @@ if (env.NODE_ENV !== 'production' && env.NODE_ENV !== 'test') {
 
   // Warn if BASE_URL port doesn't match server port
   if (BASE_URL_PORT && BASE_URL_PORT !== PORT.toString()) {
-    console.warn(`\n⚠️  WARNING: BASE_URL port (${BASE_URL_PORT}) doesn't match server port (${PORT})`);
+    console.warn(
+      `\n⚠️  WARNING: BASE_URL port (${BASE_URL_PORT}) doesn't match server port (${PORT})`
+    );
     console.warn(`   This may cause Supabase Auth redirects to fail.`);
     console.warn(`   Update BASE_URL in .env to: http://localhost:${PORT}\n`);
   }
@@ -9752,11 +10301,13 @@ if (env.NODE_ENV !== 'production' && env.NODE_ENV !== 'test') {
     }
   });
 
-  server.on('error', (err) => {
+  server.on('error', err => {
     if (err && typeof err === 'object' && 'code' in err && err.code === 'EADDRINUSE') {
       console.error(`\n❌ Port ${PORT} is already in use.`);
       console.error(`   Please stop the process using port ${PORT} or change PORT in .env`);
-      console.error(`   To find the process: Get-NetTCPConnection -LocalPort ${PORT} | Select-Object OwningProcess\n`);
+      console.error(
+        `   To find the process: Get-NetTCPConnection -LocalPort ${PORT} | Select-Object OwningProcess\n`
+      );
       process.exit(1);
     } else {
       console.error('Server error:', err);
@@ -9764,4 +10315,3 @@ if (env.NODE_ENV !== 'production' && env.NODE_ENV !== 'test') {
     }
   });
 }
-

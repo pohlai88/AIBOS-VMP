@@ -15,7 +15,7 @@ describe('Server Internal Ops Routes - Comprehensive Coverage', () => {
 
   beforeEach(async () => {
     process.env.NODE_ENV = 'test';
-    
+
     try {
       // Get regular test user
       const testUser = await vmpAdapter.getUserByEmail('admin@acme.com');
@@ -29,7 +29,7 @@ describe('Server Internal Ops Routes - Comprehensive Coverage', () => {
           const cases = await vmpAdapter.getInbox(testVendorId);
           if (cases && cases.length > 0) {
             testCaseId = cases[0].id;
-            
+
             // Get a checklist step for this case
             const steps = await vmpAdapter.getChecklistSteps(testCaseId);
             if (steps && steps.length > 0) {
@@ -70,7 +70,7 @@ describe('Server Internal Ops Routes - Comprehensive Coverage', () => {
       'x-test-auth': 'bypass',
       'x-test-user-id': userId,
       'x-test-vendor-id': null,
-      'x-test-is-internal': 'true'
+      'x-test-is-internal': 'true',
     };
   };
 
@@ -135,8 +135,12 @@ describe('Server Internal Ops Routes - Comprehensive Coverage', () => {
       // Mock getCaseDetail and ensureChecklistSteps
       const originalGetCaseDetail = vmpAdapter.getCaseDetail;
       const originalEnsureSteps = vmpAdapter.ensureChecklistSteps;
-      vmpAdapter.getCaseDetail = vi.fn().mockResolvedValue({ id: testCaseId, case_type: 'invoice' });
-      vmpAdapter.ensureChecklistSteps = vi.fn().mockResolvedValue([{ id: testChecklistStepId, status: 'verified' }]);
+      vmpAdapter.getCaseDetail = vi
+        .fn()
+        .mockResolvedValue({ id: testCaseId, case_type: 'invoice' });
+      vmpAdapter.ensureChecklistSteps = vi
+        .fn()
+        .mockResolvedValue([{ id: testChecklistStepId, status: 'verified' }]);
 
       try {
         const response = await request(app)
@@ -266,8 +270,12 @@ describe('Server Internal Ops Routes - Comprehensive Coverage', () => {
 
       const originalGetCaseDetail = vmpAdapter.getCaseDetail;
       const originalEnsureSteps = vmpAdapter.ensureChecklistSteps;
-      vmpAdapter.getCaseDetail = vi.fn().mockResolvedValue({ id: testCaseId, case_type: 'invoice' });
-      vmpAdapter.ensureChecklistSteps = vi.fn().mockResolvedValue([{ id: testChecklistStepId, status: 'rejected' }]);
+      vmpAdapter.getCaseDetail = vi
+        .fn()
+        .mockResolvedValue({ id: testCaseId, case_type: 'invoice' });
+      vmpAdapter.ensureChecklistSteps = vi
+        .fn()
+        .mockResolvedValue([{ id: testChecklistStepId, status: 'rejected' }]);
 
       try {
         const response = await request(app)
@@ -276,7 +284,11 @@ describe('Server Internal Ops Routes - Comprehensive Coverage', () => {
           .send({ checklist_step_id: testChecklistStepId, reason: 'Incomplete documentation' });
 
         expect(response.status).toBe(200);
-        expect(mockReject).toHaveBeenCalledWith(testChecklistStepId, expect.any(String), 'Incomplete documentation');
+        expect(mockReject).toHaveBeenCalledWith(
+          testChecklistStepId,
+          expect.any(String),
+          'Incomplete documentation'
+        );
       } finally {
         vmpAdapter.rejectEvidence = originalReject;
         vmpAdapter.getCaseDetail = originalGetCaseDetail;
@@ -470,7 +482,9 @@ describe('Server Internal Ops Routes - Comprehensive Coverage', () => {
         .send({});
 
       expect(response1.status).toBe(400);
-      expect(response1.text).toContain('status must be one of: open, waiting_supplier, waiting_internal, resolved, blocked');
+      expect(response1.text).toContain(
+        'status must be one of: open, waiting_supplier, waiting_internal, resolved, blocked'
+      );
 
       const response2 = await request(app)
         .post(`/cases/${testCaseId}/update-status`)
@@ -478,7 +492,9 @@ describe('Server Internal Ops Routes - Comprehensive Coverage', () => {
         .send({ status: 'invalid' });
 
       expect(response2.status).toBe(400);
-      expect(response2.text).toContain('status must be one of: open, waiting_supplier, waiting_internal, resolved, blocked');
+      expect(response2.text).toContain(
+        'status must be one of: open, waiting_supplier, waiting_internal, resolved, blocked'
+      );
     });
 
     test('should update case status successfully', async () => {
@@ -585,4 +601,3 @@ describe('Server Internal Ops Routes - Comprehensive Coverage', () => {
     });
   });
 });
-

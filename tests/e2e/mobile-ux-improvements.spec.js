@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 
 /**
  * E2E Tests for Mobile UX Improvements
- * 
+ *
  * Tests mobile-first UX improvements with real browser viewports:
  * - Mobile viewport (375px) - iPhone
  * - Tablet viewport (768px) - iPad
@@ -35,14 +35,14 @@ test.describe('Mobile UX Improvements: E2E Tests', () => {
     // Get a test invoice ID by logging in
     const context = await browser.newContext();
     const page = await context.newPage();
-    
+
     try {
       await login(page);
-      
+
       // Navigate to invoices and get first invoice ID
       await page.goto('/invoices');
       await page.waitForSelector('.vmp-table tbody tr', { timeout: 5000 });
-      
+
       // Try to get invoice ID from first row
       const firstRow = page.locator('.vmp-table tbody tr').first();
       const invoiceLink = firstRow.locator('a[href^="/invoices/"]');
@@ -131,7 +131,7 @@ test.describe('Mobile UX Improvements: E2E Tests', () => {
           // Check button has w-full class
           const openCaseButton = page.locator('button:has-text("Open Case")');
           await expect(openCaseButton).toBeVisible();
-          
+
           // Check button width (should be close to viewport width minus padding)
           const buttonBox = await openCaseButton.boundingBox();
           expect(buttonBox.width).toBeGreaterThan(300); // Should be nearly full width
@@ -214,7 +214,7 @@ test.describe('Mobile UX Improvements: E2E Tests', () => {
         // Check first table row height
         const firstRow = page.locator('.vmp-table tbody tr').first();
         const rowBox = await firstRow.boundingBox();
-        
+
         if (rowBox) {
           // Convert pixels to points (1px ≈ 0.75pt on mobile, but we check in px)
           expect(rowBox.height).toBeGreaterThanOrEqual(44);
@@ -238,7 +238,7 @@ test.describe('Mobile UX Improvements: E2E Tests', () => {
 
         const viewButton = page.locator('a:has-text("View")').first();
         const buttonBox = await viewButton.boundingBox();
-        
+
         if (buttonBox) {
           expect(buttonBox.height).toBeGreaterThanOrEqual(44);
           expect(buttonBox.width).toBeGreaterThanOrEqual(44);
@@ -252,32 +252,32 @@ test.describe('Mobile UX Improvements: E2E Tests', () => {
   test.describe('Task 4: Login Loading Spinner', () => {
     test('Loading spinner appears when form is submitted', async ({ page }) => {
       await page.goto('/login');
-      
+
       // Fill form
       await page.fill('input[name="email"]', TEST_EMAIL);
       await page.fill('input[name="password"]', TEST_PASSWORD);
-      
+
       // Submit form
       const submitButton = page.locator('button[type="submit"]');
       await submitButton.click();
-      
+
       // Check for loading state (spinner should appear briefly)
       // Note: Since form redirects on success, we check for spinner class
       const spinner = page.locator('.vmp-spinner');
-      
+
       // The spinner might appear very briefly, so we check if the class exists
-      const hasSpinner = await spinner.count() > 0;
-      expect(hasSpinner || await submitButton.getAttribute('class')).toContain('vmp-btn-loading');
+      const hasSpinner = (await spinner.count()) > 0;
+      expect(hasSpinner || (await submitButton.getAttribute('class'))).toContain('vmp-btn-loading');
     });
 
     test('Submit button is disabled during loading', async ({ page }) => {
       await page.goto('/login');
-      
+
       await page.fill('input[name="email"]', TEST_EMAIL);
       await page.fill('input[name="password"]', TEST_PASSWORD);
-      
+
       const submitButton = page.locator('button[type="submit"]');
-      
+
       // Check button has disabled attribute binding
       const disabledAttr = await submitButton.getAttribute('disabled');
       // Button should be disabled if form is invalid, enabled if valid
@@ -344,9 +344,9 @@ test.describe('Mobile UX Improvements: E2E Tests', () => {
         // Check first badge has icon
         const firstBadge = page.locator('.vmp-badge').first();
         const icon = firstBadge.locator('svg.w-4.h-4');
-        
+
         await expect(icon).toBeVisible();
-        
+
         // Check icon has aria-hidden="true"
         const ariaHidden = await icon.getAttribute('aria-hidden');
         expect(ariaHidden).toBe('true');
@@ -367,7 +367,7 @@ test.describe('Mobile UX Improvements: E2E Tests', () => {
 
         const icon = page.locator('.vmp-badge svg').first();
         const iconClasses = await icon.getAttribute('class');
-        
+
         expect(iconClasses).toContain('w-4');
         expect(iconClasses).toContain('h-4');
       } finally {
@@ -392,7 +392,7 @@ test.describe('Mobile UX Improvements: E2E Tests', () => {
 
         // Click to open drawer
         await menuButton.click();
-        
+
         // Check drawer is visible
         const drawer = page.locator('#mobile-nav-drawer');
         await expect(drawer).toBeVisible();
@@ -422,7 +422,7 @@ test.describe('Mobile UX Improvements: E2E Tests', () => {
         // Check first navigation link
         const firstLink = page.locator('#mobile-nav-drawer .vmp-navigation-link').first();
         const linkBox = await firstLink.boundingBox();
-        
+
         if (linkBox) {
           expect(linkBox.height).toBeGreaterThanOrEqual(44);
         }
@@ -432,4 +432,3 @@ test.describe('Mobile UX Improvements: E2E Tests', () => {
     });
   });
 });
-

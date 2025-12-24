@@ -14,7 +14,9 @@ const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 if (!supabaseUrl || !supabaseAnonKey || !supabaseServiceKey) {
-  console.error('❌ Error: SUPABASE_URL, SUPABASE_ANON_KEY, and SUPABASE_SERVICE_ROLE_KEY must be set in .env');
+  console.error(
+    '❌ Error: SUPABASE_URL, SUPABASE_ANON_KEY, and SUPABASE_SERVICE_ROLE_KEY must be set in .env'
+  );
   process.exit(1);
 }
 
@@ -22,8 +24,8 @@ const supabaseAuth = createClient(supabaseUrl, supabaseAnonKey);
 const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
   auth: {
     autoRefreshToken: false,
-    persistSession: false
-  }
+    persistSession: false,
+  },
 });
 
 const testEmail = 'jackwee2020@gmail.com';
@@ -40,7 +42,7 @@ async function testLoginFlow() {
     console.log('📋 Step 1: Logging in with Supabase Auth...');
     const { data: authData, error: authError } = await supabaseAuth.auth.signInWithPassword({
       email: testEmail.toLowerCase().trim(),
-      password: testPassword
+      password: testPassword,
     });
 
     if (authError || !authData.user) {
@@ -56,7 +58,10 @@ async function testLoginFlow() {
 
     // Step 2: Get user from Supabase Auth (simulating middleware)
     console.log('\n📋 Step 2: Getting user from Supabase Auth (middleware simulation)...');
-    const { data: { user }, error: getUserError } = await supabaseAdmin.auth.admin.getUserById(authData.user.id);
+    const {
+      data: { user },
+      error: getUserError,
+    } = await supabaseAdmin.auth.admin.getUserById(authData.user.id);
 
     if (getUserError || !user) {
       console.error('   ❌ Could not get user from Supabase Auth');
@@ -67,7 +72,7 @@ async function testLoginFlow() {
     console.log('   ✅ User retrieved from Supabase Auth');
     console.log(`      User ID: ${user.id}`);
     console.log(`      Email: ${user.email}`);
-    
+
     const metadata = user.user_metadata || {};
     console.log(`      Vendor ID in metadata: ${metadata.vendor_id || 'MISSING'}`);
     console.log(`      VMP User ID in metadata: ${metadata.vmp_user_id || 'MISSING'}`);
@@ -122,7 +127,7 @@ async function testLoginFlow() {
       console.error(`   Email: ${user.email}`);
       console.error(`   Vendor ID: ${vendorId}`);
       console.error('\n   Checking if user exists with different vendor_id...');
-      
+
       const { data: allUsers, error: allUsersError } = await supabaseAdmin
         .from('vmp_vendor_users')
         .select('id, email, vendor_id, is_internal')
@@ -133,7 +138,9 @@ async function testLoginFlow() {
       } else if (allUsers && allUsers.length > 0) {
         console.log(`   Found ${allUsers.length} user(s) with this email:`);
         allUsers.forEach(u => {
-          console.log(`      - VMP User ID: ${u.id}, Vendor ID: ${u.vendor_id}, Is Internal: ${u.is_internal}`);
+          console.log(
+            `      - VMP User ID: ${u.id}, Vendor ID: ${u.vendor_id}, Is Internal: ${u.is_internal}`
+          );
         });
       } else {
         console.error('   No users found with this email at all!');
@@ -159,7 +166,7 @@ async function testLoginFlow() {
       is_active: vendorUser.is_active !== false && metadata.is_active !== false,
       is_internal: vendorUser.is_internal === true || metadata.is_internal === true,
       user_tier: 'institutional',
-      vmp_vendors: vendor
+      vmp_vendors: vendor,
     };
 
     console.log('   ✅ User context would be:');
@@ -189,7 +196,6 @@ async function testLoginFlow() {
     // Sign out
     await supabaseAuth.auth.signOut();
     console.log('✅ Signed out from test session\n');
-
   } catch (error) {
     console.error('\n❌ Test failed:', error);
     console.error('   Stack:', error.stack);
@@ -201,8 +207,7 @@ testLoginFlow()
   .then(() => {
     process.exit(0);
   })
-  .catch((error) => {
+  .catch(error => {
     console.error('\n❌ Script failed:', error);
     process.exit(1);
   });
-

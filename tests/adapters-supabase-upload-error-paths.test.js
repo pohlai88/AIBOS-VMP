@@ -42,16 +42,16 @@ describe('Adapter Upload Evidence Error Paths - Comprehensive Coverage', () => {
       buffer: Buffer.from('test file content'),
       originalname: 'test.pdf',
       mimetype: 'application/pdf',
-      size: 100
+      size: 100,
     };
 
     // Mock the Supabase client to make the insert fail
     // We'll use a real call but with invalid data to trigger the error path
     // This tests lines 603, 627-636 (error handling and cleanup)
-    
+
     // Try with invalid case_id to trigger database error
     const invalidCaseId = '00000000-0000-0000-0000-000000000000';
-    
+
     await expect(
       vmpAdapter.uploadEvidence(
         invalidCaseId,
@@ -61,7 +61,7 @@ describe('Adapter Upload Evidence Error Paths - Comprehensive Coverage', () => {
         'vendor'
       )
     ).rejects.toThrow();
-    
+
     // The error path should have been executed (cleanup attempt)
     // This covers lines 627-636
   });
@@ -78,17 +78,17 @@ describe('Adapter Upload Evidence Error Paths - Comprehensive Coverage', () => {
 
     // This test verifies the catch block for cleanup errors (line 632-634)
     // The cleanup error should be caught and logged, but original error thrown
-    
+
     const mockFile = {
       buffer: Buffer.from('test file content'),
       originalname: 'test.pdf',
       mimetype: 'application/pdf',
-      size: 100
+      size: 100,
     };
 
     // Use invalid case_id to trigger error
     const invalidCaseId = '00000000-0000-0000-0000-000000000000';
-    
+
     // The cleanup error catch block should execute
     await expect(
       vmpAdapter.uploadEvidence(
@@ -99,7 +99,7 @@ describe('Adapter Upload Evidence Error Paths - Comprehensive Coverage', () => {
         'vendor'
       )
     ).rejects.toThrow();
-    
+
     // This covers the cleanup error catch block (lines 632-634)
   });
 
@@ -115,7 +115,7 @@ describe('Adapter Upload Evidence Error Paths - Comprehensive Coverage', () => {
 
     // This test verifies the checklist step update error handling (lines 639-649)
     // The update should fail gracefully without failing the upload
-    
+
     // First, get a checklist step for the case
     let checklistStepId = null;
     try {
@@ -142,24 +142,18 @@ describe('Adapter Upload Evidence Error Paths - Comprehensive Coverage', () => {
     // Try to upload with a valid checklist step
     // If the step update fails, it should be caught and logged (lines 646-649)
     // but the upload should still succeed
-    
+
     const mockFile = {
       buffer: Buffer.from('test file content'),
       originalname: 'test.pdf',
       mimetype: 'application/pdf',
-      size: 100
+      size: 100,
     };
 
     // Note: This might succeed or fail depending on storage setup
     // But the error handling path (lines 646-649) should be covered
     try {
-      await vmpAdapter.uploadEvidence(
-        testCaseId,
-        mockFile,
-        'invoice',
-        checklistStepId,
-        'vendor'
-      );
+      await vmpAdapter.uploadEvidence(testCaseId, mockFile, 'invoice', checklistStepId, 'vendor');
       // If it succeeds, the checklist step update path was executed
     } catch (error) {
       // If it fails, that's okay - we're testing error paths
@@ -180,11 +174,10 @@ describe('Adapter Upload Evidence Error Paths - Comprehensive Coverage', () => {
 
     // This test ensures line 82 (.eq('id', userId)) is covered
     // by actually calling verifyPassword with valid user
-    
+
     const result = await vmpAdapter.verifyPassword(testUserId, 'wrongpassword');
     expect(typeof result).toBe('boolean');
-    
+
     // This covers the query path including line 82
   });
 });
-

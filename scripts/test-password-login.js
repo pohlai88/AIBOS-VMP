@@ -32,7 +32,7 @@ async function testPasswordLogin() {
     console.log('📋 Attempting login with Supabase Auth...');
     const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
       email: testEmail.toLowerCase().trim(),
-      password: testPassword
+      password: testPassword,
     });
 
     if (authError) {
@@ -52,7 +52,7 @@ async function testPasswordLogin() {
     console.log(`   Email: ${authData.user.email}`);
     console.log(`   Email Confirmed: ${authData.user.email_confirmed_at ? 'Yes' : 'No'}`);
     console.log(`   Session Token: ${authData.session ? 'Present' : 'Missing'}`);
-    
+
     // Sign out
     await supabase.auth.signOut();
     console.log('\n✅ Signed out successfully');
@@ -63,7 +63,6 @@ async function testPasswordLogin() {
     console.log('\n📝 You can now log in at: http://localhost:9000/login');
     console.log(`   Email: ${testEmail}`);
     console.log(`   Password: ${testPassword}\n`);
-
   } catch (error) {
     console.error('\n❌ Test failed:', error);
     console.error('   Stack:', error.stack);
@@ -75,8 +74,7 @@ testPasswordLogin()
   .then(() => {
     process.exit(0);
   })
-  .catch((error) => {
+  .catch(error => {
     console.error('\n❌ Test script failed:', error);
     process.exit(1);
   });
-

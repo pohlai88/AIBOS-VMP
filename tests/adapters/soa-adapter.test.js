@@ -1,6 +1,6 @@
 /**
  * SOA Adapter Tests
- * 
+ *
  * Tests all SOA adapter methods (10 methods)
  * Covers input validation, database operations, error handling
  */
@@ -17,7 +17,7 @@ import {
   createTestInvoice,
   createTestSOAMatch,
   createTestSOAIssue,
-  cleanupTestData
+  cleanupTestData,
 } from '../setup/test-helpers.js';
 
 describe('SOA Adapter Methods', () => {
@@ -32,29 +32,29 @@ describe('SOA Adapter Methods', () => {
 
   beforeEach(async () => {
     supabase = createTestSupabaseClient();
-    
+
     // Create test data
     testVendor = await createTestVendor(supabase);
     testUser = await createTestUser(supabase, { vendor_id: testVendor.id });
     testSOACase = await createTestSOACase(supabase, {
       vendorId: testVendor.id,
-      companyId: null
+      companyId: null,
     });
     testSOALine = await createTestSOALine(supabase, {
       caseId: testSOACase.id,
       vendorId: testVendor.id,
-      status: 'extracted'
+      status: 'extracted',
     });
     testInvoice = await createTestInvoice(supabase, {
-      vendorId: testVendor.id
+      vendorId: testVendor.id,
     });
     testMatch = await createTestSOAMatch(supabase, {
       soaItemId: testSOALine.id,
-      invoiceId: testInvoice.id
+      invoiceId: testInvoice.id,
     });
     testIssue = await createTestSOAIssue(supabase, {
       caseId: testSOACase.id,
-      soaItemId: testSOALine.id
+      soaItemId: testSOALine.id,
     });
   });
 
@@ -75,7 +75,9 @@ describe('SOA Adapter Methods', () => {
 
   describe('getSOAStatements', () => {
     test('should throw ValidationError for missing vendorId', async () => {
-      await expect(vmpAdapter.getSOAStatements(null)).rejects.toThrow('getSOAStatements requires vendorId');
+      await expect(vmpAdapter.getSOAStatements(null)).rejects.toThrow(
+        'getSOAStatements requires vendorId'
+      );
     });
 
     test('should return empty array when no statements exist', async () => {
@@ -103,20 +105,26 @@ describe('SOA Adapter Methods', () => {
 
   describe('getSOALines', () => {
     test('should throw ValidationError for missing caseId', async () => {
-      await expect(vmpAdapter.getSOALines(null, testVendor.id)).rejects.toThrow('getSOALines requires both caseId and vendorId');
+      await expect(vmpAdapter.getSOALines(null, testVendor.id)).rejects.toThrow(
+        'getSOALines requires both caseId and vendorId'
+      );
     });
 
     test('should throw ValidationError for missing vendorId', async () => {
-      await expect(vmpAdapter.getSOALines(testSOACase.id, null)).rejects.toThrow('getSOALines requires both caseId and vendorId');
+      await expect(vmpAdapter.getSOALines(testSOACase.id, null)).rejects.toThrow(
+        'getSOALines requires both caseId and vendorId'
+      );
     });
 
     test('should throw NotFoundError for non-SOA case', async () => {
       const nonSOACase = await createTestCase(supabase, {
         vendorId: testVendor.id,
-        case_type: 'invoice'
+        case_type: 'invoice',
       });
 
-      await expect(vmpAdapter.getSOALines(nonSOACase.id, testVendor.id)).rejects.toThrow('SOA case not found');
+      await expect(vmpAdapter.getSOALines(nonSOACase.id, testVendor.id)).rejects.toThrow(
+        'SOA case not found'
+      );
 
       await cleanupTestData(supabase, 'vmp_cases', { id: nonSOACase.id });
     });
@@ -145,11 +153,15 @@ describe('SOA Adapter Methods', () => {
 
   describe('getSOASummary', () => {
     test('should throw ValidationError for missing caseId', async () => {
-      await expect(vmpAdapter.getSOASummary(null, testVendor.id)).rejects.toThrow('getSOASummary requires both caseId and vendorId');
+      await expect(vmpAdapter.getSOASummary(null, testVendor.id)).rejects.toThrow(
+        'getSOASummary requires both caseId and vendorId'
+      );
     });
 
     test('should throw ValidationError for missing vendorId', async () => {
-      await expect(vmpAdapter.getSOASummary(testSOACase.id, null)).rejects.toThrow('getSOASummary requires both caseId and vendorId');
+      await expect(vmpAdapter.getSOASummary(testSOACase.id, null)).rejects.toThrow(
+        'getSOASummary requires both caseId and vendorId'
+      );
     });
 
     test('should return SOA summary with correct structure', async () => {
@@ -178,18 +190,22 @@ describe('SOA Adapter Methods', () => {
 
   describe('createSOAMatch', () => {
     test('should throw ValidationError for missing soaItemId', async () => {
-      await expect(vmpAdapter.createSOAMatch(null, testInvoice.id, {})).rejects.toThrow('createSOAMatch requires both soaItemId and invoiceId');
+      await expect(vmpAdapter.createSOAMatch(null, testInvoice.id, {})).rejects.toThrow(
+        'createSOAMatch requires both soaItemId and invoiceId'
+      );
     });
 
     test('should throw ValidationError for missing invoiceId', async () => {
-      await expect(vmpAdapter.createSOAMatch(testSOALine.id, null, {})).rejects.toThrow('createSOAMatch requires both soaItemId and invoiceId');
+      await expect(vmpAdapter.createSOAMatch(testSOALine.id, null, {})).rejects.toThrow(
+        'createSOAMatch requires both soaItemId and invoiceId'
+      );
     });
 
     test('should create SOA match successfully', async () => {
       const newSOALine = await createTestSOALine(supabase, {
         caseId: testSOACase.id,
         vendorId: testVendor.id,
-        status: 'extracted'
+        status: 'extracted',
       });
 
       const matchData = {
@@ -200,13 +216,13 @@ describe('SOA Adapter Methods', () => {
         matchCriteria: {
           invoice_number: true,
           amount: true,
-          currency: true
+          currency: true,
         },
         soaAmount: newSOALine.amount,
         invoiceAmount: testInvoice.total_amount,
         soaDate: newSOALine.invoice_date,
         invoiceDate: testInvoice.invoice_date,
-        matchedBy: 'system'
+        matchedBy: 'system',
       };
 
       const match = await vmpAdapter.createSOAMatch(newSOALine.id, testInvoice.id, matchData);
@@ -236,18 +252,22 @@ describe('SOA Adapter Methods', () => {
 
   describe('confirmSOAMatch', () => {
     test('should throw ValidationError for missing matchId', async () => {
-      await expect(vmpAdapter.confirmSOAMatch(null, testUser.id)).rejects.toThrow('confirmSOAMatch requires both matchId and userId');
+      await expect(vmpAdapter.confirmSOAMatch(null, testUser.id)).rejects.toThrow(
+        'confirmSOAMatch requires both matchId and userId'
+      );
     });
 
     test('should throw ValidationError for missing userId', async () => {
-      await expect(vmpAdapter.confirmSOAMatch(testMatch.id, null)).rejects.toThrow('confirmSOAMatch requires both matchId and userId');
+      await expect(vmpAdapter.confirmSOAMatch(testMatch.id, null)).rejects.toThrow(
+        'confirmSOAMatch requires both matchId and userId'
+      );
     });
 
     test.skip('should confirm SOA match successfully', async () => {
       // SKIPPED: Cloud Supabase PostgREST schema cache issue (vrawceruzokxitybkufk)
       // Migration 031_vmp_soa_tables.sql adds confirmed_at, rejection_reason, acknowledgement_notes
       // but PostgREST cache does not reload automatically. This is a Supabase cloud limitation.
-      // The adapter code is correct (validated by 30/33 passing tests). 
+      // The adapter code is correct (validated by 30/33 passing tests).
       // Workaround: Contact Supabase support to force PostgREST restart.
       const match = await vmpAdapter.confirmSOAMatch(testMatch.id, testUser.id);
       expect(match).toBeDefined();
@@ -263,26 +283,34 @@ describe('SOA Adapter Methods', () => {
 
   describe('rejectSOAMatch', () => {
     test('should throw ValidationError for missing matchId', async () => {
-      await expect(vmpAdapter.rejectSOAMatch(null, testUser.id, 'reason')).rejects.toThrow('rejectSOAMatch requires both matchId and userId');
+      await expect(vmpAdapter.rejectSOAMatch(null, testUser.id, 'reason')).rejects.toThrow(
+        'rejectSOAMatch requires both matchId and userId'
+      );
     });
 
     test('should throw ValidationError for missing userId', async () => {
-      await expect(vmpAdapter.rejectSOAMatch(testMatch.id, null, 'reason')).rejects.toThrow('rejectSOAMatch requires both matchId and userId');
+      await expect(vmpAdapter.rejectSOAMatch(testMatch.id, null, 'reason')).rejects.toThrow(
+        'rejectSOAMatch requires both matchId and userId'
+      );
     });
 
     test.skip('should reject SOA match successfully', async () => {
       // SKIPPED: Cloud Supabase PostgREST schema cache issue (vrawceruzokxitybkufk)
       // Migration 031_vmp_soa_tables.sql adds confirmed_at, rejection_reason, acknowledgement_notes
       // but PostgREST cache does not reload automatically. This is a Supabase cloud limitation.
-      // The adapter code is correct (validated by 30/33 passing tests). 
+      // The adapter code is correct (validated by 30/33 passing tests).
       // Workaround: Contact Supabase support to force PostgREST restart.
       const newMatch = await createTestSOAMatch(supabase, {
         soaItemId: testSOALine.id,
         invoiceId: testInvoice.id,
-        status: 'pending'
+        status: 'pending',
       });
 
-      const match = await vmpAdapter.rejectSOAMatch(newMatch.id, testUser.id, 'Test rejection reason');
+      const match = await vmpAdapter.rejectSOAMatch(
+        newMatch.id,
+        testUser.id,
+        'Test rejection reason'
+      );
       expect(match).toBeDefined();
       expect(match.status).toBe('rejected');
       expect(match.rejection_reason).toBe('Test rejection reason');
@@ -306,7 +334,9 @@ describe('SOA Adapter Methods', () => {
 
   describe('createSOAIssue', () => {
     test('should throw ValidationError for missing caseId', async () => {
-      await expect(vmpAdapter.createSOAIssue(null, {})).rejects.toThrow('createSOAIssue requires caseId');
+      await expect(vmpAdapter.createSOAIssue(null, {})).rejects.toThrow(
+        'createSOAIssue requires caseId'
+      );
     });
 
     test('should create SOA issue successfully', async () => {
@@ -315,8 +345,8 @@ describe('SOA Adapter Methods', () => {
         issueType: 'amount_mismatch',
         severity: 'high',
         description: 'Test discrepancy',
-        amountDelta: 100.00,
-        detectedBy: 'system'
+        amountDelta: 100.0,
+        detectedBy: 'system',
       };
 
       const issue = await vmpAdapter.createSOAIssue(testSOACase.id, issueData);
@@ -365,17 +395,21 @@ describe('SOA Adapter Methods', () => {
 
   describe('resolveSOAIssue', () => {
     test('should throw ValidationError for missing issueId', async () => {
-      await expect(vmpAdapter.resolveSOAIssue(null, testUser.id, {})).rejects.toThrow('resolveSOAIssue requires both issueId and userId');
+      await expect(vmpAdapter.resolveSOAIssue(null, testUser.id, {})).rejects.toThrow(
+        'resolveSOAIssue requires both issueId and userId'
+      );
     });
 
     test('should throw ValidationError for missing userId', async () => {
-      await expect(vmpAdapter.resolveSOAIssue(testIssue.id, null, {})).rejects.toThrow('resolveSOAIssue requires both issueId and userId');
+      await expect(vmpAdapter.resolveSOAIssue(testIssue.id, null, {})).rejects.toThrow(
+        'resolveSOAIssue requires both issueId and userId'
+      );
     });
 
     test('should resolve SOA issue successfully', async () => {
       const resolutionData = {
         notes: 'Test resolution notes',
-        action: 'corrected'
+        action: 'corrected',
       };
 
       const issue = await vmpAdapter.resolveSOAIssue(testIssue.id, testUser.id, resolutionData);
@@ -394,27 +428,33 @@ describe('SOA Adapter Methods', () => {
 
   describe('signOffSOA', () => {
     test('should throw ValidationError for missing caseId', async () => {
-      await expect(vmpAdapter.signOffSOA(null, testVendor.id, testUser.id, {})).rejects.toThrow('signOffSOA requires caseId, vendorId, and userId');
+      await expect(vmpAdapter.signOffSOA(null, testVendor.id, testUser.id, {})).rejects.toThrow(
+        'signOffSOA requires caseId, vendorId, and userId'
+      );
     });
 
     test('should throw ValidationError for missing vendorId', async () => {
-      await expect(vmpAdapter.signOffSOA(testSOACase.id, null, testUser.id, {})).rejects.toThrow('signOffSOA requires caseId, vendorId, and userId');
+      await expect(vmpAdapter.signOffSOA(testSOACase.id, null, testUser.id, {})).rejects.toThrow(
+        'signOffSOA requires caseId, vendorId, and userId'
+      );
     });
 
     test('should throw ValidationError for missing userId', async () => {
-      await expect(vmpAdapter.signOffSOA(testSOACase.id, testVendor.id, null, {})).rejects.toThrow('signOffSOA requires caseId, vendorId, and userId');
+      await expect(vmpAdapter.signOffSOA(testSOACase.id, testVendor.id, null, {})).rejects.toThrow(
+        'signOffSOA requires caseId, vendorId, and userId'
+      );
     });
 
     test.skip('should sign off SOA reconciliation successfully', async () => {
       // SKIPPED: Cloud Supabase PostgREST schema cache issue (vrawceruzokxitybkufk)
       // Migration 031_vmp_soa_tables.sql adds confirmed_at, rejection_reason, acknowledgement_notes
       // but PostgREST cache does not reload automatically. This is a Supabase cloud limitation.
-      // The adapter code is correct (validated by 30/33 passing tests). 
+      // The adapter code is correct (validated by 30/33 passing tests).
       // Workaround: Contact Supabase support to force PostgREST restart.
       const acknowledgementData = {
         type: 'full',
         notes: 'Test sign-off',
-        companyId: null
+        companyId: null,
       };
 
       const acknowledgement = await vmpAdapter.signOffSOA(
@@ -441,4 +481,3 @@ describe('SOA Adapter Methods', () => {
     });
   });
 });
-

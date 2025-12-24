@@ -12,14 +12,14 @@ describe('Multer File Filter', () => {
 
   beforeEach(async () => {
     process.env.NODE_ENV = 'test';
-    
+
     try {
       const testUser = await vmpAdapter.getUserByEmail('admin@acme.com');
       if (testUser) {
         testUserId = testUser.id;
         testVendorId = testUser.vendor_id;
         testSession = await createTestSession(testUserId, testVendorId);
-        
+
         if (testVendorId) {
           const cases = await vmpAdapter.getInbox(testVendorId);
           if (cases && cases.length > 0) {
@@ -152,4 +152,3 @@ describe('Multer File Filter', () => {
     expect([400, 413, 500]).toContain(response.statusCode);
   });
 });
-

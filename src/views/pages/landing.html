@@ -1836,20 +1836,35 @@
     // Data Models
     const states = {
       safe: {
-        hue: 155, sat: '100%', lit: '69%',
-        trust: "98%", risk: "LOW", status: "● SYSTEM_READY",
-        evidence: "✓", nav: "ONLINE"
+        hue: 155,
+    sat: '100%',
+    lit: '69%',
+        trust: '98%',
+    risk: 'LOW',
+    status: '● SYSTEM_READY',
+        evidence: '✓',
+    nav: 'ONLINE',
       },
       warn: {
-        hue: 35, sat: '100%', lit: '50%',
-        trust: "45%", risk: "ELEVATED", status: "▲ EVIDENCE_MISSING",
-        evidence: "!", nav: "WARNING"
+        hue: 35,
+    sat: '100%',
+    lit: '50%',
+        trust: '45%',
+    risk: 'ELEVATED',
+    status: '▲ EVIDENCE_MISSING',
+        evidence: '!',
+    nav: 'WARNING',
       },
       danger: {
-        hue: 0, sat: '100%', lit: '60%',
-        trust: "0%", risk: "CRITICAL", status: "■ LOCKDOWN_ACTIVE",
-        evidence: "✖", nav: "BREACH"
-      }
+        hue: 0,
+    sat: '100%',
+    lit: '60%',
+        trust: '0%',
+    risk: 'CRITICAL',
+    status: '■ LOCKDOWN_ACTIVE',
+        evidence: '✖',
+    nav: 'BREACH',
+      },
     };
 
     function applyState(key) {
@@ -1869,9 +1884,8 @@
 
       // Update Color Accents
       simStatus.style.color = `hsl(${data.hue}, ${data.sat}, ${data.lit})`;
-      riskScore.style.color = key === 'safe'
-        ? 'rgba(237,237,237,0.48)'
-        : `hsl(${data.hue}, ${data.sat}, ${data.lit})`;
+      riskScore.style.color =
+    key === 'safe' ? 'rgba(237,237,237,0.48)' : `hsl(${data.hue}, ${data.sat}, ${data.lit})`;
       evidenceIcon.style.color = `hsl(${data.hue}, ${data.sat}, ${data.lit})`;
 
       // Nav + Brand Icon
@@ -1882,11 +1896,14 @@
 
       // Background posture
       if (key === 'danger') {
-        glowBg.style.background = "radial-gradient(circle at 50% 55%, rgba(255, 85, 85, 0.14), transparent 72%)";
+        glowBg.style.background =
+          'radial-gradient(circle at 50% 55%, rgba(255, 85, 85, 0.14), transparent 72%)';
       } else if (key === 'warn') {
-        glowBg.style.background = "radial-gradient(circle at 50% 55%, rgba(255, 176, 79, 0.11), transparent 72%)";
+        glowBg.style.background =
+          'radial-gradient(circle at 50% 55%, rgba(255, 176, 79, 0.11), transparent 72%)';
       } else {
-        glowBg.style.background = "radial-gradient(circle at 50% 0%, rgba(96, 255, 198, 0.09), transparent 62%)";
+        glowBg.style.background =
+      'radial-gradient(circle at 50% 0%, rgba(96, 255, 198, 0.09), transparent 62%)';
       }
 
       // Tabs (mirror control)
@@ -1898,17 +1915,20 @@
     }
 
     // Scroll Observer (slightly more stable trigger)
-    const observer = new IntersectionObserver((entries) => {
-      entries.forEach(entry => {
-        if (entry.isIntersecting) {
-          blocks.forEach(b => b.classList.remove('active'));
-          entry.target.classList.add('active');
+    const observer = new IntersectionObserver(
+  entries => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            blocks.forEach(b => b.classList.remove('active'));
+            entry.target.classList.add('active');
 
-          const key = entry.target.getAttribute('data-state');
-          applyState(key);
-        }
-      });
-    }, { threshold: 0.55, rootMargin: "-10% 0px -10% 0px" });
+            const key = entry.target.getAttribute('data-state');
+            applyState(key);
+          }
+        });
+      },
+  { threshold: 0.55, rootMargin: '-10% 0px -10% 0px' }
+);
 
     blocks.forEach(b => observer.observe(b));
 
@@ -1925,7 +1945,7 @@
     // Live Timestamp
     setInterval(() => {
       const now = new Date().toISOString().replace('T', ' ').slice(0, 19) + 'Z';
-      document.getElementById('footerStamp').textContent = "SYSTEM: " + now;
+      document.getElementById('footerStamp').textContent = 'SYSTEM: ' + now;
     }, 1000);
 
     // Feature card hover - simplified (no 3D transforms)

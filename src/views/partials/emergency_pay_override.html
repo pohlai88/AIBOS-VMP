@@ -162,87 +162,91 @@
 
     <script>
         function showRejectOverrideModal(overrideId) {
-            document.getElementById('reject-override-id').value = overrideId;
-            const reasonField = document.getElementById('reject-override-reason');
-            reasonField.value = '';
-            updateRejectCharCount(reasonField);
-            hideRejectError();
-            const form = document.getElementById('reject-override-form');
-            form.setAttribute('hx-post', `/payments/emergency-override/${overrideId}/reject`);
-            document.getElementById('reject-override-modal').classList.remove('hidden');
-            reasonField.focus();
+          document.getElementById('reject-override-id').value = overrideId;
+          const reasonField = document.getElementById('reject-override-reason');
+          reasonField.value = '';
+          updateRejectCharCount(reasonField);
+          hideRejectError();
+          const form = document.getElementById('reject-override-form');
+          form.setAttribute('hx-post', `/payments/emergency-override/${overrideId}/reject`);
+          document.getElementById('reject-override-modal').classList.remove('hidden');
+          reasonField.focus();
         }
 
         function updateRejectCharCount(textarea) {
-            const count = textarea.value.length;
-            const charCountEl = document.getElementById('reject-char-count');
-            const minLength = parseInt(textarea.getAttribute('minlength')) || 20;
-            
-            charCountEl.textContent = count;
-            
-            if (count < minLength) {
-                charCountEl.classList.add('vmp-text-warn');
-                charCountEl.classList.remove('vmp-muted');
-            } else if (count > 450) {
-                charCountEl.classList.add('vmp-text-warn');
-                charCountEl.classList.remove('vmp-muted');
-            } else {
-                charCountEl.classList.remove('vmp-text-warn');
-                charCountEl.classList.add('vmp-muted');
-            }
-            
-            validateRejectField(textarea);
+          const count = textarea.value.length;
+          const charCountEl = document.getElementById('reject-char-count');
+          const minLength = parseInt(textarea.getAttribute('minlength')) || 20;
+        
+          charCountEl.textContent = count;
+        
+          if (count < minLength) {
+            charCountEl.classList.add('vmp-text-warn');
+            charCountEl.classList.remove('vmp-muted');
+          } else if (count > 450) {
+            charCountEl.classList.add('vmp-text-warn');
+            charCountEl.classList.remove('vmp-muted');
+          } else {
+            charCountEl.classList.remove('vmp-text-warn');
+            charCountEl.classList.add('vmp-muted');
+          }
+        
+          validateRejectField(textarea);
         }
 
         function validateRejectField(textarea) {
-            const errorEl = document.getElementById('reject-reason-error');
-            const minLength = parseInt(textarea.getAttribute('minlength')) || 20;
-            const value = textarea.value.trim();
-            
-            if (value.length > 0 && value.length < minLength) {
-                showRejectError(`Rejection reason must be at least ${minLength} characters (${value.length}/${minLength})`);
-                textarea.classList.add('vmp-border-warn');
-                return false;
-            } else if (value.length === 0) {
-                hideRejectError();
-                textarea.classList.remove('vmp-border-warn');
-                return false;
-            } else {
-                hideRejectError();
-                textarea.classList.remove('vmp-border-warn');
-                return true;
-            }
+          const errorEl = document.getElementById('reject-reason-error');
+          const minLength = parseInt(textarea.getAttribute('minlength')) || 20;
+          const value = textarea.value.trim();
+        
+          if (value.length > 0 && value.length < minLength) {
+            showRejectError(
+      `Rejection reason must be at least ${minLength} characters (${value.length}/${minLength})`
+            );
+    textarea.classList.add('vmp-border-warn');
+            return false;
+          } else if (value.length === 0) {
+            hideRejectError();
+            textarea.classList.remove('vmp-border-warn');
+            return false;
+          } else {
+            hideRejectError();
+            textarea.classList.remove('vmp-border-warn');
+            return true;
+          }
         }
 
         function showRejectError(message) {
-            const errorEl = document.getElementById('reject-reason-error');
-            errorEl.textContent = message;
-            errorEl.classList.remove('hidden');
+          const errorEl = document.getElementById('reject-reason-error');
+          errorEl.textContent = message;
+          errorEl.classList.remove('hidden');
         }
 
         function hideRejectError() {
-            const errorEl = document.getElementById('reject-reason-error');
-            errorEl.classList.add('hidden');
-            errorEl.textContent = '';
+          const errorEl = document.getElementById('reject-reason-error');
+          errorEl.classList.add('hidden');
+          errorEl.textContent = '';
         }
 
         function validateRejectForm(event) {
-            const reasonField = document.getElementById('reject-override-reason');
-            const isValid = validateRejectField(reasonField);
-            
-            if (!isValid) {
-                event.preventDefault();
-                reasonField.focus();
-                return false;
-            }
-            
-            const confirmed = confirm('Are you sure you want to reject this emergency pay override request? This action cannot be undone.');
-            if (!confirmed) {
-                event.preventDefault();
-                return false;
-            }
-            
-            return true;
+          const reasonField = document.getElementById('reject-override-reason');
+          const isValid = validateRejectField(reasonField);
+        
+          if (!isValid) {
+            event.preventDefault();
+            reasonField.focus();
+            return false;
+          }
+        
+          const confirmed = confirm(
+    'Are you sure you want to reject this emergency pay override request? This action cannot be undone.'
+          );
+  if (!confirmed) {
+            event.preventDefault();
+            return false;
+          }
+        
+          return true;
         }
     </script>
     {% endif %}

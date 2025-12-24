@@ -142,7 +142,7 @@ function bulkActions() {
       }
 
       // Listen for bulk toggle events from checkboxes
-      document.addEventListener('bulk-toggle', (e) => {
+      document.addEventListener('bulk-toggle', e => {
         this.toggleSelection(e.detail.id);
       });
 
@@ -193,12 +193,12 @@ function bulkActions() {
       // Show confirmation modal
       const confirmModal = document.getElementById('bulk-action-confirm-modal');
       const confirmData = Alpine.$data(confirmModal);
-      
+
       const actionLabels = {
         approve: 'approve',
         reject: 'reject',
         export: 'export',
-        close: 'close'
+        close: 'close',
       };
 
       confirmData.action = actionLabels[action] || action;
@@ -219,9 +219,9 @@ function bulkActions() {
           const response = await fetch(`/api/bulk-actions/${this.listType}/${action}`, {
             method: 'POST',
             headers: {
-              'Content-Type': 'application/json'
+              'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ ids: selectedIds })
+            body: JSON.stringify({ ids: selectedIds }),
           });
 
           if (!response.ok) {
@@ -230,7 +230,7 @@ function bulkActions() {
           }
 
           const result = await response.json();
-          
+
           // Update progress incrementally
           if (result.results && Array.isArray(result.results)) {
             for (let i = 0; i < result.results.length; i++) {
@@ -240,7 +240,7 @@ function bulkActions() {
           } else {
             progressData.current = selectedIds.length;
           }
-          
+
           // Show success toast
           if (window.vmpToast) {
             window.vmpToast.success(
@@ -248,26 +248,34 @@ function bulkActions() {
               `Successfully ${actionLabels[action] || action} ${result.processed || selectedIds.length} item(s)`
             );
           }
-          
+
           // Close progress modal after a short delay
           setTimeout(() => {
             progressData.isOpen = false;
             this.clearSelection();
-            
+
             // Reload the list
             if (window.location.pathname.includes('/cases')) {
-              htmx.ajax('GET', '/partials/case-inbox.html', { target: '#case-inbox', swap: 'innerHTML' });
+              htmx.ajax('GET', '/partials/case-inbox.html', {
+                target: '#case-inbox',
+                swap: 'innerHTML',
+              });
             } else if (window.location.pathname.includes('/invoices')) {
-              htmx.ajax('GET', '/partials/invoice-list.html', { target: '#invoice-list', swap: 'innerHTML' });
+              htmx.ajax('GET', '/partials/invoice-list.html', {
+                target: '#invoice-list',
+                swap: 'innerHTML',
+              });
             } else if (window.location.pathname.includes('/payments')) {
-              htmx.ajax('GET', '/partials/payment-list.html', { target: '#payment-list', swap: 'innerHTML' });
+              htmx.ajax('GET', '/partials/payment-list.html', {
+                target: '#payment-list',
+                swap: 'innerHTML',
+              });
             }
           }, 500);
-
         } catch (error) {
           console.error('Bulk action error:', error);
           progressData.isOpen = false;
-          
+
           // Show error toast
           if (window.vmpToast) {
             window.vmpToast.error(
@@ -279,8 +287,8 @@ function bulkActions() {
           }
         }
       };
-    }
-  }
+    },
+  };
 }
 </script>
 

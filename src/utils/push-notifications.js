@@ -43,7 +43,7 @@ async function registerPushSubscription() {
     }
 
     registration = await navigator.serviceWorker.ready;
-    
+
     // Get VAPID public key from server (or use environment variable)
     // For client-side, we need to fetch it from the server
     let vapidPublicKey;
@@ -66,10 +66,10 @@ async function registerPushSubscription() {
     if (!vapidPublicKey) {
       throw new Error('VAPID public key not available. Please configure VAPID keys on the server.');
     }
-    
+
     subscription = await registration.pushManager.subscribe({
       userVisibleOnly: true,
-      applicationServerKey: urlBase64ToUint8Array(vapidPublicKey)
+      applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
     });
 
     // Send subscription to server
@@ -91,10 +91,10 @@ async function sendSubscriptionToServer(subscription) {
     const response = await fetch('/api/push/subscribe', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
       },
       credentials: 'same-origin',
-      body: JSON.stringify(subscription)
+      body: JSON.stringify(subscription),
     });
 
     if (!response.ok) {
@@ -124,9 +124,9 @@ export async function unsubscribePush() {
       await fetch('/api/push/unsubscribe', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ endpoint: subscription.endpoint })
+        body: JSON.stringify({ endpoint: subscription.endpoint }),
       });
 
       subscription = null;
@@ -160,10 +160,8 @@ export function getPushPermission() {
  * Convert VAPID key from base64 URL to Uint8Array
  */
 function urlBase64ToUint8Array(base64String) {
-  const padding = '='.repeat((4 - base64String.length % 4) % 4);
-  const base64 = (base64String + padding)
-    .replace(/\-/g, '+')
-    .replace(/_/g, '/');
+  const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/\-/g, '+').replace(/_/g, '/');
 
   const rawData = window.atob(base64);
   const outputArray = new Uint8Array(rawData.length);
@@ -173,4 +171,3 @@ function urlBase64ToUint8Array(base64String) {
   }
   return outputArray;
 }
-

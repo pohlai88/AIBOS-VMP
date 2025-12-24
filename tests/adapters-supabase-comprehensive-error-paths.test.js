@@ -4,7 +4,7 @@ import * as supabaseModule from '../src/adapters/supabase.js';
 
 /**
  * Comprehensive error path tests using mocks to reach 95% coverage
- * 
+ *
  * Targets uncovered lines:
  * - Line 559: uploadEvidenceToStorage error throw
  * - Line 582: uploadEvidence parameter validation
@@ -23,7 +23,7 @@ describe('Adapter Comprehensive Error Paths - Mocked Operations', () => {
         const cases = await vmpAdapter.getInbox(testUser.vendor_id);
         if (cases && cases.length > 0) {
           testCaseId = cases[0].id;
-          
+
           const steps = await vmpAdapter.getChecklistSteps(testCaseId);
           if (steps && steps.length > 0) {
             testChecklistStepId = steps[0].id;
@@ -44,18 +44,18 @@ describe('Adapter Comprehensive Error Paths - Mocked Operations', () => {
       buffer: Buffer.from('test'),
       originalname: 'test.pdf',
       mimetype: 'application/pdf',
-      size: 100
+      size: 100,
     };
 
-    await expect(
-      vmpAdapter.uploadEvidence(null, mockFile, 'invoice')
-    ).rejects.toThrow('uploadEvidence requires caseId, file, and evidenceType parameters');
+    await expect(vmpAdapter.uploadEvidence(null, mockFile, 'invoice')).rejects.toThrow(
+      'uploadEvidence requires caseId, file, and evidenceType parameters'
+    );
   });
 
   test('uploadEvidence should throw error for missing file', async () => {
-    await expect(
-      vmpAdapter.uploadEvidence('case-id', null, 'invoice')
-    ).rejects.toThrow('uploadEvidence requires caseId, file, and evidenceType parameters');
+    await expect(vmpAdapter.uploadEvidence('case-id', null, 'invoice')).rejects.toThrow(
+      'uploadEvidence requires caseId, file, and evidenceType parameters'
+    );
   });
 
   test('uploadEvidence should throw error for missing evidenceType', async () => {
@@ -63,12 +63,12 @@ describe('Adapter Comprehensive Error Paths - Mocked Operations', () => {
       buffer: Buffer.from('test'),
       originalname: 'test.pdf',
       mimetype: 'application/pdf',
-      size: 100
+      size: 100,
     };
 
-    await expect(
-      vmpAdapter.uploadEvidence('case-id', mockFile, null)
-    ).rejects.toThrow('uploadEvidence requires caseId, file, and evidenceType parameters');
+    await expect(vmpAdapter.uploadEvidence('case-id', mockFile, null)).rejects.toThrow(
+      'uploadEvidence requires caseId, file, and evidenceType parameters'
+    );
   });
 
   // ============================================================================
@@ -78,7 +78,7 @@ describe('Adapter Comprehensive Error Paths - Mocked Operations', () => {
   test('uploadEvidenceToStorage should throw error on storage failure (line 559)', async () => {
     // This test directly calls uploadEvidenceToStorage with a scenario that will fail
     // to trigger the error path at line 559
-    
+
     // Try to upload to a non-existent path or with invalid bucket
     // This should trigger the error handling at line 557-559
     await expect(
@@ -88,7 +88,7 @@ describe('Adapter Comprehensive Error Paths - Mocked Operations', () => {
         'application/pdf'
       )
     ).rejects.toThrow();
-    
+
     // This covers line 559: throw new Error(`Failed to upload to storage: ${error.message}`)
   });
 
@@ -106,7 +106,7 @@ describe('Adapter Comprehensive Error Paths - Mocked Operations', () => {
       buffer: Buffer.from('test file content'),
       originalname: 'test.pdf',
       mimetype: 'application/pdf',
-      size: 100
+      size: 100,
     };
 
     // Mock uploadEvidenceToStorage to succeed (so we get to database insert)
@@ -116,20 +116,14 @@ describe('Adapter Comprehensive Error Paths - Mocked Operations', () => {
     // Use invalid case_id to trigger database insert error
     // This will trigger cleanup attempt, and if cleanup fails, line 633 will execute
     const invalidCaseId = '00000000-0000-0000-0000-000000000000';
-    
+
     await expect(
-      vmpAdapter.uploadEvidence(
-        invalidCaseId,
-        mockFile,
-        'invoice',
-        null,
-        'vendor'
-      )
+      vmpAdapter.uploadEvidence(invalidCaseId, mockFile, 'invoice', null, 'vendor')
     ).rejects.toThrow();
 
     // Restore original method
     vmpAdapter.uploadEvidenceToStorage = originalUpload;
-    
+
     // This covers the cleanup error catch block (line 633)
     // The cleanup attempt happens at line 631, and if it fails, line 633 catches it
   });
@@ -146,29 +140,28 @@ describe('Adapter Comprehensive Error Paths - Mocked Operations', () => {
 
     // This test verifies that checklist step update errors (line 647)
     // are caught and don't fail the upload
-    
+
     // Note: To actually trigger line 647, we would need to:
     // 1. Successfully upload to storage
     // 2. Successfully insert evidence record
     // 3. Fail the checklist step update
-    
+
     // Since this is complex to mock, we verify the error handling exists
     // The actual error path (line 647) is designed to catch update errors
     // and continue without failing the upload
-    
+
     const mockFile = {
       buffer: Buffer.from('test file content'),
       originalname: 'test.pdf',
       mimetype: 'application/pdf',
-      size: 100
+      size: 100,
     };
 
     // The error handling at line 647 ensures that if checklist step update fails,
     // the upload still succeeds (the error is logged but not thrown)
     expect(typeof vmpAdapter.uploadEvidence).toBe('function');
-    
+
     // In a real scenario, if the checklist step update fails,
     // line 647 would catch the error and log it, but the upload would still succeed
   });
 });
-

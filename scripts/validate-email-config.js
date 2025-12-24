@@ -34,7 +34,7 @@ if (emailService === 'smtp') {
     from: process.env.SMTP_FROM_EMAIL,
     fromName: process.env.SMTP_FROM_NAME,
   };
-  
+
   console.log('   SMTP Configuration:');
   console.log(`   - Host: ${smtpConfig.host || '❌ NOT SET'}`);
   console.log(`   - Port: ${smtpConfig.port}`);
@@ -42,7 +42,7 @@ if (emailService === 'smtp') {
   console.log(`   - Password: ${smtpConfig.password || '❌ NOT SET'}`);
   console.log(`   - From Email: ${smtpConfig.from || '❌ NOT SET'}`);
   console.log(`   - From Name: ${smtpConfig.fromName || 'Using default'}`);
-  
+
   if (!smtpConfig.host || !smtpConfig.user || !smtpConfig.password) {
     console.log('\n   ❌ SMTP configuration is INCOMPLETE');
     console.log('   → Emails will fail to send');
@@ -52,11 +52,11 @@ if (emailService === 'smtp') {
 } else if (emailService === 'sendgrid') {
   const sendgridKey = process.env.SENDGRID_API_KEY;
   const sendgridFrom = process.env.SENDGRID_FROM_EMAIL;
-  
+
   console.log('   SendGrid Configuration:');
   console.log(`   - API Key: ${sendgridKey ? '***configured***' : '❌ NOT SET'}`);
   console.log(`   - From Email: ${sendgridFrom || '❌ NOT SET'}`);
-  
+
   if (!sendgridKey) {
     console.log('\n   ❌ SendGrid configuration is INCOMPLETE');
   } else {
@@ -65,11 +65,11 @@ if (emailService === 'smtp') {
 } else if (emailService === 'resend') {
   const resendKey = process.env.RESEND_API_KEY;
   const resendFrom = process.env.RESEND_FROM_EMAIL;
-  
+
   console.log('   Resend Configuration:');
   console.log(`   - API Key: ${resendKey ? '***configured***' : '❌ NOT SET'}`);
   console.log(`   - From Email: ${resendFrom || '❌ NOT SET'}`);
-  
+
   if (!resendKey) {
     console.log('\n   ❌ Resend configuration is INCOMPLETE');
   } else {
@@ -103,4 +103,3 @@ console.log('\n💡 Note: This application uses CUSTOM authentication');
 console.log('   → Supabase Auth email settings do NOT apply');
 console.log('   → Email sending is controlled by EMAIL_SERVICE env variable');
 console.log('   → You can use Supabase SMTP settings by copying them to .env\n');
-

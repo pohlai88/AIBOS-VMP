@@ -2,7 +2,7 @@
 /**
  * Seed Dev Account with Organization Tree Data
  * Creates a dev account (dev@example.com or mr@example.com) with full org tree access
- * 
+ *
  * Usage: node scripts/seed-dev-org-tree.js [email] [password]
  * Example: node scripts/seed-dev-org-tree.js dev@example.com dev123
  * Example: node scripts/seed-dev-org-tree.js mr@example.com mr123
@@ -24,8 +24,8 @@ if (!supabaseUrl || !supabaseServiceKey) {
 const supabase = createClient(supabaseUrl, supabaseServiceKey, {
   auth: {
     autoRefreshToken: false,
-    persistSession: false
-  }
+    persistSession: false,
+  },
 });
 
 // Default values
@@ -57,12 +57,10 @@ async function seedDevOrgTree() {
 
     if (tenantError || !tenant) {
       console.log('   Creating tenant...');
-      const { error: createTenantError } = await supabase
-        .from('vmp_tenants')
-        .insert({
-          id: TENANT_ID,
-          name: 'Nexus Group'
-        });
+      const { error: createTenantError } = await supabase.from('vmp_tenants').insert({
+        id: TENANT_ID,
+        name: 'Nexus Group',
+      });
 
       if (createTenantError) {
         console.error('   ❌ Error creating tenant:', createTenantError.message);
@@ -83,14 +81,12 @@ async function seedDevOrgTree() {
 
     if (vendorError || !vendor) {
       console.log('   Creating vendor...');
-      const { error: createVendorError } = await supabase
-        .from('vmp_vendors')
-        .insert({
-          id: VENDOR_ID,
-          tenant_id: TENANT_ID,
-          name: 'Internal Operations',
-          status: 'active'
-        });
+      const { error: createVendorError } = await supabase.from('vmp_vendors').insert({
+        id: VENDOR_ID,
+        tenant_id: TENANT_ID,
+        name: 'Internal Operations',
+        status: 'active',
+      });
 
       if (createVendorError) {
         console.error('   ❌ Error creating vendor:', createVendorError.message);
@@ -108,14 +104,14 @@ async function seedDevOrgTree() {
         id: '90000000-0000-0000-0000-000000000001',
         tenant_id: TENANT_ID,
         name: 'Manufacturing Division',
-        code: 'MFG-DIV'
+        code: 'MFG-DIV',
       },
       {
         id: '90000000-0000-0000-0000-000000000002',
         tenant_id: TENANT_ID,
         name: 'Distribution Division',
-        code: 'DIST-DIV'
-      }
+        code: 'DIST-DIV',
+      },
     ];
 
     for (const group of groups) {
@@ -140,7 +136,7 @@ async function seedDevOrgTree() {
         legal_name: 'Nexus Manufacturing Pte Ltd',
         country_code: 'SG',
         currency_code: 'SGD',
-        group_id: '90000000-0000-0000-0000-000000000001' // Manufacturing Division
+        group_id: '90000000-0000-0000-0000-000000000001', // Manufacturing Division
       },
       {
         id: '10000000-0000-0000-0000-000000000002',
@@ -149,8 +145,8 @@ async function seedDevOrgTree() {
         legal_name: 'Nexus Distribution Sdn Bhd',
         country_code: 'MY',
         currency_code: 'MYR',
-        group_id: '90000000-0000-0000-0000-000000000002' // Distribution Division
-      }
+        group_id: '90000000-0000-0000-0000-000000000002', // Distribution Division
+      },
     ];
 
     for (const company of companies) {
@@ -161,7 +157,9 @@ async function seedDevOrgTree() {
       if (companyError) {
         console.warn(`   ⚠️  Warning creating company ${company.name}:`, companyError.message);
       } else {
-        console.log(`   ✅ Company: ${company.name} → Group: ${company.group_id ? 'Linked' : 'Ungrouped'}`);
+        console.log(
+          `   ✅ Company: ${company.name} → Group: ${company.group_id ? 'Linked' : 'Ungrouped'}`
+        );
       }
     }
 
@@ -177,16 +175,17 @@ async function seedDevOrgTree() {
     if (existingVmpUser) {
       console.log('   ⚠️  User already exists in vmp_vendor_users, updating...');
       vmpUserId = existingVmpUser.id;
-      
+
       const { error: updateError } = await supabase
         .from('vmp_vendor_users')
         .update({
           vendor_id: VENDOR_ID,
-          display_name: targetEmail.split('@')[0].charAt(0).toUpperCase() + targetEmail.split('@')[0].slice(1),
+          display_name:
+            targetEmail.split('@')[0].charAt(0).toUpperCase() + targetEmail.split('@')[0].slice(1),
           is_active: true,
           is_internal: true,
           scope_group_id: null, // Super admin - no scope restrictions
-          scope_company_id: null // Super admin - no scope restrictions
+          scope_company_id: null, // Super admin - no scope restrictions
         })
         .eq('id', vmpUserId);
 
@@ -203,11 +202,12 @@ async function seedDevOrgTree() {
         .insert({
           vendor_id: VENDOR_ID,
           email: targetEmail,
-          display_name: targetEmail.split('@')[0].charAt(0).toUpperCase() + targetEmail.split('@')[0].slice(1),
+          display_name:
+            targetEmail.split('@')[0].charAt(0).toUpperCase() + targetEmail.split('@')[0].slice(1),
           is_active: true,
           is_internal: true,
           scope_group_id: null, // Super admin
-          scope_company_id: null // Super admin
+          scope_company_id: null, // Super admin
         })
         .select()
         .single();
@@ -226,8 +226,11 @@ async function seedDevOrgTree() {
 
     // Step 6: Create or update Supabase Auth user
     console.log('\n📋 Step 6: Creating/updating Supabase Auth user...');
-    const { data: { users }, error: listError } = await supabase.auth.admin.listUsers();
-    
+    const {
+      data: { users },
+      error: listError,
+    } = await supabase.auth.admin.listUsers();
+
     if (listError) {
       console.error('   ❌ Error listing users:', listError.message);
       process.exit(1);
@@ -241,10 +244,9 @@ async function seedDevOrgTree() {
       authUserId = existingAuthUser.id;
 
       // Update password
-      const { error: updatePasswordError } = await supabase.auth.admin.updateUserById(
-        authUserId,
-        { password: targetPassword }
-      );
+      const { error: updatePasswordError } = await supabase.auth.admin.updateUserById(authUserId, {
+        password: targetPassword,
+      });
 
       if (updatePasswordError) {
         console.error('   ❌ Error updating password:', updatePasswordError.message);
@@ -253,18 +255,16 @@ async function seedDevOrgTree() {
       console.log('   ✅ Password updated');
 
       // Update metadata
-      const { error: metadataError } = await supabase.auth.admin.updateUserById(
-        authUserId,
-        {
-          user_metadata: {
-            display_name: targetEmail.split('@')[0].charAt(0).toUpperCase() + targetEmail.split('@')[0].slice(1),
-            vendor_id: VENDOR_ID,
-            vmp_user_id: vmpUserId,
-            is_active: true,
-            is_internal: true
-          }
-        }
-      );
+      const { error: metadataError } = await supabase.auth.admin.updateUserById(authUserId, {
+        user_metadata: {
+          display_name:
+            targetEmail.split('@')[0].charAt(0).toUpperCase() + targetEmail.split('@')[0].slice(1),
+          vendor_id: VENDOR_ID,
+          vmp_user_id: vmpUserId,
+          is_active: true,
+          is_internal: true,
+        },
+      });
 
       if (metadataError) {
         console.warn('   ⚠️  Warning: Could not update metadata:', metadataError.message);
@@ -278,12 +278,13 @@ async function seedDevOrgTree() {
         email_confirm: true,
         password: targetPassword,
         user_metadata: {
-          display_name: targetEmail.split('@')[0].charAt(0).toUpperCase() + targetEmail.split('@')[0].slice(1),
+          display_name:
+            targetEmail.split('@')[0].charAt(0).toUpperCase() + targetEmail.split('@')[0].slice(1),
           vendor_id: VENDOR_ID,
           vmp_user_id: vmpUserId,
           is_active: true,
-          is_internal: true
-        }
+          is_internal: true,
+        },
       });
 
       if (createAuthError) {
@@ -298,15 +299,16 @@ async function seedDevOrgTree() {
 
     // Step 7: Create auth user mapping
     console.log('\n📋 Step 7: Creating auth user mapping...');
-    const { error: mappingError } = await supabase
-      .from('vmp_auth_user_mapping')
-      .upsert({
+    const { error: mappingError } = await supabase.from('vmp_auth_user_mapping').upsert(
+      {
         auth_user_id: authUserId,
         vmp_user_id: vmpUserId,
-        email: targetEmail
-      }, {
-        onConflict: 'auth_user_id'
-      });
+        email: targetEmail,
+      },
+      {
+        onConflict: 'auth_user_id',
+      }
+    );
 
     if (mappingError) {
       console.warn('   ⚠️  Warning: Could not create mapping:', mappingError.message);
@@ -320,7 +322,9 @@ async function seedDevOrgTree() {
     console.log('='.repeat(70));
     console.log(`\n📧 Email: ${targetEmail}`);
     console.log(`🔑 Password: ${targetPassword}`);
-    console.log(`👤 Display Name: ${targetEmail.split('@')[0].charAt(0).toUpperCase() + targetEmail.split('@')[0].slice(1)}`);
+    console.log(
+      `👤 Display Name: ${targetEmail.split('@')[0].charAt(0).toUpperCase() + targetEmail.split('@')[0].slice(1)}`
+    );
     console.log(`🆔 Auth User ID: ${authUserId}`);
     console.log(`🆔 VMP User ID: ${vmpUserId}`);
     console.log(`🔐 Is Internal: ✅ Yes`);
@@ -333,7 +337,6 @@ async function seedDevOrgTree() {
     console.log(`\n✨ After login, you should see the org tree sidebar!`);
     console.log(`\n⚠️  Note: This password is stored in plain text in this script output.`);
     console.log(`   Change it after first login for security.\n`);
-
   } catch (error) {
     console.error('\n❌ Error:', error);
     console.error('   Stack:', error.stack);
@@ -345,8 +348,7 @@ seedDevOrgTree()
   .then(() => {
     process.exit(0);
   })
-  .catch((error) => {
+  .catch(error => {
     console.error('\n❌ Script failed:', error);
     process.exit(1);
   });
-

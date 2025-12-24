@@ -20,8 +20,8 @@ if (!supabaseUrl || !supabaseServiceKey) {
 const supabase = createClient(supabaseUrl, supabaseServiceKey, {
   auth: {
     autoRefreshToken: false,
-    persistSession: false
-  }
+    persistSession: false,
+  },
 });
 
 const testEmail = process.argv[2] || 'dev@example.com';
@@ -34,15 +34,18 @@ async function verifyDevAccount() {
   try {
     // Step 1: Check Supabase Auth user
     console.log('📋 Step 1: Checking Supabase Auth user...');
-    const { data: { users }, error: listError } = await supabase.auth.admin.listUsers();
-    
+    const {
+      data: { users },
+      error: listError,
+    } = await supabase.auth.admin.listUsers();
+
     if (listError) {
       console.error('   ❌ Error listing users:', listError.message);
       process.exit(1);
     }
 
     const authUser = users.find(u => u.email === testEmail.toLowerCase().trim());
-    
+
     if (!authUser) {
       console.error('   ❌ User NOT found in Supabase Auth');
       console.error('   Run: node scripts/seed-dev-org-tree.js ' + testEmail + ' <password>');
@@ -53,7 +56,7 @@ async function verifyDevAccount() {
     console.log(`      Auth User ID: ${authUser.id}`);
     console.log(`      Email: ${authUser.email}`);
     console.log(`      Email Confirmed: ${authUser.email_confirmed_at ? 'Yes' : 'No'}`);
-    
+
     // Check metadata
     const metadata = authUser.user_metadata || {};
     console.log(`      Vendor ID in metadata: ${metadata.vendor_id || 'MISSING'}`);
@@ -121,10 +124,13 @@ async function verifyDevAccount() {
     // Step 4: Test getVendorContext lookup
     console.log('\n📋 Step 4: Testing getVendorContext lookup...');
     console.log('   This simulates what happens when the user logs in...');
-    
+
     // Simulate the lookup that getVendorContext does
-    const { data: { user: testUser }, error: getUserError } = await supabase.auth.admin.getUserById(authUser.id);
-    
+    const {
+      data: { user: testUser },
+      error: getUserError,
+    } = await supabase.auth.admin.getUserById(authUser.id);
+
     if (getUserError || !testUser) {
       console.error('   ❌ Could not get user from Supabase Auth');
       console.error(`   Error: ${getUserError?.message || 'Not found'}`);
@@ -132,7 +138,7 @@ async function verifyDevAccount() {
     }
 
     console.log('   ✅ Can get user from Supabase Auth');
-    
+
     // Check if vendor_id is in metadata
     const vendorId = testUser.user_metadata?.vendor_id;
     if (!vendorId) {
@@ -141,7 +147,7 @@ async function verifyDevAccount() {
       console.error('\n   Fix: Update Supabase Auth user metadata with vendor_id');
     } else {
       console.log(`   ✅ vendor_id found in metadata: ${vendorId}`);
-      
+
       // Check if vendor exists
       const { data: testVendor, error: testVendorError } = await supabase
         .from('vmp_vendors')
@@ -186,7 +192,6 @@ async function verifyDevAccount() {
       console.log('\n💡 To fix, run:');
       console.log(`   node scripts/seed-dev-org-tree.js ${testEmail} <password>`);
     }
-
   } catch (error) {
     console.error('\n❌ Verification failed:', error);
     console.error('   Stack:', error.stack);
@@ -198,8 +203,7 @@ verifyDevAccount()
   .then(() => {
     process.exit(0);
   })
-  .catch((error) => {
+  .catch(error => {
     console.error('\n❌ Script failed:', error);
     process.exit(1);
   });
-

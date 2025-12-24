@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 /**
  * Migration Script: Revert from Custom Auth to Supabase Auth
- * 
+ *
  * This script:
  * 1. Migrates vmp_vendor_users to Supabase Auth (auth.users)
  * 2. Preserves vendor relationships via user_metadata
  * 3. Creates a mapping table to link auth.users to vmp_vendors
- * 
+ *
  * WARNING: This will change your authentication system.
  * Make sure to backup your database before running.
  */
@@ -68,8 +68,8 @@ async function migrateToSupabaseAuth() {
             display_name: vmpUser.display_name,
             vendor_id: vmpUser.vendor_id,
             vmp_user_id: vmpUser.id, // Link back to vmp_vendor_users
-            is_active: vmpUser.is_active
-          }
+            is_active: vmpUser.is_active,
+          },
         });
 
         if (createError) {
@@ -77,7 +77,7 @@ async function migrateToSupabaseAuth() {
           migrationResults.push({
             email: vmpUser.email,
             status: 'failed',
-            error: createError.message
+            error: createError.message,
           });
           continue;
         }
@@ -89,16 +89,20 @@ async function migrateToSupabaseAuth() {
         if (vmpUser.password_hash) {
           // Generate a temporary password (user will need to reset)
           const tempPassword = `Temp${Math.random().toString(36).slice(-12)}!`;
-          
+
           const { error: passwordError } = await supabase.auth.admin.updateUserById(
             authUser.user.id,
             { password: tempPassword }
           );
 
           if (passwordError) {
-            console.warn(`   ⚠️  Could not set password for ${vmpUser.email}: ${passwordError.message}`);
+            console.warn(
+              `   ⚠️  Could not set password for ${vmpUser.email}: ${passwordError.message}`
+            );
           } else {
-            console.log(`   ✅ Created ${vmpUser.email} (temporary password set - user must reset)`);
+            console.log(
+              `   ✅ Created ${vmpUser.email} (temporary password set - user must reset)`
+            );
           }
         } else {
           console.log(`   ✅ Created ${vmpUser.email} (no password - user must set password)`);
@@ -108,15 +112,14 @@ async function migrateToSupabaseAuth() {
           email: vmpUser.email,
           status: 'success',
           authUserId: authUser.user.id,
-          vmpUserId: vmpUser.id
+          vmpUserId: vmpUser.id,
         });
-
       } catch (error) {
         console.error(`   ❌ Error migrating ${vmpUser.email}: ${error.message}`);
         migrationResults.push({
           email: vmpUser.email,
           status: 'error',
-          error: error.message
+          error: error.message,
         });
       }
     }
@@ -126,7 +129,9 @@ async function migrateToSupabaseAuth() {
     console.log('='.repeat(60));
     const successful = migrationResults.filter(r => r.status === 'success').length;
     const skipped = migrationResults.filter(r => r.status === 'skipped').length;
-    const failed = migrationResults.filter(r => r.status === 'failed' || r.status === 'error').length;
+    const failed = migrationResults.filter(
+      r => r.status === 'failed' || r.status === 'error'
+    ).length;
 
     console.log(`   ✅ Successful: ${successful}`);
     console.log(`   ⚠️  Skipped: ${skipped}`);
@@ -143,7 +148,6 @@ async function migrateToSupabaseAuth() {
     }
 
     return migrationResults;
-
   } catch (error) {
     console.error('\n❌ Migration failed:', error);
     throw error;
@@ -156,8 +160,7 @@ migrateToSupabaseAuth()
     console.log('\n✅ Migration script completed');
     process.exit(0);
   })
-  .catch((error) => {
+  .catch(error => {
     console.error('\n❌ Migration script failed:', error);
     process.exit(1);
   });
-

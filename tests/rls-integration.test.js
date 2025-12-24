@@ -1,6 +1,6 @@
 /**
  * RLS Integration Test
- * 
+ *
  * Validates that Express middleware correctly:
  * 1. Creates user-scoped Supabase client
  * 2. Sets JWT from session.authToken
@@ -19,7 +19,7 @@ describe('RLS Integration: Middleware', () => {
   beforeAll(() => {
     // Create test Express app with middleware
     app = express();
-    
+
     // Mock session middleware
     app.use((req, res, next) => {
       req.session = mockSession || {};
@@ -33,7 +33,7 @@ describe('RLS Integration: Middleware', () => {
     app.get('/test-rls', (req, res) => {
       res.json({
         hasSupabaseClient: !!req.supabase,
-        hasAuthSet: !!req.supabase?.auth?.getSession
+        hasAuthSet: !!req.supabase?.auth?.getSession,
       });
     });
   });
@@ -41,7 +41,7 @@ describe('RLS Integration: Middleware', () => {
   it('attaches supabase client to req', async () => {
     mockSession = {};
     const response = await request(app).get('/test-rls');
-    
+
     expect(response.status).toBe(200);
     expect(response.body.hasSupabaseClient).toBe(true);
   });
@@ -49,7 +49,7 @@ describe('RLS Integration: Middleware', () => {
   it('creates client without JWT if session.authToken missing', async () => {
     mockSession = { userId: 'test' };
     const response = await request(app).get('/test-rls');
-    
+
     expect(response.status).toBe(200);
     // Client should be created but without auth set
     expect(response.body.hasSupabaseClient).toBe(true);
@@ -58,11 +58,11 @@ describe('RLS Integration: Middleware', () => {
   it('would set JWT from session.authToken if present', async () => {
     // Note: This is a structural test only
     // Actual JWT verification requires Supabase credentials
-    mockSession = { 
-      authToken: 'test-jwt-token' 
+    mockSession = {
+      authToken: 'test-jwt-token',
     };
     const response = await request(app).get('/test-rls');
-    
+
     expect(response.status).toBe(200);
     expect(response.body.hasSupabaseClient).toBe(true);
   });
@@ -76,7 +76,7 @@ describe('RLS Integration: Session Flow', () => {
     // 2. middleware calls supabase.auth.setAuth(req.session.authToken)
     // 3. All Supabase queries now run as authenticated user
     // 4. RLS policies are enforced
-    
+
     expect(true).toBe(true); // Documented behavior
   });
 

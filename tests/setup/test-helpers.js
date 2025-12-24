@@ -1,6 +1,6 @@
 /**
  * Test Helpers
- * 
+ *
  * Shared utilities for Vitest and Playwright tests
  */
 
@@ -16,13 +16,13 @@ dotenv.config();
 export function createTestSupabaseClient() {
   const supabaseUrl = process.env.SUPABASE_URL || 'http://localhost:54321';
   const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || 'test-key';
-  
+
   return createClient(supabaseUrl, supabaseServiceKey, {
     db: { schema: 'public' },
     auth: {
       autoRefreshToken: false,
-      persistSession: false
-    }
+      persistSession: false,
+    },
   });
 }
 
@@ -49,26 +49,26 @@ export async function cleanupTestData(supabase, table, condition = {}) {
 export async function createTestUser(supabase, userData = {}) {
   // Extract camelCase keys first
   const { vendorId, ...cleanUserData } = userData;
-  
+
   const defaultUser = {
     email: `test-${Date.now()}@example.com`,
     vendor_id: vendorId || cleanUserData.vendor_id || null,
     is_active: true,
-    ...cleanUserData
+    ...cleanUserData,
   };
-  
+
   // Remove password_hash if it doesn't exist in schema (Supabase Auth handles passwords)
   // Only include it if explicitly provided
   if (!cleanUserData.password_hash && !('password_hash' in cleanUserData)) {
     delete defaultUser.password_hash;
   }
-  
+
   const { data, error } = await supabase
     .from('vmp_vendor_users')
     .insert(defaultUser)
     .select()
     .single();
-  
+
   if (error) throw error;
   return data;
 }
@@ -79,15 +79,15 @@ export async function createTestUser(supabase, userData = {}) {
 export async function createTestTenant(supabase, tenantData = {}) {
   const defaultTenant = {
     name: `Test Tenant ${Date.now()}`,
-    ...tenantData
+    ...tenantData,
   };
-  
+
   const { data, error } = await supabase
     .from('vmp_tenants')
     .insert(defaultTenant)
     .select()
     .single();
-  
+
   if (error) throw error;
   return data;
 }
@@ -102,25 +102,25 @@ export async function createTestCompany(supabase, companyData = {}) {
     const tenant = await createTestTenant(supabase);
     tenantId = tenant.id;
   }
-  
+
   const companyName = companyData.name || `Test Company ${Date.now()}`;
-  
+
   // Remove tenantId (camelCase) from companyData to avoid conflicts
   const { tenantId: _, tenant_id: __, ...cleanCompanyData } = companyData;
-  
+
   const defaultCompany = {
     name: companyName,
     legal_name: cleanCompanyData.legal_name || companyName, // legal_name is required
     tenant_id: tenantId, // Always use snake_case
-    ...cleanCompanyData
+    ...cleanCompanyData,
   };
-  
+
   const { data, error } = await supabase
     .from('vmp_companies')
     .insert(defaultCompany)
     .select()
     .single();
-  
+
   if (error) throw error;
   return data;
 }
@@ -135,22 +135,22 @@ export async function createTestVendor(supabase, vendorData = {}) {
     const tenant = await createTestTenant(supabase);
     tenantId = tenant.id;
   }
-  
+
   // Remove tenantId (camelCase) from vendorData to avoid conflicts
   const { tenantId: _, tenant_id: __, ...cleanVendorData } = vendorData;
-  
+
   const defaultVendor = {
     name: `Test Vendor ${Date.now()}`,
     tenant_id: tenantId, // Always use snake_case
-    ...cleanVendorData
+    ...cleanVendorData,
   };
-  
+
   const { data, error } = await supabase
     .from('vmp_vendors')
     .insert(defaultVendor)
     .select()
     .single();
-  
+
   if (error) throw error;
   return data;
 }
@@ -161,11 +161,11 @@ export async function createTestVendor(supabase, vendorData = {}) {
 export async function createTestCase(supabase, caseData = {}) {
   // Extract camelCase keys first
   const { vendorId, companyId, ...cleanCaseData } = caseData;
-  
+
   const vendorIdValue = vendorId || cleanCaseData.vendor_id;
   let companyIdValue = companyId || cleanCaseData.company_id;
   let tenantId = null;
-  
+
   // Get tenant_id from vendor or company
   if (vendorIdValue) {
     const { data: vendorData } = await supabase
@@ -177,7 +177,7 @@ export async function createTestCase(supabase, caseData = {}) {
       tenantId = vendorData.tenant_id;
     }
   }
-  
+
   if (!tenantId && companyIdValue) {
     const { data: companyData } = await supabase
       .from('vmp_companies')
@@ -188,7 +188,7 @@ export async function createTestCase(supabase, caseData = {}) {
       tenantId = companyData.tenant_id;
     }
   }
-  
+
   // If still no tenant_id, create one
   if (!tenantId) {
     const tenant = await createTestTenant(supabase);
@@ -200,7 +200,7 @@ export async function createTestCase(supabase, caseData = {}) {
     const company = await createTestCompany(supabase, { tenant_id: tenantId });
     companyIdValue = company.id;
   }
-  
+
   const defaultCase = {
     case_type: 'invoice',
     status: 'open',
@@ -208,15 +208,11 @@ export async function createTestCase(supabase, caseData = {}) {
     tenant_id: tenantId, // Required by schema
     vendor_id: vendorIdValue || null,
     company_id: companyIdValue, // Required by schema
-    ...cleanCaseData
+    ...cleanCaseData,
   };
-  
-  const { data, error } = await supabase
-    .from('vmp_cases')
-    .insert(defaultCase)
-    .select()
-    .single();
-  
+
+  const { data, error } = await supabase.from('vmp_cases').insert(defaultCase).select().single();
+
   if (error) throw error;
   return data;
 }
@@ -248,7 +244,7 @@ export function createMockRequest(options = {}) {
     files: options.files || [],
     session: options.session || {},
     headers: options.headers || {},
-    ...options
+    ...options,
   };
 }
 
@@ -262,7 +258,7 @@ export function createMockResponse() {
   const redirectFn = vi.fn().mockReturnThis();
   const sendFn = vi.fn().mockReturnThis();
   const setHeaderFn = vi.fn().mockReturnThis();
-  
+
   const res = {
     status: statusFn,
     json: jsonFn,
@@ -271,12 +267,12 @@ export function createMockResponse() {
     send: sendFn,
     setHeader: setHeaderFn,
     headers: {},
-    locals: {}
+    locals: {},
   };
-  
+
   // Chain status().render() pattern
   statusFn.mockReturnValue(res);
-  
+
   return res;
 }
 
@@ -286,12 +282,12 @@ export function createMockResponse() {
 export async function createTestSOACase(supabase, caseData = {}) {
   // Extract camelCase keys first
   const { vendorId, companyId: caseCompanyId, ...cleanCaseData } = caseData;
-  
+
   // Auto-create company if not provided and vendor exists
   let companyId = caseCompanyId || caseData.company_id;
   const vendorIdValue = vendorId || caseData.vendor_id;
   let tenantId = null;
-  
+
   if (!companyId && vendorIdValue) {
     const { data: vendorData } = await supabase
       .from('vmp_vendors')
@@ -320,7 +316,7 @@ export async function createTestSOACase(supabase, caseData = {}) {
       tenantId = companyData.tenant_id;
     }
   }
-  
+
   // If vendor exists, get tenant_id from vendor (vendor takes precedence)
   if (vendorIdValue && !tenantId) {
     const { data: vendorData } = await supabase
@@ -332,13 +328,13 @@ export async function createTestSOACase(supabase, caseData = {}) {
       tenantId = vendorData.tenant_id;
     }
   }
-  
+
   // If still no tenant_id, create one
   if (!tenantId) {
     const tenant = await createTestTenant(supabase);
     tenantId = tenant.id;
   }
-  
+
   const defaultCase = {
     case_type: 'soa',
     status: 'open',
@@ -346,15 +342,11 @@ export async function createTestSOACase(supabase, caseData = {}) {
     tenant_id: tenantId, // Required by schema
     vendor_id: vendorIdValue || null,
     company_id: companyId, // Always use snake_case
-    ...cleanCaseData
+    ...cleanCaseData,
   };
-  
-  const { data, error } = await supabase
-    .from('vmp_cases')
-    .insert(defaultCase)
-    .select()
-    .single();
-  
+
+  const { data, error } = await supabase.from('vmp_cases').insert(defaultCase).select().single();
+
   if (error) throw error;
   return data;
 }
@@ -365,12 +357,12 @@ export async function createTestSOACase(supabase, caseData = {}) {
 export async function createTestSOALine(supabase, lineData = {}) {
   // Extract camelCase keys first
   const { caseId, vendorId, companyId: lineCompanyId, lineNumber, ...cleanLineData } = lineData;
-  
+
   // Auto-create company if not provided (required by schema)
   let companyId = lineCompanyId || lineData.company_id;
   const caseIdValue = caseId || lineData.case_id;
   const vendorIdValue = vendorId || lineData.vendor_id;
-  
+
   if (!companyId && caseIdValue) {
     // Try to get company_id from case
     const { data: caseData } = await supabase
@@ -399,26 +391,26 @@ export async function createTestSOALine(supabase, lineData = {}) {
     const company = await createTestCompany(supabase);
     companyId = company.id;
   }
-  
+
   const defaultLine = {
     case_id: caseIdValue || null,
     vendor_id: vendorIdValue || null,
     company_id: companyId, // Always use snake_case
     invoice_number: `INV-${Date.now()}`,
     invoice_date: new Date().toISOString().split('T')[0],
-    amount: 1000.00,
+    amount: 1000.0,
     currency_code: 'USD',
     status: 'extracted',
     line_number: lineNumber || 1,
-    ...cleanLineData
+    ...cleanLineData,
   };
-  
+
   const { data, error } = await supabase
     .from('vmp_soa_items')
     .insert(defaultLine)
     .select()
     .single();
-  
+
   if (error) throw error;
   return data;
 }
@@ -429,23 +421,23 @@ export async function createTestSOALine(supabase, lineData = {}) {
 export async function createTestInvoice(supabase, invoiceData = {}) {
   // Extract camelCase keys first
   const { vendorId, ...cleanInvoiceData } = invoiceData;
-  
+
   const defaultInvoice = {
     vendor_id: vendorId || invoiceData.vendor_id || null,
     invoice_number: `INV-${Date.now()}`,
     invoice_date: new Date().toISOString().split('T')[0],
-    total_amount: 1000.00,
+    total_amount: 1000.0,
     currency_code: 'USD',
     status: 'pending',
-    ...cleanInvoiceData
+    ...cleanInvoiceData,
   };
-  
+
   const { data, error } = await supabase
     .from('vmp_invoices')
     .insert(defaultInvoice)
     .select()
     .single();
-  
+
   if (error) throw error;
   return data;
 }
@@ -456,7 +448,7 @@ export async function createTestInvoice(supabase, invoiceData = {}) {
 export async function createTestSOAMatch(supabase, matchData = {}) {
   // Extract camelCase keys first
   const { soaItemId, invoiceId, ...cleanMatchData } = matchData;
-  
+
   const defaultMatch = {
     soa_item_id: soaItemId || matchData.soa_item_id || null,
     invoice_id: invoiceId || matchData.invoice_id || null,
@@ -466,15 +458,15 @@ export async function createTestSOAMatch(supabase, matchData = {}) {
     match_score: 100,
     status: 'pending',
     matched_by: 'system',
-    ...cleanMatchData
+    ...cleanMatchData,
   };
-  
+
   const { data, error } = await supabase
     .from('vmp_soa_matches')
     .insert(defaultMatch)
     .select()
     .single();
-  
+
   if (error) throw error;
   return data;
 }
@@ -489,7 +481,7 @@ export const DISCREPANCY_TYPES = {
   DUPLICATE_INVOICE: 'duplicate_invoice',
   MISSING_SOA_ITEM: 'missing_soa_item',
   CURRENCY_MISMATCH: 'currency_mismatch',
-  OTHER: 'other'
+  OTHER: 'other',
 };
 
 /**
@@ -499,7 +491,7 @@ export const DISCREPANCY_SEVERITIES = {
   LOW: 'low',
   MEDIUM: 'medium',
   HIGH: 'high',
-  CRITICAL: 'critical'
+  CRITICAL: 'critical',
 };
 
 /**
@@ -508,7 +500,7 @@ export const DISCREPANCY_SEVERITIES = {
 export async function createTestSOAIssue(supabase, issueData = {}) {
   // Extract camelCase keys first
   const { caseId, soaItemId, ...cleanIssueData } = issueData;
-  
+
   const defaultIssue = {
     case_id: caseId || issueData.case_id || null,
     soa_item_id: soaItemId || issueData.soa_item_id || null,
@@ -516,16 +508,15 @@ export async function createTestSOAIssue(supabase, issueData = {}) {
     severity: DISCREPANCY_SEVERITIES.MEDIUM,
     description: 'Test discrepancy',
     status: 'open',
-    ...cleanIssueData
+    ...cleanIssueData,
   };
-  
+
   const { data, error } = await supabase
     .from('vmp_soa_discrepancies')
     .insert(defaultIssue)
     .select()
     .single();
-  
+
   if (error) throw error;
   return data;
 }
-

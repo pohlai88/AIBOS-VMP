@@ -43,7 +43,7 @@ describe.skip('Vendor leakage hardening', () => {
       .set('x-test-user-id', 'vendor-a-user')
       .set('x-test-vendor-id', 'vendor-a')
       .field('evidence_type', 'invoice_pdf');
-      // .attach('file', Buffer.from('dummy'), 'dummy.pdf') // enable when fixture auth is ready
+    // .attach('file', Buffer.from('dummy'), 'dummy.pdf') // enable when fixture auth is ready
 
     expect([403, 404]).toContain(res.status);
   });
@@ -57,7 +57,7 @@ describe.skip('Vendor leakage hardening', () => {
       .set('x-test-user-id', 'vendor-a-user')
       .set('x-test-vendor-id', 'vendor-a')
       .field('note', 'test-doc');
-      // .attach('document', Buffer.from('dummy'), 'dummy.pdf') // enable when fixture auth is ready
+    // .attach('document', Buffer.from('dummy'), 'dummy.pdf') // enable when fixture auth is ready
 
     expect([403, 404]).toContain(res.status);
   });

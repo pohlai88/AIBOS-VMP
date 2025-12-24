@@ -12,7 +12,7 @@ describe('Server Routes - Comprehensive Coverage', () => {
 
   beforeEach(async () => {
     process.env.NODE_ENV = 'test';
-    
+
     try {
       const testUser = await vmpAdapter.getUserByEmail('admin@acme.com');
       if (testUser) {
@@ -99,7 +99,10 @@ describe('Server Routes - Comprehensive Coverage', () => {
         return;
       }
 
-      const response = await authenticatedRequest('get', `/partials/case-detail.html?case_id=${testCaseId}`);
+      const response = await authenticatedRequest(
+        'get',
+        `/partials/case-detail.html?case_id=${testCaseId}`
+      );
       expect(response.statusCode).toBe(200);
       // Template renders caseId or '—' if missing
       expect(response.text).toBeDefined();
@@ -129,7 +132,10 @@ describe('Server Routes - Comprehensive Coverage', () => {
         return;
       }
 
-      const response = await authenticatedRequest('get', `/partials/case-thread.html?case_id=${testCaseId}`);
+      const response = await authenticatedRequest(
+        'get',
+        `/partials/case-thread.html?case_id=${testCaseId}`
+      );
       expect(response.statusCode).toBe(200);
       // Template renders thread content
       expect(response.text).toBeDefined();
@@ -152,8 +158,9 @@ describe('Server Routes - Comprehensive Coverage', () => {
         return;
       }
 
-      const response = await authenticatedRequest('post', `/cases/${testCaseId}/messages`)
-        .send({ body: 'Test message from comprehensive test suite' });
+      const response = await authenticatedRequest('post', `/cases/${testCaseId}/messages`).send({
+        body: 'Test message from comprehensive test suite',
+      });
 
       expect(response.statusCode).toBe(200);
       // Should return refreshed thread
@@ -166,8 +173,9 @@ describe('Server Routes - Comprehensive Coverage', () => {
         return;
       }
 
-      const response = await authenticatedRequest('post', `/cases/${testCaseId}/messages`)
-        .send({ body: '   ' });
+      const response = await authenticatedRequest('post', `/cases/${testCaseId}/messages`).send({
+        body: '   ',
+      });
 
       expect(response.statusCode).toBe(200);
     });
@@ -178,8 +186,9 @@ describe('Server Routes - Comprehensive Coverage', () => {
         return;
       }
 
-      const response = await authenticatedRequest('post', '/cases//messages')
-        .send({ body: 'Test message' });
+      const response = await authenticatedRequest('post', '/cases//messages').send({
+        body: 'Test message',
+      });
 
       expect([400, 404]).toContain(response.statusCode);
     });
@@ -196,7 +205,10 @@ describe('Server Routes - Comprehensive Coverage', () => {
         return;
       }
 
-      const response = await authenticatedRequest('get', `/partials/case-checklist.html?case_id=${testCaseId}`);
+      const response = await authenticatedRequest(
+        'get',
+        `/partials/case-checklist.html?case_id=${testCaseId}`
+      );
       expect(response.statusCode).toBe(200);
       // Template renders checklist
       expect(response.text).toBeDefined();
@@ -226,7 +238,10 @@ describe('Server Routes - Comprehensive Coverage', () => {
         return;
       }
 
-      const response = await authenticatedRequest('get', `/partials/case-evidence.html?case_id=${testCaseId}`);
+      const response = await authenticatedRequest(
+        'get',
+        `/partials/case-evidence.html?case_id=${testCaseId}`
+      );
       expect(response.statusCode).toBe(200);
       // Template renders evidence
       expect(response.text).toBeDefined();
@@ -283,7 +298,10 @@ describe('Server Routes - Comprehensive Coverage', () => {
         return;
       }
 
-      const response = await authenticatedRequest('get', `/partials/escalation.html?case_id=${testCaseId}`);
+      const response = await authenticatedRequest(
+        'get',
+        `/partials/escalation.html?case_id=${testCaseId}`
+      );
       expect(response.statusCode).toBe(200);
       // Template renders escalation view
       expect(response.text).toBeDefined();
@@ -389,9 +407,8 @@ describe('Server Routes - Comprehensive Coverage', () => {
 
   describe('Error Handling', () => {
     test('Should handle malformed requests gracefully', async () => {
-      const response = await request(app).post('/cases/invalid-id/messages')
-        .send('invalid json');
-      
+      const response = await request(app).post('/cases/invalid-id/messages').send('invalid json');
+
       // Should not crash, may return 400, 404, 500, or redirect if caught by auth
       expect([200, 302, 400, 404, 500]).toContain(response.statusCode);
     });
@@ -410,4 +427,3 @@ describe('Server Routes - Comprehensive Coverage', () => {
     });
   });
 });
-

@@ -11,14 +11,14 @@
 export async function parseSearchIntent(query) {
   try {
     const queryLower = query.toLowerCase().trim();
-    
+
     // Rule-based intent classification (can be enhanced with AI service)
     const intent = {
       type: 'general', // 'case', 'invoice', 'payment', 'action', 'general'
       entities: [],
       filters: {},
       keywords: [],
-      confidence: 0.7
+      confidence: 0.7,
     };
 
     // Extract entity types
@@ -46,7 +46,7 @@ export async function parseSearchIntent(query) {
     const todayMatch = queryLower.match(/\b(today|todays)\b/);
     const weekMatch = queryLower.match(/\b(this week|last week|week)\b/);
     const monthMatch = queryLower.match(/\b(this month|last month|month)\b/);
-    
+
     if (todayMatch) {
       intent.filters.dateRange = 'today';
     } else if (weekMatch) {
@@ -78,10 +78,30 @@ export async function parseSearchIntent(query) {
     }
 
     // Extract keywords (remaining words after removing filters)
-    const stopWords = ['the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by'];
-    const words = queryLower.split(/\s+/).filter(word => 
-      word.length > 2 && !stopWords.includes(word) && !word.match(/^(case|invoice|payment|inv|po)$/i)
-    );
+    const stopWords = [
+      'the',
+      'a',
+      'an',
+      'and',
+      'or',
+      'but',
+      'in',
+      'on',
+      'at',
+      'to',
+      'for',
+      'of',
+      'with',
+      'by',
+    ];
+    const words = queryLower
+      .split(/\s+/)
+      .filter(
+        word =>
+          word.length > 2 &&
+          !stopWords.includes(word) &&
+          !word.match(/^(case|invoice|payment|inv|po)$/i)
+      );
     intent.keywords = words;
 
     return intent;
@@ -92,8 +112,11 @@ export async function parseSearchIntent(query) {
       type: 'general',
       entities: [],
       filters: {},
-      keywords: query.toLowerCase().split(/\s+/).filter(w => w.length > 2),
-      confidence: 0.5
+      keywords: query
+        .toLowerCase()
+        .split(/\s+/)
+        .filter(w => w.length > 2),
+      confidence: 0.5,
     };
   }
 }
@@ -168,7 +191,7 @@ export async function generateSearchSuggestions(query, recentSearches = [], user
         { text: 'Find invoice INV-12345', category: 'suggestion' },
         { text: 'Payments this month', category: 'suggestion' },
         { text: 'Blocked cases', category: 'suggestion' },
-        { text: 'Recent payments', category: 'suggestion' }
+        { text: 'Recent payments', category: 'suggestion' },
       ];
     }
 
@@ -199,7 +222,10 @@ export async function generateSearchSuggestions(query, recentSearches = [], user
     if (recentSearches.length > 0) {
       const recent = recentSearches.slice(0, 3);
       recent.forEach(search => {
-        if (search.toLowerCase().includes(queryLower) || queryLower.includes(search.toLowerCase().split(' ')[0])) {
+        if (
+          search.toLowerCase().includes(queryLower) ||
+          queryLower.includes(search.toLowerCase().split(' ')[0])
+        ) {
           suggestions.push({ text: search, category: 'recent' });
         }
       });
@@ -235,7 +261,7 @@ export async function enhanceSearchResults(results, intent, userContext = {}) {
     // Score and sort results
     const scoredResults = results.map(item => ({
       ...item,
-      relevanceScore: scoreSearchResult(item, intent)
+      relevanceScore: scoreSearchResult(item, intent),
     }));
 
     // Sort by relevance score
@@ -316,7 +342,7 @@ export async function performAISearch(query, vendorId, userContext = {}) {
         searchCases(query, vendorId, intent).then(results => ({
           category: 'Cases',
           items: results,
-          priority: intent.type === 'case' ? 1 : 2
+          priority: intent.type === 'case' ? 1 : 2,
         }))
       );
     }
@@ -326,7 +352,7 @@ export async function performAISearch(query, vendorId, userContext = {}) {
         searchInvoices(query, vendorId, intent).then(results => ({
           category: 'Invoices',
           items: results,
-          priority: intent.type === 'invoice' ? 1 : 2
+          priority: intent.type === 'invoice' ? 1 : 2,
         }))
       );
     }
@@ -336,7 +362,7 @@ export async function performAISearch(query, vendorId, userContext = {}) {
         searchPayments(query, vendorId, intent).then(results => ({
           category: 'Payments',
           items: results,
-          priority: intent.type === 'payment' ? 1 : 2
+          priority: intent.type === 'payment' ? 1 : 2,
         }))
       );
     }
@@ -348,11 +374,13 @@ export async function performAISearch(query, vendorId, userContext = {}) {
     const allResults = [];
     searchResults.forEach((result, index) => {
       if (result.status === 'fulfilled' && result.value) {
-        allResults.push(...result.value.items.map(item => ({
-          ...item,
-          category: result.value.category,
-          priority: result.value.priority
-        })));
+        allResults.push(
+          ...result.value.items.map(item => ({
+            ...item,
+            category: result.value.category,
+            priority: result.value.priority,
+          }))
+        );
       }
     });
 
@@ -366,7 +394,7 @@ export async function performAISearch(query, vendorId, userContext = {}) {
       results: enhancedResults,
       intent,
       suggestions,
-      totalResults: enhancedResults.length
+      totalResults: enhancedResults.length,
     };
   } catch (error) {
     console.error('[AI Search] Error performing AI search:', error);
@@ -400,4 +428,3 @@ async function searchPayments(query, vendorId, intent) {
   // For now, return empty array - actual implementation in server.js
   return [];
 }
-

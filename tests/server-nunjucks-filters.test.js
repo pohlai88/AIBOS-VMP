@@ -12,18 +12,18 @@ describe('Nunjucks Filters', () => {
     });
 
     // Add the same filters as server.js
-    env.addFilter('upper', (str) => {
+    env.addFilter('upper', str => {
       return str ? String(str).toUpperCase() : '';
     });
 
-    env.addFilter('tojson', (obj) => {
+    env.addFilter('tojson', obj => {
       return JSON.stringify(obj);
     });
 
     // Date filter (same as server.js)
     env.addFilter('date', (date, format) => {
       if (!date) return '';
-      
+
       try {
         let d;
         if (date instanceof Date) {
@@ -35,12 +35,25 @@ describe('Nunjucks Filters', () => {
         } else {
           return '';
         }
-        
+
         if (isNaN(d.getTime())) return '';
-        
+
         const patterns = {
           '%b %d': () => {
-            const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            const months = [
+              'Jan',
+              'Feb',
+              'Mar',
+              'Apr',
+              'May',
+              'Jun',
+              'Jul',
+              'Aug',
+              'Sep',
+              'Oct',
+              'Nov',
+              'Dec',
+            ];
             return `${months[d.getMonth()]} ${d.getDate()}`;
           },
           '%H:%M': () => {
@@ -53,13 +66,13 @@ describe('Nunjucks Filters', () => {
             const month = String(d.getMonth() + 1).padStart(2, '0');
             const day = String(d.getDate()).padStart(2, '0');
             return `${year}-${month}-${day}`;
-          }
+          },
         };
-        
+
         if (format && patterns[format]) {
           return patterns[format]();
         }
-        
+
         return d.toLocaleDateString();
       } catch (error) {
         return '';
@@ -184,4 +197,3 @@ describe('Nunjucks Filters', () => {
     });
   });
 });
-

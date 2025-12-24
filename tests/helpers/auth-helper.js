@@ -1,6 +1,6 @@
 /**
  * Authentication Helper for Tests
- * 
+ *
  * Provides utilities to mock authentication in tests
  */
 
@@ -16,14 +16,14 @@ export async function createTestSession(userId, vendorId) {
   // Create session in database
   const session = await vmpAdapter.createSession(userId, {
     email: 'test@example.com',
-    loginAt: new Date().toISOString()
+    loginAt: new Date().toISOString(),
   });
 
   // Return session info
   return {
     sessionId: session.sessionId,
     userId: userId,
-    vendorId: vendorId
+    vendorId: vendorId,
   };
 }
 
@@ -38,13 +38,12 @@ export function getTestAuthHeaders(userId, vendorId, tenantId = null) {
   const headers = {
     'x-test-auth': 'bypass',
     'x-test-user-id': userId,
-    'x-test-vendor-id': vendorId
+    'x-test-vendor-id': vendorId,
   };
-  
+
   if (tenantId) {
     headers['x-test-tenant-id'] = tenantId;
   }
-  
+
   return headers;
 }
-

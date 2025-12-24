@@ -80,7 +80,7 @@ describe('VMP Adapter - Supabase', () => {
 
       const session = await vmpAdapter.createSession(testUserId, {
         email: 'test@example.com',
-        loginAt: new Date().toISOString()
+        loginAt: new Date().toISOString(),
       });
 
       expect(session).toBeDefined();
@@ -97,7 +97,7 @@ describe('VMP Adapter - Supabase', () => {
 
       const session = await vmpAdapter.createSession(testUserId, {
         email: 'test@example.com',
-        loginAt: new Date().toISOString()
+        loginAt: new Date().toISOString(),
       });
 
       const retrieved = await vmpAdapter.getSession(session.sessionId);
@@ -121,7 +121,7 @@ describe('VMP Adapter - Supabase', () => {
 
       const session = await vmpAdapter.createSession(testUserId, {
         email: 'test@example.com',
-        loginAt: new Date().toISOString()
+        loginAt: new Date().toISOString(),
       });
 
       await vmpAdapter.deleteSession(session.sessionId);
@@ -243,9 +243,7 @@ describe('VMP Adapter - Supabase', () => {
         return;
       }
 
-      await expect(
-        vmpAdapter.createMessage(testCaseId, 'body', 'invalid_type')
-      ).rejects.toThrow();
+      await expect(vmpAdapter.createMessage(testCaseId, 'body', 'invalid_type')).rejects.toThrow();
     });
 
     test('createMessage should throw error for invalid channel_source', async () => {
@@ -363,12 +361,7 @@ describe('VMP Adapter - Supabase', () => {
     });
 
     test('generateEvidenceStoragePath should generate valid path', () => {
-      const path = vmpAdapter.generateEvidenceStoragePath(
-        'case-123',
-        'invoice_pdf',
-        1,
-        'test.pdf'
-      );
+      const path = vmpAdapter.generateEvidenceStoragePath('case-123', 'invoice_pdf', 1, 'test.pdf');
 
       expect(path).toBeDefined();
       expect(typeof path).toBe('string');
@@ -390,9 +383,7 @@ describe('VMP Adapter - Supabase', () => {
     });
 
     test('getEvidenceSignedUrl should throw error for invalid path', async () => {
-      await expect(
-        vmpAdapter.getEvidenceSignedUrl('invalid/path', 3600)
-      ).rejects.toThrow();
+      await expect(vmpAdapter.getEvidenceSignedUrl('invalid/path', 3600)).rejects.toThrow();
     });
 
     test('uploadEvidenceToStorage should upload file successfully', async () => {
@@ -418,13 +409,13 @@ describe('VMP Adapter - Supabase', () => {
         buffer: Buffer.from('test file content for error path testing'),
         originalname: 'test-error.pdf',
         mimetype: 'application/pdf',
-        size: 100
+        size: 100,
       };
 
       // Use invalid case ID to trigger database foreign key constraint error
       // This will test lines 603, 627-636 (error handling and cleanup)
       const invalidCaseId = '00000000-0000-0000-0000-000000000000';
-      
+
       await expect(
         vmpAdapter.uploadEvidence(
           invalidCaseId,
@@ -434,7 +425,7 @@ describe('VMP Adapter - Supabase', () => {
           'vendor'
         )
       ).rejects.toThrow();
-      
+
       // The error path should have been executed (cleanup attempt)
       // This covers lines 627-636: error handling, cleanup try-catch
     });
@@ -451,22 +442,16 @@ describe('VMP Adapter - Supabase', () => {
         buffer: Buffer.from('test cleanup failure'),
         originalname: 'test-cleanup.pdf',
         mimetype: 'application/pdf',
-        size: 100
+        size: 100,
       };
 
       // Use invalid case ID - cleanup will fail but original error should still be thrown
       const invalidCaseId = '00000000-0000-0000-0000-000000000000';
-      
+
       await expect(
-        vmpAdapter.uploadEvidence(
-          invalidCaseId,
-          mockFile,
-          'invoice_pdf',
-          null,
-          'vendor'
-        )
+        vmpAdapter.uploadEvidence(invalidCaseId, mockFile, 'invoice_pdf', null, 'vendor')
       ).rejects.toThrow();
-      
+
       // Verify the error message indicates the database insert failure
       // (cleanup failure is logged but doesn't change the error)
     });
@@ -481,7 +466,7 @@ describe('VMP Adapter - Supabase', () => {
       // We need a real case and checklist step to test this properly
       // For now, verify the method exists and can be called
       expect(typeof vmpAdapter.uploadEvidence).toBe('function');
-      
+
       // Note: Full test would require:
       // 1. A case with a checklist step
       // 2. Successful file upload
@@ -498,13 +483,13 @@ describe('VMP Adapter - Supabase', () => {
       // This test verifies that checklist step update failures (lines 646-649)
       // don't cause the upload to fail
       // The catch block (lines 646-649) should handle update errors gracefully
-      
+
       // Note: This is difficult to test directly without mocking Supabase
       // The error handling path exists and is covered by the code structure
       // Integration tests verify the behavior in practice
-      
+
       expect(typeof vmpAdapter.uploadEvidence).toBe('function');
-      
+
       // The code structure ensures that:
       // 1. If step update fails, it's caught (line 646)
       // 2. Error is logged (line 647)
@@ -530,7 +515,7 @@ describe('VMP Adapter - Supabase', () => {
       const start = Date.now();
       await vmpAdapter.getInbox(testVendorId);
       const duration = Date.now() - start;
-      
+
       // Should complete in less than 5 seconds (timeout is 10 seconds)
       expect(duration).toBeLessThan(5000);
     });
@@ -590,11 +575,11 @@ describe('VMP Adapter - Supabase', () => {
 
       // Create a session and manually set it as expired
       const session = await vmpAdapter.createSession(testUserId, {});
-      
+
       // Mock getSession to return expired session
       const originalGetSession = vmpAdapter.getSession;
       const expiredDate = new Date(Date.now() - 1000).toISOString();
-      
+
       // We can't easily test the auto-delete without DB access
       // But we verify the expiration check exists
       const retrieved = await vmpAdapter.getSession(session.sessionId);
@@ -612,9 +597,7 @@ describe('VMP Adapter - Supabase', () => {
 
       // Try to get a case with wrong vendor ID
       const wrongVendorId = 'wrong-vendor-id';
-      await expect(
-        vmpAdapter.getCaseDetail('fake-case-id', wrongVendorId)
-      ).rejects.toThrow();
+      await expect(vmpAdapter.getCaseDetail('fake-case-id', wrongVendorId)).rejects.toThrow();
     });
 
     test('getInbox should return empty array for vendor with no cases', async () => {
@@ -690,12 +673,7 @@ describe('VMP Adapter - Supabase', () => {
     });
 
     test('generateEvidenceStoragePath should include date', () => {
-      const path = vmpAdapter.generateEvidenceStoragePath(
-        'case-123',
-        'invoice_pdf',
-        1,
-        'test.pdf'
-      );
+      const path = vmpAdapter.generateEvidenceStoragePath('case-123', 'invoice_pdf', 1, 'test.pdf');
 
       const today = new Date().toISOString().split('T')[0];
       expect(path).toContain(today);
@@ -732,28 +710,22 @@ describe('VMP Adapter - Supabase', () => {
       // Ensure again - should not create duplicates
       const steps2 = await vmpAdapter.ensureChecklistSteps(testCaseId, 'invoice');
       expect(Array.isArray(steps2)).toBe(true);
-      
+
       // Should have same or more steps (not duplicates)
       expect(steps2.length).toBeGreaterThanOrEqual(steps1.length);
     });
 
     test('getVendorContext should throw error for invalid userId', async () => {
-      await expect(
-        vmpAdapter.getVendorContext('invalid-user-id')
-      ).rejects.toThrow();
+      await expect(vmpAdapter.getVendorContext('invalid-user-id')).rejects.toThrow();
     });
 
     test('deleteSession should handle already deleted session', async () => {
       // Delete a non-existent session - should not throw
-      await expect(
-        vmpAdapter.deleteSession('non-existent-session-id')
-      ).resolves.not.toThrow();
+      await expect(vmpAdapter.deleteSession('non-existent-session-id')).resolves.not.toThrow();
     });
 
     test('cleanExpiredSessions should not throw', async () => {
-      await expect(
-        vmpAdapter.cleanExpiredSessions()
-      ).resolves.not.toThrow();
+      await expect(vmpAdapter.cleanExpiredSessions()).resolves.not.toThrow();
     });
   });
 
@@ -785,13 +757,13 @@ describe('VMP Adapter - Supabase', () => {
     });
 
     test('verifyEvidence should throw error for missing parameters', async () => {
-      await expect(
-        vmpAdapter.verifyEvidence(null, testUserId)
-      ).rejects.toThrow('verifyEvidence requires checklistStepId and verifiedByUserId');
+      await expect(vmpAdapter.verifyEvidence(null, testUserId)).rejects.toThrow(
+        'verifyEvidence requires checklistStepId and verifiedByUserId'
+      );
 
-      await expect(
-        vmpAdapter.verifyEvidence('step-id', null)
-      ).rejects.toThrow('verifyEvidence requires checklistStepId and verifiedByUserId');
+      await expect(vmpAdapter.verifyEvidence('step-id', null)).rejects.toThrow(
+        'verifyEvidence requires checklistStepId and verifiedByUserId'
+      );
     });
 
     test('rejectEvidence should reject a checklist step', async () => {
@@ -800,23 +772,27 @@ describe('VMP Adapter - Supabase', () => {
         return;
       }
 
-      const result = await vmpAdapter.rejectEvidence(testChecklistStepId, testUserId, 'Test rejection reason');
+      const result = await vmpAdapter.rejectEvidence(
+        testChecklistStepId,
+        testUserId,
+        'Test rejection reason'
+      );
       expect(result).toBeDefined();
       expect(result).toHaveProperty('id');
     });
 
     test('rejectEvidence should throw error for missing parameters', async () => {
-      await expect(
-        vmpAdapter.rejectEvidence(null, testUserId, 'reason')
-      ).rejects.toThrow('rejectEvidence requires checklistStepId, rejectedByUserId, and reason');
+      await expect(vmpAdapter.rejectEvidence(null, testUserId, 'reason')).rejects.toThrow(
+        'rejectEvidence requires checklistStepId, rejectedByUserId, and reason'
+      );
 
-      await expect(
-        vmpAdapter.rejectEvidence('step-id', null, 'reason')
-      ).rejects.toThrow('rejectEvidence requires checklistStepId, rejectedByUserId, and reason');
+      await expect(vmpAdapter.rejectEvidence('step-id', null, 'reason')).rejects.toThrow(
+        'rejectEvidence requires checklistStepId, rejectedByUserId, and reason'
+      );
 
-      await expect(
-        vmpAdapter.rejectEvidence('step-id', testUserId, null)
-      ).rejects.toThrow('rejectEvidence requires checklistStepId, rejectedByUserId, and reason');
+      await expect(vmpAdapter.rejectEvidence('step-id', testUserId, null)).rejects.toThrow(
+        'rejectEvidence requires checklistStepId, rejectedByUserId, and reason'
+      );
     });
 
     test('reassignCase should reassign a case', async () => {
@@ -831,13 +807,13 @@ describe('VMP Adapter - Supabase', () => {
     });
 
     test('reassignCase should throw error for missing parameters', async () => {
-      await expect(
-        vmpAdapter.reassignCase(null, 'ap', testUserId)
-      ).rejects.toThrow('reassignCase requires caseId and ownerTeam');
+      await expect(vmpAdapter.reassignCase(null, 'ap', testUserId)).rejects.toThrow(
+        'reassignCase requires caseId and ownerTeam'
+      );
 
-      await expect(
-        vmpAdapter.reassignCase('case-id', null, testUserId)
-      ).rejects.toThrow('reassignCase requires caseId and ownerTeam');
+      await expect(vmpAdapter.reassignCase('case-id', null, testUserId)).rejects.toThrow(
+        'reassignCase requires caseId and ownerTeam'
+      );
     });
 
     test('reassignCase should throw error for invalid ownerTeam', async () => {
@@ -846,9 +822,9 @@ describe('VMP Adapter - Supabase', () => {
         return;
       }
 
-      await expect(
-        vmpAdapter.reassignCase(testCaseId, 'invalid', testUserId)
-      ).rejects.toThrow('ownerTeam must be one of: procurement, ap, finance');
+      await expect(vmpAdapter.reassignCase(testCaseId, 'invalid', testUserId)).rejects.toThrow(
+        'ownerTeam must be one of: procurement, ap, finance'
+      );
     });
 
     test('updateCaseStatus should update case status', async () => {
@@ -863,13 +839,13 @@ describe('VMP Adapter - Supabase', () => {
     });
 
     test('updateCaseStatus should throw error for missing parameters', async () => {
-      await expect(
-        vmpAdapter.updateCaseStatus(null, 'open', testUserId)
-      ).rejects.toThrow('updateCaseStatus requires caseId and status');
+      await expect(vmpAdapter.updateCaseStatus(null, 'open', testUserId)).rejects.toThrow(
+        'updateCaseStatus requires caseId and status'
+      );
 
-      await expect(
-        vmpAdapter.updateCaseStatus('case-id', null, testUserId)
-      ).rejects.toThrow('updateCaseStatus requires caseId and status');
+      await expect(vmpAdapter.updateCaseStatus('case-id', null, testUserId)).rejects.toThrow(
+        'updateCaseStatus requires caseId and status'
+      );
 
       // updatedByUserId can be null for system updates
       // The method should handle null updatedByUserId
@@ -885,9 +861,9 @@ describe('VMP Adapter - Supabase', () => {
         return;
       }
 
-      await expect(
-        vmpAdapter.updateCaseStatus(testCaseId, 'invalid', testUserId)
-      ).rejects.toThrow('status must be one of: open, waiting_supplier, waiting_internal, resolved, blocked');
+      await expect(vmpAdapter.updateCaseStatus(testCaseId, 'invalid', testUserId)).rejects.toThrow(
+        'status must be one of: open, waiting_supplier, waiting_internal, resolved, blocked'
+      );
     });
 
     test('updateCaseStatusFromEvidence should update status based on evidence', async () => {
@@ -902,9 +878,9 @@ describe('VMP Adapter - Supabase', () => {
     });
 
     test('updateCaseStatusFromEvidence should throw error for missing caseId', async () => {
-      await expect(
-        vmpAdapter.updateCaseStatusFromEvidence(null)
-      ).rejects.toThrow('updateCaseStatusFromEvidence requires caseId');
+      await expect(vmpAdapter.updateCaseStatusFromEvidence(null)).rejects.toThrow(
+        'updateCaseStatusFromEvidence requires caseId'
+      );
     });
 
     test('updateCaseStatusFromEvidence should handle case with no checklist steps', async () => {
@@ -912,7 +888,7 @@ describe('VMP Adapter - Supabase', () => {
         console.warn('Skipping - no test data available');
         return;
       }
-      
+
       // This test verifies the early return path when there are no steps
       // We'll use a valid case ID but the method should handle gracefully
       const result = await vmpAdapter.updateCaseStatusFromEvidence(testCaseId);
@@ -936,17 +912,17 @@ describe('VMP Adapter - Supabase', () => {
     });
 
     test('notifyVendorUsersForCase should throw error for missing parameters', async () => {
-      await expect(
-        vmpAdapter.notifyVendorUsersForCase(null, 'type', 'title')
-      ).rejects.toThrow('notifyVendorUsersForCase requires caseId, notificationType, and title');
+      await expect(vmpAdapter.notifyVendorUsersForCase(null, 'type', 'title')).rejects.toThrow(
+        'notifyVendorUsersForCase requires caseId, notificationType, and title'
+      );
 
-      await expect(
-        vmpAdapter.notifyVendorUsersForCase('case-id', null, 'title')
-      ).rejects.toThrow('notifyVendorUsersForCase requires caseId, notificationType, and title');
+      await expect(vmpAdapter.notifyVendorUsersForCase('case-id', null, 'title')).rejects.toThrow(
+        'notifyVendorUsersForCase requires caseId, notificationType, and title'
+      );
 
-      await expect(
-        vmpAdapter.notifyVendorUsersForCase('case-id', 'type', null)
-      ).rejects.toThrow('notifyVendorUsersForCase requires caseId, notificationType, and title');
+      await expect(vmpAdapter.notifyVendorUsersForCase('case-id', 'type', null)).rejects.toThrow(
+        'notifyVendorUsersForCase requires caseId, notificationType, and title'
+      );
     });
 
     test('notifyVendorUsersForCase should handle case not found gracefully', async () => {
@@ -1038,13 +1014,7 @@ describe('VMP Adapter - Supabase', () => {
       }
 
       await expect(
-        vmpAdapter.requestEmergencyPayOverride(
-          testPaymentId,
-          null,
-          null,
-          'Test reason',
-          'high'
-        )
+        vmpAdapter.requestEmergencyPayOverride(testPaymentId, null, null, 'Test reason', 'high')
       ).rejects.toThrow();
     });
 
@@ -1055,13 +1025,7 @@ describe('VMP Adapter - Supabase', () => {
       }
 
       await expect(
-        vmpAdapter.requestEmergencyPayOverride(
-          testPaymentId,
-          null,
-          testUserId,
-          '',
-          'high'
-        )
+        vmpAdapter.requestEmergencyPayOverride(testPaymentId, null, testUserId, '', 'high')
       ).rejects.toThrow();
     });
 
@@ -1089,7 +1053,7 @@ describe('VMP Adapter - Supabase', () => {
       }
 
       const urgencyLevels = ['high', 'critical', 'emergency'];
-      
+
       for (const level of urgencyLevels) {
         const override = await vmpAdapter.requestEmergencyPayOverride(
           testPaymentId,
@@ -1137,10 +1101,7 @@ describe('VMP Adapter - Supabase', () => {
       );
 
       // Approve it
-      const approved = await vmpAdapter.approveEmergencyPayOverride(
-        override.id,
-        testUserId
-      );
+      const approved = await vmpAdapter.approveEmergencyPayOverride(override.id, testUserId);
 
       expect(approved).toBeDefined();
       expect(approved.status).toBe('approved');
@@ -1154,9 +1115,7 @@ describe('VMP Adapter - Supabase', () => {
         return;
       }
 
-      await expect(
-        vmpAdapter.approveEmergencyPayOverride(null, testUserId)
-      ).rejects.toThrow();
+      await expect(vmpAdapter.approveEmergencyPayOverride(null, testUserId)).rejects.toThrow();
     });
 
     test('approveEmergencyPayOverride should throw ValidationError for missing approvedByUserId', async () => {
@@ -1173,9 +1132,7 @@ describe('VMP Adapter - Supabase', () => {
         'high'
       );
 
-      await expect(
-        vmpAdapter.approveEmergencyPayOverride(override.id, null)
-      ).rejects.toThrow();
+      await expect(vmpAdapter.approveEmergencyPayOverride(override.id, null)).rejects.toThrow();
     });
 
     test('approveEmergencyPayOverride should throw NotFoundError for non-existent override', async () => {
@@ -1327,7 +1284,7 @@ describe('VMP Adapter - Supabase', () => {
 
     test('getEmergencyPayOverrides should return list of overrides', async () => {
       const overrides = await vmpAdapter.getEmergencyPayOverrides();
-      
+
       expect(Array.isArray(overrides)).toBe(true);
     });
 
@@ -1338,7 +1295,7 @@ describe('VMP Adapter - Supabase', () => {
       }
 
       const overrides = await vmpAdapter.getEmergencyPayOverrides(testPaymentId);
-      
+
       expect(Array.isArray(overrides)).toBe(true);
       overrides.forEach(override => {
         expect(override.payment_id).toBe(testPaymentId);
@@ -1347,7 +1304,7 @@ describe('VMP Adapter - Supabase', () => {
 
     test('getEmergencyPayOverrides should filter by status', async () => {
       const pendingOverrides = await vmpAdapter.getEmergencyPayOverrides(null, 'pending');
-      
+
       expect(Array.isArray(pendingOverrides)).toBe(true);
       pendingOverrides.forEach(override => {
         expect(override.status).toBe('pending');
@@ -1356,7 +1313,7 @@ describe('VMP Adapter - Supabase', () => {
 
     test('getEmergencyPayOverrides should respect limit', async () => {
       const overrides = await vmpAdapter.getEmergencyPayOverrides(null, null, 5);
-      
+
       expect(Array.isArray(overrides)).toBe(true);
       expect(overrides.length).toBeLessThanOrEqual(5);
     });
@@ -1368,7 +1325,7 @@ describe('VMP Adapter - Supabase', () => {
       }
 
       const overrides = await vmpAdapter.getEmergencyPayOverrides(testPaymentId);
-      
+
       if (overrides.length > 0) {
         const override = overrides[0];
         // Check that related data is included (if available)
@@ -1377,4 +1334,3 @@ describe('VMP Adapter - Supabase', () => {
     });
   });
 });
-

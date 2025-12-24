@@ -251,12 +251,12 @@
 
 <script>
 function toggleTheme() {
-    const html = document.documentElement;
-    const currentTheme = html.getAttribute('data-theme') || 'dark';
-    const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-    html.setAttribute('data-theme', newTheme);
-    localStorage.setItem('vmp-theme', newTheme);
-    document.getElementById('theme-indicator').textContent = newTheme.toUpperCase();
+  const html = document.documentElement;
+  const currentTheme = html.getAttribute('data-theme') || 'dark';
+  const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+  html.setAttribute('data-theme', newTheme);
+  localStorage.setItem('vmp-theme', newTheme);
+  document.getElementById('theme-indicator').textContent = newTheme.toUpperCase();
 }
 </script>
 {% endblock %}

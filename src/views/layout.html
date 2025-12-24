@@ -49,7 +49,7 @@
             this.listType = listContainer.getAttribute('data-list-type') || 'cases';
           }
 
-          document.addEventListener('bulk-toggle', (e) => {
+          document.addEventListener('bulk-toggle', e => {
             this.toggleSelection(e.detail.id);
           });
 
@@ -107,7 +107,7 @@
             approve: 'approve',
             reject: 'reject',
             export: 'export',
-            close: 'close'
+            close: 'close',
           };
 
           confirmData.action = actionLabels[action] || action;
@@ -128,7 +128,7 @@
               const response = await fetch(`/api/bulk-actions/${this.listType}/${action}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ ids: selectedIds })
+                body: JSON.stringify({ ids: selectedIds }),
               });
 
               if (!response.ok) {
@@ -142,7 +142,10 @@
                   progressData.isOpen = false;
                   this.clearSelection();
                   if (window.htmx) {
-                    htmx.ajax('GET', '/partials/case-inbox.html', { target: '#case-inbox', swap: 'innerHTML' });
+                    htmx.ajax('GET', '/partials/case-inbox.html', {
+                      target: '#case-inbox',
+                      swap: 'innerHTML',
+                    });
                   }
                 }, 500);
               } else {
@@ -156,7 +159,7 @@
               alert(error.message || 'Failed to execute bulk action');
             }
           };
-        }
+        },
       };
     }
   </script>
@@ -359,14 +362,13 @@
     });
 
     // Global Search (Ctrl+K) trigger
-    document.addEventListener('click', (e) => {
+    document.addEventListener('click', e => {
       const btn = e.target.closest('[data-open-cmdk]');
       if (btn) {
         e.preventDefault();
         window.dispatchEvent(new CustomEvent('cmdk:open'));
       }
     });
-
 
     // Org Tree graceful fallback (prevents "loud red error box" drift)
     window.VMPOrgTreeFail = function (event) {

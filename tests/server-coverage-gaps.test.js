@@ -12,14 +12,14 @@ describe('Server Coverage Gaps - Error Paths and Edge Cases', () => {
 
   beforeEach(async () => {
     process.env.NODE_ENV = 'test';
-    
+
     try {
       const testUser = await vmpAdapter.getUserByEmail('admin@acme.com');
       if (testUser) {
         testUserId = testUser.id;
         testVendorId = testUser.vendor_id;
         testSession = await createTestSession(testUserId, testVendorId);
-        
+
         if (testVendorId) {
           const cases = await vmpAdapter.getInbox(testVendorId);
           if (cases && cases.length > 0) {
@@ -36,7 +36,7 @@ describe('Server Coverage Gaps - Error Paths and Edge Cases', () => {
     'x-test-auth': 'bypass',
     'x-test-user-id': 'internal-user-id',
     'x-test-vendor-id': null,
-    'x-test-is-internal': 'true'
+    'x-test-is-internal': 'true',
   });
 
   const getRegularAuthHeaders = () => {
@@ -53,7 +53,7 @@ describe('Server Coverage Gaps - Error Paths and Edge Cases', () => {
       const response = await request(app)
         .get('/definitely-does-not-exist-route-xyz123')
         .set('x-test-auth', 'bypass');
-      
+
       expect(response.statusCode).toBe(404);
       expect(response.text).toContain('404');
     });
@@ -62,7 +62,7 @@ describe('Server Coverage Gaps - Error Paths and Edge Cases', () => {
       const response = await request(app)
         .get('/partials/non-existent-partial.html')
         .set('x-test-auth', 'bypass');
-      
+
       expect(response.statusCode).toBe(404);
     });
   });
@@ -72,7 +72,7 @@ describe('Server Coverage Gaps - Error Paths and Edge Cases', () => {
       // Create a route that throws an error with status
       const testError = new Error('Test error');
       testError.status = 400;
-      
+
       // We can't easily trigger the error handler without modifying routes
       // But we can verify it exists and is registered
       expect(app._router).toBeDefined();
@@ -182,8 +182,10 @@ describe('Server Coverage Gaps - Error Paths and Edge Cases', () => {
       // Mock updateCaseStatus to succeed but getCaseDetail to fail
       const originalUpdate = vmpAdapter.updateCaseStatus;
       const originalGetCase = vmpAdapter.getCaseDetail;
-      
-      vmpAdapter.updateCaseStatus = vi.fn().mockResolvedValue({ id: testCaseId, status: 'resolved' });
+
+      vmpAdapter.updateCaseStatus = vi
+        .fn()
+        .mockResolvedValue({ id: testCaseId, status: 'resolved' });
       vmpAdapter.getCaseDetail = vi.fn().mockRejectedValue(new Error('Failed to fetch case'));
 
       try {
@@ -341,4 +343,3 @@ describe('Server Coverage Gaps - Error Paths and Edge Cases', () => {
     });
   });
 });
-

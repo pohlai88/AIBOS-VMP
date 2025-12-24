@@ -27,4 +27,3 @@ describe('Timeout Middleware', () => {
   // Note: Testing actual timeout would require mocking slow operations
   // which is complex. The middleware is verified to be in place.
 });
-

@@ -20,4 +20,3 @@ console.log(`VAPID_PUBLIC_KEY=${vapidKeys.publicKey}`);
 console.log(`VAPID_PRIVATE_KEY=${vapidKeys.privateKey}`);
 console.log(`VAPID_SUBJECT=mailto:admin@nexuscanon.com`);
 console.log('\n========================================\n');
-
