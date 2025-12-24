@@ -1,0 +1,196 @@
+{% extends "layout.html" %}
+
+{% block title %}{{ case.subject }} - Case Detail{% endblock %}
+
+{% block content %}
+<main class="min-h-screen bg-black">
+  <!-- Header -->
+  <div class="border-b border-white/8 bg-white/3 backdrop-blur-sm">
+    <div class="max-w-7xl mx-auto px-4 py-4">
+      <!-- Breadcrumb -->
+      <div class="flex items-center gap-2 text-sm text-white/60 mb-3">
+        <a href="/vendor/dashboard" class="hover:text-white transition-colors">Dashboard</a>
+        <span class="text-white/30">/</span>
+        <span class="text-white">Case {{ case.id | truncate(12) }}</span>
+      </div>
+
+      <!-- Title + Status -->
+      <div class="flex justify-between items-start gap-4">
+        <div class="flex-1">
+          <h1 class="text-3xl font-bold text-white mb-2">
+            {{ case.subject or 'Untitled Case' }}
+          </h1>
+          <div class="flex items-center gap-3 flex-wrap">
+            <span class="px-3 py-1 rounded-lg text-sm font-semibold status-badge status-{{ case.status }}">
+              {{ case.status | replace('-', ' ') | title }}
+            </span>
+            <span class="text-sm text-white/60">
+              Created {{ case.created_at | formatDate }}
+            </span>
+            {% if vendor %}
+            <span class="text-sm text-white/60">
+              • Vendor: <span class="text-white">{{ vendor.name }}</span>
+            </span>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tab Navigation -->
+  <div class="border-b border-white/8 sticky top-0 z-20 bg-black/50 backdrop-blur-sm">
+    <div class="max-w-7xl mx-auto px-4">
+      <nav class="flex gap-6 overflow-x-auto" role="tablist">
+        {% set tabs = ['overview', 'thread', 'evidence', 'checklist', 'activity'] %}
+        {% for tab in tabs %}
+        <a href="?tab={{ tab }}"
+           id="{{ tab }}-tab-button"
+           role="tab"
+           data-tab="{{ tab }}"
+           class="py-3 px-1 border-b-2 text-sm font-semibold whitespace-nowrap transition-colors {% if active_tab == tab %}border-green-500 text-green-400{% else %}border-transparent text-white/60 hover:text-white{% endif %}"
+           onclick="switchTab(event, '{{ tab }}')">
+          {{ tab | title }}
+        </a>
+        {% endfor %}
+      </nav>
+    </div>
+  </div>
+
+  <!-- Tab Content Container -->
+  <div class="max-w-7xl mx-auto px-4 py-6">
+    <!-- Overview Tab (always loaded) -->
+    <div id="overview-tab"
+         class="tab-pane {% if active_tab != 'overview' %}hidden{% endif %}">
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <!-- Main Content -->
+        <div class="md:col-span-2 space-y-4">
+          <div class="border border-white/8 rounded-lg bg-white/3 p-6">
+            <h2 class="text-lg font-semibold text-white mb-4">Case Overview</h2>
+
+            <div class="space-y-3 text-sm">
+              {% if case.case_type %}
+              <div class="flex justify-between">
+                <span class="text-white/60">Type:</span>
+                <span class="text-white">{{ case.case_type | replace('_', ' ') | title }}</span>
+              </div>
+              {% endif %}
+
+              {% if case.description %}
+              <div class="flex justify-between items-start">
+                <span class="text-white/60">Description:</span>
+                <span class="text-white/80 text-right max-w-xs">{{ case.description }}</span>
+              </div>
+              {% endif %}
+
+              {% if case.assigned_to %}
+              <div class="flex justify-between">
+                <span class="text-white/60">Assigned To:</span>
+                <span class="text-white">{{ case.assigned_to }}</span>
+              </div>
+              {% endif %}
+
+              {% if case.due_date %}
+              <div class="flex justify-between">
+                <span class="text-white/60">Due Date:</span>
+                <span class="text-white">{{ case.due_date | formatDate }}</span>
+              </div>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="space-y-4">
+          <div class="border border-white/8 rounded-lg bg-white/3 p-4">
+            <h3 class="font-semibold text-white mb-3 text-sm">Quick Info</h3>
+            <div class="space-y-2 text-xs text-white/70">
+              <div>
+                <span class="text-white/50">Case ID</span>
+                <div class="text-white font-mono mt-1">{{ case.id | truncate(16) }}</div>
+              </div>
+              <div class="mt-3 pt-3 border-t border-white/8">
+                <span class="text-white/50">Updated</span>
+                <div class="text-white mt-1">
+                  {% if case.updated_at %}
+                    {{ case.updated_at | formatDate }}
+                  {% else %}
+                    N/A
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Thread Tab (lazy load via HTMX) -->
+    <div id="thread-tab"
+         class="tab-pane {% if active_tab != 'thread' %}hidden{% endif %}"
+         hx-get="/cases/{{ case.id }}/thread"
+         hx-trigger="revealed">
+      <div class="flex justify-center py-8">
+        <div class="text-white/60">Loading messages...</div>
+      </div>
+    </div>
+
+    <!-- Evidence Tab (lazy load via HTMX) -->
+    <div id="evidence-tab"
+         class="tab-pane {% if active_tab != 'evidence' %}hidden{% endif %}"
+         hx-get="/cases/{{ case.id }}/evidence"
+         hx-trigger="revealed">
+      <div class="flex justify-center py-8">
+        <div class="text-white/60">Loading evidence...</div>
+      </div>
+    </div>
+
+    <!-- Checklist Tab (placeholder) -->
+    <div id="checklist-tab"
+         class="tab-pane {% if active_tab != 'checklist' %}hidden{% endif %}">
+      <div class="border border-white/8 rounded-lg bg-white/3 p-6 text-center">
+        <p class="text-white/60">Checklist feature coming soon</p>
+      </div>
+    </div>
+
+    <!-- Activity Tab (placeholder) -->
+    <div id="activity-tab"
+         class="tab-pane {% if active_tab != 'activity' %}hidden{% endif %}">
+      <div class="border border-white/8 rounded-lg bg-white/3 p-6 text-center">
+        <p class="text-white/60">Activity log coming soon</p>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script>
+  function switchTab(event, tabName) {
+    event.preventDefault();
+
+    // Hide all tabs
+    document.querySelectorAll('.tab-pane').forEach((pane) => {
+      pane.classList.add('hidden');
+    });
+
+    // Show selected tab
+    const selectedPane = document.getElementById(`${tabName}-tab`);
+    if (selectedPane) {
+      selectedPane.classList.remove('hidden');
+    }
+
+    // Update URL without reload
+    const url = new URL(window.location);
+    url.searchParams.set('tab', tabName);
+    window.history.replaceState({}, '', url);
+
+    // Trigger HTMX load if needed
+    const hxElement = document.getElementById(`${tabName}-tab`);
+    if (hxElement && hxElement.hasAttribute('hx-get')) {
+      htmx.ajax('GET', hxElement.getAttribute('hx-get'), {
+        target: `#${tabName}-tab`,
+        swap: 'innerHTML'
+      });
+    }
+  }
+</script>
+{% endblock %}
