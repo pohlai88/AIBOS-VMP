@@ -1,10 +1,10 @@
 # NEXUS PORTAL - MASTER PLAN PRD
 
-**Version:** 1.5
+**Version:** 1.6
 **Created:** 2025-12-25
-**Updated:** 2025-12-26
+**Updated:** 2025-12-27
 **Status:** IN PROGRESS
-**Last CCP Verified:** Phase 11 Complete (CCP-8), Phase 12 Ready
+**Last CCP Verified:** Phase 12 Complete (CCP-10), Phase 13 Ready
 
 ---
 
@@ -23,6 +23,7 @@
 | CCP-7 | Supabase Auth integration working | ✅ PASS | 2025-12-26 |
 | CCP-8 | All 10 validation checks pass | ✅ PASS | 2025-12-26 |
 | CCP-9 | Legacy removal migration ready | ⏳ READY | - |
+| CCP-10 | Realtime validated (two-session test) | ✅ PASS | 2025-12-27 |
 
 ---
 
@@ -296,13 +297,35 @@
 
 ---
 
-### PHASE 12: Realtime Integration ❌ NOT STARTED
+### PHASE 12: Realtime Integration ✅ COMPLETE + VALIDATED
 | # | Task | Status |
 |---|------|--------|
-| 12.1 | Create public/js/nexus/realtime-client.js | ❌ Todo |
-| 12.2 | Subscribe to nexus_notifications | ❌ Todo |
-| 12.3 | Update notification bell in real-time | ❌ Todo |
-| 12.4 | Payment priority sound alerts | ❌ Todo |
+| 12.1 | Create public/js/nexus/realtime-client.js | ✅ Done |
+| 12.2 | Subscribe to nexus_notifications | ✅ Done |
+| 12.3 | Update notification bell in real-time | ✅ Done |
+| 12.4 | Payment priority sound alerts | ✅ Done |
+| 12.5 | Realtime config API endpoint | ✅ Done |
+| 12.6 | Case thread live updates | ✅ Done |
+| 12.7 | CSP updated for WebSocket | ✅ Done |
+| 12.8 | Layout meta tags for auth | ✅ Done |
+| 12.9 | Toast notifications for high-priority | ✅ Done |
+| 12.10 | RLS policy for realtime SELECT | ✅ Done |
+| 12.11 | **E2E Validation Test** | ✅ PASSED |
+
+**Validation Results (2025-12-27):**
+- ✅ WebSocket connection established
+- ✅ Subscription filter matching user_id correctly
+- ✅ INSERT events received in real-time
+- ✅ Multiple notification types working (case_escalated, payment_pending)
+- ✅ Cleanup on page navigation working
+- ✅ High-priority toast notifications displayed
+
+**Bugs Fixed During Testing:**
+- Fixed `nexus.user.id` → `nexus.user.user_id` in layout meta tag
+- Added RLS policy for anon/authenticated SELECT on notifications
+- Fixed property names in realtime-client.js (`type` → `notification_type`, `message` → `body`)
+
+**CCP-10: ✅ VERIFIED** - Two-session reality test passed
 
 ---
 
@@ -426,6 +449,16 @@ Before running migration 099:
 - [x] CCP-7: Supabase Auth working ✅ 2025-12-26
 - [x] CCP-8: All 10 validation checks pass ✅ 2025-12-26
 - [x] Tested in mini browser end-to-end ✅ 2025-12-26
+- [x] CCP-10: Realtime validated (two-session test) ✅ 2025-12-27
+
+---
+
+## Resume Point
+
+**CONTINUE FROM:** Phase 13.1 - Legacy removal migration (099_remove_legacy_vmp.sql)
+
+**Phase 12 COMPLETE:** Realtime fully validated with two-session test.
+All WebSocket subscriptions, INSERT events, and toast notifications working.
 
 ---
 
