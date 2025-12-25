@@ -11,9 +11,9 @@
  * - JWT contains RLS claims (nexus_user_id, nexus_tenant_id)
  * - Actual data comes via authenticated HTMX requests
  *
- * @version 1.1.0
+ * @version 1.3.0
  * @created 2025-12-26
- * @updated 2025-12-26 - Added authenticated token support
+ * @updated 2025-12-27 - Added single-flight token fetch, Retry-After handling
  */
 
 class NexusRealtimeClient {
@@ -26,6 +26,7 @@ class NexusRealtimeClient {
     this.accessToken = null;
     this.tokenExpiresAt = 0;
     this.tokenRefreshTimer = null;
+    this._pendingTokenFetch = null; // Single-flight pattern
     // Dev mode detection for extended toast duration
     this.isDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
   }
@@ -33,9 +34,28 @@ class NexusRealtimeClient {
   /**
    * Fetch authenticated access token from server
    * Token contains RLS claims and is short-lived
+   * Uses single-flight pattern to prevent stampede on concurrent calls
    * Returns { token, error, retryAfter } - error present if auth failed (401) or rate limited (429)
    */
   async fetchRealtimeToken() {
+    // Single-flight: if a fetch is already in progress, return that promise
+    if (this._pendingTokenFetch) {
+      return this._pendingTokenFetch;
+    }
+
+    this._pendingTokenFetch = this._doFetchRealtimeToken();
+    try {
+      return await this._pendingTokenFetch;
+    } finally {
+      this._pendingTokenFetch = null;
+    }
+  }
+
+  /**
+   * Internal token fetch implementation
+   * @private
+   */
+  async _doFetchRealtimeToken() {
     try {
       const response = await fetch('/nexus/api/realtime-token', {
         credentials: 'include' // Include session cookie
@@ -43,11 +63,13 @@ class NexusRealtimeClient {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
+        // Prefer Retry-After header for rate limiting (more reliable)
+        const retryAfter = parseInt(response.headers.get('Retry-After'), 10) || errorData.retryAfter || 60;
 
         // 429 = rate limited, schedule retry after delay
         if (response.status === 429) {
-          console.warn('📡 Nexus Realtime: Rate limited, retry after', errorData.retryAfter || 60, 's');
-          return { token: null, error: 'RATE_LIMITED', retryAfter: errorData.retryAfter || 60 };
+          console.warn('📡 Nexus Realtime: Rate limited, retry after', retryAfter, 's');
+          return { token: null, error: 'RATE_LIMITED', retryAfter };
         }
 
         // 401 = auth required, don't mask with anon fallback

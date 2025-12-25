@@ -1347,6 +1347,7 @@ router.get('/api/realtime-token', requireNexusAuth, async (req, res) => {
     const clientIp = req.ip || req.connection?.remoteAddress || 'unknown';
 
     if (sessionId && !checkRateLimit(`session:${sessionId}`, RATE_LIMIT_MAX_PER_SESSION)) {
+      res.set('Retry-After', '60');
       return res.status(429).json({
         error: 'Too many requests',
         hint: 'Please wait before requesting another token.',
@@ -1355,6 +1356,7 @@ router.get('/api/realtime-token', requireNexusAuth, async (req, res) => {
     }
 
     if (!checkRateLimit(`ip:${clientIp}`, RATE_LIMIT_MAX_PER_IP)) {
+      res.set('Retry-After', '60');
       return res.status(429).json({
         error: 'Too many requests from this IP',
         hint: 'Please wait before requesting another token.',
@@ -1380,12 +1382,14 @@ router.get('/api/realtime-token', requireNexusAuth, async (req, res) => {
     const jitter = Math.floor(Math.random() * 60);
     const expiringThreshold = 5 * 60 + jitter;
 
-    let currentExpiresAt = sessionData.authExpiresAt || 0;
+    const currentExpiresAt = sessionData.authExpiresAt || 0;
     const now = Math.floor(Date.now() / 1000);
 
     let accessToken = sessionData.authToken;
+    let newExpiresAt = currentExpiresAt;
 
-    if (currentExpiresAt - now < expiringThreshold) {
+    // Use >= for clearer logic and to handle edge case where expiresAt is 0/undefined
+    if (currentExpiresAt <= now + expiringThreshold) {
       // Token is expired or expiring soon - refresh it
       if (!sessionData.refreshToken) {
         return res.status(401).json({
@@ -1420,8 +1424,8 @@ router.get('/api/realtime-token', requireNexusAuth, async (req, res) => {
         });
 
         accessToken = refreshData.session.access_token;
-        currentExpiresAt = refreshData.session.expires_at;
-        console.log('[REALTIME-TOKEN] Token refreshed for user:', req.nexus.userId);
+        newExpiresAt = refreshData.session.expires_at;
+        console.log('[REALTIME-TOKEN] Token refreshed for tenant:', req.nexus.tenantId);
       } catch (refreshErr) {
         console.error('[REALTIME-TOKEN] Refresh error:', refreshErr);
         return res.status(500).json({ error: 'Token refresh failed' });
