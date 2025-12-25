@@ -1178,6 +1178,9 @@ async function setAuthAppMetadata(authUserId, nexusUserId, nexusTenantId, refres
   });
 
   if (updateError) throw new Error(`Failed to set app_metadata: ${updateError.message}`);
+  if (!userData?.user) {
+    throw new Error('Failed to set app_metadata: updateUserById returned no user. Please retry login.');
+  }
 
   // Step 2: If refresh token provided, refresh MUST succeed (no silent failures)
   let refreshedSession = null;
@@ -1190,24 +1193,31 @@ async function setAuthAppMetadata(authUserId, nexusUserId, nexusTenantId, refres
       // HARD ERROR: Don't allow half-success where user is "logged in" but RLS claims are missing
       throw new Error(`Session refresh failed after metadata update: ${refreshError.message}. Please retry login.`);
     }
+    if (!refreshData?.session?.access_token) {
+      // Edge case: no error but also no session (revoked token, race condition)
+      throw new Error('Session refresh failed after metadata update: no session returned. Please retry login.');
+    }
 
     refreshedSession = refreshData.session;
 
     // DEV: Verify JWT contains the claims (catches bugs early)
-    if (process.env.NODE_ENV === 'development' && refreshedSession?.access_token) {
+    if (process.env.NODE_ENV === 'development') {
       try {
-        // Decode JWT payload (base64url) - no verification, just inspection
-        const payloadB64 = refreshedSession.access_token.split('.')[1];
-        const payload = JSON.parse(Buffer.from(payloadB64, 'base64url').toString());
-        const claims = payload.app_metadata || {};
-
-        if (claims.nexus_user_id !== nexusUserId || claims.nexus_tenant_id !== nexusTenantId) {
-          console.warn('[DEV] JWT claims mismatch after refresh!', {
-            expected: { nexus_user_id: nexusUserId, nexus_tenant_id: nexusTenantId },
-            got: { nexus_user_id: claims.nexus_user_id, nexus_tenant_id: claims.nexus_tenant_id }
-          });
+        const parts = refreshedSession.access_token.split('.');
+        if (parts.length < 2) {
+          console.warn('[DEV] Invalid access_token format (expected 3 parts)');
         } else {
-          console.log('[DEV] ✓ JWT claims verified:', claims.nexus_user_id, claims.nexus_tenant_id);
+          const payload = JSON.parse(Buffer.from(parts[1], 'base64url').toString());
+          const claims = payload.app_metadata || {};
+
+          if (claims.nexus_user_id !== nexusUserId || claims.nexus_tenant_id !== nexusTenantId) {
+            console.warn('[DEV] JWT claims mismatch after refresh!', {
+              expected: { nexus_user_id: nexusUserId, nexus_tenant_id: nexusTenantId },
+              got: { nexus_user_id: claims.nexus_user_id, nexus_tenant_id: claims.nexus_tenant_id }
+            });
+          } else {
+            console.log('[DEV] ✓ JWT claims verified:', claims.nexus_user_id, claims.nexus_tenant_id);
+          }
         }
       } catch (decodeErr) {
         console.warn('[DEV] Could not decode JWT for verification:', decodeErr.message);
