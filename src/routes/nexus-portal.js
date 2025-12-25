@@ -1287,9 +1287,11 @@ router.post('/relationships/invite', requireNexusAuth, async (req, res) => {
  */
 router.get('/notifications', requireNexusAuth, async (req, res) => {
   try {
-    const notifications = await nexusAdapter.getNotifications(req.nexus.userId, {
-      limit: 100
-    });
+    const notifications = await nexusAdapter.getNotifications(
+      req.nexus.userId,
+      req.nexus.tenantId,
+      { limit: 100 }
+    );
 
     res.render('nexus/pages/notifications.html', {
       notifications
@@ -1306,7 +1308,7 @@ router.get('/notifications', requireNexusAuth, async (req, res) => {
  */
 router.get('/api/notifications/unread', requireNexusAuth, async (req, res) => {
   try {
-    const counts = await nexusAdapter.getUnreadCount(req.nexus.userId);
+    const counts = await nexusAdapter.getUnreadCount(req.nexus.userId, req.nexus.tenantId);
     res.json(counts);
   } catch (error) {
     console.error('Unread count error:', error);
@@ -1324,6 +1326,7 @@ router.post('/api/notifications/read', requireNexusAuth, async (req, res) => {
 
     const count = await nexusAdapter.markNotificationsRead(
       req.nexus.userId,
+      req.nexus.tenantId,
       notificationIds || []
     );
 

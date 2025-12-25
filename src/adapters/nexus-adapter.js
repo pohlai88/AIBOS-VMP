@@ -933,16 +933,18 @@ async function createNotification(data) {
 }
 
 /**
- * Get notifications for a user
+ * Get notifications for a user (includes tenant broadcasts where user_id IS NULL)
  * @param {string} userId - USR-* ID
+ * @param {string} tenantId - TNT-* ID (for broadcasts)
  * @param {object} options - Query options
  * @returns {Promise<object[]>} Notifications
  */
-async function getNotifications(userId, options = {}) {
+async function getNotifications(userId, tenantId, options = {}) {
   let query = serviceClient
     .from('nexus_notifications')
     .select('*')
-    .eq('user_id', userId);
+    .eq('tenant_id', tenantId)
+    .or(`user_id.eq.${userId},user_id.is.null`);
 
   if (options.unreadOnly) {
     query = query.eq('is_read', false);
@@ -963,38 +965,66 @@ async function getNotifications(userId, options = {}) {
 }
 
 /**
- * Get unread notification count
+ * Get unread notification count (includes tenant broadcasts)
  * @param {string} userId - USR-* ID
+ * @param {string} tenantId - TNT-* ID (for broadcasts)
  * @returns {Promise<{ total: number, payment: number, case: number, critical: number }>}
  */
-async function getUnreadCount(userId) {
-  const { data, error } = await serviceClient
+async function getUnreadCount(userId, tenantId) {
+  // Get user-specific counts
+  const { data: userData, error: userError } = await serviceClient
     .from('nexus_notification_counts')
     .select('*')
     .eq('user_id', userId)
     .single();
 
-  if (error && error.code !== 'PGRST116') throw new Error(`Failed to get unread count: ${error.message}`);
+  if (userError && userError.code !== 'PGRST116') {
+    throw new Error(`Failed to get unread count: ${userError.message}`);
+  }
+
+  // Get broadcast counts (user_id IS NULL for this tenant)
+  const { data: broadcastData, error: broadcastError } = await serviceClient
+    .from('nexus_notifications')
+    .select('notification_id, notification_type, priority')
+    .eq('tenant_id', tenantId)
+    .is('user_id', null)
+    .eq('is_read', false);
+
+  if (broadcastError) {
+    throw new Error(`Failed to get broadcast count: ${broadcastError.message}`);
+  }
+
+  // Combine counts
+  const broadcasts = broadcastData || [];
+  const broadcastCounts = {
+    total: broadcasts.length,
+    payment: broadcasts.filter(n => n.notification_type?.startsWith('payment_')).length,
+    case: broadcasts.filter(n => n.notification_type?.startsWith('case_') || n.notification_type === 'message_received').length,
+    critical: broadcasts.filter(n => n.priority === 'critical').length
+  };
 
   return {
-    total: data?.total_unread || 0,
-    payment: data?.payment_unread || 0,
-    case: data?.case_unread || 0,
-    critical: data?.critical_unread || 0
+    total: (userData?.total_unread || 0) + broadcastCounts.total,
+    payment: (userData?.payment_unread || 0) + broadcastCounts.payment,
+    case: (userData?.case_unread || 0) + broadcastCounts.case,
+    critical: (userData?.critical_unread || 0) + broadcastCounts.critical
   };
 }
 
 /**
  * Mark notifications as read
  * @param {string} userId - USR-* ID
+ * @param {string} tenantId - TNT-* ID (for broadcasts)
  * @param {string[]} notificationIds - NTF-* IDs (or empty for all)
  * @returns {Promise<number>} Number marked
  */
-async function markNotificationsRead(userId, notificationIds = []) {
+async function markNotificationsRead(userId, tenantId, notificationIds = []) {
+  // Build filter: user's own notifications OR tenant broadcasts
   let query = serviceClient
     .from('nexus_notifications')
     .update({ is_read: true, read_at: new Date().toISOString() })
-    .eq('user_id', userId)
+    .eq('tenant_id', tenantId)
+    .or(`user_id.eq.${userId},user_id.is.null`)
     .eq('is_read', false);
 
   if (notificationIds.length > 0) {
