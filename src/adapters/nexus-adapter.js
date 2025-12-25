@@ -1153,25 +1153,47 @@ async function createAuthUser(options) {
 }
 
 /**
- * Set Nexus identity claims in auth user's app_metadata
+ * Set Nexus identity claims in auth user's app_metadata and return refreshed session
  * MUST be called server-side (service_role) after successful login
  * This enables RLS policies to use jwt_nexus_user_id() and jwt_nexus_tenant_id()
+ *
+ * IMPORTANT: After updating app_metadata, the current session JWT is stale.
+ * Pass the refresh_token to get a NEW session with updated JWT containing the metadata.
+ * Without refresh, RLS helpers return NULL until client refreshes naturally.
  *
  * @param {string} authUserId - Supabase Auth UUID
  * @param {string} nexusUserId - Nexus user ID (USR-*)
  * @param {string} nexusTenantId - Nexus tenant ID (TNT-*)
- * @returns {Promise<object>} Updated auth user
+ * @param {string} [refreshToken] - Current refresh token to exchange for new session
+ * @returns {Promise<{user: object, session: object|null}>} Updated user + refreshed session
  */
-async function setAuthAppMetadata(authUserId, nexusUserId, nexusTenantId) {
-  const { data, error } = await serviceClient.auth.admin.updateUserById(authUserId, {
+async function setAuthAppMetadata(authUserId, nexusUserId, nexusTenantId, refreshToken = null) {
+  // Step 1: Update app_metadata using admin API
+  const { data: userData, error: updateError } = await serviceClient.auth.admin.updateUserById(authUserId, {
     app_metadata: {
       nexus_user_id: nexusUserId,
       nexus_tenant_id: nexusTenantId
     }
   });
 
-  if (error) throw new Error(`Failed to set app_metadata: ${error.message}`);
-  return data.user;
+  if (updateError) throw new Error(`Failed to set app_metadata: ${updateError.message}`);
+
+  // Step 2: If refresh token provided, get a new session with updated JWT
+  let refreshedSession = null;
+  if (refreshToken) {
+    const { data: refreshData, error: refreshError } = await serviceClient.auth.refreshSession({
+      refresh_token: refreshToken
+    });
+
+    if (refreshError) {
+      console.warn('Session refresh after metadata update failed:', refreshError.message);
+      // Non-fatal: client can refresh later, but RLS won't work on first request
+    } else {
+      refreshedSession = refreshData.session;
+    }
+  }
+
+  return { user: userData.user, session: refreshedSession };
 }
 
 /**

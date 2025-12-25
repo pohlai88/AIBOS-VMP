@@ -76,17 +76,22 @@ router.post('/login', async (req, res) => {
 
         // CRITICAL: Inject Nexus identity into JWT app_metadata for RLS
         // This enables jwt_nexus_user_id() and jwt_nexus_tenant_id() in RLS policies
+        // Pass refresh_token to get NEW session with updated JWT (fixes stale JWT gotcha)
         try {
-          await nexusAdapter.setAuthAppMetadata(
+          const { session: refreshedSession } = await nexusAdapter.setAuthAppMetadata(
             user.auth_user_id,
-            user.user_id,      // USR-*
-            user.tenant_id     // TNT-*
+            user.user_id,      // USR-* from DB lookup (not client input)
+            user.tenant_id,    // TNT-* from DB lookup (not client input)
+            authSession.refresh_token  // Exchange for new JWT with metadata
           );
-          // Note: Client will need to refresh session to get updated JWT
-          // For now, server-side queries use service_role so this is mainly for
-          // future direct PostgREST/Realtime access with hardened RLS
+
+          // Use refreshed session if available (contains nexus_user_id in JWT)
+          if (refreshedSession) {
+            authSession = refreshedSession;
+          }
         } catch (metadataError) {
           console.warn('Failed to set app_metadata (non-fatal):', metadataError.message);
+          // Continue with original session - RLS will work on next natural token refresh
         }
       } catch (authError) {
         console.log('Supabase Auth failed, trying legacy bcrypt:', authError.message);
@@ -186,19 +191,7 @@ router.post('/sign-up', async (req, res) => {
           data_source: 'production'
         }
       });
-
-      // CRITICAL: Inject Nexus identity into JWT app_metadata for RLS
-      if (authUser?.id) {
-        try {
-          await nexusAdapter.setAuthAppMetadata(
-            authUser.id,
-            `USR-${tenant.tenant_id.replace('TNT-', '')}0001`,  // Will be overwritten with real user_id after create
-            tenant.tenant_id
-          );
-        } catch (metadataError) {
-          console.warn('Failed to set app_metadata during sign-up (non-fatal):', metadataError.message);
-        }
-      }
+      // Note: app_metadata will be set after we have the real user_id below
     } catch (authError) {
       console.error('Failed to create Supabase Auth user:', authError.message);
       // Continue with bcrypt fallback
@@ -215,16 +208,18 @@ router.post('/sign-up', async (req, res) => {
       authUserId: authUser?.id  // Link to Supabase Auth if created
     });
 
-    // Update app_metadata with actual user_id now that we have it
+    // Set app_metadata with actual user_id for RLS (no refresh needed - user will login next)
+    // The JWT refresh happens in the login route when user signs in
     if (authUser?.id && user?.user_id) {
       try {
         await nexusAdapter.setAuthAppMetadata(
           authUser.id,
-          user.user_id,      // Real USR-* ID
-          tenant.tenant_id   // TNT-*
+          user.user_id,      // Real USR-* ID from DB
+          tenant.tenant_id   // TNT-* from DB
+          // No refresh token - sign-up doesn't create a session
         );
       } catch (metadataError) {
-        console.warn('Failed to update app_metadata with real user_id:', metadataError.message);
+        console.warn('Failed to set app_metadata:', metadataError.message);
       }
     }
 
