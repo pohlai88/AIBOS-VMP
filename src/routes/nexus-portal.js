@@ -86,6 +86,14 @@ router.post('/login', async (req, res) => {
         // ALWAYS use refreshed session (contains nexus_user_id in JWT)
         // setAuthAppMetadata throws if refresh fails, so this is guaranteed
         authSession = refreshedSession;
+
+        // Production-safe audit log (no secrets, high debug value)
+        console.log('[AUTH] Login success:', {
+          auth_uid: user.auth_user_id?.slice(0, 8) + '...',
+          nexus_user_id: user.user_id,
+          nexus_tenant_id: user.tenant_id,
+          claims_ok: true
+        });
       } catch (authError) {
         // Check if this is a refresh failure vs auth failure
         if (authError.message?.includes('Session refresh failed')) {
