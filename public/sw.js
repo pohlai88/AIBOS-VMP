@@ -3,17 +3,18 @@
  * Cache strategy: Network First, Cache Fallback
  */
 
-const CACHE_NAME = 'vmp-v1';
+const CACHE_NAME = 'vmp-v2'; /* Bumped version to force refresh of new CSS */
 const OFFLINE_PAGE = '/offline.html';
-const RUNTIME_CACHE = 'vmp-runtime-v1';
-const STATIC_CACHE_VERSION = 'v1';
+const RUNTIME_CACHE = 'vmp-runtime-v2';
+const STATIC_CACHE_VERSION = 'v2';
 
 // Assets to cache on install
 const STATIC_ASSETS = [
   '/',
   '/home',
   '/offline.html',
-  '/globals.css',
+  '/globals.css', /* The Application Layer */
+  '/supabase-design-system-complete.css', /* NEW: The Foundation Layer (SSOT) */
   '/login-noir-theme.css'
 ];
 

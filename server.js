@@ -7,7 +7,7 @@ import connectPgSimple from 'connect-pg-simple';
 import { createClient } from '@supabase/supabase-js';
 import helmet from 'helmet';
 import compression from 'compression';
-import rateLimit from 'express-rate-limit';
+import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
 import { cleanEnv, str, url } from 'envalid';
 import 'express-async-errors';
 import multer from 'multer';
@@ -228,9 +228,7 @@ const limiter = rateLimit({
   standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
   legacyHeaders: false, // Disable the `X-RateLimit-*` headers
   // Use X-Forwarded-For header for Vercel proxy
-  keyGenerator: (req) => {
-    return req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.ip || 'unknown';
-  },
+  keyGenerator: ipKeyGenerator,
 });
 app.use(limiter);
 
@@ -422,6 +420,23 @@ if (env.BASE_PATH) {
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Global error handler for uncaught exceptions
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught Exception:', err);
+  try {
+    require('fs').appendFileSync('server-run.log', `\n[UNCAUGHT EXCEPTION] ${err.stack || err}`);
+  } catch {}
+  process.exit(1);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection:', reason);
+  try {
+    require('fs').appendFileSync('server-run.log', `\n[UNHANDLED REJECTION] ${reason.stack || reason}`);
+  } catch {}
+  process.exit(1);
+});
+
 // Expose basePath to all templates and handlers
 app.use((req, res, next) => {
   res.locals.basePath = BASE_PATH;
@@ -580,8 +595,11 @@ app.use(async (req, res, next) => {
     let sessionSet = false;
     let refreshedSession = false;
 
+    console.log('[AUTH] AuthMiddleware check - path:', req.path, 'has session:', !!req.session.userId);
+    
     // Try setSession if we have a refresh token
     if (req.session.refreshToken) {
+      console.log('[AUTH] Attempting to setSession with refresh token');
       const { data: sessionData, error: sessionError } = await supabaseAuth.auth.setSession({
         access_token: req.session.authToken,
         refresh_token: req.session.refreshToken,
@@ -698,6 +716,7 @@ app.use(async (req, res, next) => {
 
     if (error || !user) {
       // Invalid token - destroy session
+      console.error('[AUTH ERROR] Failed to get user from token:', error?.message || 'User not found');
       logError(error || new Error('User not found from token'), {
         operation: 'authMiddleware-getUser',
         path: req.path,
@@ -705,6 +724,7 @@ app.use(async (req, res, next) => {
         hasRefreshToken: !!req.session.refreshToken,
         sessionSet: sessionSet,
         refreshedSession: refreshedSession,
+        errorMessage: error?.message,
       });
       req.session.destroy(err => {
         if (err) logError(err, { operation: 'authMiddleware', path: req.path });
@@ -752,7 +772,9 @@ app.use(async (req, res, next) => {
     // Skip getVendorContext for dev mode placeholder UUID (handled by getVendorContext internally)
     let userContext;
     try {
+      console.log('[AUTH] Getting vendor context for user:', user.id, user.email);
       userContext = await vmpAdapter.getVendorContext(user.id);
+      console.log('[AUTH] Vendor context retrieved:', userContext ? `id=${userContext.id}, vendor_id=${userContext.vendor_id}` : 'null');
     } catch (contextError) {
       // Check if this is a dev mode UUID that should be handled gracefully
       const DEV_AUTH_UUID = '00000000-0000-0000-0000-000000000000';
@@ -770,11 +792,13 @@ app.use(async (req, res, next) => {
           is_active: true,
         };
       } else {
+        console.error('[AUTH ERROR] getVendorContext failed:', contextError.message);
         logError(contextError, {
           operation: 'authMiddleware-getVendorContext',
           userId: user.id,
           userEmail: user.email,
           path: req.path,
+          errorStack: contextError.stack,
         });
         req.session.destroy(err => {
           if (err) logError(err, { operation: 'authMiddleware', path: req.path });
@@ -832,6 +856,19 @@ app.get('/health', (req, res) => {
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
     environment: env.NODE_ENV,
+  });
+});
+
+// Debug endpoint - check session config
+app.get('/debug/session-config', (req, res) => {
+  res.json({
+    sessionDbUrl: env.SESSION_DB_URL ? 'SET' : 'NOT SET',
+    sessionSecret: env.SESSION_SECRET ? 'SET' : 'NOT SET',
+    nodeEnv: env.NODE_ENV,
+    supabaseUrl: env.SUPABASE_URL ? 'SET' : 'NOT SET',
+    sessionId: req.sessionID,
+    hasSession: !!req.session,
+    sessionUserId: req.session?.userId || null,
   });
 });
 
@@ -1459,6 +1496,8 @@ async function renderHomePage(req, res) {
             ? 'Welcome! Your Independent Investigator account is ready.'
             : null,
         isIndependent: true,
+        hasMetrics: false,
+        activityFeed: [], // Empty state for independent users
       });
     }
 
@@ -1502,6 +1541,8 @@ async function renderHomePage(req, res) {
       }
     }
 
+    const hasMetrics = (actionCount + openCount + soaCount + paidCount) > 0;
+
     res.render('pages/home.html', {
       user: req.user,
       actionCount: actionCount,
@@ -1510,6 +1551,8 @@ async function renderHomePage(req, res) {
       soaNetVariance: soaNetVariance,
       paidCount: paidCount,
       isIndependent: false,
+      hasMetrics: hasMetrics,
+      activityFeed: [], // Empty state - activity feed will appear as events occur
     });
   } catch (error) {
     logError(error, { path: '/home', operation: 'renderHomePage' });
@@ -1521,6 +1564,8 @@ async function renderHomePage(req, res) {
       paidCount: 0,
       error: error.message,
       isIndependent: req.user?.user_tier === 'independent',
+      hasMetrics: false,
+      activityFeed: [], // Empty state on error
     });
   }
 }
@@ -9281,17 +9326,20 @@ app.post('/login', async (req, res) => {
     }
 
     // Store auth session token in express-session
+    console.log('[SESSION] Saving session for user:', authData.user.id, authData.user.email);
     req.session.userId = authData.user.id;
     req.session.authToken = authData.session.access_token;
     req.session.refreshToken = authData.session.refresh_token;
 
     req.session.save(err => {
       if (err) {
+        console.error('[SESSION ERROR] Failed to save session:', err.message);
         logError(err, { path: req.path, operation: 'createSession' });
         return res.status(500).render('pages/error.html', {
           error: { status: 500, message: 'Failed to create session' },
         });
       }
+      console.log('[SESSION] Session saved successfully. Redirecting to /home');
       // Redirect to home
       res.redirect('/home');
     });
@@ -9310,13 +9358,26 @@ app.post('/login', async (req, res) => {
 
 // 3c. Logout Handler
 app.post('/logout', async (req, res) => {
-  // Destroy session (express-session handles cleanup in PostgreSQL)
-  req.session.destroy(err => {
-    if (err) {
-      logError(err, { path: req.path, operation: 'logout' });
-    }
+  try {
+    console.log('[LOGOUT] Session destroy initiated for user:', req.user?.email || 'GUEST');
+    
+    // Destroy session (express-session handles cleanup in PostgreSQL)
+    req.session.destroy(err => {
+      if (err) {
+        console.error('[LOGOUT] Destroy error:', err);
+        logError(err, { path: req.path, operation: 'logout' });
+      } else {
+        console.log('[LOGOUT] Session destroyed successfully');
+      }
+      // Clear session cookie explicitly
+      res.clearCookie('connect.sid');
+      res.redirect('/login');
+    });
+  } catch (error) {
+    console.error('[LOGOUT] Unexpected error:', error);
+    logError(error, { path: req.path, operation: 'logout' });
     res.redirect('/login');
-  });
+  }
 });
 
 // 3b. Legacy Login Routes (Redirect to canonical /login)
@@ -9432,6 +9493,259 @@ app.get('/partials/oauth-github-button.html', (req, res) => {
 
 app.get('/partials/supabase-ui-examples.html', (req, res) => {
   res.render('partials/supabase-ui-examples.html');
+});
+
+/**
+ * GET /vendor-management
+ * Simple vendor management page - displays all vendors from vmp_vendors table
+ */
+app.get('/vendor-management', (req, res) => {
+  console.log('[VENDOR-MGMT] Route hit!');
+  if (!requireAuth(req, res)) {
+    console.log('[VENDOR-MGMT] Auth failed');
+    return;
+  }
+
+  console.log('[VENDOR-MGMT] Auth passed, fetching vendors...');
+  (async () => {
+    try {
+      const { data: vendors, error } = await supabaseAdmin
+        .from('vmp_vendors')
+        .select('*')
+        .order('name');
+      
+      if (error) {
+        console.error('[VENDOR-MGMT] Database error:', error);
+        return res.status(500).render('error.html', { error: 'Failed to load vendors: ' + error.message });
+      }
+
+      console.log('[VENDOR-MGMT] Loaded vendors:', vendors?.length || 0);
+      console.log('[VENDOR-MGMT] Rendering template...');
+      res.render('pages/vendor-management.html', { 
+        vendors: vendors || [],
+        user: req.user,
+        isInternal: req.user?.isInternal || false
+      });
+    } catch (error) {
+      console.error('[VENDOR-MGMT] Error:', error);
+      logError(error, req, { operation: 'vendorManagementPage' });
+      res.status(500).render('error.html', { error: 'Failed to load vendor management page' });
+    }
+  })();
+});
+
+/**
+ * GET /api/vendors/create-modal
+ * Returns the create vendor modal HTML
+ */
+app.get('/api/vendors/create-modal', (req, res) => {
+  if (!requireAuth(req, res)) return;
+  res.render('partials/vendor-create-modal.html');
+});
+
+/**
+ * POST /api/vendors
+ * Create a new vendor
+ */
+app.post('/api/vendors', (req, res) => {
+  if (!requireAuth(req, res)) return;
+  
+  (async () => {
+    try {
+      const { name, code, contact_name, contact_email, contact_phone, address, status, notes } = req.body;
+      
+      // Validate required fields
+      if (!name || !code) {
+        return res.status(400).render('partials/error-toast.html', { 
+          message: 'Vendor name and code are required' 
+        });
+      }
+
+      const { data: vendor, error } = await supabaseAdmin
+        .from('vmp_vendors')
+        .insert({
+          name,
+          code: code.toUpperCase(),
+          contact_name,
+          contact_email,
+          contact_phone,
+          address,
+          status: status || 'active',
+          notes
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error('[VENDOR-CREATE] Error:', error);
+        if (error.code === '23505') { // Unique constraint violation
+          return res.status(400).render('partials/error-toast.html', { 
+            message: `Vendor code "${code}" already exists` 
+          });
+        }
+        return res.status(500).render('partials/error-toast.html', { 
+          message: 'Failed to create vendor: ' + error.message 
+        });
+      }
+
+      // Return success with HTMX redirect
+      res.setHeader('HX-Redirect', '/vendor-management');
+      res.send('');
+    } catch (error) {
+      console.error('[VENDOR-CREATE] Exception:', error);
+      logError(error, req, { operation: 'createVendor' });
+      res.status(500).render('partials/error-toast.html', { 
+        message: 'An unexpected error occurred' 
+      });
+    }
+  })();
+});
+
+/**
+ * GET /api/vendors/:id/edit-modal
+ * Returns the edit vendor modal HTML
+ */
+app.get('/api/vendors/:id/edit-modal', (req, res) => {
+  if (!requireAuth(req, res)) return;
+  
+  (async () => {
+    try {
+      const { data: vendor, error } = await supabaseAdmin
+        .from('vmp_vendors')
+        .select('*')
+        .eq('id', req.params.id)
+        .single();
+
+      if (error || !vendor) {
+        return res.status(404).render('partials/error-toast.html', { 
+          message: 'Vendor not found' 
+        });
+      }
+
+      res.render('partials/vendor-edit-modal.html', { vendor });
+    } catch (error) {
+      console.error('[VENDOR-EDIT-MODAL] Error:', error);
+      res.status(500).render('partials/error-toast.html', { 
+        message: 'Failed to load vendor details' 
+      });
+    }
+  })();
+});
+
+/**
+ * PUT /api/vendors/:id
+ * Update a vendor
+ */
+app.put('/api/vendors/:id', (req, res) => {
+  if (!requireAuth(req, res)) return;
+  
+  (async () => {
+    try {
+      const { name, code, contact_name, contact_email, contact_phone, address, status, notes } = req.body;
+      
+      const { data: vendor, error } = await supabaseAdmin
+        .from('vmp_vendors')
+        .update({
+          name,
+          code: code?.toUpperCase(),
+          contact_name,
+          contact_email,
+          contact_phone,
+          address,
+          status,
+          notes,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', req.params.id)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('[VENDOR-UPDATE] Error:', error);
+        if (error.code === '23505') {
+          return res.status(400).render('partials/error-toast.html', { 
+            message: `Vendor code \"${code}\" already exists` 
+          });
+        }
+        return res.status(500).render('partials/error-toast.html', { 
+          message: 'Failed to update vendor: ' + error.message 
+        });
+      }
+
+      res.setHeader('HX-Redirect', '/vendor-management');
+      res.send('');
+    } catch (error) {
+      console.error('[VENDOR-UPDATE] Exception:', error);
+      logError(error, req, { operation: 'updateVendor' });
+      res.status(500).render('partials/error-toast.html', { 
+        message: 'An unexpected error occurred' 
+      });
+    }
+  })();
+});
+
+/**
+ * GET /api/vendors/:id/delete-modal
+ * Returns the delete vendor confirmation modal
+ */
+app.get('/api/vendors/:id/delete-modal', (req, res) => {
+  if (!requireAuth(req, res)) return;
+  
+  (async () => {
+    try {
+      const { data: vendor, error } = await supabaseAdmin
+        .from('vmp_vendors')
+        .select('*')
+        .eq('id', req.params.id)
+        .single();
+
+      if (error || !vendor) {
+        return res.status(404).render('partials/error-toast.html', { 
+          message: 'Vendor not found' 
+        });
+      }
+
+      res.render('partials/vendor-delete-modal.html', { vendor });
+    } catch (error) {
+      console.error('[VENDOR-DELETE-MODAL] Error:', error);
+      res.status(500).render('partials/error-toast.html', { 
+        message: 'Failed to load vendor details' 
+      });
+    }
+  })();
+});
+
+/**
+ * DELETE /api/vendors/:id
+ * Delete a vendor
+ */
+app.delete('/api/vendors/:id', (req, res) => {
+  if (!requireAuth(req, res)) return;
+  
+  (async () => {
+    try {
+      const { error } = await supabaseAdmin
+        .from('vmp_vendors')
+        .delete()
+        .eq('id', req.params.id);
+
+      if (error) {
+        console.error('[VENDOR-DELETE] Error:', error);
+        return res.status(500).render('partials/error-toast.html', { 
+          message: 'Failed to delete vendor: ' + error.message 
+        });
+      }
+
+      res.setHeader('HX-Redirect', '/vendor-management');
+      res.send('');
+    } catch (error) {
+      console.error('[VENDOR-DELETE] Exception:', error);
+      logError(error, req, { operation: 'deleteVendor' });
+      res.status(500).render('partials/error-toast.html', { 
+        message: 'An unexpected error occurred' 
+      });
+    }
+  })();
 });
 
 // --- ERROR HANDLING ---
@@ -10507,6 +10821,10 @@ app.delete('/api/demo/clear', async (req, res) => {
     res.status(500).json({ error: 'Failed to clear demo data: ' + error.message });
   }
 });
+
+// ============================================================================
+// VENDOR MANAGEMENT
+// ============================================================================
 
 // Mount portal routers (currently stubbed; safe to keep alongside existing routes during migration)
 // NOTE: Commented out to prevent route conflicts - routers are for future migration

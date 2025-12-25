@@ -66,6 +66,22 @@ const withTimeout = async (promise, timeoutMs = 10000, operationName = 'operatio
 };
 
 export const vmpAdapter = {
+    // Vendor: Get vendor by ID
+    async getVendorById(vendorId) {
+      if (!vendorId) throw new ValidationError('vendorId is required', 'vendorId');
+      const queryPromise = supabase
+        .from('vmp_vendors')
+        .select('*')
+        .eq('id', vendorId)
+        .single();
+      const { data, error } = await withTimeout(queryPromise, 10000, `getVendorById(${vendorId})`);
+      if (error) {
+        const handledError = handleSupabaseError(error, 'getVendorById');
+        if (handledError === null) return null;
+        throw handledError;
+      }
+      return data;
+    },
   // Auth: Get user by email
   async getUserByEmail(email) {
     // Try with all columns first (if migrations have been applied)

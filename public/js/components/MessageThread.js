@@ -78,13 +78,16 @@ export class MessageThread {
     if (this.messageInput) {
       this.messageInput.addEventListener('input', (e) => {
         if (this.charCount) {
-          this.charCount.textContent = e.target.value.length;
+          var input = e.target;
+          if (input && input instanceof HTMLInputElement) {
+            this.charCount.textContent = input.value.length + '';
+          }
         }
       });
 
       // Enter to send (Shift+Enter for newline)
-      this.messageInput.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' && !e.shiftKey) {
+      this.messageInput.addEventListener('keydown', function(e) {
+        if (e instanceof KeyboardEvent && e.key === 'Enter' && !e.shiftKey) {
           e.preventDefault();
           formElement.dispatchEvent(new Event('submit'));
         }
@@ -98,17 +101,23 @@ export class MessageThread {
   async handleSubmit(event) {
     event.preventDefault();
 
-    const content = this.messageInput.value.trim();
+    var content = '';
+    if (this.messageInput && this.messageInput instanceof HTMLInputElement) {
+      content = this.messageInput.value.trim();
+    }
     if (!content) return;
 
     // Optimistic UI
     const tempId = `temp-${Date.now()}`;
-    const originalValue = this.messageInput.value;
+    var originalValue = '';
+    if (this.messageInput && this.messageInput instanceof HTMLInputElement) {
+      originalValue = this.messageInput.value;
+    }
 
     this.addOptimisticMessage(tempId, content);
-    this.messageInput.value = '';
+    if (this.messageInput && this.messageInput instanceof HTMLInputElement) this.messageInput.value = '';
     if (this.charCount) this.charCount.textContent = '0';
-    if (this.sendButton) this.sendButton.disabled = true;
+    if (this.sendButton && this.sendButton instanceof HTMLButtonElement) this.sendButton.disabled = true;
 
     try {
       const response = await fetch(`/api/cases/${this.caseId}/messages`, {
@@ -127,11 +136,11 @@ export class MessageThread {
     } catch (error) {
       console.error('Message send error:', error);
       this.removeOptimisticMessage(tempId);
-      this.messageInput.value = originalValue;
-      if (this.charCount) this.charCount.textContent = originalValue.length;
+      if (this.messageInput && this.messageInput instanceof HTMLInputElement) this.messageInput.value = originalValue;
+      if (this.charCount) this.charCount.textContent = (originalValue ? originalValue.length : 0) + '';
       this.showError('Could not send message. Please try again.');
     } finally {
-      if (this.sendButton) this.sendButton.disabled = false;
+      if (this.sendButton && this.sendButton instanceof HTMLButtonElement) this.sendButton.disabled = false;
     }
   }
 
@@ -143,13 +152,22 @@ export class MessageThread {
 
     const div = document.createElement('div');
     div.id = tempId;
-    div.className = 'border-l-2 border-green-500/50 pl-4 py-2 opacity-70';
+    div.className = 'vmp-panel';
+    div.style.cssText = `
+      border-left: 4px solid var(--vmp-ok);
+      background: hsl(var(--success-default) / 0.07);
+      padding-left: var(--spacing-4);
+      padding-top: var(--spacing-2);
+      padding-bottom: var(--spacing-2);
+      opacity: 0.7;
+      margin-bottom: var(--spacing-2);
+    `;
     div.innerHTML = `
-      <div class="flex items-center gap-2 mb-1">
-        <span class="font-semibold text-white text-sm">You</span>
-        <span class="text-xs text-white/50">Just now</span>
+      <div style="display: flex; align-items: center; gap: var(--spacing-2); margin-bottom: var(--spacing-1);">
+        <span style="font-weight: var(--font-weight-medium); color: var(--vmp-text); font-size: var(--font-size-sm);">You</span>
+        <span style="font-size: var(--font-size-xs); color: var(--vmp-text-muted);">Just now</span>
       </div>
-      <p class="text-white/80 text-sm">${this.escapeHtml(content)}</p>
+      <p style="color: var(--vmp-text); font-size: var(--font-size-sm); opacity: 0.8;">${this.escapeHtml(content)}</p>
     `;
 
     this.messagesList.appendChild(div);
@@ -165,13 +183,21 @@ export class MessageThread {
     if (!tempElement) return;
 
     tempElement.id = savedMsg.id;
-    tempElement.className = 'border-l-2 border-green-500/30 pl-4 py-2';
+    tempElement.className = 'vmp-panel';
+    tempElement.style.cssText = `
+      border-left: 4px solid var(--vmp-ok);
+      background: hsl(var(--success-default) / 0.07);
+      padding-left: var(--spacing-4);
+      padding-top: var(--spacing-2);
+      padding-bottom: var(--spacing-2);
+      margin-bottom: var(--spacing-2);
+    `;
     tempElement.innerHTML = `
-      <div class="flex items-center gap-2 mb-1">
-        <span class="font-semibold text-white text-sm">${this.escapeHtml(savedMsg.sender_name)}</span>
-        <span class="text-xs text-white/50">${this.formatDate(savedMsg.created_at)}</span>
+      <div style="display: flex; align-items: center; gap: var(--spacing-2); margin-bottom: var(--spacing-1);">
+        <span style="font-weight: var(--font-weight-medium); color: var(--vmp-text); font-size: var(--font-size-sm);">${this.escapeHtml(savedMsg.sender_name)}</span>
+        <span style="font-size: var(--font-size-xs); color: var(--vmp-text-muted);">${this.formatDate(savedMsg.created_at)}</span>
       </div>
-      <p class="text-white/80 text-sm">${this.escapeHtml(savedMsg.body)}</p>
+      <p style="color: var(--vmp-text); font-size: var(--font-size-sm); opacity: 0.8;">${this.escapeHtml(savedMsg.body)}</p>
     `;
   }
 
@@ -198,15 +224,11 @@ export class MessageThread {
    * Show error toast
    */
   showError(message) {
-    // TODO: Integrate with toast notification system
-    // For now, simple fallback
-    const notification = document.createElement('div');
-    notification.className =
-      'fixed bottom-4 right-4 bg-red-500 text-white px-4 py-2 rounded-lg text-sm';
-    notification.textContent = message;
-    document.body.appendChild(notification);
-
-    setTimeout(() => notification.remove(), 4000);
+    if (window['vmpToast']) {
+      window['vmpToast'].error('Message Error', message);
+    } else {
+      alert(message);
+    }
   }
 
   /**
@@ -224,7 +246,7 @@ export class MessageThread {
   formatDate(isoDate) {
     const date = new Date(isoDate);
     const now = new Date();
-    const diffMs = now - date;
+    var diffMs = (now instanceof Date && date instanceof Date) ? (now.getTime() - date.getTime()) : 0;
     const diffMins = Math.floor(diffMs / 60000);
 
     if (diffMins < 1) return 'now';
@@ -261,14 +283,22 @@ export class MessageThread {
       // Render messages
       data.messages.forEach((msg) => {
         const div = document.createElement('div');
-        div.className = 'border-l-2 border-green-500/30 pl-4 py-2';
+        div.className = 'vmp-panel';
+        div.style.cssText = `
+          border-left: 4px solid var(--vmp-ok);
+          background: hsl(var(--success-default) / 0.07);
+          padding-left: var(--spacing-4);
+          padding-top: var(--spacing-2);
+          padding-bottom: var(--spacing-2);
+          margin-bottom: var(--spacing-2);
+        `;
         div.dataset.messageId = msg.id;
         div.innerHTML = `
-          <div class="flex items-center gap-2 mb-1">
-            <span class="font-semibold text-white text-sm">${this.escapeHtml(msg.sender_name)}</span>
-            <span class="text-xs text-white/50">${this.formatDate(msg.created_at)}</span>
+          <div style="display: flex; align-items: center; gap: var(--spacing-2); margin-bottom: var(--spacing-1);">
+            <span style="font-weight: var(--font-weight-medium); color: var(--vmp-text); font-size: var(--font-size-sm);">${this.escapeHtml(msg.sender_name)}</span>
+            <span style="font-size: var(--font-size-xs); color: var(--vmp-text-muted);">${this.formatDate(msg.created_at)}</span>
           </div>
-          <p class="text-white/80 text-sm">${this.escapeHtml(msg.body)}</p>
+          <p style="color: var(--vmp-text); font-size: var(--font-size-sm); opacity: 0.8;">${this.escapeHtml(msg.body)}</p>
         `;
         if (this.messagesList) {
           this.messagesList.appendChild(div);
@@ -289,9 +319,9 @@ export class MessageThread {
 document.addEventListener('DOMContentLoaded', () => {
   const threadContainer = document.querySelector('[data-message-thread]');
   if (threadContainer) {
-    window.messageThread = new MessageThread('thread-container', {
-      caseId: threadContainer.dataset.caseId,
-      userId: threadContainer.dataset.userId
+    window['messageThread'] = new MessageThread('thread-container', {
+      caseId: threadContainer && threadContainer instanceof HTMLElement && threadContainer.dataset ? threadContainer.dataset.caseId : undefined,
+      userId: threadContainer && threadContainer instanceof HTMLElement && threadContainer.dataset ? threadContainer.dataset.userId : undefined
     });
   }
 });

@@ -29,7 +29,8 @@ export function createUserScopedSupabaseClient(req) {
   // This makes all queries run as the authenticated user
   // Note: VMP uses req.session.authToken (not access_token)
   if (req.session?.authToken) {
-    supabase.auth.setAuth(req.session.authToken);
+    // For Supabase v2, set session using setSession
+    supabase.auth.setSession({ access_token: req.session.authToken, refresh_token: null });
   }
 
   return supabase;

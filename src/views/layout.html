@@ -29,7 +29,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link
-    href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Liter:opsz,wght@7..72,300;400;500&family=Playfair+Display:ital,wght@0,400;0,600;1,400&display=swap"
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,400;0,600;1,400&display=swap"
     rel="stylesheet">
 
   <link rel="stylesheet" href="/globals.css">
@@ -175,16 +175,7 @@
       --shell-accent: #60ffc6;
     }
 
-    body {
-      background-color: var(--shell-bg);
-      color: #ededed;
-      font-family: 'Liter', serif;
-      /* Editorial feel for body text */
-    }
-
-    .vmp-muted { color: rgba(237,237,237,.62); }
-    .vmp-subtle { color: rgba(237,237,237,.36); }
-    .vmp-border { border-color: rgba(255,255,255,.08); }
+    /* Removed body, muted, subtle, border styling. Theme is now in globals.css. */
 
     /* The Cinematic Grain Layer */
     .vmp-atmosphere {
@@ -248,11 +239,12 @@
   {% block head %}{% endblock %}
 </head>
 
-<body class="h-full flex overflow-hidden selection:bg-[#60ffc6]/20 selection:text-[#60ffc6]" hx-boost="true">
+<body class="h-full flex overflow-hidden" hx-boost="true">
 
   <div class="vmp-atmosphere"></div>
   <div class="vmp-ambient-light"></div>
 
+  {% if user and user.isInternal %}
   <aside class="w-[280px] flex-shrink-0 flex flex-col relative z-20 hidden md:flex"
     style="border-right: 1px solid var(--shell-border); background: linear-gradient(180deg, rgba(5,5,5,0.8) 0%, rgba(5,5,5,0.95) 100%); backdrop-filter: blur(20px);"
     id="org-tree-sidebar" hx-get="/partials/org-tree-sidebar.html" hx-trigger="load" hx-swap="innerHTML"
@@ -263,6 +255,7 @@
       <div class="text-white/20 text-xs">Loading organization tree...</div>
     </div>
   </aside>
+  {% endif %}
 
   <main id="main-content" class="flex-1 relative z-10 flex flex-col min-w-0 overflow-hidden">
 
@@ -292,6 +285,13 @@
           <span class="font-mono text-[10px] text-white/70 uppercase tracking-wider">Search</span>
           <span class="font-mono text-[9px] text-white/40 ml-1">Ctrl K</span>
         </button>
+        {% if user and user.isInternal %}
+        <a href="/vendor-management"
+           class="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 transition-colors">
+          <span class="w-1.5 h-1.5 rounded-full bg-blue-400"></span>
+          <span class="font-mono text-[10px] text-white/70 uppercase tracking-wider">Vendors</span>
+        </a>
+        {% endif %}
         {% endif %}
         
         <div class="hidden md:flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20">
@@ -316,6 +316,9 @@
         <a href="/supplier/cases" @click="mobileMenuOpen = false" class="font-serif text-3xl text-white/50 hover:text-white transition-colors">Signals</a>
         <a href="/supplier/payments" @click="mobileMenuOpen = false" class="font-serif text-3xl text-white/50 hover:text-white transition-colors">Ledger</a>
         <a href="/profile" @click="mobileMenuOpen = false" class="font-serif text-3xl text-white/50 hover:text-white transition-colors">Identity</a>
+        {% if user and user.isInternal %}
+        <a href="/vendor-management" @click="mobileMenuOpen = false" class="font-serif text-3xl text-white/50 hover:text-white transition-colors">Vendors</a>
+        {% endif %}
       </nav>
     </div>
 
@@ -415,9 +418,3 @@
 
       100% {
         transform: translateX(300%);
-      }
-    }
-  </style>
-</body>
-
-</html>

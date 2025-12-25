@@ -54,7 +54,7 @@
                     </path>
                 </svg>
 
-                <span class="tracking-wide font-medium">{{ orgTree.tenant.name or 'Holding Corp' }}</span>
+                <span class="tracking-wide font-medium">{% if orgTree.tenant.name %}{{ orgTree.tenant.name }}{% else %}<span class="text-white/30">Organization</span>{% endif %}</span>
             </a>
         </div>
 
@@ -118,8 +118,7 @@
                             <span class="truncate">{{ company.name }}</span>
                         </div>
 
-                        <span class="font-mono text-[9px] opacity-30 group-hover/item:opacity-70">{{ company.code or
-                            'ENT' }}</span>
+                        <span class="font-mono text-[9px] opacity-30 group-hover/item:opacity-70">{% if company.code %}{{ company.code }}{% endif %}</span>
                     </a>
                     {% endfor %}
                 </div>

@@ -4,8 +4,8 @@
   "description": "Vendor Management Portal - Streamline your AP operations",
   "start_url": "/home",
   "display": "standalone",
-  "background_color": "#000000",
-  "theme_color": "#00D9FF",
+  "background_color": "#121212", 
+  "theme_color": "#3ECF8E", 
   "orientation": "portrait-primary",
   "scope": "/",
   "icons": [

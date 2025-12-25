@@ -1,45 +1,36 @@
 <!doctype html>
-<html lang="en" data-surface="vmp" class="h-full" data-theme="dark">
+<html lang="en" data-theme="dark">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <meta name="color-scheme" content="dark light" />
   <title>Offline — NexusCanon VMP</title>
   <link rel="stylesheet" href="/globals.css" />
 </head>
-<body class="h-full vmp-bg">
-  <div class="h-full flex items-center justify-center p-6">
-    <div class="vmp-panel border vmp-border-color rounded-lg p-8 max-w-md text-center">
-      <div class="mb-6">
-        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="mx-auto vmp-text-muted">
-          <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"></path>
-        </svg>
-      </div>
-      
-      <h1 class="vmp-h2 mb-3">You're Offline</h1>
-      <p class="vmp-body vmp-muted mb-6">
-        It looks like you've lost your internet connection. Please check your network settings and try again.
-      </p>
-      
-      <button 
-        onclick="window.location.reload()" 
-        class="vmp-btn-primary w-full mb-3">
-        Try Again
-      </button>
-      
-      <button 
-        onclick="window.history.back()" 
-        class="vmp-btn vmp-btn-ghost w-full">
-        Go Back
-      </button>
+<body class="vmp-bg" style="height: 100vh; display: flex; align-items: center; justify-content: center;">
+  
+  <div class="vmp-panel" style="padding: var(--spacing-8); max-width: 400px; text-align: center;">
+    <div style="margin-bottom: var(--spacing-6); color: var(--vmp-text-muted);">
+      <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"></path>
+      </svg>
     </div>
+    
+    <h2 style="margin-bottom: var(--spacing-3);">You're Offline</h2>
+    <p class="text-subtle" style="margin-bottom: var(--spacing-6);">
+      It looks like you've lost your internet connection. Please check your network settings.
+    </p>
+    
+    <button onclick="window.location.reload()" class="vmp-btn vmp-btn-primary" style="width: 100%; margin-bottom: var(--spacing-3);">
+      Try Again
+    </button>
+    
+    <button onclick="window.history.back()" class="vmp-btn" style="width: 100%;">
+      Go Back
+    </button>
   </div>
 
   <script>
-    // Check if we're back online
-    window.addEventListener('online', () => {
-      window.location.reload();
-    });
+    window.addEventListener('online', () => window.location.reload());
   </script>
 </body>
 </html>

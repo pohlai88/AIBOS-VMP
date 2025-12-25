@@ -92,34 +92,46 @@ export class EvidenceManager {
   }
 
   /**
-   * Setup drag-drop zone
+   * Setup drag-drop zone (SSOT Aligned)
    */
   setupDragDrop() {
     const dropZone = this.uploadForm.querySelector('[data-drop-zone]');
     if (!dropZone) return;
 
+    // Prevent defaults...
     ['dragenter', 'dragover', 'dragleave', 'drop'].forEach((eventName) => {
       dropZone.addEventListener(eventName, this.preventDefaults.bind(this));
     });
 
+    // Use SSOT variables for drag states
     ['dragenter', 'dragover'].forEach((eventName) => {
       dropZone.addEventListener(eventName, () => {
-        dropZone.classList.add('bg-green-500/10', 'border-green-500');
+        if (dropZone instanceof HTMLElement) {
+          dropZone.style.borderColor = 'var(--vmp-ok)';
+          dropZone.style.backgroundColor = 'hsl(var(--success-default) / 0.1)';
+        }
       });
     });
 
     ['dragleave', 'drop'].forEach((eventName) => {
       dropZone.addEventListener(eventName, () => {
-        dropZone.classList.remove('bg-green-500/10', 'border-green-500');
+        if (dropZone instanceof HTMLElement) {
+          dropZone.style.borderColor = '';
+          dropZone.style.backgroundColor = '';
+        }
       });
     });
 
     dropZone.addEventListener('drop', (e) => {
-      const dt = e.dataTransfer;
-      const files = dt.files;
-      if (files.length > 0) {
+      var dt = null;
+      if (e && typeof DragEvent !== 'undefined' && e instanceof DragEvent) {
+        dt = e.dataTransfer;
+      }
+      if (!dt) return;
+      var files = dt.files;
+      if (files.length > 0 && this.fileInput && this.fileInput instanceof HTMLInputElement) {
         this.fileInput.files = files;
-        this.handleFileSelect({ target: { files } });
+        this.handleFileSelect({ target: { files: files } });
       }
     });
   }
@@ -150,7 +162,7 @@ export class EvidenceManager {
     }
 
     // Show upload button
-    if (this.uploadButton) {
+    if (this.uploadButton && this.uploadButton instanceof HTMLElement) {
       this.uploadButton.style.display = 'block';
     }
   }
@@ -212,8 +224,8 @@ export class EvidenceManager {
     formData.append('file', this.selectedFile);
 
     // Disable button & show progress
-    if (this.uploadButton) this.uploadButton.disabled = true;
-    if (this.progressContainer) {
+    if (this.uploadButton && this.uploadButton instanceof HTMLButtonElement) this.uploadButton.disabled = true;
+    if (this.progressContainer && this.progressContainer instanceof HTMLElement) {
       this.progressContainer.style.display = 'block';
     }
 
@@ -235,10 +247,10 @@ export class EvidenceManager {
       console.error('Upload error:', error);
       this.showError(error.message || 'Upload failed. Please try again.');
 
-      if (this.progressContainer) {
+      if (this.progressContainer && this.progressContainer instanceof HTMLElement) {
         this.progressContainer.style.display = 'none';
       }
-      if (this.uploadButton) {
+      if (this.uploadButton && this.uploadButton instanceof HTMLButtonElement) {
         this.uploadButton.disabled = false;
       }
     }
@@ -255,8 +267,8 @@ export class EvidenceManager {
       xhr.upload.addEventListener('progress', (e) => {
         if (e.lengthComputable) {
           const percent = (e.loaded / e.total) * 100;
-          if (this.progressBar) {
-            this.progressBar.style.width = `${percent}%`;
+          if (this.progressBar && this.progressBar instanceof HTMLElement) {
+            this.progressBar.style.width = percent + '%';
           }
           if (this.progressText) {
             this.progressText.textContent = `Uploading ${Math.round(percent)}%...`;
@@ -315,27 +327,25 @@ export class EvidenceManager {
    */
   resetForm() {
     this.selectedFile = null;
-    if (this.fileInput) this.fileInput.value = '';
-    if (this.uploadButton) this.uploadButton.style.display = 'none';
-    if (this.progressContainer) {
+    if (this.fileInput && this.fileInput instanceof HTMLInputElement) this.fileInput.value = '';
+    if (this.uploadButton && this.uploadButton instanceof HTMLElement) this.uploadButton.style.display = 'none';
+    if (this.progressContainer && this.progressContainer instanceof HTMLElement) {
       this.progressContainer.style.display = 'none';
     }
-    if (this.progressBar) {
+    if (this.progressBar && this.progressBar instanceof HTMLElement) {
       this.progressBar.style.width = '0%';
     }
   }
 
   /**
-   * Show error toast
+   * Show error using new Toast system
    */
   showError(message) {
-    const notification = document.createElement('div');
-    notification.className =
-      'fixed bottom-4 right-4 bg-red-500 text-white px-4 py-2 rounded-lg text-sm max-w-sm';
-    notification.textContent = message;
-    document.body.appendChild(notification);
-
-    setTimeout(() => notification.remove(), 5000);
+    if (window['vmpToast']) {
+      window['vmpToast'].error('Upload Failed', message);
+    } else {
+      alert(message); // Fallback
+    }
   }
 
   /**
@@ -354,9 +364,9 @@ export class EvidenceManager {
 document.addEventListener('DOMContentLoaded', () => {
   const evidenceContainer = document.querySelector('[data-evidence-manager]');
   if (evidenceContainer) {
-    window.evidenceManager = new EvidenceManager('evidence-container', {
-      caseId: evidenceContainer.dataset.caseId,
-      maxSizeMB: parseInt(evidenceContainer.dataset.maxSizeMb || 50)
+    window['evidenceManager'] = new EvidenceManager('evidence-container', {
+      caseId: evidenceContainer && evidenceContainer instanceof HTMLElement && evidenceContainer.dataset ? evidenceContainer.dataset.caseId : undefined,
+      maxSizeMB: evidenceContainer && evidenceContainer instanceof HTMLElement && evidenceContainer.dataset && evidenceContainer.dataset.maxSizeMb ? parseInt(evidenceContainer.dataset.maxSizeMb) : 50
     });
   }
 });
