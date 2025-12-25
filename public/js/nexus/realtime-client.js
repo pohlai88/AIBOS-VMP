@@ -33,7 +33,7 @@ class NexusRealtimeClient {
   /**
    * Fetch authenticated access token from server
    * Token contains RLS claims and is short-lived
-   * Returns { token, error } - error present if auth failed (401)
+   * Returns { token, error, retryAfter } - error present if auth failed (401) or rate limited (429)
    */
   async fetchRealtimeToken() {
     try {
@@ -44,14 +44,21 @@ class NexusRealtimeClient {
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
 
+        // 429 = rate limited, schedule retry after delay
+        if (response.status === 429) {
+          console.warn('📡 Nexus Realtime: Rate limited, retry after', errorData.retryAfter || 60, 's');
+          return { token: null, error: 'RATE_LIMITED', retryAfter: errorData.retryAfter || 60 };
+        }
+
         // 401 = auth required, don't mask with anon fallback
         if (response.status === 401) {
           console.warn('📡 Nexus Realtime: Auth required -', errorData.hint || errorData.error);
           return { token: null, error: errorData.code || 'AUTH_REQUIRED', hint: errorData.hint };
         }
 
+        // 500 or other = server error, disable realtime
         console.warn('📡 Nexus Realtime: Token fetch failed:', errorData.error || response.status);
-        return { token: null, error: 'FETCH_FAILED' };
+        return { token: null, error: 'SERVER_ERROR' };
       }
 
       const data = await response.json();
@@ -98,7 +105,14 @@ class NexusRealtimeClient {
 
     try {
       // Fetch authenticated token first
-      const { token, error, hint } = await this.fetchRealtimeToken();
+      const { token, error, hint, retryAfter } = await this.fetchRealtimeToken();
+
+      // If rate limited, schedule retry (don't spam)
+      if (error === 'RATE_LIMITED') {
+        console.warn(`📡 Nexus Realtime: Rate limited, retrying in ${retryAfter}s`);
+        setTimeout(() => this.init(), (retryAfter || 60) * 1000);
+        return;
+      }
 
       // If auth failed (401), show banner and DON'T initialize realtime
       // This prevents "silently dead" realtime that masks bugs
@@ -107,6 +121,21 @@ class NexusRealtimeClient {
         this.initialized = false;
         this.authError = error;
         console.warn('📡 Nexus Realtime: Disabled due to auth error:', error);
+        return;
+      }
+
+      // Server error or network error - disable, don't retry immediately
+      if (error === 'SERVER_ERROR' || error === 'NETWORK_ERROR') {
+        console.warn('📡 Nexus Realtime: Disabled due to error:', error);
+        this.initialized = false;
+        this.authError = error;
+        // Retry once after 30s for transient errors
+        setTimeout(() => {
+          if (!this.initialized) {
+            console.log('📡 Nexus Realtime: Retrying after transient error...');
+            this.init();
+          }
+        }, 30000);
         return;
       }
 

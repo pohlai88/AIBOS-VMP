@@ -23,6 +23,45 @@ import {
 
 const router = express.Router();
 
+// ============================================================================
+// RATE LIMITING (in-memory, simple)
+// ============================================================================
+
+/**
+ * Simple in-memory rate limiter for sensitive endpoints
+ * Prevents accidental loops from melting auth
+ */
+const rateLimitStore = new Map();
+const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
+const RATE_LIMIT_MAX_PER_SESSION = 30;
+const RATE_LIMIT_MAX_PER_IP = 60;
+
+function checkRateLimit(key, maxRequests) {
+  const now = Date.now();
+  const entry = rateLimitStore.get(key) || { count: 0, resetAt: now + RATE_LIMIT_WINDOW };
+
+  // Reset if window expired
+  if (now > entry.resetAt) {
+    entry.count = 0;
+    entry.resetAt = now + RATE_LIMIT_WINDOW;
+  }
+
+  entry.count++;
+  rateLimitStore.set(key, entry);
+
+  return entry.count <= maxRequests;
+}
+
+// Cleanup old entries every 5 minutes
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, entry] of rateLimitStore) {
+    if (now > entry.resetAt) rateLimitStore.delete(key);
+  }
+}, 5 * 60 * 1000);
+
+// ============================================================================
+
 // Apply Nexus middleware to all routes
 router.use(loadNexusSession);
 router.use(injectNexusLocals);
@@ -1299,9 +1338,30 @@ router.get('/api/realtime-config', (req, res) => {
  * - Token contains RLS claims (nexus_user_id, nexus_tenant_id)
  * - Auto-refreshes if token is expired or about to expire
  * - Returns 401 if no valid token (forces re-login, no anon fallback)
+ * - Rate limited: 30/min per session, 60/min per IP
  */
 router.get('/api/realtime-token', requireNexusAuth, async (req, res) => {
   try {
+    // Rate limiting - prevent accidental loops from melting auth
+    const sessionId = req.nexus?.session?.id;
+    const clientIp = req.ip || req.connection?.remoteAddress || 'unknown';
+
+    if (sessionId && !checkRateLimit(`session:${sessionId}`, RATE_LIMIT_MAX_PER_SESSION)) {
+      return res.status(429).json({
+        error: 'Too many requests',
+        hint: 'Please wait before requesting another token.',
+        retryAfter: 60
+      });
+    }
+
+    if (!checkRateLimit(`ip:${clientIp}`, RATE_LIMIT_MAX_PER_IP)) {
+      return res.status(429).json({
+        error: 'Too many requests from this IP',
+        hint: 'Please wait before requesting another token.',
+        retryAfter: 60
+      });
+    }
+
     const session = req.nexus?.session;
     const sessionData = session?.data || {};
 
