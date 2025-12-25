@@ -834,26 +834,50 @@ SELECT count(*) FROM nexus_notifications LIMIT 1;
 - No direct mapping without a join or stored mapping column
 
 **Implementation Path:**
-1. At login success, update `auth.users.raw_app_meta_data`:
+1. At login success, server/Edge Function (service_role) updates `auth.users.raw_app_meta_data`:
    ```sql
    UPDATE auth.users
-   SET raw_app_meta_data = raw_app_meta_data || 
+   SET raw_app_meta_data = raw_app_meta_data ||
      jsonb_build_object('nexus_user_id', 'USR-ALIC0001', 'nexus_tenant_id', 'TNT-ALPH0001')
    WHERE id = <auth_uid>;
    ```
-2. RLS policies read from JWT:
+   ⚠️ **CRITICAL:** This must be done server-side (service_role), NOT from client.
+   
+2. RLS policies use helper functions:
    ```sql
-   USING (user_id = (auth.jwt() -> 'app_metadata' ->> 'nexus_user_id'))
-   USING (tenant_id = (auth.jwt() -> 'app_metadata' ->> 'nexus_tenant_id'))
+   USING (user_id = public.jwt_nexus_user_id())
+   USING (tenant_id = public.jwt_nexus_tenant_id())
    ```
 
-**Tables Requiring Hardened RLS:**
-| Table | Current Policy | Production Policy |
-|-------|----------------|-------------------|
-| `nexus_notifications` | `USING (true)` | `USING (user_id = jwt_user_id())` |
-| `nexus_case_messages` | service_role only | `USING (case_id IN (SELECT id FROM nexus_cases WHERE tenant_client_id = jwt_tenant_id() OR tenant_vendor_id = jwt_tenant_id()))` |
-| `nexus_payments` | service_role only | `USING (tenant_id = jwt_tenant_id())` |
-| `nexus_tenant_relationships` | service_role only | `USING (tenant_client_id = jwt_tenant_id() OR tenant_vendor_id = jwt_tenant_id())` |
+---
+
+## Production RLS Policies (Finalized)
+
+**Migration file:** `supabase/migrations/20241227100000_nexus_production_rls_policies.sql`
+
+**Helper Functions:**
+```sql
+public.jwt_nexus_user_id()  -- Returns USR-* from JWT app_metadata
+public.jwt_nexus_tenant_id() -- Returns TNT-* from JWT app_metadata
+```
+
+**Actual Column Names (verified from schema):**
+| Table | Tenant Columns | Notes |
+|-------|----------------|-------|
+| `nexus_notifications` | `tenant_id`, `user_id` | user_id = recipient (USR-*) |
+| `nexus_cases` | `client_id`, `vendor_id` | Both are tenant IDs |
+| `nexus_case_messages` | `sender_tenant_id` | Uses EXISTS on parent case |
+| `nexus_payments` | `from_id`, `to_id` | Both are tenant IDs |
+| `nexus_tenant_relationships` | `client_id`, `vendor_id` | Two-sided visibility |
+
+**Policy Summary:**
+| Table | Policy | Shape |
+|-------|--------|-------|
+| `nexus_notifications` | SELECT/UPDATE | `tenant_id = jwt() AND (user_id = jwt() OR user_id IS NULL)` |
+| `nexus_cases` | SELECT | `client_id = jwt() OR vendor_id = jwt()` |
+| `nexus_case_messages` | SELECT/INSERT | `EXISTS (case access check)` + sender validation |
+| `nexus_payments` | SELECT | `from_id = jwt() OR to_id = jwt()` |
+| `nexus_tenant_relationships` | SELECT | `client_id = jwt() OR vendor_id = jwt()` |
 
 ---
 
