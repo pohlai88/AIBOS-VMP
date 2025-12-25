@@ -1159,13 +1159,14 @@ async function createAuthUser(options) {
  *
  * IMPORTANT: After updating app_metadata, the current session JWT is stale.
  * Pass the refresh_token to get a NEW session with updated JWT containing the metadata.
- * Without refresh, RLS helpers return NULL until client refreshes naturally.
+ * If refresh_token is provided, refresh MUST succeed or this throws (no silent failures).
  *
  * @param {string} authUserId - Supabase Auth UUID
  * @param {string} nexusUserId - Nexus user ID (USR-*)
  * @param {string} nexusTenantId - Nexus tenant ID (TNT-*)
  * @param {string} [refreshToken] - Current refresh token to exchange for new session
  * @returns {Promise<{user: object, session: object|null}>} Updated user + refreshed session
+ * @throws {Error} If refresh_token provided but refresh fails
  */
 async function setAuthAppMetadata(authUserId, nexusUserId, nexusTenantId, refreshToken = null) {
   // Step 1: Update app_metadata using admin API
@@ -1178,7 +1179,7 @@ async function setAuthAppMetadata(authUserId, nexusUserId, nexusTenantId, refres
 
   if (updateError) throw new Error(`Failed to set app_metadata: ${updateError.message}`);
 
-  // Step 2: If refresh token provided, get a new session with updated JWT
+  // Step 2: If refresh token provided, refresh MUST succeed (no silent failures)
   let refreshedSession = null;
   if (refreshToken) {
     const { data: refreshData, error: refreshError } = await serviceClient.auth.refreshSession({
@@ -1186,10 +1187,31 @@ async function setAuthAppMetadata(authUserId, nexusUserId, nexusTenantId, refres
     });
 
     if (refreshError) {
-      console.warn('Session refresh after metadata update failed:', refreshError.message);
-      // Non-fatal: client can refresh later, but RLS won't work on first request
-    } else {
-      refreshedSession = refreshData.session;
+      // HARD ERROR: Don't allow half-success where user is "logged in" but RLS claims are missing
+      throw new Error(`Session refresh failed after metadata update: ${refreshError.message}. Please retry login.`);
+    }
+
+    refreshedSession = refreshData.session;
+
+    // DEV: Verify JWT contains the claims (catches bugs early)
+    if (process.env.NODE_ENV === 'development' && refreshedSession?.access_token) {
+      try {
+        // Decode JWT payload (base64url) - no verification, just inspection
+        const payloadB64 = refreshedSession.access_token.split('.')[1];
+        const payload = JSON.parse(Buffer.from(payloadB64, 'base64url').toString());
+        const claims = payload.app_metadata || {};
+
+        if (claims.nexus_user_id !== nexusUserId || claims.nexus_tenant_id !== nexusTenantId) {
+          console.warn('[DEV] JWT claims mismatch after refresh!', {
+            expected: { nexus_user_id: nexusUserId, nexus_tenant_id: nexusTenantId },
+            got: { nexus_user_id: claims.nexus_user_id, nexus_tenant_id: claims.nexus_tenant_id }
+          });
+        } else {
+          console.log('[DEV] ✓ JWT claims verified:', claims.nexus_user_id, claims.nexus_tenant_id);
+        }
+      } catch (decodeErr) {
+        console.warn('[DEV] Could not decode JWT for verification:', decodeErr.message);
+      }
     }
   }
 

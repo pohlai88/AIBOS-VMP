@@ -72,28 +72,26 @@ router.post('/login', async (req, res) => {
     if (user.auth_user_id) {
       try {
         const authData = await nexusAdapter.signInWithPassword(email, password);
-        authSession = authData.session;
 
         // CRITICAL: Inject Nexus identity into JWT app_metadata for RLS
         // This enables jwt_nexus_user_id() and jwt_nexus_tenant_id() in RLS policies
-        // Pass refresh_token to get NEW session with updated JWT (fixes stale JWT gotcha)
-        try {
-          const { session: refreshedSession } = await nexusAdapter.setAuthAppMetadata(
-            user.auth_user_id,
-            user.user_id,      // USR-* from DB lookup (not client input)
-            user.tenant_id,    // TNT-* from DB lookup (not client input)
-            authSession.refresh_token  // Exchange for new JWT with metadata
-          );
+        // Refresh MUST succeed - we never return the stale pre-metadata session
+        const { session: refreshedSession } = await nexusAdapter.setAuthAppMetadata(
+          user.auth_user_id,
+          user.user_id,      // USR-* from DB lookup (not client input)
+          user.tenant_id,    // TNT-* from DB lookup (not client input)
+          authData.session.refresh_token  // Exchange for new JWT with metadata
+        );
 
-          // Use refreshed session if available (contains nexus_user_id in JWT)
-          if (refreshedSession) {
-            authSession = refreshedSession;
-          }
-        } catch (metadataError) {
-          console.warn('Failed to set app_metadata (non-fatal):', metadataError.message);
-          // Continue with original session - RLS will work on next natural token refresh
-        }
+        // ALWAYS use refreshed session (contains nexus_user_id in JWT)
+        // setAuthAppMetadata throws if refresh fails, so this is guaranteed
+        authSession = refreshedSession;
       } catch (authError) {
+        // Check if this is a refresh failure vs auth failure
+        if (authError.message?.includes('Session refresh failed')) {
+          console.error('Login succeeded but session refresh failed:', authError.message);
+          return res.status(500).json({ error: 'Login succeeded but session could not be established. Please retry.' });
+        }
         console.log('Supabase Auth failed, trying legacy bcrypt:', authError.message);
         // Fall back to bcrypt
       }
