@@ -1237,7 +1237,8 @@ async function getOAuthUrl(provider, redirectTo) {
     provider,
     options: {
       redirectTo,
-      skipBrowserRedirect: true
+      skipBrowserRedirect: true,
+      flowType: 'pkce'  // Use authorization code flow instead of implicit
     }
   });
 
