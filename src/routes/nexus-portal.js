@@ -376,67 +376,147 @@ router.get('/oauth/:provider', async (req, res) => {
 
 /**
  * GET /nexus/oauth/callback
- * Handle OAuth callback from provider
+ * Render callback page that handles both code (PKCE) and token (implicit) flows
+ * The page will extract tokens from URL fragment and POST to /nexus/oauth/token
  */
 router.get('/oauth/callback', async (req, res) => {
-  try {
-    const { code, error: oauthError, error_description } = req.query;
+  // If we have a code in query params, process it server-side
+  const { code, error: oauthError, error_description } = req.query;
 
-    if (oauthError) {
-      console.error('OAuth error:', oauthError, error_description);
-      return res.redirect(`/nexus/login?error=${oauthError}`);
+  if (oauthError) {
+    console.error('OAuth error:', oauthError, error_description);
+    return res.redirect(`/nexus/login?error=${oauthError}`);
+  }
+
+  if (code && typeof code === 'string') {
+    // PKCE flow - exchange code server-side
+    try {
+      const result = await handleOAuthSession(res, code, null);
+      if (result.redirect) {
+        return res.redirect(result.redirect);
+      }
+    } catch (error) {
+      console.error('OAuth code exchange error:', error);
+      return res.redirect('/nexus/login?error=oauth_failed');
     }
+  }
+
+  // Render the callback page - it will handle fragment tokens client-side
+  res.render('nexus/pages/oauth_callback.html');
+});
+
+/**
+ * GET /nexus/oauth/exchange
+ * Handle code exchange redirect from callback page
+ */
+router.get('/oauth/exchange', async (req, res) => {
+  try {
+    const { code } = req.query;
 
     if (!code || typeof code !== 'string') {
       return res.redirect('/nexus/login?error=no_code');
     }
 
-    // Exchange code for session
-    const authData = await nexusAdapter.exchangeOAuthCode(code);
-    const authUser = authData.user;
+    const result = await handleOAuthSession(res, code, null);
+    res.redirect(result.redirect || '/nexus/portal');
+  } catch (error) {
+    console.error('OAuth exchange error:', error);
+    res.redirect('/nexus/login?error=oauth_failed');
+  }
+});
 
-    // Check if nexus_user exists for this auth user
-    let nexusUser = await nexusAdapter.getUserByAuthId(authUser.id);
+/**
+ * POST /nexus/oauth/token
+ * Handle token submission from client-side (implicit flow)
+ */
+router.post('/oauth/token', express.json(), async (req, res) => {
+  try {
+    const { access_token, refresh_token } = req.body;
 
-    if (!nexusUser) {
-      // First-time OAuth user - check if email exists in nexus_users
-      nexusUser = await nexusAdapter.getUserByEmail(authUser.email);
+    if (!access_token) {
+      return res.status(400).json({ error: 'No access token provided' });
+    }
 
-      if (nexusUser) {
-        // Link existing nexus_user to this auth user
-        await nexusAdapter.linkAuthUser(nexusUser.user_id, authUser.id);
-      } else {
-        // Brand new user - redirect to complete profile
-        // Store auth session temporarily
-        res.cookie('nexus_oauth_pending', JSON.stringify({
+    const result = await handleOAuthSession(res, null, access_token);
+
+    if (result.needsProfile) {
+      // Store pending OAuth data in cookie
+      res.cookie('nexus_oauth_pending', JSON.stringify(result.pendingData), {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        maxAge: 10 * 60 * 1000 // 10 minutes
+      });
+      return res.json({ success: true, redirect: '/nexus/complete-profile' });
+    }
+
+    res.json({ success: true, redirect: result.redirect || '/nexus/portal' });
+  } catch (error) {
+    console.error('OAuth token error:', error);
+    res.status(500).json({ error: 'Failed to process OAuth token' });
+  }
+});
+
+/**
+ * Shared helper to handle OAuth session creation
+ * @param {Response} res - Express response (for setting cookies)
+ * @param {string|null} code - Authorization code (PKCE flow)
+ * @param {string|null} accessToken - Access token (implicit flow)
+ * @returns {Promise<{redirect?: string, needsProfile?: boolean, pendingData?: object}>}
+ */
+async function handleOAuthSession(res, code, accessToken) {
+  let authData;
+  let authUser;
+
+  if (code) {
+    // PKCE flow - exchange code for tokens
+    authData = await nexusAdapter.exchangeOAuthCode(code);
+    authUser = authData.user;
+  } else if (accessToken) {
+    // Implicit flow - verify token and get user
+    authUser = await nexusAdapter.verifyAuthToken(accessToken);
+    if (!authUser) {
+      throw new Error('Invalid access token');
+    }
+    authData = { session: { access_token: accessToken } };
+  } else {
+    throw new Error('No code or access token provided');
+  }
+
+  // Check if nexus_user exists for this auth user
+  let nexusUser = await nexusAdapter.getUserByAuthId(authUser.id);
+
+  if (!nexusUser) {
+    // First-time OAuth user - check if email exists in nexus_users
+    nexusUser = await nexusAdapter.getUserByEmail(authUser.email);
+
+    if (nexusUser) {
+      // Link existing nexus_user to this auth user
+      await nexusAdapter.linkAuthUser(nexusUser.user_id, authUser.id);
+    } else {
+      // Brand new user - needs to complete profile
+      return {
+        needsProfile: true,
+        pendingData: {
           authUserId: authUser.id,
           email: authUser.email,
           name: authUser.user_metadata?.full_name || authUser.email.split('@')[0],
           accessToken: authData.session.access_token,
-          refreshToken: authData.session.refresh_token
-        }), {
-          httpOnly: true,
-          secure: process.env.NODE_ENV === 'production',
-          maxAge: 10 * 60 * 1000 // 10 minutes
-        });
-        return res.redirect('/nexus/complete-profile');
-      }
+          refreshToken: authData.session?.refresh_token
+        }
+      };
     }
-
-    // Create session
-    await createNexusSession(res, nexusUser, nexusUser.tenant, authData.session);
-
-    // Update last login
-    await nexusAdapter.updateUser(nexusUser.user_id, {
-      last_login_at: new Date().toISOString()
-    });
-
-    res.redirect('/nexus/portal');
-  } catch (error) {
-    console.error('OAuth callback error:', error);
-    res.redirect('/nexus/login?error=oauth_failed');
   }
-});
+
+  // Create session
+  await createNexusSession(res, nexusUser, nexusUser.tenant, authData.session);
+
+  // Update last login
+  await nexusAdapter.updateUser(nexusUser.user_id, {
+    last_login_at: new Date().toISOString()
+  });
+
+  return { redirect: '/nexus/portal' };
+}
 
 /**
  * GET /nexus/complete-profile

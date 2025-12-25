@@ -1,0 +1,131 @@
+{% extends "nexus/layout.html" %}
+
+{% block title %}Signing in...{% endblock %}
+
+{% block content %}
+<div class="nexus-auth-page">
+  <div class="nexus-auth-card">
+    <div class="nexus-auth-header">
+      <span class="nexus-logo-icon large">⬡</span>
+      <h1>Signing you in...</h1>
+      <p id="status-message">Please wait while we complete authentication.</p>
+    </div>
+    
+    <div id="loading-spinner" class="nexus-loading-container">
+      <div class="nexus-spinner large"></div>
+    </div>
+    
+    <div id="error-container" class="nexus-alert error hidden">
+      <span class="nexus-alert-icon">✕</span>
+      <span id="error-message">An error occurred during sign-in.</span>
+    </div>
+    
+    <div id="retry-container" class="hidden" style="margin-top: 1.5rem;">
+      <a href="/nexus/login" class="nexus-btn primary full-width">Back to Login</a>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(async function() {
+  const statusEl = document.getElementById('status-message');
+  const loadingEl = document.getElementById('loading-spinner');
+  const errorContainer = document.getElementById('error-container');
+  const errorMessage = document.getElementById('error-message');
+  const retryContainer = document.getElementById('retry-container');
+  
+  function showError(message) {
+    loadingEl.classList.add('hidden');
+    errorContainer.classList.remove('hidden');
+    errorMessage.textContent = message;
+    retryContainer.classList.remove('hidden');
+  }
+  
+  try {
+    // Check for error in query params first
+    const urlParams = new URLSearchParams(window.location.search);
+    const error = urlParams.get('error');
+    if (error) {
+      showError(urlParams.get('error_description') || error);
+      return;
+    }
+    
+    // Check for code in query params (PKCE flow)
+    const code = urlParams.get('code');
+    if (code) {
+      statusEl.textContent = 'Exchanging authorization code...';
+      // Redirect to server to handle code exchange
+      window.location.href = '/nexus/oauth/exchange?code=' + encodeURIComponent(code);
+      return;
+    }
+    
+    // Check for tokens in URL fragment (implicit flow)
+    const hash = window.location.hash.substring(1);
+    if (!hash) {
+      showError('No authentication data received.');
+      return;
+    }
+    
+    // Parse the fragment
+    const params = new URLSearchParams(hash);
+    const accessToken = params.get('access_token');
+    const refreshToken = params.get('refresh_token');
+    
+    if (!accessToken) {
+      showError('No access token received from provider.');
+      return;
+    }
+    
+    statusEl.textContent = 'Completing sign-in...';
+    
+    // Send tokens to server
+    const response = await fetch('/nexus/oauth/token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify({
+        access_token: accessToken,
+        refresh_token: refreshToken,
+        provider_token: params.get('provider_token'),
+        expires_in: params.get('expires_in'),
+        token_type: params.get('token_type')
+      })
+    });
+    
+    const data = await response.json();
+    
+    if (response.ok && data.success) {
+      statusEl.textContent = 'Redirecting to portal...';
+      window.location.href = data.redirect || '/nexus/portal';
+    } else {
+      showError(data.error || 'Failed to complete sign-in.');
+    }
+  } catch (err) {
+    console.error('OAuth callback error:', err);
+    showError('Network error. Please try again.');
+  }
+})();
+</script>
+
+<style>
+.nexus-loading-container {
+  display: flex;
+  justify-content: center;
+  padding: 2rem;
+}
+
+.nexus-spinner.large {
+  width: 48px;
+  height: 48px;
+  border-width: 4px;
+}
+
+.hidden {
+  display: none !important;
+}
+</style>
+{% endblock %}
