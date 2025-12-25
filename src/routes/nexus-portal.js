@@ -86,11 +86,28 @@ router.get('/login', (req, res) => {
 /**
  * GET /nexus/debug-auth
  * Debug endpoint to check what role the serviceClient is using
+ * SECURITY: Only available in development or to admin users
  */
 router.get('/debug-auth', async (req, res) => {
+  // Gate: dev mode OR authenticated admin
+  const isDev = process.env.NODE_ENV !== 'production';
+  const isAdmin = req.nexus?.user?.role && ['owner', 'admin'].includes(req.nexus.user.role);
+
+  if (!isDev && !isAdmin) {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
+
   try {
     const result = await nexusAdapter.debugAuthContext();
-    res.json(result);
+    // In production, only return safe info (no full JWT)
+    if (!isDev) {
+      res.json({
+        auth_role: result.serviceClientRpc?.auth_role,
+        service_key_decoded: result.keyDecoded?.serviceKeyRole
+      });
+    } else {
+      res.json(result);
+    }
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
