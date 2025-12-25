@@ -11,6 +11,17 @@ CREATE POLICY IF NOT EXISTS notification_realtime_select
   TO authenticated, anon
   USING (true);
 
--- Note: This is a permissive SELECT policy. Consider restricting to:
--- USING (user_id = current_setting('request.jwt.claims', true)::json->>'user_id')
--- once JWT claims include the Nexus user_id (USR-* format)
+-- ┌─────────────────────────────────────────────────────────────────────────────┐
+-- │ PRODUCTION TODO: Harden this policy before go-live                         │
+-- │                                                                             │
+-- │ Replace USING (true) with proper tenant/user scoping:                      │
+-- │                                                                             │
+-- │ Option A (JWT claims - requires auth config):                              │
+-- │   USING (user_id = current_setting('request.jwt.claims', true)::json->>'user_id')│
+-- │                                                                             │
+-- │ Option B (tenant scoping via app_metadata):                                │
+-- │   USING (tenant_id = (auth.jwt() -> 'app_metadata' ->> 'tenant_id'))       │
+-- │                                                                             │
+-- │ Note: Our user_id column uses USR-* format, NOT auth.uid() UUID.           │
+-- │ Don't use auth.uid()::text unless you add a mapping.                       │
+-- └─────────────────────────────────────────────────────────────────────────────┘

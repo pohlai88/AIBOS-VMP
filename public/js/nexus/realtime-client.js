@@ -300,11 +300,11 @@ class NexusRealtimeClient {
       toast.classList.add('show');
     });
 
-    // Auto-remove after 5 seconds
+    // Auto-remove after 8 seconds (extended for dev visibility)
     setTimeout(() => {
       toast.classList.remove('show');
       setTimeout(() => toast.remove(), 300);
-    }, 5000);
+    }, 8000);
   }
 
   /**

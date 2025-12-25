@@ -784,6 +784,22 @@ SUPABASE_ANON_KEY=eyJ...local-anon-key...
 - All core realtime features working
 - Two-session test validated
 
+**⚠️ PRODUCTION TODO: Harden RLS Policy**
+
+The current policy uses `USING (true)` which allows all users to receive all notifications.
+Before go-live, replace with proper scoping:
+
+```sql
+-- Option A: JWT claims (requires auth config)
+USING (user_id = current_setting('request.jwt.claims', true)::json->>'user_id')
+
+-- Option B: Tenant scoping via app_metadata
+USING (tenant_id = (auth.jwt() -> 'app_metadata' ->> 'tenant_id'))
+```
+
+Note: Our `user_id` column uses `USR-*` format, NOT `auth.uid()` UUID.
+Don't use `auth.uid()::text` unless you add a mapping column.
+
 ---
 
 ## Changelog
@@ -803,4 +819,6 @@ SUPABASE_ANON_KEY=eyJ...local-anon-key...
 | 2025-12-26 | - | Fixed user_id filter (UUID → USR-* format) |
 | 2025-12-26 | - | Added RLS policy for realtime SELECT |
 | 2025-12-26 | - | Fixed property names in realtime-client.js |
+| 2025-12-27 | - | Extended toast duration 5s → 8s for dev visibility |
+| 2025-12-27 | - | Documented RLS hardening TODO for production |
 
