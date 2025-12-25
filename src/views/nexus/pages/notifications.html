@@ -1,0 +1,178 @@
+{% extends "nexus/layout.html" %}
+
+{% block title %}Notifications{% endblock %}
+
+{% block content %}
+<div class="nexus-page notifications">
+  <header class="nexus-page-header">
+    <div class="nexus-page-header-left">
+      <h1>🔔 Notifications</h1>
+      <p>Stay updated on cases, payments, and more</p>
+    </div>
+
+    <div class="nexus-page-header-right">
+      {% if notifications and notifications.length > 0 %}
+      <form method="POST" action="/nexus/api/notifications/read" class="nexus-inline-form">
+        <button type="submit" class="nexus-btn secondary">
+          ✓ Mark All Read
+        </button>
+      </form>
+      {% endif %}
+    </div>
+  </header>
+
+  <!-- Notifications List -->
+  <div class="nexus-notifications-list">
+    {% if notifications and notifications.length > 0 %}
+      {% for notification in notifications %}
+      <div class="nexus-notification-item {% if not notification.read_at %}unread{% endif %} priority-{{ notification.priority }}">
+        <div class="nexus-notification-icon">
+          {% if notification.notification_type == 'payment_received' %}💰
+          {% elif notification.notification_type == 'payment_sent' %}💸
+          {% elif notification.notification_type == 'payment_overdue' %}⚠️
+          {% elif notification.notification_type == 'case_created' %}📥
+          {% elif notification.notification_type == 'case_message' %}💬
+          {% elif notification.notification_type == 'case_status_changed' %}🔄
+          {% elif notification.notification_type == 'relationship_invite' %}🔗
+          {% elif notification.notification_type == 'relationship_accepted' %}✅
+          {% else %}🔔
+          {% endif %}
+        </div>
+
+        <div class="nexus-notification-content">
+          <div class="nexus-notification-header">
+            <span class="nexus-notification-title">{{ notification.title }}</span>
+            {% if notification.priority == 'critical' %}
+            <span class="nexus-badge critical">Critical</span>
+            {% elif notification.priority == 'high' %}
+            <span class="nexus-badge warning">High</span>
+            {% endif %}
+          </div>
+
+          {% if notification.body %}
+          <p class="nexus-notification-body">{{ notification.body }}</p>
+          {% endif %}
+
+          <div class="nexus-notification-meta">
+            <span class="nexus-notification-time">
+              {{ notification.created_at | date('MMM D, h:mm A') }}
+            </span>
+            {% if notification.context %}
+            <span class="nexus-notification-context">
+              <span class="nexus-context-icon {{ notification.context }} small">
+                {% if notification.context == 'client' %}◀{% else %}▶{% endif %}
+              </span>
+              {{ notification.context | title }}
+            </span>
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="nexus-notification-actions">
+          {% if notification.action_url %}
+          <a href="{{ notification.action_url }}" class="nexus-btn small primary">
+            View
+          </a>
+          {% endif %}
+
+          {% if not notification.read_at %}
+          <form method="POST" action="/nexus/api/notifications/read" class="nexus-inline-form">
+            <input type="hidden" name="notificationIds" value="{{ notification.notification_id }}">
+            <button type="submit" class="nexus-btn small icon" title="Mark as read">
+              ✓
+            </button>
+          </form>
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
+
+    {% else %}
+    <div class="nexus-empty-state">
+      <span class="nexus-empty-icon">🔔</span>
+      <h3>No notifications</h3>
+      <p>You're all caught up! New notifications will appear here.</p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<style>
+.nexus-notifications-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.nexus-notification-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  padding: 1rem;
+  background: var(--nexus-surface);
+  border-radius: 8px;
+  border-left: 3px solid transparent;
+  transition: all 0.2s;
+}
+
+.nexus-notification-item.unread {
+  background: var(--nexus-surface-elevated);
+  border-left-color: var(--nexus-primary);
+}
+
+.nexus-notification-item.priority-critical {
+  border-left-color: var(--nexus-danger);
+}
+
+.nexus-notification-item.priority-high {
+  border-left-color: var(--nexus-warning);
+}
+
+.nexus-notification-icon {
+  font-size: 1.5rem;
+  width: 2.5rem;
+  height: 2.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--nexus-surface);
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.nexus-notification-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.nexus-notification-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.25rem;
+}
+
+.nexus-notification-title {
+  font-weight: 600;
+}
+
+.nexus-notification-body {
+  color: var(--nexus-text-secondary);
+  margin: 0.25rem 0;
+}
+
+.nexus-notification-meta {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  font-size: 0.875rem;
+  color: var(--nexus-text-muted);
+}
+
+.nexus-notification-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+</style>
+{% endblock %}

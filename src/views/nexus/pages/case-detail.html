@@ -1,0 +1,258 @@
+{% extends "nexus/layout.html" %}
+
+{% block title %}{{ case.subject }} - Case {{ case.case_id }}{% endblock %}
+
+{% set activeNav = 'inbox' %}
+
+{% block content %}
+<div class="nexus-page case-detail">
+  <!-- Back Navigation -->
+  <div class="nexus-breadcrumb">
+    <a href="/nexus/inbox" class="nexus-back-link">← Back to Inbox</a>
+  </div>
+
+  <!-- Case Header -->
+  <header class="nexus-case-detail-header">
+    <div class="nexus-case-detail-left">
+      <div class="nexus-case-detail-meta">
+        <code class="nexus-code">{{ case.case_id }}</code>
+        <span class="nexus-badge priority-{{ case.priority }}">{{ case.priority | upper }}</span>
+        <span class="nexus-badge status-{{ case.status }}">{{ case.status | replace('_', ' ') | title }}</span>
+      </div>
+      <h1 class="nexus-case-detail-title">{{ case.subject }}</h1>
+      <p class="nexus-case-detail-parties">
+        {% if isClient %}
+        <span class="nexus-context-icon client">◀</span>
+        You →
+        <span class="nexus-context-icon vendor">▶</span>
+        {{ case.vendor.name or 'Unknown Vendor' }}
+        {% else %}
+        <span class="nexus-context-icon client">◀</span>
+        {{ case.client.name or 'Unknown Client' }} →
+        <span class="nexus-context-icon vendor">▶</span>
+        You
+        {% endif %}
+      </p>
+    </div>
+
+    <div class="nexus-case-detail-right">
+      {% if case.sla_due_at %}
+      <div class="nexus-sla-indicator {% if case.sla_due_at < now %}overdue{% endif %}">
+        <span class="nexus-sla-label">SLA Due</span>
+        <span class="nexus-sla-value">{{ case.sla_due_at | date('MMM D, YYYY h:mm A') }}</span>
+      </div>
+      {% endif %}
+    </div>
+  </header>
+
+  <!-- Tabs -->
+  <div class="nexus-tabs">
+    <a href="?tab=overview" class="nexus-tab {% if activeTab == 'overview' or not activeTab %}active{% endif %}">
+      📋 Overview
+    </a>
+    <a href="?tab=thread" class="nexus-tab {% if activeTab == 'thread' %}active{% endif %}">
+      💬 Thread
+      {% if case.unread_count > 0 %}
+      <span class="nexus-badge">{{ case.unread_count }}</span>
+      {% endif %}
+    </a>
+    <a href="?tab=evidence" class="nexus-tab {% if activeTab == 'evidence' %}active{% endif %}">
+      📎 Evidence
+    </a>
+    <a href="?tab=checklist" class="nexus-tab {% if activeTab == 'checklist' %}active{% endif %}">
+      ✅ Checklist
+    </a>
+    <a href="?tab=activity" class="nexus-tab {% if activeTab == 'activity' %}active{% endif %}">
+      📜 Activity
+    </a>
+  </div>
+
+  <!-- Tab Content -->
+  <div class="nexus-tab-content">
+    {% if activeTab == 'overview' or not activeTab %}
+    <!-- Overview Tab -->
+    <div class="nexus-case-overview">
+      <div class="nexus-card">
+        <h3>Description</h3>
+        <div class="nexus-case-description">
+          {{ case.description or 'No description provided.' }}
+        </div>
+      </div>
+
+      <div class="nexus-case-info-grid">
+        <div class="nexus-card">
+          <h4>Case Type</h4>
+          <p>{{ case.case_type | replace('_', ' ') | title }}</p>
+        </div>
+
+        <div class="nexus-card">
+          <h4>Created</h4>
+          <p>{{ case.created_at | date('MMM D, YYYY') }}</p>
+        </div>
+
+        <div class="nexus-card">
+          <h4>Last Updated</h4>
+          <p>{{ case.updated_at | date('MMM D, YYYY') }}</p>
+        </div>
+
+        <div class="nexus-card">
+          <h4>Status</h4>
+          <p>
+            <span class="nexus-badge status-{{ case.status }}">
+              {{ case.status | replace('_', ' ') | title }}
+            </span>
+          </p>
+        </div>
+      </div>
+
+      <!-- Quick Actions -->
+      <div class="nexus-case-actions">
+        <button class="nexus-btn primary" onclick="switchTab('thread')">
+          💬 View Thread
+        </button>
+
+        {% if isClient and case.status == 'open' %}
+        <button class="nexus-btn secondary" data-modal="close-case-modal">
+          ✅ Close Case
+        </button>
+        {% endif %}
+
+        {% if isVendor and case.status == 'open' %}
+        <button class="nexus-btn secondary" data-action="update-status" data-status="in_progress">
+          🔄 Mark In Progress
+        </button>
+        {% endif %}
+      </div>
+    </div>
+
+    {% elif activeTab == 'thread' %}
+    <!-- Thread Tab -->
+    <div class="nexus-case-thread"
+         hx-get="/nexus/cases/{{ case.case_id }}/thread"
+         hx-trigger="load"
+         hx-swap="innerHTML">
+      <div class="nexus-loading">Loading messages...</div>
+    </div>
+
+    <!-- Message Input -->
+    <form class="nexus-message-form"
+          hx-post="/nexus/cases/{{ case.case_id }}/messages"
+          hx-target=".nexus-case-thread"
+          hx-swap="beforeend"
+          hx-on::after-request="this.reset()">
+      <textarea
+        name="body"
+        placeholder="Type your message..."
+        rows="3"
+        required
+      ></textarea>
+      <div class="nexus-message-form-actions">
+        <button type="submit" class="nexus-btn primary">
+          Send Message
+        </button>
+      </div>
+    </form>
+
+    {% elif activeTab == 'evidence' %}
+    <!-- Evidence Tab -->
+    <div class="nexus-case-evidence">
+      {% if case.evidence and case.evidence.length > 0 %}
+      <div class="nexus-evidence-list">
+        {% for file in case.evidence %}
+        <div class="nexus-evidence-item">
+          <span class="nexus-evidence-icon">📄</span>
+          <div class="nexus-evidence-info">
+            <span class="nexus-evidence-name">{{ file.filename }}</span>
+            <span class="nexus-evidence-meta">
+              {{ file.file_size | filesizeformat }} • Uploaded {{ file.created_at | date('MMM D') }}
+            </span>
+          </div>
+          <a href="{{ file.storage_path }}" target="_blank" class="nexus-btn icon small">⬇️</a>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="nexus-empty-state">
+        <span class="nexus-empty-icon">📎</span>
+        <h3>No evidence uploaded</h3>
+        <p>Upload documents, images, or files related to this case.</p>
+      </div>
+      {% endif %}
+
+      <div class="nexus-evidence-upload">
+        <button class="nexus-btn secondary" disabled title="Coming soon">
+          + Upload Evidence
+        </button>
+      </div>
+    </div>
+
+    {% elif activeTab == 'checklist' %}
+    <!-- Checklist Tab -->
+    <div class="nexus-case-checklist">
+      {% if case.checklist and case.checklist.length > 0 %}
+      <ul class="nexus-checklist">
+        {% for item in case.checklist %}
+        <li class="nexus-checklist-item {% if item.is_completed %}completed{% endif %}">
+          <input type="checkbox" {% if item.is_completed %}checked{% endif %} disabled>
+          <span>{{ item.title }}</span>
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <div class="nexus-empty-state">
+        <span class="nexus-empty-icon">✅</span>
+        <h3>No checklist items</h3>
+        <p>Add tasks to track progress on this case.</p>
+      </div>
+      {% endif %}
+    </div>
+
+    {% elif activeTab == 'activity' %}
+    <!-- Activity Tab -->
+    <div class="nexus-case-activity">
+      {% if case.activity and case.activity.length > 0 %}
+      <ul class="nexus-activity-list">
+        {% for event in case.activity %}
+        <li class="nexus-activity-item">
+          <span class="nexus-activity-dot"></span>
+          <div class="nexus-activity-content">
+            <span class="nexus-activity-title">{{ event.title }}</span>
+            <span class="nexus-activity-time">{{ event.created_at | date('MMM D, h:mm A') }}</span>
+          </div>
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <div class="nexus-empty-state">
+        <span class="nexus-empty-icon">📜</span>
+        <h3>No activity yet</h3>
+        <p>Activity will appear here as actions are taken on this case.</p>
+      </div>
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Close Case Modal -->
+<div class="nexus-modal" id="close-case-modal">
+  <div class="nexus-modal-backdrop" data-modal-close></div>
+  <div class="nexus-modal-content">
+    <h2>Close Case</h2>
+    <p>Are you sure you want to close this case?</p>
+    <form method="POST" action="/nexus/cases/{{ case.case_id }}/status">
+      <input type="hidden" name="status" value="closed">
+      <div class="nexus-modal-actions">
+        <button type="button" class="nexus-btn secondary" data-modal-close>Cancel</button>
+        <button type="submit" class="nexus-btn primary">Close Case</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+function switchTab(tab) {
+  window.location.href = '?tab=' + tab;
+}
+</script>
+{% endblock %}

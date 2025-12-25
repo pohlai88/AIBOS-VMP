@@ -1,0 +1,129 @@
+{% extends "nexus/layout.html" %}
+
+{% block title %}Select Role{% endblock %}
+
+{% set activeNav = 'portal' %}
+
+{% block content %}
+<div class="nexus-page role-dashboard">
+  <header class="nexus-page-header">
+    <h1>Welcome, {{ nexus.user.display_name }}</h1>
+    <p>Select a view to get started</p>
+  </header>
+
+  <div class="nexus-role-dashboard-cards">
+    <!-- Client View Card -->
+    <div class="nexus-dashboard-card client">
+      <div class="nexus-dashboard-card-header">
+        <span class="nexus-context-icon client large">◀</span>
+        <h2>Client View</h2>
+        <p>Manage your vendors</p>
+      </div>
+
+      <div class="nexus-dashboard-card-stats">
+        <div class="nexus-stat">
+          <span class="nexus-stat-value">{{ clientStats.vendorCount }}</span>
+          <span class="nexus-stat-label">Vendors</span>
+        </div>
+        <div class="nexus-stat">
+          <span class="nexus-stat-value">{{ clientStats.caseCount }}</span>
+          <span class="nexus-stat-label">Active Cases</span>
+        </div>
+        <div class="nexus-stat">
+          <span class="nexus-stat-value">{{ clientStats.pendingPayments }}</span>
+          <span class="nexus-stat-label">Pending Payments</span>
+        </div>
+        {% if clientStats.pendingAmount > 0 %}
+        <div class="nexus-stat highlight">
+          <span class="nexus-stat-value">${{ clientStats.pendingAmount | round(2) }}</span>
+          <span class="nexus-stat-label">To Pay</span>
+        </div>
+        {% endif %}
+      </div>
+
+      <div class="nexus-dashboard-card-actions">
+        <form method="POST" action="/nexus/portal/switch">
+          <input type="hidden" name="context" value="client">
+          <button type="submit" class="nexus-btn primary">
+            Enter Client View →
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Vendor View Card -->
+    <div class="nexus-dashboard-card vendor">
+      <div class="nexus-dashboard-card-header">
+        <span class="nexus-context-icon vendor large">▶</span>
+        <h2>Vendor View</h2>
+        <p>Serve your clients</p>
+      </div>
+
+      <div class="nexus-dashboard-card-stats">
+        <div class="nexus-stat">
+          <span class="nexus-stat-value">{{ vendorStats.clientCount }}</span>
+          <span class="nexus-stat-label">Clients</span>
+        </div>
+        <div class="nexus-stat">
+          <span class="nexus-stat-value">{{ vendorStats.caseCount }}</span>
+          <span class="nexus-stat-label">Assigned Cases</span>
+        </div>
+        <div class="nexus-stat">
+          <span class="nexus-stat-value">{{ vendorStats.pendingPayments }}</span>
+          <span class="nexus-stat-label">Pending Receipts</span>
+        </div>
+        {% if vendorStats.pendingAmount > 0 %}
+        <div class="nexus-stat highlight success">
+          <span class="nexus-stat-value">${{ vendorStats.pendingAmount | round(2) }}</span>
+          <span class="nexus-stat-label">To Receive</span>
+        </div>
+        {% endif %}
+      </div>
+
+      <div class="nexus-dashboard-card-actions">
+        <form method="POST" action="/nexus/portal/switch">
+          <input type="hidden" name="context" value="vendor">
+          <button type="submit" class="nexus-btn primary">
+            Enter Vendor View →
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Quick Actions -->
+  <div class="nexus-quick-actions">
+    <h3>Quick Actions</h3>
+    <div class="nexus-quick-action-buttons">
+      <a href="/nexus/relationships" class="nexus-btn secondary">
+        🔗 Manage Relationships
+      </a>
+      <a href="/nexus/settings" class="nexus-btn secondary">
+        ⚙️ Settings
+      </a>
+    </div>
+  </div>
+
+  <!-- Tenant Info -->
+  <div class="nexus-tenant-info">
+    <h3>Your Tenant Info</h3>
+    <div class="nexus-info-grid">
+      <div class="nexus-info-item">
+        <span class="nexus-info-label">Tenant ID</span>
+        <code class="nexus-info-value">{{ nexus.tenant.tenant_id }}</code>
+      </div>
+      <div class="nexus-info-item">
+        <span class="nexus-info-label">Client ID</span>
+        <code class="nexus-info-value">{{ nexus.tenant.tenant_client_id }}</code>
+      </div>
+      <div class="nexus-info-item">
+        <span class="nexus-info-label">Vendor ID</span>
+        <code class="nexus-info-value">{{ nexus.tenant.tenant_vendor_id }}</code>
+      </div>
+    </div>
+    <p class="nexus-info-hint">
+      Share your <strong>Client ID</strong> with vendors so they can link to you during sign-up.
+    </p>
+  </div>
+</div>
+{% endblock %}

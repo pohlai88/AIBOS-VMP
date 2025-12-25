@@ -1,0 +1,69 @@
+<!-- Context Badge Partial -->
+<!-- Shows current context (Client/Vendor) with ability to switch -->
+
+{% if nexus and nexus.hasDualContext %}
+<div class="nexus-context-switcher">
+  <button class="nexus-context-trigger" data-dropdown="context-switcher">
+    {% if nexus.activeContext == 'client' %}
+    <span class="nexus-context-icon client">◀</span>
+    <span class="nexus-context-label">As Client</span>
+    {% elif nexus.activeContext == 'vendor' %}
+    <span class="nexus-context-icon vendor">▶</span>
+    <span class="nexus-context-label">As Vendor</span>
+    {% else %}
+    <span class="nexus-context-icon">⬡</span>
+    <span class="nexus-context-label">Select Role</span>
+    {% endif %}
+    <span class="nexus-context-chevron">▼</span>
+  </button>
+
+  <div class="nexus-dropdown context-dropdown" id="context-switcher">
+    <div class="nexus-dropdown-header">
+      <small>Switch View</small>
+    </div>
+
+    <form hx-post="/nexus/portal/switch" hx-trigger="submit" hx-swap="none">
+      <input type="hidden" name="context" value="client">
+      <button type="submit" class="nexus-dropdown-item {% if nexus.activeContext == 'client' %}active{% endif %}">
+        <span class="nexus-context-icon client">◀</span>
+        <div class="nexus-context-info">
+          <strong>Client View</strong>
+          <small>Managing {{ nexus.contexts.vendorCount }} vendor(s)</small>
+        </div>
+      </button>
+    </form>
+
+    <form hx-post="/nexus/portal/switch" hx-trigger="submit" hx-swap="none">
+      <input type="hidden" name="context" value="vendor">
+      <button type="submit" class="nexus-dropdown-item {% if nexus.activeContext == 'vendor' %}active{% endif %}">
+        <span class="nexus-context-icon vendor">▶</span>
+        <div class="nexus-context-info">
+          <strong>Vendor View</strong>
+          <small>Serving {{ nexus.contexts.clientCount }} client(s)</small>
+        </div>
+      </button>
+    </form>
+
+    <div class="nexus-dropdown-divider"></div>
+    <a href="/nexus/portal" class="nexus-dropdown-item">
+      <span class="nexus-context-icon">📊</span>
+      Role Dashboard
+    </a>
+  </div>
+</div>
+
+{% elif nexus %}
+<!-- Single context - show static badge -->
+<div class="nexus-context-badge single">
+  {% if nexus.contexts.vendorCount > 0 %}
+  <span class="nexus-context-icon client">◀</span>
+  <span class="nexus-context-label">Client</span>
+  {% elif nexus.contexts.clientCount > 0 %}
+  <span class="nexus-context-icon vendor">▶</span>
+  <span class="nexus-context-label">Vendor</span>
+  {% else %}
+  <span class="nexus-context-icon">⬡</span>
+  <span class="nexus-context-label">New Tenant</span>
+  {% endif %}
+</div>
+{% endif %}

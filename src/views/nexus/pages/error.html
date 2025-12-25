@@ -1,0 +1,18 @@
+{% extends "nexus/layout.html" %}
+
+{% block title %}Error{% endblock %}
+
+{% block content %}
+<div class="nexus-error-page">
+  <div class="nexus-error-card">
+    <span class="nexus-error-icon">⚠️</span>
+    <h1>Something went wrong</h1>
+    <p class="nexus-error-message">{{ error or 'An unexpected error occurred' }}</p>
+
+    <div class="nexus-error-actions">
+      <a href="javascript:history.back()" class="nexus-btn secondary">← Go Back</a>
+      <a href="/nexus/portal" class="nexus-btn primary">Go to Dashboard</a>
+    </div>
+  </div>
+</div>
+{% endblock %}

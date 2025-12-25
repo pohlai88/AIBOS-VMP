@@ -6,10 +6,16 @@
     "strict": false,
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "moduleResolution": "node",
+    "moduleResolution": "bundler",
     "typeRoots": ["./node_modules/@types", "./types"]
   },
   "include": ["**/*.js", "types/**/*.d.ts"],
-  "exclude": ["node_modules", "dist", "build", "coverage"]
+  "exclude": [
+    "node_modules",
+    "dist",
+    "build",
+    "coverage",
+    "**/nexus-*.js"
+  ]
 }
 

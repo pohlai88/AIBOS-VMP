@@ -1,0 +1,231 @@
+{% extends "nexus/layout.html" %}
+
+{% block title %}Sign Up{% endblock %}
+
+{% block content %}
+<div class="nexus-auth-page">
+  <div class="nexus-auth-card wide">
+    <div class="nexus-auth-header">
+      <span class="nexus-logo-icon large">⬡</span>
+      <h1>Create Your Account</h1>
+      <p>Join Nexus to manage your business relationships</p>
+    </div>
+
+    <form class="nexus-auth-form" id="signup-form">
+      <!-- Step 1: Role Selection -->
+      <div class="nexus-signup-step" id="step-role">
+        <h2>How will you use Nexus?</h2>
+        <p class="nexus-form-hint">You can always add the other role later</p>
+
+        <div class="nexus-role-cards">
+          <button type="button" class="nexus-role-card" data-role="client">
+            <span class="nexus-role-icon">◀</span>
+            <h3>I'm a Client</h3>
+            <p>I need to manage vendors and track their work</p>
+            <ul>
+              <li>✓ Create cases for vendors</li>
+              <li>✓ Track payments you send</li>
+              <li>✓ Invite vendors to collaborate</li>
+            </ul>
+          </button>
+
+          <button type="button" class="nexus-role-card" data-role="vendor">
+            <span class="nexus-role-icon">▶</span>
+            <h3>I'm a Vendor</h3>
+            <p>I provide services to clients</p>
+            <ul>
+              <li>✓ Receive case assignments</li>
+              <li>✓ Track incoming payments</li>
+              <li>✓ Connect with client code</li>
+            </ul>
+          </button>
+        </div>
+      </div>
+
+      <!-- Step 2: Account Details -->
+      <div class="nexus-signup-step hidden" id="step-details">
+        <h2>Your Details</h2>
+
+        <input type="hidden" name="role" id="selected-role">
+        {% if inviteToken %}
+        <input type="hidden" name="token" value="{{ inviteToken }}">
+        {% endif %}
+
+        <div class="nexus-form-row">
+          <div class="nexus-form-group">
+            <label for="name">Full Name / Company</label>
+            <input
+              type="text"
+              id="name"
+              name="name"
+              required
+              placeholder="Your name or company"
+            >
+          </div>
+
+          <div class="nexus-form-group">
+            <label for="phone">Phone (optional)</label>
+            <input
+              type="tel"
+              id="phone"
+              name="phone"
+              placeholder="+1 555 123 4567"
+            >
+          </div>
+        </div>
+
+        <div class="nexus-form-group">
+          <label for="email">Email</label>
+          <input
+            type="email"
+            id="email"
+            name="email"
+            required
+            autocomplete="email"
+            placeholder="you@company.com"
+          >
+        </div>
+
+        <div class="nexus-form-group">
+          <label for="password">Password</label>
+          <input
+            type="password"
+            id="password"
+            name="password"
+            required
+            minlength="8"
+            autocomplete="new-password"
+            placeholder="At least 8 characters"
+          >
+          <small class="nexus-form-hint">Min 8 characters with at least one number</small>
+        </div>
+
+        <!-- Vendor-specific: Client Code -->
+        <div class="nexus-form-group vendor-only hidden" id="client-code-group">
+          <label for="clientCode">Client Code (optional)</label>
+          <input
+            type="text"
+            id="clientCode"
+            name="clientCode"
+            placeholder="TC-XXXXXXXX or leave blank"
+          >
+          <small class="nexus-form-hint">
+            If you have a client code, enter it to automatically link your account.
+            Otherwise, your client can invite you later.
+          </small>
+        </div>
+
+        <div id="signup-error" class="nexus-form-error hidden"></div>
+
+        <div class="nexus-form-actions">
+          <button type="button" class="nexus-btn secondary" id="back-btn">
+            ← Back
+          </button>
+          <button type="submit" class="nexus-btn primary">
+            Create Account
+          </button>
+        </div>
+      </div>
+    </form>
+
+    <div class="nexus-auth-footer">
+      <p>Already have an account? <a href="/nexus/login">Sign in</a></p>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const form = document.getElementById('signup-form');
+const stepRole = document.getElementById('step-role');
+const stepDetails = document.getElementById('step-details');
+const roleCards = document.querySelectorAll('.nexus-role-card');
+const selectedRoleInput = document.getElementById('selected-role');
+const clientCodeGroup = document.getElementById('client-code-group');
+const backBtn = document.getElementById('back-btn');
+
+// Role selection
+roleCards.forEach(card => {
+  card.addEventListener('click', () => {
+    const role = card.dataset.role;
+    selectedRoleInput.value = role;
+
+    // Show/hide vendor-specific fields
+    if (role === 'vendor') {
+      clientCodeGroup.classList.remove('hidden');
+    } else {
+      clientCodeGroup.classList.add('hidden');
+    }
+
+    // Move to step 2
+    stepRole.classList.add('hidden');
+    stepDetails.classList.remove('hidden');
+  });
+});
+
+// Back button
+backBtn.addEventListener('click', () => {
+  stepDetails.classList.add('hidden');
+  stepRole.classList.remove('hidden');
+  selectedRoleInput.value = '';
+});
+
+// Form submission
+form.addEventListener('submit', async (e) => {
+  e.preventDefault();
+
+  const errorDiv = document.getElementById('signup-error');
+  const submitBtn = form.querySelector('button[type="submit"]');
+
+  // Validate password
+  const password = form.password.value;
+  if (password.length < 8 || !/\d/.test(password)) {
+    errorDiv.textContent = 'Password must be at least 8 characters with one number';
+    errorDiv.classList.remove('hidden');
+    return;
+  }
+
+  submitBtn.disabled = true;
+  submitBtn.innerHTML = '<span class="nexus-spinner"></span> Creating account...';
+  errorDiv.classList.add('hidden');
+
+  try {
+    const response = await fetch('/nexus/sign-up', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify({
+        name: form.name.value,
+        email: form.email.value,
+        password: form.password.value,
+        phone: form.phone.value,
+        role: form.querySelector('[name="role"]').value,
+        clientCode: form.clientCode?.value
+      })
+    });
+
+    const data = await response.json();
+
+    if (response.ok && data.success) {
+      // Show success message if there is one
+      if (data.message) {
+        window.nexusToast?.show(data.message, 'success');
+      }
+      window.location.href = data.redirect || '/nexus/portal';
+    } else {
+      errorDiv.textContent = data.error || 'Registration failed';
+      errorDiv.classList.remove('hidden');
+    }
+  } catch (err) {
+    errorDiv.textContent = 'Network error. Please try again.';
+    errorDiv.classList.remove('hidden');
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.innerHTML = 'Create Account';
+  }
+});
+</script>
+{% endblock %}

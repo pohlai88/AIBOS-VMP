@@ -47,6 +47,7 @@
     "chart.js": "^4.4.0",
     "compression": "^1.8.1",
     "connect-pg-simple": "^10.0.0",
+    "cookie-parser": "^1.4.7",
     "cookie-session": "^2.0.0",
     "csv-parse": "^6.1.0",
     "dotenv": "^16.3.1",

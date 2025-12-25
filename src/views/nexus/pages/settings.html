@@ -1,0 +1,288 @@
+{% extends "nexus/layout.html" %}
+
+{% block title %}Settings{% endblock %}
+
+{% block content %}
+<div class="nexus-page settings">
+  <header class="nexus-page-header">
+    <div class="nexus-page-header-left">
+      <h1>⚙️ Settings</h1>
+      <p>Manage your account and notification preferences</p>
+    </div>
+  </header>
+
+  <div class="nexus-settings-grid">
+    <!-- Profile Section -->
+    <section class="nexus-settings-section">
+      <div class="nexus-card">
+        <h2>👤 Profile</h2>
+
+        <div class="nexus-profile-summary">
+          <div class="nexus-profile-avatar large">
+            {{ nexus.user.display_name | first | upper }}
+          </div>
+          <div class="nexus-profile-info">
+            <h3>{{ nexus.user.display_name }}</h3>
+            <p>{{ nexus.user.email }}</p>
+            <span class="nexus-badge">{{ nexus.user.role | title }}</span>
+          </div>
+        </div>
+
+        <dl class="nexus-detail-list">
+          <div class="nexus-detail-row">
+            <dt>Organization</dt>
+            <dd>{{ nexus.tenant.name }}</dd>
+          </div>
+          <div class="nexus-detail-row">
+            <dt>Tenant ID</dt>
+            <dd><code class="nexus-code">{{ nexus.tenant.tenant_id }}</code></dd>
+          </div>
+          <div class="nexus-detail-row">
+            <dt>Client ID</dt>
+            <dd><code class="nexus-code">{{ nexus.tenant.tenant_client_id }}</code></dd>
+          </div>
+          <div class="nexus-detail-row">
+            <dt>Vendor ID</dt>
+            <dd><code class="nexus-code">{{ nexus.tenant.tenant_vendor_id }}</code></dd>
+          </div>
+        </dl>
+      </div>
+    </section>
+
+    <!-- Notification Preferences -->
+    <section class="nexus-settings-section">
+      <div class="nexus-card">
+        <h2>🔔 Notification Preferences</h2>
+
+        <form method="POST" action="/nexus/settings/notifications" class="nexus-form">
+          <div class="nexus-form-group">
+            <label class="nexus-toggle-label">
+              <input
+                type="checkbox"
+                name="realtime_enabled"
+                {% if notificationPrefs.realtime_enabled !== false %}checked{% endif %}
+              >
+              <span class="nexus-toggle"></span>
+              <span class="nexus-toggle-text">
+                <strong>Real-time Notifications</strong>
+                <small>Receive instant updates in your browser</small>
+              </span>
+            </label>
+          </div>
+
+          <div class="nexus-form-group">
+            <label class="nexus-toggle-label">
+              <input
+                type="checkbox"
+                name="push_enabled"
+                {% if notificationPrefs.push_enabled %}checked{% endif %}
+              >
+              <span class="nexus-toggle"></span>
+              <span class="nexus-toggle-text">
+                <strong>Push Notifications</strong>
+                <small>Receive notifications even when the app is closed</small>
+              </span>
+            </label>
+          </div>
+
+          <div class="nexus-form-group">
+            <label class="nexus-toggle-label">
+              <input
+                type="checkbox"
+                name="email_enabled"
+                {% if notificationPrefs.email_enabled !== false %}checked{% endif %}
+              >
+              <span class="nexus-toggle"></span>
+              <span class="nexus-toggle-text">
+                <strong>Email Notifications</strong>
+                <small>Receive important updates via email</small>
+              </span>
+            </label>
+          </div>
+
+          <div class="nexus-form-group">
+            <label>Email Digest</label>
+            <select name="email_digest_mode" class="nexus-select">
+              <option value="instant" {% if notificationPrefs.email_digest_mode == 'instant' %}selected{% endif %}>
+                Instant (send immediately)
+              </option>
+              <option value="hourly" {% if notificationPrefs.email_digest_mode == 'hourly' %}selected{% endif %}>
+                Hourly digest
+              </option>
+              <option value="daily" {% if notificationPrefs.email_digest_mode == 'daily' %}selected{% endif %}>
+                Daily digest
+              </option>
+              <option value="weekly" {% if notificationPrefs.email_digest_mode == 'weekly' %}selected{% endif %}>
+                Weekly digest
+              </option>
+            </select>
+          </div>
+
+          <div class="nexus-form-actions">
+            <button type="submit" class="nexus-btn primary">
+              Save Preferences
+            </button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <!-- Tenant Config (Admin Only) -->
+    {% if isAdmin %}
+    <section class="nexus-settings-section">
+      <div class="nexus-card">
+        <h2>🏢 Organization Settings</h2>
+        <p class="nexus-text-muted">These settings apply to all users in your organization.</p>
+
+        <dl class="nexus-detail-list">
+          <div class="nexus-detail-row">
+            <dt>Payment Notifications</dt>
+            <dd>
+              <span class="nexus-badge success">Always On</span>
+              <small class="nexus-text-muted">Cannot be disabled for compliance</small>
+            </dd>
+          </div>
+
+          <div class="nexus-detail-row">
+            <dt>Quiet Hours</dt>
+            <dd>
+              {% if tenantConfig.quiet_hours_start and tenantConfig.quiet_hours_end %}
+              {{ tenantConfig.quiet_hours_start }} - {{ tenantConfig.quiet_hours_end }}
+              {% else %}
+              Not configured
+              {% endif %}
+            </dd>
+          </div>
+
+          <div class="nexus-detail-row">
+            <dt>Default Email Digest</dt>
+            <dd>{{ tenantConfig.email_digest_default or 'instant' | title }}</dd>
+          </div>
+        </dl>
+
+        <div class="nexus-alert info">
+          <span class="nexus-alert-icon">ℹ️</span>
+          <div class="nexus-alert-content">
+            Organization settings can be configured in the Admin Panel.
+          </div>
+        </div>
+      </div>
+    </section>
+    {% endif %}
+
+    <!-- Security Section -->
+    <section class="nexus-settings-section">
+      <div class="nexus-card">
+        <h2>🔒 Security</h2>
+
+        <div class="nexus-form-group">
+          <button class="nexus-btn secondary" disabled title="Coming soon">
+            Change Password
+          </button>
+        </div>
+
+        <div class="nexus-form-group">
+          <button class="nexus-btn secondary" disabled title="Coming soon">
+            Enable Two-Factor Authentication
+          </button>
+        </div>
+
+        <hr class="nexus-divider">
+
+        <div class="nexus-form-group">
+          <a href="/nexus/logout" class="nexus-btn danger-outline">
+            🚪 Sign Out
+          </a>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>
+
+<style>
+.nexus-settings-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+  gap: 1.5rem;
+}
+
+.nexus-profile-summary {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid var(--nexus-border);
+}
+
+.nexus-profile-avatar.large {
+  width: 64px;
+  height: 64px;
+  font-size: 1.5rem;
+  background: var(--nexus-primary);
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+}
+
+.nexus-toggle-label {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  cursor: pointer;
+}
+
+.nexus-toggle-label input {
+  display: none;
+}
+
+.nexus-toggle {
+  width: 44px;
+  height: 24px;
+  background: var(--nexus-border);
+  border-radius: 12px;
+  position: relative;
+  transition: background 0.2s;
+  flex-shrink: 0;
+}
+
+.nexus-toggle::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 20px;
+  height: 20px;
+  background: white;
+  border-radius: 50%;
+  transition: transform 0.2s;
+}
+
+.nexus-toggle-label input:checked + .nexus-toggle {
+  background: var(--nexus-primary);
+}
+
+.nexus-toggle-label input:checked + .nexus-toggle::after {
+  transform: translateX(20px);
+}
+
+.nexus-toggle-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.nexus-toggle-text small {
+  color: var(--nexus-text-muted);
+}
+
+.nexus-divider {
+  border: none;
+  border-top: 1px solid var(--nexus-border);
+  margin: 1.5rem 0;
+}
+</style>
+{% endblock %}

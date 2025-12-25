@@ -1,0 +1,80 @@
+<!-- Notification Bell Partial -->
+<!-- Real-time notification indicator with dropdown -->
+
+<div class="nexus-notification-bell" id="notification-bell">
+  <button
+    class="nexus-bell-trigger"
+    data-dropdown="notification-dropdown"
+    hx-get="/nexus/api/notifications/unread"
+    hx-trigger="every 30s"
+    hx-swap="none"
+    hx-on:htmx:after-request="window.nexusRealtime?.updateBadge(event.detail.xhr.response)"
+  >
+    <span class="nexus-bell-icon">🔔</span>
+
+    {% if nexus.unreadTotal > 0 %}
+    <span class="nexus-bell-badge" id="notification-count">
+      {{ nexus.unreadTotal if nexus.unreadTotal < 100 else '99+' }}
+    </span>
+    {% endif %}
+
+    {% if nexus.unreadPayments > 0 %}
+    <span class="nexus-bell-critical" title="Payment notifications"></span>
+    {% endif %}
+  </button>
+
+  <div class="nexus-dropdown notification-dropdown" id="notification-dropdown">
+    <div class="nexus-dropdown-header">
+      <strong>Notifications</strong>
+      {% if nexus.unreadTotal > 0 %}
+      <button
+        class="nexus-dropdown-action"
+        hx-post="/nexus/api/notifications/read"
+        hx-swap="none"
+        hx-on:htmx:after-request="document.getElementById('notification-count')?.remove()"
+      >
+        Mark all read
+      </button>
+      {% endif %}
+    </div>
+
+    <div
+      class="nexus-notification-list"
+      id="notification-list"
+      hx-get="/nexus/notifications?limit=5&compact=true"
+      hx-trigger="revealed"
+      hx-swap="innerHTML"
+    >
+      <div class="nexus-notification-loading">
+        <span class="nexus-spinner"></span> Loading...
+      </div>
+    </div>
+
+    <div class="nexus-dropdown-footer">
+      <a href="/nexus/notifications">View all notifications</a>
+    </div>
+  </div>
+</div>
+
+<!-- Real-time notification listener template -->
+<template id="notification-item-template">
+  <div class="nexus-notification-item" data-id="${id}" data-priority="${priority}">
+    <div class="nexus-notification-icon ${type}">
+      <span>${icon}</span>
+    </div>
+    <div class="nexus-notification-content">
+      <div class="nexus-notification-title">${title}</div>
+      <div class="nexus-notification-body">${body}</div>
+      <div class="nexus-notification-time">${time}</div>
+    </div>
+    <button
+      class="nexus-notification-dismiss"
+      hx-post="/nexus/api/notifications/read"
+      hx-vals='{"notificationIds": ["${id}"]}'
+      hx-swap="none"
+      hx-on:htmx:after-request="this.closest('.nexus-notification-item').remove()"
+    >
+      ✕
+    </button>
+  </div>
+</template>

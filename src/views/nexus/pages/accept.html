@@ -1,0 +1,164 @@
+{% extends "nexus/layout.html" %}
+
+{% block title %}Accept Invitation{% endblock %}
+
+{% block content %}
+<div class="nexus-auth-page">
+  <div class="nexus-auth-card wide">
+    {% if error %}
+    <div class="nexus-auth-header">
+      <span class="nexus-logo-icon large error">⚠️</span>
+      <h1>Invitation Error</h1>
+      <p class="nexus-error-message">{{ error }}</p>
+    </div>
+
+    <div class="nexus-auth-footer">
+      <p><a href="/nexus/login">Sign in</a> if you already have an account</p>
+      <p>or <a href="/nexus/sign-up">create a new account</a></p>
+    </div>
+
+    {% else %}
+
+    <div class="nexus-auth-header">
+      <span class="nexus-logo-icon large">⬡</span>
+      <h1>You're Invited!</h1>
+      <p>{{ clientName }} has invited you to join as a vendor</p>
+    </div>
+
+    <div class="nexus-invite-preview">
+      <div class="nexus-invite-from">
+        <span class="nexus-context-icon client">◀</span>
+        <span>{{ clientName }}</span>
+      </div>
+      <div class="nexus-invite-arrow">→</div>
+      <div class="nexus-invite-to">
+        <span class="nexus-context-icon vendor">▶</span>
+        <span>You (Vendor)</span>
+      </div>
+    </div>
+
+    <form class="nexus-auth-form" id="accept-form">
+      <input type="hidden" name="token" value="{{ invite.token }}">
+
+      <div class="nexus-form-group">
+        <label for="name">Company / Your Name *</label>
+        <input
+          type="text"
+          id="name"
+          name="name"
+          required
+          value="{{ invite.invitee_name }}"
+          placeholder="Your company or name"
+        >
+      </div>
+
+      <div class="nexus-form-group">
+        <label for="email">Email *</label>
+        <input
+          type="email"
+          id="email"
+          name="email"
+          required
+          value="{{ invite.invitee_email }}"
+          autocomplete="email"
+          placeholder="you@company.com"
+        >
+      </div>
+
+      <div class="nexus-form-group">
+        <label for="password">Create Password *</label>
+        <input
+          type="password"
+          id="password"
+          name="password"
+          required
+          minlength="8"
+          autocomplete="new-password"
+          placeholder="At least 8 characters"
+        >
+        <small class="nexus-form-hint">Min 8 characters with at least one number</small>
+      </div>
+
+      <div class="nexus-form-group">
+        <label for="phone">Phone (optional)</label>
+        <input
+          type="tel"
+          id="phone"
+          name="phone"
+          placeholder="+1 555 123 4567"
+        >
+      </div>
+
+      <div id="accept-error" class="nexus-form-error hidden"></div>
+
+      <button type="submit" class="nexus-btn primary full-width">
+        Accept & Create Account
+      </button>
+    </form>
+
+    <div class="nexus-auth-footer">
+      <p>Already have an account? <a href="/nexus/login">Sign in</a> to link this client.</p>
+    </div>
+
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{% if not error %}
+<script>
+document.getElementById('accept-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+
+  const form = e.target;
+  const errorDiv = document.getElementById('accept-error');
+  const submitBtn = form.querySelector('button[type="submit"]');
+
+  // Validate password
+  const password = form.password.value;
+  if (password.length < 8 || !/\d/.test(password)) {
+    errorDiv.textContent = 'Password must be at least 8 characters with one number';
+    errorDiv.classList.remove('hidden');
+    return;
+  }
+
+  submitBtn.disabled = true;
+  submitBtn.innerHTML = '<span class="nexus-spinner"></span> Creating account...';
+  errorDiv.classList.add('hidden');
+
+  try {
+    const response = await fetch('/nexus/accept', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify({
+        token: form.querySelector('[name="token"]').value,
+        name: form.name.value,
+        email: form.email.value,
+        password: form.password.value,
+        phone: form.phone.value
+      })
+    });
+
+    const data = await response.json();
+
+    if (response.ok && data.success) {
+      window.location.href = data.redirect || '/nexus/portal';
+    } else {
+      errorDiv.textContent = data.error || 'Failed to accept invitation';
+      errorDiv.classList.remove('hidden');
+    }
+  } catch (err) {
+    errorDiv.textContent = 'Network error. Please try again.';
+    errorDiv.classList.remove('hidden');
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.innerHTML = 'Accept & Create Account';
+  }
+});
+</script>
+{% endif %}
+{% endblock %}

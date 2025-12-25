@@ -1,0 +1,278 @@
+{% extends "nexus/layout.html" %}
+
+{% block title %}Inbox{% endblock %}
+
+{% set activeNav = 'inbox' %}
+
+{% block content %}
+<div class="nexus-page inbox">
+  <header class="nexus-page-header">
+    <div class="nexus-page-header-left">
+      <h1>
+        {% if nexus.activeContext == 'client' %}
+        📥 Vendor Cases
+        {% else %}
+        📥 Client Requests
+        {% endif %}
+      </h1>
+      <p>
+        {% if nexus.activeContext == 'client' %}
+        Cases you've created for your vendors
+        {% else %}
+        Cases assigned to you by clients
+        {% endif %}
+      </p>
+    </div>
+
+    {% if nexus.activeContext == 'client' %}
+    <div class="nexus-page-header-right">
+      <button class="nexus-btn primary" data-modal="new-case-modal">
+        + New Case
+      </button>
+    </div>
+    {% endif %}
+  </header>
+
+  <!-- Filters -->
+  <div class="nexus-filters">
+    <form class="nexus-filter-form" method="GET" action="/nexus/inbox">
+      <div class="nexus-filter-group">
+        <label>Status</label>
+        <select name="status" onchange="this.form.submit()">
+          <option value="">All</option>
+          <option value="open" {% if filters.status == 'open' %}selected{% endif %}>Open</option>
+          <option value="in_progress" {% if filters.status == 'in_progress' %}selected{% endif %}>In Progress</option>
+          <option value="pending_client" {% if filters.status == 'pending_client' %}selected{% endif %}>Pending Client</option>
+          <option value="pending_vendor" {% if filters.status == 'pending_vendor' %}selected{% endif %}>Pending Vendor</option>
+          <option value="resolved" {% if filters.status == 'resolved' %}selected{% endif %}>Resolved</option>
+          <option value="closed" {% if filters.status == 'closed' %}selected{% endif %}>Closed</option>
+        </select>
+      </div>
+
+      <div class="nexus-filter-group">
+        <label>Priority</label>
+        <select name="priority" onchange="this.form.submit()">
+          <option value="">All</option>
+          <option value="critical" {% if filters.priority == 'critical' %}selected{% endif %}>🔴 Critical</option>
+          <option value="high" {% if filters.priority == 'high' %}selected{% endif %}>🟠 High</option>
+          <option value="normal" {% if filters.priority == 'normal' %}selected{% endif %}>🟡 Normal</option>
+          <option value="low" {% if filters.priority == 'low' %}selected{% endif %}>🟢 Low</option>
+        </select>
+      </div>
+
+      <div class="nexus-filter-group search">
+        <input
+          type="search"
+          name="search"
+          value="{{ filters.search }}"
+          placeholder="Search cases..."
+        >
+        <button type="submit" class="nexus-btn icon">🔍</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Case List -->
+  <div class="nexus-case-list">
+    {% if cases and cases.length > 0 %}
+      {% for case in cases %}
+      <a href="/nexus/cases/{{ case.case_id }}" class="nexus-case-card {% if case.unread_count > 0 %}unread{% endif %}">
+        <div class="nexus-case-priority priority-{{ case.priority }}"></div>
+
+        <div class="nexus-case-main">
+          <div class="nexus-case-header">
+            <span class="nexus-case-id">{{ case.case_id }}</span>
+            <span class="nexus-case-type">{{ case.case_type }}</span>
+          </div>
+
+          <h3 class="nexus-case-subject">{{ case.subject }}</h3>
+
+          <p class="nexus-case-excerpt">
+            {{ case.description | truncate(120) if case.description else 'No description' }}
+          </p>
+
+          <div class="nexus-case-meta">
+            <span class="nexus-case-party">
+              {% if nexus.activeContext == 'client' %}
+              <span class="nexus-context-icon vendor small">▶</span>
+              {{ case.vendor.name or 'Unknown Vendor' }}
+              {% else %}
+              <span class="nexus-context-icon client small">◀</span>
+              {{ case.client.name or 'Unknown Client' }}
+              {% endif %}
+            </span>
+
+            <span class="nexus-case-date">
+              {{ case.updated_at | date('MMM D, h:mm a') }}
+            </span>
+          </div>
+        </div>
+
+        <div class="nexus-case-status">
+          <span class="nexus-status-badge status-{{ case.status }}">
+            {{ case.status | replace('_', ' ') | title }}
+          </span>
+
+          {% if case.unread_count > 0 %}
+          <span class="nexus-unread-badge">{{ case.unread_count }} new</span>
+          {% endif %}
+        </div>
+
+        <div class="nexus-case-arrow">→</div>
+      </a>
+      {% endfor %}
+
+      <!-- Pagination -->
+      {% if pagination.totalPages > 1 %}
+      <nav class="nexus-pagination">
+        {% if pagination.page > 1 %}
+        <a href="?page={{ pagination.page - 1 }}&status={{ filters.status }}&priority={{ filters.priority }}&search={{ filters.search }}" class="nexus-btn secondary small">
+          ← Previous
+        </a>
+        {% endif %}
+
+        <span class="nexus-pagination-info">
+          Page {{ pagination.page }} of {{ pagination.totalPages }}
+        </span>
+
+        {% if pagination.page < pagination.totalPages %}
+        <a href="?page={{ pagination.page + 1 }}&status={{ filters.status }}&priority={{ filters.priority }}&search={{ filters.search }}" class="nexus-btn secondary small">
+          Next →
+        </a>
+        {% endif %}
+      </nav>
+      {% endif %}
+
+    {% else %}
+      <div class="nexus-empty-state">
+        <span class="nexus-empty-icon">📭</span>
+        <h3>No cases found</h3>
+        {% if nexus.activeContext == 'client' %}
+        <p>Create a new case to get started with your vendors.</p>
+        <button class="nexus-btn primary" data-modal="new-case-modal">
+          + Create First Case
+        </button>
+        {% else %}
+        <p>When clients assign cases to you, they'll appear here.</p>
+        {% endif %}
+      </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- New Case Modal (Client only) -->
+{% if nexus.activeContext == 'client' %}
+<div class="nexus-modal" id="new-case-modal">
+  <div class="nexus-modal-backdrop"></div>
+  <div class="nexus-modal-content">
+    <div class="nexus-modal-header">
+      <h2>Create New Case</h2>
+      <button class="nexus-modal-close" data-modal-close>✕</button>
+    </div>
+
+    <form class="nexus-form" id="new-case-form">
+      <div class="nexus-form-group">
+        <label for="vendorId">Vendor *</label>
+        <select name="vendorId" id="vendorId" required>
+          <option value="">Select a vendor...</option>
+          {% for rel in nexus.contexts.asClient %}
+          <option value="{{ rel.vendor_id }}">{{ rel.vendor.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="nexus-form-group">
+        <label for="subject">Subject *</label>
+        <input type="text" name="subject" id="subject" required placeholder="Brief description of the case">
+      </div>
+
+      <div class="nexus-form-row">
+        <div class="nexus-form-group">
+          <label for="caseType">Type</label>
+          <select name="caseType" id="caseType">
+            <option value="general">General</option>
+            <option value="support">Support</option>
+            <option value="billing">Billing</option>
+            <option value="compliance">Compliance</option>
+            <option value="onboarding">Onboarding</option>
+          </select>
+        </div>
+
+        <div class="nexus-form-group">
+          <label for="priority">Priority</label>
+          <select name="priority" id="priority">
+            <option value="normal">🟡 Normal</option>
+            <option value="low">🟢 Low</option>
+            <option value="high">🟠 High</option>
+            <option value="critical">🔴 Critical</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="nexus-form-group">
+        <label for="description">Description</label>
+        <textarea name="description" id="description" rows="4" placeholder="Detailed description..."></textarea>
+      </div>
+
+      <div id="new-case-error" class="nexus-form-error hidden"></div>
+
+      <div class="nexus-modal-actions">
+        <button type="button" class="nexus-btn secondary" data-modal-close>Cancel</button>
+        <button type="submit" class="nexus-btn primary">Create Case</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+// New case form handler
+const newCaseForm = document.getElementById('new-case-form');
+if (newCaseForm) {
+  newCaseForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const errorDiv = document.getElementById('new-case-error');
+    const submitBtn = newCaseForm.querySelector('button[type="submit"]');
+
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<span class="nexus-spinner"></span> Creating...';
+    errorDiv.classList.add('hidden');
+
+    try {
+      const response = await fetch('/nexus/cases/new', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify({
+          vendorId: newCaseForm.vendorId.value,
+          subject: newCaseForm.subject.value,
+          description: newCaseForm.description.value,
+          caseType: newCaseForm.caseType.value,
+          priority: newCaseForm.priority.value
+        })
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        window.location.href = data.redirect || '/nexus/inbox';
+      } else {
+        errorDiv.textContent = data.error || 'Failed to create case';
+        errorDiv.classList.remove('hidden');
+      }
+    } catch (err) {
+      errorDiv.textContent = 'Network error. Please try again.';
+      errorDiv.classList.remove('hidden');
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = 'Create Case';
+    }
+  });
+}
+</script>
+{% endblock %}

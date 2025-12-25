@@ -1,0 +1,316 @@
+{% extends "nexus/layout.html" %}
+
+{% block title %}Relationships{% endblock %}
+
+{% set activeNav = 'relationships' %}
+
+{% block content %}
+<div class="nexus-page relationships">
+  <header class="nexus-page-header">
+    <div class="nexus-page-header-left">
+      <h1>🔗 Business Relationships</h1>
+      <p>Manage your client and vendor connections</p>
+    </div>
+
+    <div class="nexus-page-header-right">
+      <button class="nexus-btn primary" data-modal="invite-vendor-modal">
+        + Invite Vendor
+      </button>
+    </div>
+  </header>
+
+  <!-- My Client ID -->
+  <div class="nexus-share-code">
+    <div class="nexus-share-code-content">
+      <span class="nexus-share-code-label">Your Client Code</span>
+      <code class="nexus-share-code-value" id="client-code">{{ nexus.tenant.tenant_client_id }}</code>
+      <button class="nexus-btn icon small" onclick="copyClientCode()">📋</button>
+    </div>
+    <p class="nexus-share-code-hint">
+      Share this code with vendors so they can link to you when signing up.
+    </p>
+  </div>
+
+  <!-- Tabs -->
+  <div class="nexus-tabs">
+    <button class="nexus-tab active" data-tab="vendors">
+      My Vendors ({{ asClient | length }})
+    </button>
+    <button class="nexus-tab" data-tab="clients">
+      My Clients ({{ asVendor | length }})
+    </button>
+    <button class="nexus-tab" data-tab="pending">
+      Pending Invites ({{ sentInvites | length }})
+    </button>
+  </div>
+
+  <!-- My Vendors (As Client) -->
+  <div class="nexus-tab-content" id="tab-vendors">
+    {% if asClient | length > 0 %}
+    <div class="nexus-relationship-list">
+      {% for rel in asClient %}
+      <div class="nexus-relationship-card">
+        <div class="nexus-relationship-icon vendor">
+          <span>▶</span>
+        </div>
+        <div class="nexus-relationship-info">
+          <h3>{{ rel.vendor.name }}</h3>
+          <p>{{ rel.vendor.email }}</p>
+          <div class="nexus-relationship-meta">
+            <span class="nexus-relationship-id">{{ rel.vendor_id }}</span>
+            <span class="nexus-relationship-since">
+              Since {{ rel.created_at | date('MMM YYYY') }}
+            </span>
+          </div>
+        </div>
+        <div class="nexus-relationship-status">
+          <span class="nexus-status-badge relationship-{{ rel.status }}">
+            {{ rel.status | title }}
+          </span>
+        </div>
+        <div class="nexus-relationship-actions">
+          <a href="/nexus/inbox?vendor={{ rel.vendor_id }}" class="nexus-btn small">
+            Cases
+          </a>
+          <a href="/nexus/payments?vendor={{ rel.vendor_id }}" class="nexus-btn small">
+            Payments
+          </a>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="nexus-empty-state">
+      <span class="nexus-empty-icon">🔗</span>
+      <h3>No vendors yet</h3>
+      <p>Invite vendors to start collaborating.</p>
+      <button class="nexus-btn primary" data-modal="invite-vendor-modal">
+        + Invite Your First Vendor
+      </button>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- My Clients (As Vendor) -->
+  <div class="nexus-tab-content hidden" id="tab-clients">
+    {% if asVendor | length > 0 %}
+    <div class="nexus-relationship-list">
+      {% for rel in asVendor %}
+      <div class="nexus-relationship-card">
+        <div class="nexus-relationship-icon client">
+          <span>◀</span>
+        </div>
+        <div class="nexus-relationship-info">
+          <h3>{{ rel.client.name }}</h3>
+          <p>{{ rel.client.email }}</p>
+          <div class="nexus-relationship-meta">
+            <span class="nexus-relationship-id">{{ rel.client_id }}</span>
+            <span class="nexus-relationship-since">
+              Since {{ rel.created_at | date('MMM YYYY') }}
+            </span>
+          </div>
+        </div>
+        <div class="nexus-relationship-status">
+          <span class="nexus-status-badge relationship-{{ rel.status }}">
+            {{ rel.status | title }}
+          </span>
+        </div>
+        <div class="nexus-relationship-actions">
+          <a href="/nexus/inbox?client={{ rel.client_id }}" class="nexus-btn small">
+            Cases
+          </a>
+          <a href="/nexus/payments?client={{ rel.client_id }}" class="nexus-btn small">
+            Payments
+          </a>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="nexus-empty-state">
+      <span class="nexus-empty-icon">🔗</span>
+      <h3>No clients yet</h3>
+      <p>When clients invite you or you link to them, they'll appear here.</p>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Pending Invites -->
+  <div class="nexus-tab-content hidden" id="tab-pending">
+    {% if sentInvites | length > 0 %}
+    <div class="nexus-invite-list">
+      {% for invite in sentInvites %}
+      <div class="nexus-invite-card">
+        <div class="nexus-invite-info">
+          <h3>{{ invite.invitee_name or invite.invitee_email }}</h3>
+          <p>{{ invite.invitee_email }}</p>
+          <span class="nexus-invite-date">
+            Sent {{ invite.created_at | date('MMM D, YYYY') }}
+          </span>
+        </div>
+        <div class="nexus-invite-status">
+          <span class="nexus-status-badge invite-{{ invite.status }}">
+            {{ invite.status | title }}
+          </span>
+          {% if invite.expires_at %}
+          <small class="nexus-invite-expires">
+            Expires {{ invite.expires_at | date('MMM D') }}
+          </small>
+          {% endif %}
+        </div>
+        <div class="nexus-invite-actions">
+          <button
+            class="nexus-btn small"
+            onclick="copyInviteLink('{{ invite.token }}')"
+          >
+            📋 Copy Link
+          </button>
+          <button
+            class="nexus-btn small danger"
+            hx-delete="/nexus/relationships/invites/{{ invite.id }}"
+            hx-confirm="Cancel this invitation?"
+            hx-swap="outerHTML"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="nexus-empty-state">
+      <span class="nexus-empty-icon">✉️</span>
+      <h3>No pending invites</h3>
+      <p>All your invitations have been accepted or you haven't sent any yet.</p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Invite Vendor Modal -->
+<div class="nexus-modal" id="invite-vendor-modal">
+  <div class="nexus-modal-backdrop"></div>
+  <div class="nexus-modal-content">
+    <div class="nexus-modal-header">
+      <h2>Invite a Vendor</h2>
+      <button class="nexus-modal-close" data-modal-close>✕</button>
+    </div>
+
+    <form class="nexus-form" id="invite-vendor-form">
+      <div class="nexus-form-group">
+        <label for="inviteEmail">Vendor Email *</label>
+        <input
+          type="email"
+          name="email"
+          id="inviteEmail"
+          required
+          placeholder="vendor@company.com"
+        >
+      </div>
+
+      <div class="nexus-form-group">
+        <label for="inviteName">Contact Name (optional)</label>
+        <input
+          type="text"
+          name="name"
+          id="inviteName"
+          placeholder="John Smith"
+        >
+      </div>
+
+      <div id="invite-error" class="nexus-form-error hidden"></div>
+      <div id="invite-success" class="nexus-form-success hidden"></div>
+
+      <div class="nexus-modal-actions">
+        <button type="button" class="nexus-btn secondary" data-modal-close>Cancel</button>
+        <button type="submit" class="nexus-btn primary">Send Invitation</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Tab switching
+document.querySelectorAll('.nexus-tab[data-tab]').forEach(tab => {
+  tab.addEventListener('click', () => {
+    // Update tab active state
+    document.querySelectorAll('.nexus-tab[data-tab]').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+
+    // Show/hide content
+    document.querySelectorAll('.nexus-tab-content').forEach(content => content.classList.add('hidden'));
+    document.getElementById('tab-' + tab.dataset.tab).classList.remove('hidden');
+  });
+});
+
+// Copy client code
+function copyClientCode() {
+  const code = document.getElementById('client-code').textContent;
+  navigator.clipboard.writeText(code).then(() => {
+    window.nexusToast?.show('Client code copied!', 'success');
+  });
+}
+
+// Copy invite link
+function copyInviteLink(token) {
+  const link = `${window.location.origin}/nexus/accept?token=${token}`;
+  navigator.clipboard.writeText(link).then(() => {
+    window.nexusToast?.show('Invite link copied!', 'success');
+  });
+}
+
+// Invite form
+const inviteForm = document.getElementById('invite-vendor-form');
+inviteForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+
+  const errorDiv = document.getElementById('invite-error');
+  const successDiv = document.getElementById('invite-success');
+  const submitBtn = inviteForm.querySelector('button[type="submit"]');
+
+  submitBtn.disabled = true;
+  submitBtn.innerHTML = '<span class="nexus-spinner"></span> Sending...';
+  errorDiv.classList.add('hidden');
+  successDiv.classList.add('hidden');
+
+  try {
+    const response = await fetch('/nexus/relationships/invite', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify({
+        email: inviteForm.email.value,
+        name: inviteForm.name.value
+      })
+    });
+
+    const data = await response.json();
+
+    if (response.ok && data.success) {
+      successDiv.innerHTML = `
+        Invitation sent!
+        <a href="javascript:copyInviteLink('${data.invite.token}')">Copy link</a>
+      `;
+      successDiv.classList.remove('hidden');
+      inviteForm.reset();
+
+      // Refresh page after 2 seconds
+      setTimeout(() => window.location.reload(), 2000);
+    } else {
+      errorDiv.textContent = data.error || 'Failed to send invitation';
+      errorDiv.classList.remove('hidden');
+    }
+  } catch (err) {
+    errorDiv.textContent = 'Network error. Please try again.';
+    errorDiv.classList.remove('hidden');
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.innerHTML = 'Send Invitation';
+  }
+});
+</script>
+{% endblock %}

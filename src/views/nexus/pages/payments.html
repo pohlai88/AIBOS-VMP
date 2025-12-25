@@ -1,0 +1,156 @@
+{% extends "nexus/layout.html" %}
+
+{% block title %}Payments{% endblock %}
+
+{% set activeNav = 'payments' %}
+
+{% block content %}
+<div class="nexus-page payments">
+  <header class="nexus-page-header">
+    <div class="nexus-page-header-left">
+      <h1>
+        {% if isPayer %}
+        💰 Outgoing Payments
+        {% else %}
+        💰 Incoming Payments
+        {% endif %}
+      </h1>
+      <p>
+        {% if isPayer %}
+        Payments you owe to vendors
+        {% else %}
+        Payments due from clients
+        {% endif %}
+      </p>
+    </div>
+  </header>
+
+  <!-- Status Filters -->
+  <div class="nexus-payment-tabs">
+    <a href="/nexus/payments" class="nexus-tab {% if not filters.status %}active{% endif %}">
+      All
+    </a>
+    <a href="/nexus/payments?status=pending" class="nexus-tab {% if filters.status == 'pending' %}active{% endif %}">
+      ⏳ Pending
+    </a>
+    <a href="/nexus/payments?status=processing" class="nexus-tab {% if filters.status == 'processing' %}active{% endif %}">
+      🔄 Processing
+    </a>
+    <a href="/nexus/payments?status=completed" class="nexus-tab {% if filters.status == 'completed' %}active{% endif %}">
+      ✅ Completed
+    </a>
+    <a href="/nexus/payments?status=failed" class="nexus-tab {% if filters.status == 'failed' %}active{% endif %}">
+      ❌ Failed
+    </a>
+  </div>
+
+  <!-- Payment Summary -->
+  <div class="nexus-payment-summary">
+    {% set pendingPayments = payments | selectattr('status', 'equalto', 'pending') | list %}
+    {% set pendingTotal = pendingPayments | sum(attribute='amount') %}
+
+    {% if pendingPayments | length > 0 %}
+    <div class="nexus-summary-card {% if isPayer %}warning{% else %}success{% endif %}">
+      <div class="nexus-summary-icon">
+        {% if isPayer %}⚠️{% else %}💵{% endif %}
+      </div>
+      <div class="nexus-summary-content">
+        <span class="nexus-summary-value">${{ pendingTotal | round(2) }}</span>
+        <span class="nexus-summary-label">
+          {{ pendingPayments | length }} payment(s)
+          {% if isPayer %}to send{% else %}to receive{% endif %}
+        </span>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Payment List -->
+  <div class="nexus-payment-list">
+    {% if payments and payments.length > 0 %}
+      <table class="nexus-table">
+        <thead>
+          <tr>
+            <th>Payment ID</th>
+            <th>{% if isPayer %}Vendor{% else %}Client{% endif %}</th>
+            <th>Invoice</th>
+            <th>Amount</th>
+            <th>Due Date</th>
+            <th>Status</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for payment in payments %}
+          <tr class="{% if payment.status == 'pending' and payment.due_date and payment.due_date < now %}overdue{% endif %}">
+            <td>
+              <code class="nexus-code">{{ payment.payment_id }}</code>
+            </td>
+            <td>
+              {% if isPayer %}
+              <span class="nexus-party">
+                <span class="nexus-context-icon vendor small">▶</span>
+                {{ payment.to_tenant.name or 'Unknown' }}
+              </span>
+              {% else %}
+              <span class="nexus-party">
+                <span class="nexus-context-icon client small">◀</span>
+                {{ payment.from_tenant.name or 'Unknown' }}
+              </span>
+              {% endif %}
+            </td>
+            <td>
+              {% if payment.invoice_id %}
+              <a href="/nexus/invoices/{{ payment.invoice_id }}">{{ payment.invoice_id }}</a>
+              {% else %}
+              <span class="nexus-muted">—</span>
+              {% endif %}
+            </td>
+            <td class="nexus-amount">
+              <strong>{{ payment.currency }} {{ payment.amount | round(2) }}</strong>
+            </td>
+            <td>
+              {% if payment.due_date %}
+              <span class="{% if payment.due_date < now and payment.status == 'pending' %}nexus-overdue{% endif %}">
+                {{ payment.due_date | date('MMM D, YYYY') }}
+              </span>
+              {% else %}
+              <span class="nexus-muted">—</span>
+              {% endif %}
+            </td>
+            <td>
+              <span class="nexus-status-badge payment-{{ payment.status }}">
+                {% if payment.status == 'pending' %}⏳{% endif %}
+                {% if payment.status == 'processing' %}🔄{% endif %}
+                {% if payment.status == 'completed' %}✅{% endif %}
+                {% if payment.status == 'failed' %}❌{% endif %}
+                {% if payment.status == 'cancelled' %}🚫{% endif %}
+                {% if payment.status == 'disputed' %}⚠️{% endif %}
+                {{ payment.status | title }}
+              </span>
+            </td>
+            <td>
+              <a href="/nexus/payments/{{ payment.payment_id }}" class="nexus-btn small">
+                View →
+              </a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <div class="nexus-empty-state">
+        <span class="nexus-empty-icon">💸</span>
+        <h3>No payments found</h3>
+        <p>
+          {% if isPayer %}
+          When you owe payments to vendors, they'll appear here.
+          {% else %}
+          When clients owe you payments, they'll appear here.
+          {% endif %}
+        </p>
+      </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

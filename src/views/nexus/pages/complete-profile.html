@@ -1,0 +1,129 @@
+{% extends "nexus/layout.html" %}
+
+{% block title %}Complete Your Profile{% endblock %}
+
+{% block content %}
+<div class="nexus-auth-page">
+  <div class="nexus-auth-card">
+    <div class="nexus-auth-header">
+      <span class="nexus-logo-icon large">⬡</span>
+      <h1>Almost There!</h1>
+      <p>Complete your profile to get started</p>
+    </div>
+
+    <div class="nexus-oauth-linked">
+      <span class="nexus-oauth-badge">✓ Signed in as {{ email }}</span>
+    </div>
+
+    <form class="nexus-auth-form" id="complete-profile-form">
+      <div class="nexus-form-group">
+        <label for="name">Full Name</label>
+        <input
+          type="text"
+          id="name"
+          name="name"
+          required
+          autocomplete="name"
+          placeholder="Your full name"
+          value="{{ name }}"
+        >
+      </div>
+
+      <div class="nexus-form-group">
+        <label for="phone">Phone Number (optional)</label>
+        <input
+          type="tel"
+          id="phone"
+          name="phone"
+          autocomplete="tel"
+          placeholder="+1 (555) 123-4567"
+        >
+      </div>
+
+      <div class="nexus-form-group">
+        <label for="role">I am a...</label>
+        <select id="role" name="role" required>
+          <option value="">Select your role</option>
+          <option value="client">Client (I hire vendors)</option>
+          <option value="vendor">Vendor (I provide services)</option>
+        </select>
+      </div>
+
+      <div class="nexus-form-group" id="client-code-group" style="display: none;">
+        <label for="clientCode">Client Code (optional)</label>
+        <input
+          type="text"
+          id="clientCode"
+          name="clientCode"
+          placeholder="Enter client code if provided"
+        >
+        <small class="nexus-form-hint">If a client invited you, enter their code here</small>
+      </div>
+
+      <div id="form-error" class="nexus-form-error hidden"></div>
+
+      <button type="submit" class="nexus-btn primary full-width">
+        Complete Setup
+      </button>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Show/hide client code field based on role
+document.getElementById('role').addEventListener('change', (e) => {
+  const clientCodeGroup = document.getElementById('client-code-group');
+  clientCodeGroup.style.display = e.target.value === 'vendor' ? 'block' : 'none';
+});
+
+document.getElementById('complete-profile-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+
+  const form = e.target;
+  const errorDiv = document.getElementById('form-error');
+  const submitBtn = form.querySelector('button[type="submit"]');
+
+  submitBtn.disabled = true;
+  submitBtn.innerHTML = '<span class="nexus-spinner"></span> Setting up...';
+  errorDiv.classList.add('hidden');
+
+  try {
+    const response = await fetch('/nexus/complete-profile', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify({
+        name: form.name.value,
+        phone: form.phone.value,
+        role: form.role.value,
+        clientCode: form.clientCode?.value || ''
+      })
+    });
+
+    const data = await response.json();
+
+    if (response.ok && data.success) {
+      submitBtn.innerHTML = '✓ Welcome to Nexus!';
+      submitBtn.classList.add('success');
+      setTimeout(() => {
+        window.location.href = data.redirect || '/nexus/portal';
+      }, 1000);
+    } else {
+      errorDiv.textContent = data.error || 'Something went wrong';
+      errorDiv.classList.remove('hidden');
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = 'Complete Setup';
+    }
+  } catch (err) {
+    errorDiv.textContent = 'Network error. Please try again.';
+    errorDiv.classList.remove('hidden');
+    submitBtn.disabled = false;
+    submitBtn.innerHTML = 'Complete Setup';
+  }
+});
+</script>
+{% endblock %}

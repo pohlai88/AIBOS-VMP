@@ -1,0 +1,193 @@
+{% extends "nexus/layout.html" %}
+
+{% block title %}Payment {{ payment.payment_id }}{% endblock %}
+
+{% set activeNav = 'payments' %}
+
+{% block content %}
+<div class="nexus-page payment-detail">
+  <!-- Back Navigation -->
+  <div class="nexus-breadcrumb">
+    <a href="/nexus/payments" class="nexus-back-link">← Back to Payments</a>
+  </div>
+
+  <!-- Payment Header -->
+  <header class="nexus-payment-detail-header">
+    <div class="nexus-payment-detail-left">
+      <div class="nexus-payment-detail-meta">
+        <code class="nexus-code">{{ payment.payment_id }}</code>
+        <span class="nexus-badge status-{{ payment.status }}">{{ payment.status | title }}</span>
+      </div>
+
+      <h1 class="nexus-payment-amount">
+        ${{ payment.amount | round(2) }}
+        <span class="nexus-payment-currency">{{ payment.currency or 'USD' }}</span>
+      </h1>
+
+      <p class="nexus-payment-parties">
+        {% if isPayer %}
+        <span class="nexus-context-icon client">◀</span>
+        You →
+        <span class="nexus-context-icon vendor">▶</span>
+        {{ payment.to_tenant.name or 'Unknown Vendor' }}
+        {% else %}
+        <span class="nexus-context-icon client">◀</span>
+        {{ payment.from_tenant.name or 'Unknown Client' }} →
+        <span class="nexus-context-icon vendor">▶</span>
+        You
+        {% endif %}
+      </p>
+    </div>
+
+    <div class="nexus-payment-detail-right">
+      {% if payment.due_date %}
+      <div class="nexus-due-date {% if payment.status == 'pending' and payment.due_date < now %}overdue{% endif %}">
+        <span class="nexus-due-label">Due Date</span>
+        <span class="nexus-due-value">{{ payment.due_date | date('MMM D, YYYY') }}</span>
+      </div>
+      {% endif %}
+    </div>
+  </header>
+
+  <!-- Payment Details -->
+  <div class="nexus-payment-details">
+    <div class="nexus-card">
+      <h3>Payment Information</h3>
+
+      <dl class="nexus-detail-list">
+        <div class="nexus-detail-row">
+          <dt>Payment ID</dt>
+          <dd><code class="nexus-code">{{ payment.payment_id }}</code></dd>
+        </div>
+
+        {% if payment.invoice_id %}
+        <div class="nexus-detail-row">
+          <dt>Invoice</dt>
+          <dd><code class="nexus-code">{{ payment.invoice_id }}</code></dd>
+        </div>
+        {% endif %}
+
+        {% if payment.case_id %}
+        <div class="nexus-detail-row">
+          <dt>Related Case</dt>
+          <dd>
+            <a href="/nexus/cases/{{ payment.case_id }}" class="nexus-link">
+              {{ payment.case_id }}
+            </a>
+          </dd>
+        </div>
+        {% endif %}
+
+        <div class="nexus-detail-row">
+          <dt>Amount</dt>
+          <dd class="nexus-amount">${{ payment.amount | round(2) }} {{ payment.currency or 'USD' }}</dd>
+        </div>
+
+        <div class="nexus-detail-row">
+          <dt>Status</dt>
+          <dd>
+            <span class="nexus-badge status-{{ payment.status }}">{{ payment.status | title }}</span>
+          </dd>
+        </div>
+
+        <div class="nexus-detail-row">
+          <dt>{% if isPayer %}To{% else %}From{% endif %}</dt>
+          <dd>
+            {% if isPayer %}
+            {{ payment.to_tenant.name or 'Unknown' }}
+            {% else %}
+            {{ payment.from_tenant.name or 'Unknown' }}
+            {% endif %}
+          </dd>
+        </div>
+
+        {% if payment.due_date %}
+        <div class="nexus-detail-row">
+          <dt>Due Date</dt>
+          <dd>{{ payment.due_date | date('MMM D, YYYY') }}</dd>
+        </div>
+        {% endif %}
+
+        <div class="nexus-detail-row">
+          <dt>Created</dt>
+          <dd>{{ payment.created_at | date('MMM D, YYYY h:mm A') }}</dd>
+        </div>
+
+        {% if payment.paid_at %}
+        <div class="nexus-detail-row">
+          <dt>Paid At</dt>
+          <dd>{{ payment.paid_at | date('MMM D, YYYY h:mm A') }}</dd>
+        </div>
+        {% endif %}
+      </dl>
+    </div>
+
+    {% if payment.description %}
+    <div class="nexus-card">
+      <h3>Description</h3>
+      <p>{{ payment.description }}</p>
+    </div>
+    {% endif %}
+
+    <!-- Payment Actions -->
+    <div class="nexus-payment-actions">
+      {% if payment.status == 'pending' %}
+        {% if isPayer %}
+        <form method="POST" action="/nexus/payments/{{ payment.payment_id }}/status" class="nexus-inline-form">
+          <input type="hidden" name="status" value="processing">
+          <button type="submit" class="nexus-btn primary">
+            💳 Mark as Processing
+          </button>
+        </form>
+        {% endif %}
+
+        {% if isPayee %}
+        <form method="POST" action="/nexus/payments/{{ payment.payment_id }}/status" class="nexus-inline-form">
+          <input type="hidden" name="status" value="disputed">
+          <button type="submit" class="nexus-btn warning">
+            ⚠️ Dispute Payment
+          </button>
+        </form>
+        {% endif %}
+
+      {% elif payment.status == 'processing' %}
+        {% if isPayer %}
+        <form method="POST" action="/nexus/payments/{{ payment.payment_id }}/status" class="nexus-inline-form">
+          <input type="hidden" name="status" value="completed">
+          <button type="submit" class="nexus-btn success">
+            ✅ Mark as Completed
+          </button>
+        </form>
+        {% endif %}
+
+      {% elif payment.status == 'disputed' %}
+        <div class="nexus-alert warning">
+          <span class="nexus-alert-icon">⚠️</span>
+          <div class="nexus-alert-content">
+            <strong>Payment Disputed</strong>
+            <p>This payment has been disputed. Please resolve the issue with the other party.</p>
+          </div>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Payment Activity -->
+  {% if payment.activity and payment.activity.length > 0 %}
+  <div class="nexus-card">
+    <h3>Activity Log</h3>
+    <ul class="nexus-activity-list">
+      {% for event in payment.activity %}
+      <li class="nexus-activity-item">
+        <span class="nexus-activity-dot status-{{ event.to_status or 'default' }}"></span>
+        <div class="nexus-activity-content">
+          <span class="nexus-activity-title">{{ event.title }}</span>
+          <span class="nexus-activity-time">{{ event.created_at | date('MMM D, h:mm A') }}</span>
+        </div>
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
