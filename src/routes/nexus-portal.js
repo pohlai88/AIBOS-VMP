@@ -348,36 +348,15 @@ router.get('/logout', async (req, res) => {
 
 // ============================================================================
 // OAUTH ROUTES
+// Note: Specific routes (/callback, /exchange, /token) MUST come before
+// the wildcard /:provider route to avoid matching "callback" as a provider
 // ============================================================================
-
-/**
- * GET /nexus/oauth/:provider
- * Initiate OAuth flow for a provider (google, github, etc.)
- */
-router.get('/oauth/:provider', async (req, res) => {
-  try {
-    const { provider } = req.params;
-    const validProviders = ['google', 'github', 'azure', 'microsoft'];
-
-    if (!validProviders.includes(provider)) {
-      return res.status(400).json({ error: 'Invalid OAuth provider' });
-    }
-
-    const baseUrl = process.env.BASE_URL || `${req.protocol}://${req.get('host')}`;
-    const redirectTo = `${baseUrl}/nexus/oauth/callback`;
-
-    const { url } = await nexusAdapter.getOAuthUrl(provider, redirectTo);
-    res.redirect(url);
-  } catch (error) {
-    console.error('OAuth initiation error:', error);
-    res.redirect('/nexus/login?error=oauth_init_failed');
-  }
-});
 
 /**
  * GET /nexus/oauth/callback
  * Render callback page that handles both code (PKCE) and token (implicit) flows
  * The page will extract tokens from URL fragment and POST to /nexus/oauth/token
+ * MUST be defined BEFORE /oauth/:provider
  */
 router.get('/oauth/callback', async (req, res) => {
   // If we have a code in query params, process it server-side
@@ -408,6 +387,7 @@ router.get('/oauth/callback', async (req, res) => {
 /**
  * GET /nexus/oauth/exchange
  * Handle code exchange redirect from callback page
+ * MUST be defined BEFORE /oauth/:provider
  */
 router.get('/oauth/exchange', async (req, res) => {
   try {
@@ -453,6 +433,31 @@ router.post('/oauth/token', express.json(), async (req, res) => {
   } catch (error) {
     console.error('OAuth token error:', error);
     res.status(500).json({ error: 'Failed to process OAuth token' });
+  }
+});
+
+/**
+ * GET /nexus/oauth/:provider
+ * Initiate OAuth flow for a provider (google, github, etc.)
+ * MUST be defined AFTER specific routes like /oauth/callback, /oauth/exchange
+ */
+router.get('/oauth/:provider', async (req, res) => {
+  try {
+    const { provider } = req.params;
+    const validProviders = ['google', 'github', 'azure', 'microsoft'];
+
+    if (!validProviders.includes(provider)) {
+      return res.status(400).json({ error: 'Invalid OAuth provider' });
+    }
+
+    const baseUrl = process.env.BASE_URL || `${req.protocol}://${req.get('host')}`;
+    const redirectTo = `${baseUrl}/nexus/oauth/callback`;
+
+    const { url } = await nexusAdapter.getOAuthUrl(provider, redirectTo);
+    res.redirect(url);
+  } catch (error) {
+    console.error('OAuth initiation error:', error);
+    res.redirect('/nexus/login?error=oauth_init_failed');
   }
 });
 
@@ -914,7 +919,20 @@ router.post('/cases/:id/messages', requireNexusAuth, requireCaseAccess, async (r
       }
     }
 
-    res.json({ success: true, message });
+    // Get sender info for display
+    const sender = await nexusAdapter.getUser(req.nexus.userId);
+
+    // Return HTML partial for HTMX, or JSON for API calls
+    if (req.headers['hx-request']) {
+      // Clear the "No messages yet" empty state and return the message HTML
+      res.render('nexus/partials/single-message.html', {
+        message,
+        senderName: sender?.display_name || sender?.email || 'You',
+        nexus: req.nexus
+      });
+    } else {
+      res.json({ success: true, message });
+    }
   } catch (error) {
     console.error('Send message error:', error);
     res.status(500).json({ error: 'Failed to send message' });
@@ -988,17 +1006,31 @@ router.get('/payments', requireNexusAuth, requireNexusContext, async (req, res) 
   try {
     const { status } = req.query;
 
-    const payments = await nexusAdapter.getPaymentsByContext(
+    const rawPayments = await nexusAdapter.getPaymentsByContext(
       req.nexus.activeContextId,
       req.nexus.facing,
       { status }
     );
 
+    // Convert amount strings to numbers for template math operations
+    const payments = rawPayments.map(p => ({
+      ...p,
+      amount: parseFloat(p.amount) || 0
+    }));
+
+    // Calculate pending summary in JavaScript (more reliable than Nunjucks filters)
+    const pendingPayments = payments.filter(p => p.status === 'pending');
+    const pendingTotal = pendingPayments.reduce((sum, p) => sum + p.amount, 0);
+
     res.render('nexus/pages/payments.html', {
       payments,
       filters: { status },
       isPayer: req.nexus.facing === 'down',  // Client pays
-      isPayee: req.nexus.facing === 'up'     // Vendor receives
+      isPayee: req.nexus.facing === 'up',    // Vendor receives
+      pendingSummary: {
+        count: pendingPayments.length,
+        total: pendingTotal
+      }
     });
   } catch (error) {
     console.error('Payments error:', error);
@@ -1188,6 +1220,31 @@ router.post('/api/notifications/read', requireNexusAuth, async (req, res) => {
     console.error('Mark read error:', error);
     res.status(500).json({ error: 'Failed to mark notifications read' });
   }
+});
+
+// ============================================================================
+// REALTIME CONFIG ENDPOINT
+// ============================================================================
+
+/**
+ * GET /nexus/api/realtime-config
+ * Returns Supabase URL and anon key for client-side realtime
+ * SECURITY: Never exposes service role key - only public anon key
+ */
+router.get('/api/realtime-config', (req, res) => {
+  const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey = process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  if (!url || !anonKey) {
+    console.warn('Realtime Config: Missing SUPABASE_URL or SUPABASE_ANON_KEY');
+    return res.status(503).json({ error: 'Realtime not configured' });
+  }
+
+  res.json({
+    url,
+    anonKey
+    // NEVER include SUPABASE_SERVICE_ROLE_KEY here!
+  });
 });
 
 // ============================================================================

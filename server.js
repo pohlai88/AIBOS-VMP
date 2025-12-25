@@ -2,6 +2,7 @@
 import express from 'express';
 import nunjucks from 'nunjucks';
 import dotenv from 'dotenv';
+import cookieParser from 'cookie-parser';
 import fs from 'fs';
 import session from 'express-session';
 import connectPgSimple from 'connect-pg-simple';
@@ -204,6 +205,7 @@ app.use(
           'https://unpkg.com',
           'https://cdn.tailwindcss.com',
           'https://cdn.jsdelivr.net',
+          'https://esm.sh', // Supabase Realtime client
         ],
         scriptSrcAttr: ["'unsafe-hashes'"], // Allow inline event handlers (onclick, etc.)
         fontSrc: [
@@ -218,9 +220,11 @@ app.use(
         connectSrc: [
           "'self'",
           env.SUPABASE_URL,
+          env.SUPABASE_URL?.replace('https://', 'wss://'), // WebSocket for Realtime
           'https://fonts.googleapis.com',
           'https://fonts.gstatic.com',
-        ],
+          'https://esm.sh', // Supabase Realtime CDN
+        ].filter(Boolean),
       },
     },
   })
@@ -426,6 +430,7 @@ if (env.BASE_PATH) {
 }
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());  // Required for Nexus session cookies
 
 // Global error handler for uncaught exceptions
 process.on('uncaughtException', (err) => {

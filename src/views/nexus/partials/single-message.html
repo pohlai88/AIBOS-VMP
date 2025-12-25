@@ -1,0 +1,27 @@
+{# Single Message Partial - Returned after posting a message #}
+
+<div class="nexus-message {% if message.sender_user_id == nexus.userId %}mine{% endif %} {% if message.sender_context == 'client' %}from-client{% else %}from-vendor{% endif %}">
+  <div class="nexus-message-avatar">
+    <span class="nexus-context-icon {{ message.sender_context }}">
+      {% if message.sender_context == 'client' %}◀{% else %}▶{% endif %}
+    </span>
+  </div>
+
+  <div class="nexus-message-content">
+    <div class="nexus-message-header">
+      <span class="nexus-message-sender">
+        {{ senderName or 'You' }}
+      </span>
+      <span class="nexus-message-context">
+        ({{ message.sender_context | title }})
+      </span>
+      <span class="nexus-message-time">
+        {{ message.created_at | date('MMM D, h:mm A') }}
+      </span>
+    </div>
+
+    <div class="nexus-message-body">
+      {{ message.body | nl2br }}
+    </div>
+  </div>
+</div>

@@ -5,11 +5,83 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{% block title %}Nexus Portal{% endblock %} | AI-BOS</title>
 
+  <!-- Realtime Meta Tags (for auto-subscription) -->
+  {% if nexus and nexus.user %}
+  <meta name="nexus-user-id" content="{{ nexus.user.id }}">
+  {% endif %}
+  {% if nexus and nexus.activeContext %}
+  <meta name="nexus-context-id" content="{{ nexus.activeContext.id }}">
+  {% endif %}
+  {% if nexus and nexus.tenant %}
+  <meta name="nexus-tenant-id" content="{{ nexus.tenant.id }}">
+  {% endif %}
+
   <!-- Nexus Portal Styles (self-contained) -->
   <link rel="stylesheet" href="/css/nexus.css">
 
   <!-- HTMX -->
   <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+
+  <!-- Toast Notification Styles -->
+  <style>
+    .nexus-toast-container {
+      position: fixed;
+      top: 1rem;
+      right: 1rem;
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      pointer-events: none;
+    }
+    .nexus-toast {
+      padding: 1rem;
+      border-radius: 0.5rem;
+      background: var(--nexus-surface, #fff);
+      border-left: 4px solid var(--nexus-primary, #3b82f6);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      max-width: 320px;
+      opacity: 0;
+      transform: translateX(100%);
+      transition: all 0.3s ease;
+      pointer-events: auto;
+      display: flex;
+      align-items: flex-start;
+      gap: 0.75rem;
+    }
+    .nexus-toast.show {
+      opacity: 1;
+      transform: translateX(0);
+    }
+    .nexus-toast-content {
+      flex: 1;
+    }
+    .nexus-toast-content strong {
+      display: block;
+      margin-bottom: 0.25rem;
+    }
+    .nexus-toast-content p {
+      margin: 0;
+      font-size: 0.875rem;
+      opacity: 0.8;
+    }
+    .nexus-toast-close {
+      background: none;
+      border: none;
+      font-size: 1.25rem;
+      cursor: pointer;
+      opacity: 0.5;
+      padding: 0;
+      line-height: 1;
+    }
+    .nexus-toast-close:hover {
+      opacity: 1;
+    }
+    .nexus-toast-info { border-left-color: #3b82f6; }
+    .nexus-toast-success { border-left-color: #10b981; }
+    .nexus-toast-warning { border-left-color: #f59e0b; }
+    .nexus-toast-error { border-left-color: #ef4444; }
+  </style>
 
   {% block head %}{% endblock %}
 </head>
@@ -83,19 +155,13 @@
   </main>
 
   <!-- Toast Container -->
-  <div id="nexus-toasts" class="nexus-toast-container"></div>
+  <div id="toast-container" class="nexus-toast-container"></div>
 
   <!-- Scripts -->
   <script src="/js/nexus/core.js"></script>
   {% if nexus and nexus.user %}
-  <script src="/js/nexus/realtime-notifications.js"></script>
-  <script>
-    // Initialize realtime with user context
-    window.nexusRealtime?.init({
-      userId: '{{ nexus.user.user_id }}',
-      tenantId: '{{ nexus.tenant.tenant_id }}'
-    });
-  </script>
+  <!-- Realtime Client (Signal → Fetch pattern) -->
+  <script type="module" src="/js/nexus/realtime-client.js"></script>
   {% endif %}
 
   {% block scripts %}{% endblock %}

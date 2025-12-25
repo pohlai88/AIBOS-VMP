@@ -95,10 +95,10 @@
             <span class="nexus-case-party">
               {% if nexus.activeContext == 'client' %}
               <span class="nexus-context-icon vendor small">▶</span>
-              {{ case.vendor.name or 'Unknown Vendor' }}
+              {{ case.vendor_tenant.name or 'Unknown Vendor' }}
               {% else %}
               <span class="nexus-context-icon client small">◀</span>
-              {{ case.client.name or 'Unknown Client' }}
+              {{ case.client_tenant.name or 'Unknown Client' }}
               {% endif %}
             </span>
 
@@ -176,7 +176,7 @@
         <select name="vendorId" id="vendorId" required>
           <option value="">Select a vendor...</option>
           {% for rel in nexus.contexts.asClient %}
-          <option value="{{ rel.vendor_id }}">{{ rel.vendor.name }}</option>
+          <option value="{{ rel.vendor_id }}">{{ rel.vendor_tenant.name }}</option>
           {% endfor %}
         </select>
       </div>

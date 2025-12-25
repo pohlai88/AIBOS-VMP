@@ -46,18 +46,15 @@
 
   <!-- Payment Summary -->
   <div class="nexus-payment-summary">
-    {% set pendingPayments = payments | selectattr('status', 'equalto', 'pending') | list %}
-    {% set pendingTotal = pendingPayments | sum(attribute='amount') %}
-
-    {% if pendingPayments | length > 0 %}
+    {% if pendingSummary.count > 0 %}
     <div class="nexus-summary-card {% if isPayer %}warning{% else %}success{% endif %}">
       <div class="nexus-summary-icon">
         {% if isPayer %}⚠️{% else %}💵{% endif %}
       </div>
       <div class="nexus-summary-content">
-        <span class="nexus-summary-value">${{ pendingTotal | round(2) }}</span>
+        <span class="nexus-summary-value">${{ pendingSummary.total | round(2) }}</span>
         <span class="nexus-summary-label">
-          {{ pendingPayments | length }} payment(s)
+          {{ pendingSummary.count }} payment(s)
           {% if isPayer %}to send{% else %}to receive{% endif %}
         </span>
       </div>

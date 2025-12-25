@@ -613,7 +613,9 @@ async function getCasesByContext(contextId, facing, filters = {}) {
     .from('nexus_cases')
     .select(`
       *,
-      unread_count:nexus_case_messages(count)
+      unread_count:nexus_case_messages(count),
+      client_tenant:nexus_tenants!fk_cases_client_tenant(tenant_id, name, display_name),
+      vendor_tenant:nexus_tenants!fk_cases_vendor_tenant(tenant_id, name, display_name)
     `, { count: 'exact' })
     .eq(column, contextId);
 
@@ -662,6 +664,8 @@ async function getCaseById(caseId) {
     .from('nexus_cases')
     .select(`
       *,
+      client_tenant:nexus_tenants!fk_cases_client_tenant(tenant_id, name, display_name),
+      vendor_tenant:nexus_tenants!fk_cases_vendor_tenant(tenant_id, name, display_name),
       messages:nexus_case_messages(*, sender:nexus_users(display_name, email)),
       evidence:nexus_case_evidence(*),
       checklist:nexus_case_checklist(*),
@@ -822,7 +826,11 @@ async function getPaymentsByContext(contextId, facing, filters = {}) {
 
   let query = serviceClient
     .from('nexus_payments')
-    .select('*')
+    .select(`
+      *,
+      from_tenant:nexus_tenants!fk_payments_from_tenant(tenant_id, name, display_name),
+      to_tenant:nexus_tenants!fk_payments_to_tenant(tenant_id, name, display_name)
+    `)
     .eq(column, contextId);
 
   if (filters.status) {
@@ -1023,15 +1031,34 @@ async function createSession(data) {
  * @returns {Promise<object|null>} Session or null
  */
 async function getSession(sessionId) {
-  const { data, error } = await serviceClient
+  // First get the session
+  const { data: session, error: sessionError } = await serviceClient
     .from('nexus_sessions')
-    .select('*, user:nexus_users(*), tenant:nexus_tenants(*)')
+    .select('*')
     .eq('id', sessionId)
     .gt('expires_at', new Date().toISOString())
     .single();
 
-  if (error && error.code !== 'PGRST116') throw new Error(`Failed to get session: ${error.message}`);
-  return data;
+  if (sessionError) {
+    if (sessionError.code === 'PGRST116') return null; // Not found
+    throw new Error(`Failed to get session: ${sessionError.message}`);
+  }
+  if (!session) return null;
+
+  // Manually fetch the user and tenant (no FK relationship in schema)
+  const { data: user } = await serviceClient
+    .from('nexus_users')
+    .select('*')
+    .eq('user_id', session.user_id)
+    .single();
+
+  const { data: tenant } = await serviceClient
+    .from('nexus_tenants')
+    .select('*')
+    .eq('tenant_id', session.tenant_id)
+    .single();
+
+  return { ...session, user, tenant };
 }
 
 /**

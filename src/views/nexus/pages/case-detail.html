@@ -25,10 +25,10 @@
         <span class="nexus-context-icon client">◀</span>
         You →
         <span class="nexus-context-icon vendor">▶</span>
-        {{ case.vendor.name or 'Unknown Vendor' }}
+        {{ case.vendor_tenant.name or 'Unknown Vendor' }}
         {% else %}
         <span class="nexus-context-icon client">◀</span>
-        {{ case.client.name or 'Unknown Client' }} →
+        {{ case.client_tenant.name or 'Unknown Client' }} →
         <span class="nexus-context-icon vendor">▶</span>
         You
         {% endif %}
@@ -128,8 +128,9 @@
     {% elif activeTab == 'thread' %}
     <!-- Thread Tab -->
     <div class="nexus-case-thread"
+         id="case-thread"
          hx-get="/nexus/cases/{{ case.case_id }}/thread"
-         hx-trigger="load"
+         hx-trigger="load, messagePosted from:body"
          hx-swap="innerHTML">
       <div class="nexus-loading">Loading messages...</div>
     </div>
@@ -137,9 +138,8 @@
     <!-- Message Input -->
     <form class="nexus-message-form"
           hx-post="/nexus/cases/{{ case.case_id }}/messages"
-          hx-target=".nexus-case-thread"
-          hx-swap="beforeend"
-          hx-on::after-request="this.reset()">
+          hx-swap="none"
+          hx-on::after-request="if(event.detail.successful) { htmx.trigger(document.body, 'messagePosted'); this.reset(); }">
       <textarea
         name="body"
         placeholder="Type your message..."
@@ -254,5 +254,29 @@
 function switchTab(tab) {
   window.location.href = '?tab=' + tab;
 }
+</script>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Subscribe to live case thread updates
+document.addEventListener('DOMContentLoaded', function() {
+  if (window.NexusRealtime && window.NexusRealtime.initialized) {
+    // Subscribe to messages for this case
+    window.NexusRealtime.subscribeToCaseMessages('{{ case.id }}', '#case-thread');
+    console.log('📡 Case Detail: Subscribed to live thread updates');
+  } else {
+    // Client not ready yet, wait for init
+    const checkInterval = setInterval(function() {
+      if (window.NexusRealtime && window.NexusRealtime.initialized) {
+        window.NexusRealtime.subscribeToCaseMessages('{{ case.id }}', '#case-thread');
+        console.log('📡 Case Detail: Subscribed to live thread updates (delayed)');
+        clearInterval(checkInterval);
+      }
+    }, 500);
+    // Stop checking after 10 seconds
+    setTimeout(function() { clearInterval(checkInterval); }, 10000);
+  }
+});
 </script>
 {% endblock %}

@@ -36,8 +36,13 @@ export async function loadNexusSession(req, res, next) {
     // Load tenant contexts
     const contexts = await nexusAdapter.getTenantContexts(session.tenant_id);
 
-    // Load unread counts
-    const unreadCounts = await nexusAdapter.getUnreadCount(session.user_id);
+    // Load unread counts (graceful - returns defaults if view missing)
+    let unreadCounts = { total: 0, payment: 0, case: 0, critical: 0 };
+    try {
+      unreadCounts = await nexusAdapter.getUnreadCount(session.user_id);
+    } catch (countError) {
+      console.warn('Could not load unread counts:', countError.message);
+    }
 
     // Populate req.nexus
     req.nexus = {
