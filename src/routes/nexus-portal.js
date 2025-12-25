@@ -1298,6 +1298,7 @@ router.get('/api/realtime-config', (req, res) => {
  * - Returns access_token only (never refresh_token)
  * - Token contains RLS claims (nexus_user_id, nexus_tenant_id)
  * - Auto-refreshes if token is expired or about to expire
+ * - Returns 401 if no valid token (forces re-login, no anon fallback)
  */
 router.get('/api/realtime-token', requireNexusAuth, async (req, res) => {
   try {
@@ -1305,26 +1306,32 @@ router.get('/api/realtime-token', requireNexusAuth, async (req, res) => {
     const sessionData = session?.data || {};
 
     if (!sessionData.authToken) {
-      // User logged in via legacy bcrypt (no Supabase auth)
-      return res.status(400).json({
+      // User logged in via legacy bcrypt (no Supabase auth) - realtime unavailable
+      // Return 401 to force re-login, NOT 400 (don't mask as "bad request")
+      return res.status(401).json({
         error: 'No auth token available',
-        hint: 'User authenticated via legacy method. Realtime requires Supabase Auth.'
+        hint: 'Realtime requires Supabase Auth. Please re-login.',
+        code: 'LEGACY_AUTH'
       });
     }
 
-    // Check if token is expired or expiring soon (within 5 minutes)
-    const expiresAt = sessionData.authExpiresAt || 0;
+    // Check if token is expired or expiring soon
+    // Threshold: 5 minutes + random jitter (0-60s) to prevent thundering herd
+    const jitter = Math.floor(Math.random() * 60);
+    const expiringThreshold = 5 * 60 + jitter;
+
+    let currentExpiresAt = sessionData.authExpiresAt || 0;
     const now = Math.floor(Date.now() / 1000);
-    const expiringThreshold = 5 * 60; // 5 minutes
 
     let accessToken = sessionData.authToken;
 
-    if (expiresAt - now < expiringThreshold) {
+    if (currentExpiresAt - now < expiringThreshold) {
       // Token is expired or expiring soon - refresh it
       if (!sessionData.refreshToken) {
         return res.status(401).json({
           error: 'Token expired and no refresh token available',
-          hint: 'Please re-login to continue using realtime features.'
+          hint: 'Please re-login to continue using realtime features.',
+          code: 'TOKEN_EXPIRED'
         });
       }
 
@@ -1337,7 +1344,8 @@ router.get('/api/realtime-token', requireNexusAuth, async (req, res) => {
           console.warn('[REALTIME-TOKEN] Refresh failed:', refreshError?.message);
           return res.status(401).json({
             error: 'Token refresh failed',
-            hint: 'Please re-login to continue using realtime features.'
+            hint: 'Please re-login to continue using realtime features.',
+            code: 'REFRESH_FAILED'
           });
         }
 
@@ -1352,6 +1360,7 @@ router.get('/api/realtime-token', requireNexusAuth, async (req, res) => {
         });
 
         accessToken = refreshData.session.access_token;
+        currentExpiresAt = refreshData.session.expires_at;
         console.log('[REALTIME-TOKEN] Token refreshed for user:', req.nexus.userId);
       } catch (refreshErr) {
         console.error('[REALTIME-TOKEN] Refresh error:', refreshErr);
@@ -1362,7 +1371,7 @@ router.get('/api/realtime-token', requireNexusAuth, async (req, res) => {
     // Return only access_token and expiry (NEVER refresh_token)
     res.json({
       access_token: accessToken,
-      expires_at: expiresAt > now ? expiresAt : (now + 3600) // Fallback 1 hour if unknown
+      expires_at: currentExpiresAt
     });
   } catch (error) {
     console.error('[REALTIME-TOKEN] Error:', error);

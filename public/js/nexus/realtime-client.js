@@ -33,6 +33,7 @@ class NexusRealtimeClient {
   /**
    * Fetch authenticated access token from server
    * Token contains RLS claims and is short-lived
+   * Returns { token, error } - error present if auth failed (401)
    */
   async fetchRealtimeToken() {
     try {
@@ -42,8 +43,15 @@ class NexusRealtimeClient {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
+
+        // 401 = auth required, don't mask with anon fallback
+        if (response.status === 401) {
+          console.warn('📡 Nexus Realtime: Auth required -', errorData.hint || errorData.error);
+          return { token: null, error: errorData.code || 'AUTH_REQUIRED', hint: errorData.hint };
+        }
+
         console.warn('📡 Nexus Realtime: Token fetch failed:', errorData.error || response.status);
-        return null;
+        return { token: null, error: 'FETCH_FAILED' };
       }
 
       const data = await response.json();
@@ -51,11 +59,35 @@ class NexusRealtimeClient {
       this.tokenExpiresAt = data.expires_at;
 
       console.log('📡 Nexus Realtime: Token acquired, expires at', new Date(this.tokenExpiresAt * 1000).toISOString());
-      return data.access_token;
+      return { token: data.access_token, error: null };
     } catch (error) {
       console.error('📡 Nexus Realtime: Token fetch error:', error);
-      return null;
+      return { token: null, error: 'NETWORK_ERROR' };
     }
+  }
+
+  /**
+   * Show realtime unavailable banner (for legacy auth users)
+   */
+  showRealtimeUnavailableBanner(hint) {
+    // Check if banner already exists
+    if (document.getElementById('realtime-unavailable-banner')) return;
+
+    const banner = document.createElement('div');
+    banner.id = 'realtime-unavailable-banner';
+    banner.className = 'vmp-alert vmp-alert-warning';
+    banner.style.cssText = 'position:fixed;bottom:20px;right:20px;z-index:1000;max-width:350px;padding:12px 16px;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.15);';
+    banner.innerHTML = `
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span style="font-size:1.2em;">⚠️</span>
+        <div>
+          <strong>Realtime unavailable</strong><br>
+          <small>${hint || 'Please re-login for live updates.'}</small>
+        </div>
+        <button onclick="this.parentElement.parentElement.remove()" style="margin-left:auto;background:none;border:none;cursor:pointer;font-size:1.2em;">×</button>
+      </div>
+    `;
+    document.body.appendChild(banner);
   }
 
   /**
@@ -66,35 +98,46 @@ class NexusRealtimeClient {
 
     try {
       // Fetch authenticated token first
-      const token = await this.fetchRealtimeToken();
+      const { token, error, hint } = await this.fetchRealtimeToken();
+
+      // If auth failed (401), show banner and DON'T initialize realtime
+      // This prevents "silently dead" realtime that masks bugs
+      if (error === 'LEGACY_AUTH' || error === 'TOKEN_EXPIRED' || error === 'REFRESH_FAILED' || error === 'AUTH_REQUIRED') {
+        this.showRealtimeUnavailableBanner(hint);
+        this.initialized = false;
+        this.authError = error;
+        console.warn('📡 Nexus Realtime: Disabled due to auth error:', error);
+        return;
+      }
+
+      // If no token for other reasons, still don't fall back to anon
+      if (!token) {
+        console.warn('📡 Nexus Realtime: No token available, realtime disabled');
+        this.initialized = false;
+        return;
+      }
 
       // Dynamic import of Supabase client from CDN
       const { createClient } = await import('https://esm.sh/@supabase/supabase-js@2');
 
-      // Create client with access token if available
+      // Create client WITH authenticated token (not anon-only)
       const options = {
         realtime: {
           params: {
             eventsPerSecond: 10
           }
-        }
-      };
-
-      // If we have an authenticated token, use it
-      if (token) {
-        options.global = {
+        },
+        global: {
           headers: {
             Authorization: `Bearer ${token}`
           }
-        };
-      }
+        }
+      };
 
       this.client = createClient(this.supabaseUrl, this.supabaseAnonKey, options);
 
-      // Set the auth token for realtime if available
-      if (token) {
-        await this.client.realtime.setAuth(token);
-      }
+      // Set the auth token for realtime
+      await this.client.realtime.setAuth(token);
 
       // Schedule token refresh (5 minutes before expiry)
       this.scheduleTokenRefresh();
@@ -439,9 +482,18 @@ class NexusRealtimeClient {
    */
   async handleAuthError() {
     console.log('📡 Nexus Realtime: Auth error, attempting token refresh...');
-    const newToken = await this.fetchRealtimeToken();
-    if (newToken && this.client) {
-      await this.client.realtime.setAuth(newToken);
+    const { token, error, hint } = await this.fetchRealtimeToken();
+
+    if (error) {
+      // Auth failed - show banner and disable
+      this.showRealtimeUnavailableBanner(hint);
+      this.authError = error;
+      console.warn('📡 Nexus Realtime: Re-auth failed:', error);
+      return false;
+    }
+
+    if (token && this.client) {
+      await this.client.realtime.setAuth(token);
       console.log('📡 Nexus Realtime: Re-authenticated after error');
       this.scheduleTokenRefresh();
       return true;
@@ -456,6 +508,9 @@ class NexusRealtimeClient {
   getStatus() {
     return {
       initialized: this.initialized,
+      authenticated: !!this.accessToken,
+      authError: this.authError || null,
+      tokenExpiresAt: this.tokenExpiresAt ? new Date(this.tokenExpiresAt * 1000).toISOString() : null,
       channels: Array.from(this.channels.keys()),
       channelCount: this.channels.size
     };
