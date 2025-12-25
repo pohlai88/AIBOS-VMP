@@ -65,3 +65,6 @@ coverage*.txt
 *.json text eol=lf
 *.md   text eol=lf
 *.sh   text eol=lf
+
+# Legacy VMP backup (Phase 13)
+VMP-LEGACY/
