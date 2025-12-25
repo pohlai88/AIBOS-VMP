@@ -84,6 +84,20 @@ router.get('/login', (req, res) => {
 });
 
 /**
+ * GET /nexus/debug-auth
+ * Debug endpoint to check what role the serviceClient is using
+ */
+router.get('/debug-auth', async (req, res) => {
+  try {
+    const result = await nexusAdapter.debugAuthContext();
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+
+/**
  * POST /nexus/login
  * Process login - supports both Supabase Auth and legacy bcrypt
  */

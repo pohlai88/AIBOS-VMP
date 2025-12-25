@@ -282,18 +282,35 @@ async function getUserByEmail(email) {
  * Update user
  * @param {string} userId - USR-* ID
  * @param {object} updates - Fields to update
- * @returns {Promise<object>} Updated user
+ * @returns {Promise<object|null>} Updated user or null if no-op
  */
 async function updateUser(userId, updates) {
   const { data, error } = await serviceClient
     .from('nexus_users')
     .update(updates)
     .eq('user_id', userId)
-    .select()
-    .single();
+    .select(); // no .single() - tolerate 0 rows
 
   if (error) throw new Error(`Failed to update user: ${error.message}`);
-  return data;
+
+  // If nothing returned, verify existence so we don't hide real issues
+  if (!data || data.length === 0) {
+    const { data: exists, error: existsErr } = await serviceClient
+      .from('nexus_users')
+      .select('user_id')
+      .eq('user_id', userId)
+      .limit(1);
+
+    if (existsErr) throw new Error(`Failed to verify user after update: ${existsErr.message}`);
+    if (!exists || exists.length === 0) {
+      throw new Error(`updateUser: user not found for user_id=${userId}`);
+    }
+
+    // User exists but update returned no rows: treat as "no-op"
+    return null;
+  }
+
+  return data[0];
 }
 
 /**
@@ -355,7 +372,7 @@ async function createRelationship(clientId, vendorId, options = {}) {
  */
 async function getTenantRelationships(tenantId) {
   const tenant = await getTenantById(tenantId);
-  if (!tenant) throw new Error('Tenant not found');
+  if (!tenant) throw new Error(`Tenant not found: ${tenantId}`);
 
   // Get relationships where tenant is client
   const { data: asClientRels, error: clientError } = await serviceClient
@@ -1082,11 +1099,13 @@ async function updateSession(sessionId, updates) {
     .from('nexus_sessions')
     .update(updatePayload)
     .eq('id', sessionId)
-    .select()
-    .single();
+    .select();
 
   if (error) throw new Error(`Failed to update session: ${error.message}`);
-  return data;
+  if (!data || data.length === 0) {
+    throw new Error(`Session not found: ${sessionId}`);
+  }
+  return data[0];
 }
 
 /**
@@ -1411,6 +1430,36 @@ async function signOut(accessToken) {
   await userClient.auth.signOut();
 }
 
+/**
+ * Debug: Check what role the serviceClient is actually using
+ * Calls the debug_auth_context() function to see the real role from PostgREST
+ */
+async function debugAuthContext() {
+  // Also decode the key to verify it's correct
+  const { supabaseServiceKey, supabaseAnonKey } = getSupabaseConfig();
+
+  function decodeJwtRole(jwt) {
+    try {
+      const payload = JSON.parse(Buffer.from(jwt.split('.')[1], 'base64url').toString('utf8'));
+      return payload?.role || null;
+    } catch { return null; }
+  }
+
+  const serviceKeyRole = decodeJwtRole(supabaseServiceKey);
+  const anonKeyRole = decodeJwtRole(supabaseAnonKey);
+
+  // Call the debug function via RPC
+  const { data: serviceResult, error: serviceError } = await serviceClient.rpc('debug_auth_context');
+
+  return {
+    keyDecoded: {
+      serviceKeyRole,
+      anonKeyRole
+    },
+    serviceClientRpc: serviceError ? { error: serviceError.message } : serviceResult
+  };
+}
+
 // ============================================================================
 // EXPORTS
 // ============================================================================
@@ -1487,7 +1536,10 @@ export const nexusAdapter = {
   // Clients
   serviceClient,
   createContextClient,
-  getAuthClient
+  getAuthClient,
+
+  // Debug
+  debugAuthContext
 };
 
 export default nexusAdapter;
