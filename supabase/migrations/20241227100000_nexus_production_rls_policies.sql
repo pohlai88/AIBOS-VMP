@@ -4,6 +4,34 @@
 -- Prerequisite: JWT app_metadata must contain nexus_user_id and nexus_tenant_id
 
 -- ============================================================================
+-- DEFENSIVE: Enable RLS on all tables (idempotent, safe if already enabled)
+-- ============================================================================
+
+ALTER TABLE public.nexus_notifications ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.nexus_cases ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.nexus_case_messages ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.nexus_payments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.nexus_tenant_relationships ENABLE ROW LEVEL SECURITY;
+
+-- ============================================================================
+-- DEFENSIVE: Revoke default grants, then explicitly grant what we need
+-- ============================================================================
+
+-- Revoke all first (no surprises)
+REVOKE ALL ON public.nexus_notifications FROM anon, authenticated;
+REVOKE ALL ON public.nexus_cases FROM anon, authenticated;
+REVOKE ALL ON public.nexus_case_messages FROM anon, authenticated;
+REVOKE ALL ON public.nexus_payments FROM anon, authenticated;
+REVOKE ALL ON public.nexus_tenant_relationships FROM anon, authenticated;
+
+-- Grant only what's needed (RLS policies will further restrict)
+GRANT SELECT, UPDATE ON public.nexus_notifications TO authenticated;
+GRANT SELECT ON public.nexus_cases TO authenticated;
+GRANT SELECT, INSERT ON public.nexus_case_messages TO authenticated;
+GRANT SELECT ON public.nexus_payments TO authenticated;
+GRANT SELECT ON public.nexus_tenant_relationships TO authenticated;
+
+-- ============================================================================
 -- HELPER FUNCTIONS (call these in policies for cleaner SQL)
 -- ============================================================================
 
@@ -154,22 +182,22 @@ USING (
 -- PERFORMANCE INDEXES (if not already present)
 -- ============================================================================
 
-CREATE INDEX IF NOT EXISTS idx_nexus_notifications_user_tenant 
+CREATE INDEX IF NOT EXISTS idx_nexus_notifications_user_tenant
   ON public.nexus_notifications(user_id, tenant_id);
 
-CREATE INDEX IF NOT EXISTS idx_nexus_case_messages_case_id 
+CREATE INDEX IF NOT EXISTS idx_nexus_case_messages_case_id
   ON public.nexus_case_messages(case_id);
 
-CREATE INDEX IF NOT EXISTS idx_nexus_cases_client_id 
+CREATE INDEX IF NOT EXISTS idx_nexus_cases_client_id
   ON public.nexus_cases(client_id);
 
-CREATE INDEX IF NOT EXISTS idx_nexus_cases_vendor_id 
+CREATE INDEX IF NOT EXISTS idx_nexus_cases_vendor_id
   ON public.nexus_cases(vendor_id);
 
-CREATE INDEX IF NOT EXISTS idx_nexus_payments_from_to 
+CREATE INDEX IF NOT EXISTS idx_nexus_payments_from_to
   ON public.nexus_payments(from_id, to_id);
 
-CREATE INDEX IF NOT EXISTS idx_nexus_tenant_relationships_client_vendor 
+CREATE INDEX IF NOT EXISTS idx_nexus_tenant_relationships_client_vendor
   ON public.nexus_tenant_relationships(client_id, vendor_id);
 
 -- ============================================================================
