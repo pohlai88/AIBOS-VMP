@@ -6,11 +6,14 @@
  * - Signal: Supabase Realtime sends WebSocket event "something changed"
  * - Fetch: HTMX securely requests updated HTML from server
  *
- * Security: Uses anon key only. RLS policies filter data.
- * Actual data comes via authenticated HTMX requests.
+ * Security:
+ * - Uses authenticated JWT (fetched from /nexus/api/realtime-token)
+ * - JWT contains RLS claims (nexus_user_id, nexus_tenant_id)
+ * - Actual data comes via authenticated HTMX requests
  *
- * @version 1.0.0
+ * @version 1.1.0
  * @created 2025-12-26
+ * @updated 2025-12-26 - Added authenticated token support
  */
 
 class NexusRealtimeClient {
@@ -20,32 +23,114 @@ class NexusRealtimeClient {
     this.client = null;
     this.channels = new Map();
     this.initialized = false;
+    this.accessToken = null;
+    this.tokenExpiresAt = 0;
+    this.tokenRefreshTimer = null;
     // Dev mode detection for extended toast duration
     this.isDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
   }
 
   /**
-   * Initialize Supabase client for realtime
+   * Fetch authenticated access token from server
+   * Token contains RLS claims and is short-lived
+   */
+  async fetchRealtimeToken() {
+    try {
+      const response = await fetch('/nexus/api/realtime-token', {
+        credentials: 'include' // Include session cookie
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.warn('📡 Nexus Realtime: Token fetch failed:', errorData.error || response.status);
+        return null;
+      }
+
+      const data = await response.json();
+      this.accessToken = data.access_token;
+      this.tokenExpiresAt = data.expires_at;
+
+      console.log('📡 Nexus Realtime: Token acquired, expires at', new Date(this.tokenExpiresAt * 1000).toISOString());
+      return data.access_token;
+    } catch (error) {
+      console.error('📡 Nexus Realtime: Token fetch error:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Initialize Supabase client for realtime with authenticated token
    */
   async init() {
     if (this.initialized) return;
 
     try {
+      // Fetch authenticated token first
+      const token = await this.fetchRealtimeToken();
+
       // Dynamic import of Supabase client from CDN
       const { createClient } = await import('https://esm.sh/@supabase/supabase-js@2');
 
-      this.client = createClient(this.supabaseUrl, this.supabaseAnonKey, {
+      // Create client with access token if available
+      const options = {
         realtime: {
           params: {
             eventsPerSecond: 10
           }
         }
-      });
+      };
+
+      // If we have an authenticated token, use it
+      if (token) {
+        options.global = {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        };
+      }
+
+      this.client = createClient(this.supabaseUrl, this.supabaseAnonKey, options);
+
+      // Set the auth token for realtime if available
+      if (token) {
+        await this.client.realtime.setAuth(token);
+      }
+
+      // Schedule token refresh (5 minutes before expiry)
+      this.scheduleTokenRefresh();
 
       this.initialized = true;
-      console.log('📡 Nexus Realtime: Connected');
+      console.log('📡 Nexus Realtime: Connected', token ? '(authenticated)' : '(anon)');
     } catch (error) {
       console.error('Nexus Realtime: Failed to load Supabase JS', error);
+    }
+  }
+
+  /**
+   * Schedule token refresh before expiry
+   */
+  scheduleTokenRefresh() {
+    if (this.tokenRefreshTimer) {
+      clearTimeout(this.tokenRefreshTimer);
+    }
+
+    if (!this.tokenExpiresAt) return;
+
+    const now = Math.floor(Date.now() / 1000);
+    const refreshIn = Math.max((this.tokenExpiresAt - now - 300) * 1000, 60000); // 5 min before expiry, min 1 min
+
+    this.tokenRefreshTimer = setTimeout(async () => {
+      console.log('📡 Nexus Realtime: Refreshing token...');
+      const newToken = await this.fetchRealtimeToken();
+      if (newToken && this.client) {
+        await this.client.realtime.setAuth(newToken);
+        console.log('📡 Nexus Realtime: Token refreshed');
+        this.scheduleTokenRefresh();
+      }
+    }, refreshIn);
+
+    if (this.isDev) {
+      console.log(`📡 Nexus Realtime: Token refresh scheduled in ${Math.round(refreshIn / 1000)}s`);
     }
   }
 
@@ -336,11 +421,33 @@ class NexusRealtimeClient {
    * Cleanup all subscriptions
    */
   cleanup() {
+    // Clear token refresh timer
+    if (this.tokenRefreshTimer) {
+      clearTimeout(this.tokenRefreshTimer);
+      this.tokenRefreshTimer = null;
+    }
+
     this.channels.forEach((channel, name) => {
       channel.unsubscribe();
       console.log(`📡 Nexus Realtime: Cleaned up ${name}`);
     });
     this.channels.clear();
+  }
+
+  /**
+   * Handle auth error by refreshing token and re-authenticating
+   */
+  async handleAuthError() {
+    console.log('📡 Nexus Realtime: Auth error, attempting token refresh...');
+    const newToken = await this.fetchRealtimeToken();
+    if (newToken && this.client) {
+      await this.client.realtime.setAuth(newToken);
+      console.log('📡 Nexus Realtime: Re-authenticated after error');
+      this.scheduleTokenRefresh();
+      return true;
+    }
+    console.warn('📡 Nexus Realtime: Failed to re-authenticate');
+    return false;
   }
 
   /**

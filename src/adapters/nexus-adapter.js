@@ -1062,6 +1062,34 @@ async function getSession(sessionId) {
 }
 
 /**
+ * Update session data (for token refresh, etc.)
+ * @param {string} sessionId - Session ID
+ * @param {object} updates - Fields to update (data, active_context, etc.)
+ * @returns {Promise<object>} Updated session
+ */
+async function updateSession(sessionId, updates) {
+  const updatePayload = {
+    last_active_at: new Date().toISOString()
+  };
+
+  // Map allowed fields
+  if (updates.data !== undefined) updatePayload.data = updates.data;
+  if (updates.activeContext !== undefined) updatePayload.active_context = updates.activeContext;
+  if (updates.activeContextId !== undefined) updatePayload.active_context_id = updates.activeContextId;
+  if (updates.activeCounterparty !== undefined) updatePayload.active_counterparty = updates.activeCounterparty;
+
+  const { data, error } = await serviceClient
+    .from('nexus_sessions')
+    .update(updatePayload)
+    .eq('id', sessionId)
+    .select()
+    .single();
+
+  if (error) throw new Error(`Failed to update session: ${error.message}`);
+  return data;
+}
+
+/**
  * Update session context
  * @param {string} sessionId - Session ID
  * @param {object} context - New context
@@ -1441,6 +1469,7 @@ export const nexusAdapter = {
   // Session
   createSession,
   getSession,
+  updateSession,
   updateSessionContext,
   deleteSession,
 

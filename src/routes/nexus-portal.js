@@ -1289,6 +1289,87 @@ router.get('/api/realtime-config', (req, res) => {
   });
 });
 
+/**
+ * GET /nexus/api/realtime-token
+ * Returns short-lived access token for browser Supabase Realtime authentication
+ *
+ * SECURITY:
+ * - Requires valid session cookie (authenticated users only)
+ * - Returns access_token only (never refresh_token)
+ * - Token contains RLS claims (nexus_user_id, nexus_tenant_id)
+ * - Auto-refreshes if token is expired or about to expire
+ */
+router.get('/api/realtime-token', requireNexusAuth, async (req, res) => {
+  try {
+    const session = req.nexus?.session;
+    const sessionData = session?.data || {};
+
+    if (!sessionData.authToken) {
+      // User logged in via legacy bcrypt (no Supabase auth)
+      return res.status(400).json({
+        error: 'No auth token available',
+        hint: 'User authenticated via legacy method. Realtime requires Supabase Auth.'
+      });
+    }
+
+    // Check if token is expired or expiring soon (within 5 minutes)
+    const expiresAt = sessionData.authExpiresAt || 0;
+    const now = Math.floor(Date.now() / 1000);
+    const expiringThreshold = 5 * 60; // 5 minutes
+
+    let accessToken = sessionData.authToken;
+
+    if (expiresAt - now < expiringThreshold) {
+      // Token is expired or expiring soon - refresh it
+      if (!sessionData.refreshToken) {
+        return res.status(401).json({
+          error: 'Token expired and no refresh token available',
+          hint: 'Please re-login to continue using realtime features.'
+        });
+      }
+
+      try {
+        const { data: refreshData, error: refreshError } = await nexusAdapter.serviceClient.auth.refreshSession({
+          refresh_token: sessionData.refreshToken
+        });
+
+        if (refreshError || !refreshData?.session?.access_token) {
+          console.warn('[REALTIME-TOKEN] Refresh failed:', refreshError?.message);
+          return res.status(401).json({
+            error: 'Token refresh failed',
+            hint: 'Please re-login to continue using realtime features.'
+          });
+        }
+
+        // Update session with new tokens
+        await nexusAdapter.updateSession(session.id, {
+          data: {
+            ...sessionData,
+            authToken: refreshData.session.access_token,
+            refreshToken: refreshData.session.refresh_token,
+            authExpiresAt: refreshData.session.expires_at
+          }
+        });
+
+        accessToken = refreshData.session.access_token;
+        console.log('[REALTIME-TOKEN] Token refreshed for user:', req.nexus.userId);
+      } catch (refreshErr) {
+        console.error('[REALTIME-TOKEN] Refresh error:', refreshErr);
+        return res.status(500).json({ error: 'Token refresh failed' });
+      }
+    }
+
+    // Return only access_token and expiry (NEVER refresh_token)
+    res.json({
+      access_token: accessToken,
+      expires_at: expiresAt > now ? expiresAt : (now + 3600) // Fallback 1 hour if unknown
+    });
+  } catch (error) {
+    console.error('[REALTIME-TOKEN] Error:', error);
+    res.status(500).json({ error: 'Failed to get realtime token' });
+  }
+});
+
 // ============================================================================
 // SETTINGS ROUTES
 // ============================================================================
