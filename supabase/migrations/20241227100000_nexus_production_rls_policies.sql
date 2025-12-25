@@ -56,6 +56,30 @@ AS $$
   SELECT auth.jwt() -> 'app_metadata' ->> 'nexus_tenant_id'
 $$;
 
+-- Helper: tenant's client ID (TC-*) - for cases/payments/relationships
+CREATE OR REPLACE FUNCTION public.jwt_nexus_tenant_client_id()
+RETURNS text
+LANGUAGE sql
+STABLE
+SECURITY INVOKER
+AS $$
+  SELECT tenant_client_id 
+  FROM public.nexus_tenants 
+  WHERE tenant_id = (auth.jwt() -> 'app_metadata' ->> 'nexus_tenant_id')
+$$;
+
+-- Helper: tenant's vendor ID (TV-*) - for cases/payments/relationships
+CREATE OR REPLACE FUNCTION public.jwt_nexus_tenant_vendor_id()
+RETURNS text
+LANGUAGE sql
+STABLE
+SECURITY INVOKER
+AS $$
+  SELECT tenant_vendor_id 
+  FROM public.nexus_tenants 
+  WHERE tenant_id = (auth.jwt() -> 'app_metadata' ->> 'nexus_tenant_id')
+$$;
+
 -- ============================================================================
 -- NEXUS_NOTIFICATIONS (user_id = recipient USR-*, tenant_id = TNT-*)
 -- ============================================================================
@@ -106,8 +130,8 @@ ON public.nexus_cases
 FOR SELECT
 TO authenticated
 USING (
-  client_id = public.jwt_nexus_tenant_id()
-  OR vendor_id = public.jwt_nexus_tenant_id()
+  client_id = public.jwt_nexus_tenant_client_id()
+  OR vendor_id = public.jwt_nexus_tenant_vendor_id()
 );
 
 -- ============================================================================
@@ -125,8 +149,8 @@ USING (
     FROM public.nexus_cases c
     WHERE c.case_id = nexus_case_messages.case_id
       AND (
-        c.client_id = public.jwt_nexus_tenant_id()
-        OR c.vendor_id = public.jwt_nexus_tenant_id()
+        c.client_id = public.jwt_nexus_tenant_client_id()
+        OR c.vendor_id = public.jwt_nexus_tenant_vendor_id()
       )
   )
 );
@@ -144,8 +168,8 @@ WITH CHECK (
     FROM public.nexus_cases c
     WHERE c.case_id = nexus_case_messages.case_id
       AND (
-        c.client_id = public.jwt_nexus_tenant_id()
-        OR c.vendor_id = public.jwt_nexus_tenant_id()
+        c.client_id = public.jwt_nexus_tenant_client_id()
+        OR c.vendor_id = public.jwt_nexus_tenant_vendor_id()
       )
   )
 );
@@ -160,8 +184,8 @@ ON public.nexus_payments
 FOR SELECT
 TO authenticated
 USING (
-  from_id = public.jwt_nexus_tenant_id()
-  OR to_id = public.jwt_nexus_tenant_id()
+  from_id = public.jwt_nexus_tenant_client_id()
+  OR to_id = public.jwt_nexus_tenant_vendor_id()
 );
 
 -- ============================================================================
@@ -174,8 +198,8 @@ ON public.nexus_tenant_relationships
 FOR SELECT
 TO authenticated
 USING (
-  client_id = public.jwt_nexus_tenant_id()
-  OR vendor_id = public.jwt_nexus_tenant_id()
+  client_id = public.jwt_nexus_tenant_client_id()
+  OR vendor_id = public.jwt_nexus_tenant_vendor_id()
 );
 
 -- ============================================================================
