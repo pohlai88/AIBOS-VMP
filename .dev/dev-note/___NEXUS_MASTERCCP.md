@@ -274,7 +274,7 @@
 | 11.4 | Inbox filters by active context | ✅ Done |
 | 11.5 | Cases reference correct IDs | ✅ Done |
 | 11.6 | Payments flow with correct from/to | ✅ Done |
-| 11.7 | Realtime notifications work | ⏳ Phase 12 |
+| 11.7 | Realtime notifications work | ✅ Done (Phase 12) |
 | 11.8 | Notification config cascade works | ✅ Done |
 | 11.9 | All CRUD operations work | ✅ Done |
 | 11.10 | RLS policies enforce isolation | ✅ Done |
@@ -297,7 +297,7 @@
 
 ---
 
-### PHASE 12: Realtime Integration ✅ COMPLETE + VALIDATED
+### PHASE 12: Realtime Integration ✅ COMPLETE + VALIDATED + BROADCAST
 | # | Task | Status |
 |---|------|--------|
 | 12.1 | Create public/js/nexus/realtime-client.js | ✅ Done |
@@ -311,6 +311,9 @@
 | 12.9 | Toast notifications for high-priority | ✅ Done |
 | 12.10 | RLS policy for realtime SELECT | ✅ Done |
 | 12.11 | **E2E Validation Test** | ✅ PASSED |
+| 12.12 | Realtime token endpoint with JWT claims | ✅ Done |
+| 12.13 | Debug endpoint gated for production | ✅ Done |
+| 12.14 | **Broadcast notification support** | ✅ Done |
 
 **Validation Results (2025-12-27):**
 - ✅ WebSocket connection established
@@ -325,7 +328,25 @@
 - Added RLS policy for anon/authenticated SELECT on notifications
 - Fixed property names in realtime-client.js (`type` → `notification_type`, `message` → `body`)
 
-**CCP-10: ✅ VERIFIED** - Two-session reality test passed
+**Security Enhancements (2025-12-27):**
+- `/nexus/debug-auth` gated: dev mode OR admin role only
+- Production returns limited info (no full JWT exposed)
+
+**Broadcast Notification Enhancement (2025-12-27):**
+- `getNotifications()` includes tenant broadcasts (`user_id IS NULL`)
+- `getUnreadCount()` combines user + broadcast counts
+- `markNotificationsRead()` works for both targeted and broadcasts
+- Query: `WHERE tenant_id = X AND (user_id = Y OR user_id IS NULL)`
+
+**Smoke Test Results (4/4 PASSING):**
+| Test | Status | Evidence |
+|------|--------|----------|
+| 1. Login → /nexus/inbox | ✅ PASS | Auto-redirect, 4 cases visible |
+| 2. /realtime-token returns 200 | ✅ PASS | JWT with `nexus_user_id`, `nexus_tenant_id` claims |
+| 3. Targeted notification visible | ✅ PASS | "🎯 For Alice Only" in notification list |
+| 4. Broadcast notification visible | ✅ PASS | "📢 System Announcement" (user_id NULL) |
+
+**CCP-10: ✅ VERIFIED** - Two-session reality test + broadcast validation passed
 
 ---
 
@@ -477,11 +498,17 @@ All WebSocket subscriptions, INSERT events, and toast notifications working.
 | 2025-12-26 | 11 | ✅ COMPLETE - E2E validation + polish fixes (CCP-8) |
 | 2025-12-26 | 11 | Added 4 FK constraints for tenant name resolution |
 | 2025-12-26 | 11 | Fixed payment amount NUMERIC→float conversion |
+| 2025-12-27 | 12 | ✅ COMPLETE - Realtime integration (CCP-10) |
+| 2025-12-27 | 12 | Added realtime-token endpoint with JWT claims |
+| 2025-12-27 | 12 | Gated debug-auth endpoint for production security |
+| 2025-12-27 | 12 | Added broadcast notification support (user_id IS NULL) |
+| 2025-12-27 | 12 | Smoke tests 4/4 passing (targeted + broadcast) |
 
 ---
 
 ## Resume Point
 
-**CONTINUE FROM:** Phase 12.1 - Create realtime-client.js for live notifications
+**CONTINUE FROM:** Phase 13.1 - Legacy removal migration (099_remove_legacy_vmp.sql)
 
-**OR:** Phase 13 - Legacy Removal (CCP-9) if skipping realtime
+**Phase 12 COMPLETE:** Realtime + broadcast notifications fully validated.
+All WebSocket subscriptions, JWT claims, targeted and broadcast notifications working.

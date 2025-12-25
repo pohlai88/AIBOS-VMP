@@ -1,8 +1,9 @@
 # NEXUS PORTAL - PHASE 12: REALTIME INTEGRATION PLAN
 
-**Version:** 1.0
+**Version:** 1.1
 **Created:** 2025-12-26
-**Status:** ✅ CORE IMPLEMENTATION COMPLETE
+**Updated:** 2025-12-27
+**Status:** ✅ FULLY COMPLETE + BROADCAST ENHANCEMENT
 **Prerequisite:** CCP-8 PASSED ✅
 
 ---
@@ -49,17 +50,20 @@ Phase 12 adds live updates to the Nexus Portal using Supabase Realtime (WebSocke
 | # | Task | File | Status |
 |---|------|------|--------|
 | 12.1 | Schema prep - verify PKs and FKs | SQL | ✅ Done |
-| 12.2 | Enable Realtime publication | migrations/047_nexus_realtime_publication.sql | ✅ Created |
-| 12.3 | Create notification_counts view | SQL | ✅ Exists |
+| 12.2 | Enable Realtime publication | migrations/047_nexus_realtime_publication.sql | ✅ Done |
+| 12.3 | Create notification_counts view | SQL | ✅ Done |
 | 12.4 | Add adapter subscription methods | N/A (client-side) | ✅ Skipped |
 | 12.5 | Create realtime-client.js | public/js/nexus/realtime-client.js | ✅ Done |
 | 12.6 | Add Supabase config endpoint | src/routes/nexus-portal.js | ✅ Done |
 | 12.7 | Update layout.html with realtime script | src/views/nexus/layout.html | ✅ Done |
 | 12.8 | Update case-detail.html for live thread | src/views/nexus/pages/case-detail.html | ✅ Done |
-| 12.9 | Update payments.html for live status | payments.html | ⏳ Auto via meta |
-| 12.10 | Update notification-bell partial | notification-bell.html | ⏳ Auto via meta |
-| 12.11 | E2E testing with two sessions | Manual | ⏳ Ready |
-| 12.12 | Document realtime architecture | This file | ⏳ Ready |
+| 12.9 | Update payments.html for live status | payments.html | ✅ Auto via meta |
+| 12.10 | Update notification-bell partial | notification-bell.html | ✅ Auto via meta |
+| 12.11 | E2E testing with two sessions | Manual | ✅ PASSED |
+| 12.12 | Document realtime architecture | This file | ✅ Done |
+| 12.13 | Realtime token endpoint with JWT claims | src/routes/nexus-portal.js | ✅ Done |
+| 12.14 | Debug endpoint gated for production | src/routes/nexus-portal.js | ✅ Done |
+| 12.15 | **Broadcast notification support** | src/adapters/nexus-adapter.js | ✅ Done |
 
 ---
 
@@ -914,6 +918,46 @@ public.jwt_nexus_tenant_id() -- Returns TNT-* from JWT app_metadata
 | 2025-12-27 | - | Extended toast duration 5s → 8s for dev visibility |
 | 2025-12-27 | - | Documented RLS hardening TODO for production |
 | 2025-12-27 | - | Added Failure Matrix for quick debugging |
+| 2025-12-27 | 12.13 | Realtime token endpoint with JWT claims |
+| 2025-12-27 | 12.14 | Debug endpoint gated (dev mode OR admin role) |
+| 2025-12-27 | 12.15 | **Broadcast notification support** (user_id IS NULL) |
+| 2025-12-27 | - | Smoke tests 4/4 passing |
+| 2025-12-27 | - | **PHASE 12 FULLY COMPLETE** |
+
+---
+
+## ✅ Phase 12 Completion Summary
+
+**Status:** FULLY COMPLETE + PUSHED TO REMOTE
+
+**Commits:**
+- `b978aad` - Debug endpoint gated for production security
+- `c6b934a` - Format smoke test (whitespace)
+- `a0d10e2` - Broadcast notification support
+
+**Files Modified:**
+| File | Change |
+|------|--------|
+| `src/adapters/nexus-adapter.js` | `getNotifications`, `getUnreadCount`, `markNotificationsRead` include broadcasts |
+| `src/routes/nexus-portal.js` | Pass `tenantId` to notification calls, debug endpoint gated |
+| `tests/smoke/realtime-token.test.mjs` | Extended smoke test for 6 checks |
+| `scripts/cleanup-test-notifications.sql` | Test data cleanup helper |
+
+**Smoke Test Results (4/4):**
+| Test | Status |
+|------|--------|
+| 1. Login → /nexus/inbox | ✅ |
+| 2. /realtime-token returns 200 | ✅ |
+| 3. Targeted notification visible | ✅ |
+| 4. Broadcast notification visible | ✅ |
+
+**Broadcast Query Pattern:**
+```sql
+WHERE tenant_id = $tenantId
+  AND (user_id = $userId OR user_id IS NULL)
+```
+
+**Ready for Phase 13:** Legacy removal migration
 | 2025-12-27 | - | Chose JWT app_metadata identity strategy |
 | 2025-12-27 | - | Gated toast duration: 8s dev, 5s prod |
 
