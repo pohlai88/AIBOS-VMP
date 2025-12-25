@@ -1,0 +1,69 @@
+<!-- Delete Vendor Modal -->
+<div class="vmp-modal-overlay" 
+     id="vendor-delete-modal"
+     hx-target="this" 
+     hx-swap="outerHTML" 
+     hx-on:click="if(event.target === this) this.remove()">
+
+  <div class="vmp-modal shadow-2xl animate-in fade-in zoom-in duration-200" style="max-width: 480px; background: hsl(var(--background-surface-100)); border: 1px solid hsl(var(--destructive-400));">
+    
+    <div class="vmp-modal-header flex justify-between items-center">
+      <div>
+        <h3 class="vmp-h4 leading-none" style="color: hsl(var(--destructive-default));">Delete Vendor</h3>
+        <p class="vmp-caption mt-1" style="color: hsl(var(--foreground-light));">This action cannot be undone</p>
+      </div>
+      <button class="vmp-modal-close" onclick="document.getElementById('vendor-delete-modal').remove()">
+        <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+
+    <div class="vmp-modal-body space-y-4">
+      
+      <div class="vmp-alert vmp-alert-danger" style="background: hsl(var(--destructive-200)); border-color: hsl(var(--destructive-400));">
+        <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="flex-shrink: 0; color: hsl(var(--destructive-default));">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+        </svg>
+        <div>
+          <div class="vmp-body-small font-medium mb-1" style="color: hsl(var(--destructive-600));">Warning: Permanent Deletion</div>
+          <div class="vmp-caption" style="color: hsl(var(--foreground-light));">
+            You are about to permanently delete this vendor and all associated data. This action cannot be undone.
+          </div>
+        </div>
+      </div>
+
+      <div class="vmp-card" style="padding: var(--vmp-space-4); background: var(--vmp-veil);">
+        <div class="vmp-label mb-2 opacity-60">Vendor to Delete:</div>
+        <div class="vmp-body font-medium">{{ vendor.name }}</div>
+        <div class="vmp-caption vmp-muted mt-1">Code: <span class="vmp-code vmp-code-inline">{{ vendor.code }}</span></div>
+      </div>
+
+      <div class="vmp-body-small vmp-muted">
+        Please confirm you want to delete <strong style="color: var(--vmp-text);">{{ vendor.name }}</strong> from the system.
+      </div>
+
+    </div>
+
+    <div class="vmp-modal-footer">
+      <button type="button" 
+              class="vmp-btn vmp-btn-ghost" 
+              onclick="document.getElementById('vendor-delete-modal').remove()">
+        Cancel
+      </button>
+      <button hx-delete="/api/vendors/{{ vendor.id }}"
+              hx-indicator="#delete-vendor-loading"
+              hx-swap="outerHTML"
+              class="vmp-btn vmp-btn-danger">
+        <span id="delete-vendor-loading" class="htmx-indicator">
+          <svg class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+        </span>
+        <span class="vmp-label">DELETE VENDOR</span>
+      </button>
+    </div>
+
+  </div>
+</div>

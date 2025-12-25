@@ -32,7 +32,10 @@
     href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,400;0,600;1,400&display=swap"
     rel="stylesheet">
 
+
+  <link rel="stylesheet" href="/vmp-vendors.lux.css">
   <link rel="stylesheet" href="/globals.css">
+
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/htmx.org@1.9.10"></script>
   <script>
@@ -175,8 +178,6 @@
       --shell-accent: #60ffc6;
     }
 
-    /* Removed body, muted, subtle, border styling. Theme is now in globals.css. */
-
     /* The Cinematic Grain Layer */
     .vmp-atmosphere {
       position: fixed;
@@ -187,7 +188,7 @@
       mix-blend-mode: overlay;
     }
 
-    /* The Ambient Light Source (Top Center) */
+    /* The Ambient Light Source */
     .vmp-ambient-light {
       position: fixed;
       top: -40%;
@@ -199,42 +200,17 @@
       z-index: 0;
     }
 
-    /* SCROLLBAR: Sleek & Invisible until hovered */
-    ::-webkit-scrollbar {
-      width: 6px;
-      height: 6px;
-    }
+    /* SCROLLBAR */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.08); border-radius: 99px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.15); }
 
-    ::-webkit-scrollbar-track {
-      background: transparent;
-    }
-
-    ::-webkit-scrollbar-thumb {
-      background: rgba(255, 255, 255, 0.08);
-      border-radius: 99px;
-    }
-
-    ::-webkit-scrollbar-thumb:hover {
-      background: rgba(255, 255, 255, 0.15);
-    }
-
-    /* UTILITIES for Art Direction */
-    .font-mono {
-      font-family: 'JetBrains Mono', monospace;
-    }
-
-    .font-serif {
-      font-family: 'Playfair Display', serif;
-    }
-
-    .text-accent {
-      color: var(--shell-accent);
-    }
-
-    /* Alpine.js x-cloak: Hide elements until Alpine initializes */
-    [x-cloak] {
-      display: none !important;
-    }
+    /* UTILITIES */
+    .font-mono { font-family: 'JetBrains Mono', monospace; }
+    .font-serif { font-family: 'Playfair Display', serif; }
+    .text-accent { color: var(--shell-accent); }
+    [x-cloak] { display: none !important; }
   </style>
   {% block head %}{% endblock %}
 </head>
@@ -343,19 +319,16 @@
   {% endif %}
 
   <script>
-    // Service Worker Registration
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('/sw.js').catch(err => console.error('[SW] Error:', err));
       });
     }
 
-    // Mobile menu button handler (moved from inline onclick for CSP compliance)
     document.addEventListener('DOMContentLoaded', () => {
       const mobileMenuButton = document.getElementById('mobile-menu-button');
       if (mobileMenuButton) {
         mobileMenuButton.addEventListener('click', () => {
-          // Use Alpine.js to toggle the mobile drawer
           const htmlElement = document.documentElement;
           if (htmlElement.__x) {
             htmlElement.__x.$data.mobileMenuOpen = !htmlElement.__x.$data.mobileMenuOpen;
@@ -364,7 +337,6 @@
       }
     });
 
-    // Global Search (Ctrl+K) trigger
     document.addEventListener('click', e => {
       const btn = e.target.closest('[data-open-cmdk]');
       if (btn) {
@@ -373,7 +345,6 @@
       }
     });
 
-    // Org Tree graceful fallback (prevents "loud red error box" drift)
     window.VMPOrgTreeFail = function (event) {
       try {
         const el = document.getElementById('org-tree-sidebar');
@@ -388,9 +359,6 @@
               <div class="text-sm text-white/85 leading-relaxed">
                 Organization scope controls could not be loaded.
               </div>
-              <div class="text-xs vmp-subtle mt-2">
-                You can continue using the console. Scope filters will reappear once connectivity is restored.
-              </div>
             </div>
             <div class="mt-6">
               <button type="button"
@@ -398,9 +366,6 @@
                 onclick="location.reload()">
                 Retry
               </button>
-              <div class="text-[10px] vmp-subtle mt-3">
-                If this persists, check session + org tree endpoint.
-              </div>
             </div>
           </div>
         `;
@@ -412,9 +377,9 @@
 
   <style>
     @keyframes loading {
-      0% {
-        transform: translateX(-100%);
-      }
-
-      100% {
-        transform: translateX(300%);
+      0% { transform: translateX(-100%); }
+      100% { transform: translateX(300%); }
+    }
+  </style>
+</body>
+</html>

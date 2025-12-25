@@ -1,0 +1,93 @@
+<div class="overflow-x-auto">
+  <table class="w-full">
+    <thead>
+      <tr class="border-b border-white/10">
+        <th class="text-left px-6 py-4 vmp-label opacity-70">Vendor Name</th>
+        <th class="text-left px-6 py-4 vmp-label opacity-70">Code</th>
+        <th class="text-left px-6 py-4 vmp-label opacity-70">Contact</th>
+        <th class="text-left px-6 py-4 vmp-label opacity-70">Status</th>
+        <th class="text-left px-6 py-4 vmp-label opacity-70">Created</th>
+        <th class="text-right px-6 py-4 vmp-label opacity-70">Actions</th>
+      </tr>
+    </thead>
+    <tbody class="divide-y divide-white/5">
+      {% for vendor in vendors %}
+      <tr class="hover:bg-white/2 transition group">
+        <td class="px-6 py-4 vmp-body font-medium">
+          <div class="flex items-center gap-3">
+            <div class="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white text-xs font-bold">
+              {{ vendor.name[0] | upper }}
+            </div>
+            {{ vendor.name }}
+          </div>
+        </td>
+        <td class="px-6 py-4 vmp-body text-white/70">
+          <code class="bg-white/5 px-2 py-1 rounded text-xs">{{ vendor.code }}</code>
+        </td>
+        <td class="px-6 py-4 vmp-body text-white/70">
+          {% if vendor.contact_email %}
+            <a href="mailto:{{ vendor.contact_email }}" class="text-blue-400 hover:text-blue-300">
+              {{ vendor.contact_email }}
+            </a>
+          {% else %}
+            <span class="opacity-50">—</span>
+          {% endif %}
+        </td>
+        <td class="px-6 py-4 vmp-body">
+          <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium
+            {% if vendor.status == 'active' %}
+              bg-green-500/20 text-green-300
+            {% elif vendor.status == 'inactive' %}
+              bg-gray-500/20 text-gray-300
+            {% elif vendor.status == 'suspended' %}
+              bg-red-500/20 text-red-300
+            {% else %}
+              bg-yellow-500/20 text-yellow-300
+            {% endif %}">
+            {{ vendor.status | capitalize }}
+          </span>
+        </td>
+        <td class="px-6 py-4 vmp-body text-white/70 text-sm">
+          {{ vendor.created_at | date("MMM DD, YYYY") }}
+        </td>
+        <td class="px-6 py-4 text-right">
+          <div class="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition">
+            <button class="p-2 hover:bg-white/10 rounded transition"
+                    hx-get="/partials/vendor-form.html?mode=edit&id={{ vendor.id }}"
+                    hx-target="#modal-container"
+                    title="Edit vendor">
+              <svg class="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+              </svg>
+            </button>
+            <button class="p-2 hover:bg-white/10 rounded transition"
+                    hx-delete="/api/vendors/{{ vendor.id }}"
+                    hx-confirm="Are you sure you want to delete this vendor? This action cannot be undone."
+                    hx-target="#vendor-table-container"
+                    hx-swap="innerHTML"
+                    title="Delete vendor">
+              <svg class="w-4 h-4 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+              </svg>
+            </button>
+          </div>
+        </td>
+      </tr>
+      {% else %}
+      <tr>
+        <td colspan="6" class="px-6 py-12 text-center">
+          <div class="flex flex-col items-center gap-3">
+            <svg class="w-12 h-12 opacity-30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"/>
+            </svg>
+            <div class="vmp-label opacity-70">No vendors found</div>
+            <p class="vmp-body opacity-50 max-w-sm">
+              Get started by creating your first vendor profile. Click "Create Vendor" to begin.
+            </p>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>

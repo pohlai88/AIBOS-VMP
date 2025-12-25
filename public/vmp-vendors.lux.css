@@ -1,0 +1,77 @@
+/* Vendor page polish — scoped */
+.vmp-vendors > div:first-child{
+  padding: 18px 18px 16px;
+  border-radius: 18px;
+  border: 1px solid rgba(255,255,255,.10);
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,0)),
+    rgba(10,12,16,.72);
+  box-shadow: 0 28px 90px -60px rgba(0,0,0,.92);
+  backdrop-filter: blur(10px);
+}
+
+.vmp-vendors .vmp-card{ margin-top: 16px; }
+
+.vmp-vendors a[href^="mailto:"]{
+  color: var(--brand-500);
+  font-weight: 650;
+  text-decoration: none;
+}
+.vmp-vendors a[href^="mailto:"]:hover{
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* Make the icon buttons feel intentional */
+.vmp-vendors td[style*="text-align: right"] .vmp-btn{
+  width: 34px;
+  height: 34px;
+  padding: 0 !important;
+  border-radius: 12px;
+}
+
+/* Vendor header */
+.vmp-vendors-header{
+  display:flex;
+  align-items:flex-end;
+  justify-content:space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+  padding: 18px 18px 16px;
+  border-radius: 18px;
+  border: 1px solid var(--vmp-border);
+  background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,0)), rgba(10,12,16,.72);
+  box-shadow: 0 28px 90px -60px rgba(0,0,0,.92);
+  backdrop-filter: blur(10px);
+}
+
+.vmp-subtitle{ margin: 8px 0 0; color: var(--vmp-text-muted); font-size: 13px; max-width: 64ch; }
+
+/* Toolbar fields */
+.vmp-field--grow{ flex: 1 1 360px; min-width: 280px; }
+
+/* Empty state */
+.vmp-empty{
+  padding: 72px 18px;
+  text-align: center;
+}
+.vmp-empty__icon{
+  width: 54px; height: 54px;
+  margin: 0 auto 18px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,.10);
+  background: rgba(255,255,255,.04);
+  display:grid; place-items:center;
+  color: rgba(255,255,255,.55);
+}
+.vmp-empty__title{ margin: 0 0 8px; font-size: 18px; }
+.vmp-empty__desc{ margin: 0 auto 18px; color: rgba(255,255,255,.45); max-width: 48ch; }
+
+/* Row focus ring (keyboard UX) */
+.vmp-row:focus{
+  outline: none;
+}
+.vmp-row:focus .vmp-td{
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--vmp-brand) 40%, transparent);
+  background: rgba(255,255,255,.02);
+}

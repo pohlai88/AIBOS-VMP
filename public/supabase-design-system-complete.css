@@ -1,0 +1,483 @@
+/**
+ * Supabase Design System - Complete Design Tokens
+ * 
+ * This file contains the complete Supabase design system including:
+ * - Typography (font families, sizes, weights, line heights)
+ * - Spacing scale (margin, padding, gaps)
+ * - Sizing scale (width, height)
+ * - Border radius
+ * - Shadows
+ * - Colors (brand, destructive, warning, backgrounds, foregrounds, borders)
+ * - Z-index
+ * - Transitions
+ * - Opacity
+ * 
+ * Source: https://github.com/supabase/supabase/tree/main/packages/ui
+ */
+
+:root {
+  /* ===========================
+     TYPOGRAPHY
+     =========================== */
+  
+  /* Font Families */
+  --font-family-body: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-family-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  --font-family-heading: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  
+  /* Font Sizes - Following Tailwind/Supabase scale */
+  --font-size-xs: 0.75rem;      /* 12px */
+  --font-size-sm: 0.875rem;     /* 14px */
+  --font-size-base: 1rem;       /* 16px */
+  --font-size-lg: 1.125rem;     /* 18px */
+  --font-size-xl: 1.25rem;      /* 20px */
+  --font-size-2xl: 1.5rem;      /* 24px */
+  --font-size-3xl: 1.875rem;    /* 30px */
+  --font-size-4xl: 2.25rem;     /* 36px */
+  --font-size-5xl: 3rem;        /* 48px */
+  --font-size-6xl: 3.75rem;     /* 60px */
+  --font-size-7xl: 4.5rem;      /* 72px */
+  --font-size-8xl: 6rem;        /* 96px */
+  --font-size-9xl: 8rem;        /* 128px */
+  
+  /* Component Font Sizes - Supabase specific */
+  --font-size-tiny: 0.75rem;    /* 12px - for tiny components */
+  --font-size-small: 0.875rem;  /* 14px - for small components */
+  --font-size-medium: 0.875rem; /* 14px - for medium components */
+  --font-size-large: 1rem;      /* 16px - for large components */
+  --font-size-xlarge: 1rem;     /* 16px - for xlarge components */
+  
+  /* Font Weights */
+  --font-weight-light: 300;
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+  --font-weight-extrabold: 800;
+  --font-weight-black: 900;
+  
+  /* Line Heights */
+  --line-height-none: 1;
+  --line-height-tight: 1.25;
+  --line-height-snug: 1.375;
+  --line-height-normal: 1.5;
+  --line-height-relaxed: 1.625;
+  --line-height-loose: 2;
+  --line-height-3: 0.75rem;    /* 12px */
+  --line-height-4: 1rem;       /* 16px */
+  --line-height-5: 1.25rem;    /* 20px */
+  --line-height-6: 1.5rem;     /* 24px */
+  --line-height-7: 1.75rem;    /* 28px */
+  --line-height-8: 2rem;       /* 32px */
+  --line-height-9: 2.25rem;    /* 36px */
+  --line-height-10: 2.5rem;    /* 40px */
+  
+  /* Letter Spacing */
+  --letter-spacing-tighter: -0.05em;
+  --letter-spacing-tight: -0.025em;
+  --letter-spacing-normal: 0;
+  --letter-spacing-wide: 0.025em;
+  --letter-spacing-wider: 0.05em;
+  --letter-spacing-widest: 0.1em;
+  
+  /* ===========================
+     SPACING SCALE
+     =========================== */
+  
+  /* Base spacing units (px → rem conversion) */
+  --spacing-0: 0;
+  --spacing-px: 1px;
+  --spacing-0-5: 0.125rem;  /* 2px */
+  --spacing-1: 0.25rem;     /* 4px */
+  --spacing-1-5: 0.375rem;  /* 6px */
+  --spacing-2: 0.5rem;      /* 8px */
+  --spacing-2-5: 0.625rem;  /* 10px */
+  --spacing-3: 0.75rem;     /* 12px */
+  --spacing-3-5: 0.875rem;  /* 14px */
+  --spacing-4: 1rem;        /* 16px */
+  --spacing-5: 1.25rem;     /* 20px */
+  --spacing-6: 1.5rem;      /* 24px */
+  --spacing-7: 1.75rem;     /* 28px */
+  --spacing-8: 2rem;        /* 32px */
+  --spacing-9: 2.25rem;     /* 36px */
+  --spacing-10: 2.5rem;     /* 40px */
+  --spacing-11: 2.75rem;    /* 44px */
+  --spacing-12: 3rem;       /* 48px */
+  --spacing-14: 3.5rem;     /* 56px */
+  --spacing-16: 4rem;       /* 64px */
+  --spacing-20: 5rem;       /* 80px */
+  --spacing-24: 6rem;       /* 96px */
+  --spacing-28: 7rem;       /* 112px */
+  --spacing-32: 8rem;       /* 128px */
+  --spacing-36: 9rem;       /* 144px */
+  --spacing-40: 10rem;      /* 160px */
+  --spacing-44: 11rem;      /* 176px */
+  --spacing-48: 12rem;      /* 192px */
+  --spacing-52: 13rem;      /* 208px */
+  --spacing-56: 14rem;      /* 224px */
+  --spacing-60: 15rem;      /* 240px */
+  --spacing-64: 16rem;      /* 256px */
+  --spacing-72: 18rem;      /* 288px */
+  --spacing-80: 20rem;      /* 320px */
+  --spacing-96: 24rem;      /* 384px */
+  
+  /* Semantic spacing - Component-specific (Supabase patterns) */
+  --spacing-xs: 0.25rem;    /* 4px */
+  --spacing-sm: 0.5rem;     /* 8px */
+  --spacing-md: 1rem;       /* 16px */
+  --spacing-lg: 2rem;       /* 32px */
+  --spacing-xl: 4rem;       /* 64px */
+  --spacing-2xl: 6rem;      /* 96px */
+  --spacing-3xl: 8rem;      /* 128px */
+  
+  /* Supabase Component Padding Presets */
+  --padding-tiny: 0.25rem 0.625rem;      /* py-1 px-2.5 → 4px 10px */
+  --padding-small: 0.5rem 0.75rem;       /* py-2 px-3 → 8px 12px */
+  --padding-medium: 0.5rem 1rem;         /* py-2 px-4 → 8px 16px */
+  --padding-large: 0.5rem 1rem;          /* py-2 px-4 → 8px 16px */
+  --padding-xlarge: 0.75rem 1.5rem;      /* py-3 px-6 → 12px 24px */
+  
+  /* ===========================
+     SIZING SCALE
+     =========================== */
+  
+  /* Width/Height sizing (same as spacing for consistency) */
+  --sizing-0: 0;
+  --sizing-px: 1px;
+  --sizing-0-5: 0.125rem;
+  --sizing-1: 0.25rem;
+  --sizing-1-5: 0.375rem;
+  --sizing-2: 0.5rem;
+  --sizing-2-5: 0.625rem;
+  --sizing-3: 0.75rem;
+  --sizing-3-5: 0.875rem;
+  --sizing-4: 1rem;
+  --sizing-5: 1.25rem;
+  --sizing-6: 1.5rem;
+  --sizing-7: 1.75rem;
+  --sizing-8: 2rem;
+  --sizing-9: 2.25rem;
+  --sizing-10: 2.5rem;
+  --sizing-11: 2.75rem;
+  --sizing-12: 3rem;
+  --sizing-14: 3.5rem;
+  --sizing-16: 4rem;
+  --sizing-20: 5rem;
+  --sizing-24: 6rem;
+  --sizing-28: 7rem;
+  --sizing-32: 8rem;
+  --sizing-36: 9rem;
+  --sizing-40: 10rem;
+  --sizing-44: 11rem;
+  --sizing-48: 12rem;
+  --sizing-52: 13rem;
+  --sizing-56: 14rem;
+  --sizing-60: 15rem;
+  --sizing-64: 16rem;
+  --sizing-72: 18rem;
+  --sizing-80: 20rem;
+  --sizing-96: 24rem;
+  
+  /* Semantic component heights - Supabase specific */
+  --height-tiny: 1.625rem;     /* 26px - h-[26px] */
+  --height-small: 2.125rem;    /* 34px - h-[34px] */
+  --height-medium: 2.375rem;   /* 38px - h-[38px] */
+  --height-large: 2.625rem;    /* 42px - h-[42px] */
+  --height-xlarge: 3.125rem;   /* 50px - h-[50px] */
+  
+  /* Inner component heights (for nested elements) */
+  --height-inner-tiny: 1.5rem;   /* 24px - h-[24px] */
+  --height-inner-small: 1.75rem; /* 28px - h-[28px] */
+  --height-inner-medium: 2rem;   /* 32px - h-[32px] */
+  --height-inner-large: 2.25rem; /* 36px - h-[36px] */
+  --height-inner-xlarge: 2.75rem;/* 44px - h-[44px] */
+  
+  /* Special widths */
+  --width-listbox: 320px;
+  --width-xs: 20rem;    /* 320px */
+  --width-sm: 24rem;    /* 384px */
+  --width-md: 28rem;    /* 448px */
+  --width-lg: 32rem;    /* 512px */
+  --width-xl: 36rem;    /* 576px */
+  --width-2xl: 42rem;   /* 672px */
+  --width-3xl: 48rem;   /* 768px */
+  --width-4xl: 56rem;   /* 896px */
+  --width-5xl: 64rem;   /* 1024px */
+  --width-6xl: 72rem;   /* 1152px */
+  --width-7xl: 80rem;   /* 1280px */
+  
+  /* ===========================
+     BORDER RADIUS
+     =========================== */
+  
+  --radius-none: 0;
+  --radius-sm: 0.125rem;    /* 2px */
+  --radius-base: 0.25rem;   /* 4px */
+  --radius-md: 0.375rem;    /* 6px */
+  --radius-lg: 0.5rem;      /* 8px */
+  --radius-xl: 0.75rem;     /* 12px */
+  --radius-2xl: 1rem;       /* 16px */
+  --radius-3xl: 1.5rem;     /* 24px */
+  --radius-full: 9999px;
+  --radius: 0.5rem;         /* Default radius - 8px (Supabase default) */
+  
+  /* Component-specific radius */
+  --radius-button: 0.375rem;  /* 6px - commonly used for buttons */
+  --radius-input: 0.375rem;   /* 6px - commonly used for inputs */
+  --radius-card: 0.5rem;      /* 8px - cards and panels */
+  --radius-modal: 0.5rem;     /* 8px - modals */
+  
+  /* ===========================
+     SHADOWS
+     =========================== */
+  
+  --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+  --shadow-2xl: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+  --shadow-inner: inset 0 2px 4px 0 rgb(0 0 0 / 0.05);
+  --shadow-none: 0 0 #0000;
+  
+  /* Dark mode shadow adjustments */
+  --shadow-dark-sm: 0 1px 2px 0 rgb(0 0 0 / 0.3);
+  --shadow-dark: 0 1px 3px 0 rgb(0 0 0 / 0.4), 0 1px 2px -1px rgb(0 0 0 / 0.4);
+  --shadow-dark-md: 0 4px 6px -1px rgb(0 0 0 / 0.4), 0 2px 4px -2px rgb(0 0 0 / 0.4);
+  --shadow-dark-lg: 0 10px 15px -3px rgb(0 0 0 / 0.5), 0 4px 6px -4px rgb(0 0 0 / 0.5);
+  
+  /* ===========================
+     Z-INDEX SCALE
+     =========================== */
+  
+  --z-0: 0;
+  --z-10: 10;
+  --z-20: 20;
+  --z-30: 30;
+  --z-40: 40;
+  --z-50: 50;
+  --z-auto: auto;
+  
+  /* Semantic z-index for components */
+  --z-dropdown: 1000;
+  --z-sticky: 1020;
+  --z-fixed: 1030;
+  --z-modal-backdrop: 1040;
+  --z-modal: 1050;
+  --z-popover: 1060;
+  --z-tooltip: 1070;
+  --z-toast: 1080;
+  --z-notification: 1090;
+  
+  /* ===========================
+     TRANSITIONS
+     =========================== */
+  
+  /* Duration */
+  --transition-duration-75: 75ms;
+  --transition-duration-100: 100ms;
+  --transition-duration-150: 150ms;
+  --transition-duration-200: 200ms;
+  --transition-duration-300: 300ms;
+  --transition-duration-500: 500ms;
+  --transition-duration-700: 700ms;
+  --transition-duration-1000: 1000ms;
+  
+  /* Timing Functions */
+  --transition-timing-linear: linear;
+  --transition-timing-in: cubic-bezier(0.4, 0, 1, 1);
+  --transition-timing-out: cubic-bezier(0, 0, 0.2, 1);
+  --transition-timing-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  
+  /* Common transition presets */
+  --transition-all: all 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-colors: color 150ms cubic-bezier(0.4, 0, 0.2, 1), 
+                       background-color 150ms cubic-bezier(0.4, 0, 0.2, 1), 
+                       border-color 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-opacity: opacity 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-shadow: box-shadow 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-transform: transform 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  
+  /* ===========================
+     OPACITY SCALE
+     =========================== */
+  
+  --opacity-0: 0;
+  --opacity-5: 0.05;
+  --opacity-10: 0.1;
+  --opacity-20: 0.2;
+  --opacity-25: 0.25;
+  --opacity-30: 0.3;
+  --opacity-40: 0.4;
+  --opacity-50: 0.5;
+  --opacity-60: 0.6;
+  --opacity-70: 0.7;
+  --opacity-75: 0.75;
+  --opacity-80: 0.8;
+  --opacity-90: 0.9;
+  --opacity-95: 0.95;
+  --opacity-100: 1;
+  
+  /* ===========================
+     BRAND COLORS - Supabase Green
+     =========================== */
+  
+  --brand-50: hsl(154.9, 59.5%, 95%);
+  --brand-100: hsl(154.9, 59.5%, 85%);
+  --brand-200: hsl(154.9, 59.5%, 70%);
+  --brand-300: hsl(153.6, 60%, 62.4%);
+  --brand-400: hsl(153.3, 60.3%, 56.3%);
+  --brand-500: hsl(153.1, 60.2%, 52.7%);
+  --brand-600: hsl(153.1, 60.2%, 52.7%);
+  --brand-700: hsl(153.1, 60.2%, 42%);
+  --brand-800: hsl(153.1, 60.2%, 32%);
+  --brand-900: hsl(153.1, 60.2%, 22%);
+  --brand-950: hsl(153.1, 60.2%, 12%);
+  --brand-default: hsl(153.1, 60.2%, 52.7%);
+  --brand-link: hsl(155, 100%, 38.6%);
+  
+  /* ===========================
+     DESTRUCTIVE/ERROR COLORS - Red
+     =========================== */
+  
+  --destructive-50: hsl(5.6, 45.5%, 95%);
+  --destructive-100: hsl(5.6, 45.5%, 85%);
+  --destructive-200: hsl(5.6, 45.5%, 75%);
+  --destructive-300: hsl(6, 51.5%, 60%);
+  --destructive-400: hsl(6.7, 60%, 50%);
+  --destructive-500: hsl(10.2, 77.9%, 53.9%);
+  --destructive-600: hsl(10.2, 77.9%, 53.9%);
+  --destructive-700: hsl(10.2, 77.9%, 43%);
+  --destructive-800: hsl(10.2, 77.9%, 33%);
+  --destructive-900: hsl(10.2, 77.9%, 23%);
+  --destructive-950: hsl(10.2, 77.9%, 13%);
+  --destructive-default: hsl(10.2, 77.9%, 53.9%);
+  
+  /* ===========================
+     WARNING COLORS - Amber/Orange
+     =========================== */
+  
+  --warning-50: hsl(38.9, 100%, 95%);
+  --warning-100: hsl(38.9, 100%, 85%);
+  --warning-200: hsl(38.9, 100%, 75%);
+  --warning-300: hsl(38.9, 100%, 65%);
+  --warning-400: hsl(38.9, 100%, 55%);
+  --warning-500: hsl(38.9, 100%, 50%);
+  --warning-600: hsl(38.9, 100%, 42.9%);
+  --warning-700: hsl(38.9, 100%, 35%);
+  --warning-800: hsl(38.9, 100%, 25%);
+  --warning-900: hsl(38.9, 100%, 15%);
+  --warning-950: hsl(38.9, 100%, 8%);
+  --warning-default: hsl(38.9, 100%, 50%);
+  
+  /* ===========================
+     SUCCESS COLORS - Green (different from brand)
+     =========================== */
+  
+  --success-50: hsl(142, 70%, 95%);
+  --success-100: hsl(142, 70%, 85%);
+  --success-200: hsl(142, 70%, 75%);
+  --success-300: hsl(142, 70%, 65%);
+  --success-400: hsl(142, 70%, 55%);
+  --success-500: hsl(142, 70.6%, 45.3%);
+  --success-600: hsl(142.1, 76.2%, 36.3%);
+  --success-700: hsl(142, 70%, 30%);
+  --success-800: hsl(142, 70%, 20%);
+  --success-900: hsl(142, 70%, 10%);
+  --success-950: hsl(142, 70%, 5%);
+  --success-default: hsl(142, 70.6%, 45.3%);
+  
+  /* ===========================
+     FOREGROUND/TEXT COLORS (Dark Theme)
+     =========================== */
+  
+  --foreground-default: hsl(210, 20%, 98%);
+  --foreground-light: hsl(214.3, 31.8%, 91.4%);
+  --foreground-lighter: hsl(212.7, 26.8%, 83.9%);
+  --foreground-muted: hsl(215, 20.2%, 65.1%);
+  
+  /* ===========================
+     BACKGROUND/SURFACE COLORS (Dark Theme)
+     =========================== */
+  
+  --background-default: hsl(222.2, 84%, 4.9%);
+  --background-alternative-default: hsl(220.9, 39.3%, 11%);
+  --background-surface-100: hsl(215.4, 16.3%, 16.9%);
+  --background-surface-200: hsl(217.2, 32.6%, 17.5%);
+  --background-surface-300: hsl(215, 27.9%, 16.9%);
+  --background-overlay: hsl(0, 0%, 0%, 0.8);
+  --background-selection: hsl(153.1, 60.2%, 52.7%, 0.2);
+  
+  /* ===========================
+     BORDER COLORS (Dark Theme)
+     =========================== */
+  
+  --border-default: hsl(215, 27.9%, 16.9%);
+  --border-muted: hsl(217.2, 32.6%, 17.5%);
+  --border-strong: hsl(215, 20.2%, 25%);
+  --border-overlay: hsl(215, 27.9%, 16.9%, 0.8);
+  
+  /* ===========================
+     CHART COLORS - For data visualization
+     =========================== */
+  
+  --chart-1: hsl(153.1, 60.2%, 52.7%);  /* Brand green */
+  --chart-2: hsl(221.2, 83.2%, 53.3%);  /* Blue */
+  --chart-3: hsl(38.9, 100%, 50%);      /* Amber */
+  --chart-4: hsl(280.7, 91%, 65.1%);    /* Purple */
+  --chart-5: hsl(340.7, 82.2%, 52%);    /* Pink */
+}
+
+/* ===========================
+   LIGHT THEME OVERRIDES
+   =========================== */
+
+[data-theme='light'] {
+  /* Foreground/Text Colors (Light Theme) */
+  --foreground-default: hsl(222.2, 84%, 4.9%);
+  --foreground-light: hsl(215.4, 16.3%, 46.9%);
+  --foreground-lighter: hsl(220, 8.9%, 46.1%);
+  --foreground-muted: hsl(220, 8.9%, 46.1%);
+  
+  /* Background/Surface Colors (Light Theme) */
+  --background-default: hsl(0, 0%, 100%);
+  --background-alternative-default: hsl(210, 20%, 98%);
+  --background-surface-100: hsl(220, 14.3%, 95.9%);
+  --background-surface-200: hsl(220, 13%, 91%);
+  --background-surface-300: hsl(216, 12.2%, 83.9%);
+  --background-overlay: hsl(0, 0%, 0%, 0.5);
+  --background-selection: hsl(153.1, 60.2%, 52.7%, 0.15);
+  
+  /* Border Colors (Light Theme) */
+  --border-default: hsl(220, 13%, 91%);
+  --border-muted: hsl(220, 14.3%, 95.9%);
+  --border-strong: hsl(215, 20.2%, 65.1%);
+  --border-overlay: hsl(220, 13%, 91%, 0.8);
+  
+  /* Brand colors - slightly adjusted for light theme */
+  --brand-200: hsl(154.9, 59.5%, 70%);
+  --brand-400: hsl(155.5, 100%, 9.6%);
+  --brand-300: hsl(155.1, 100%, 8%);
+  --brand-200: hsl(162, 100%, 2%);
+  
+  /* Warning colors - adjusted */
+  --warning-600: hsl(38.9, 100%, 42.9%);
+  --warning-500: hsl(34.8, 90.9%, 21.6%);
+  --warning-400: hsl(33.2, 100%, 14.5%);
+  --warning-300: hsl(32.3, 100%, 10.2%);
+  --warning-200: hsl(36.6, 100%, 8%);
+  
+  /* Destructive colors - adjusted */
+  --destructive-600: hsl(10.2, 77.9%, 53.9%);
+  --destructive-500: hsl(6.5, 68.4%, 29.8%);
+  --destructive-400: hsl(6.5, 73.9%, 19.4%);
+  --destructive-300: hsl(5.6, 77.8%, 13.5%);
+  --destructive-200: hsl(5.6, 66.7%, 8.6%);
+  
+  /* Shadow adjustments for light theme */
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+}
