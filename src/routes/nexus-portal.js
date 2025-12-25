@@ -73,6 +73,21 @@ router.post('/login', async (req, res) => {
       try {
         const authData = await nexusAdapter.signInWithPassword(email, password);
         authSession = authData.session;
+
+        // CRITICAL: Inject Nexus identity into JWT app_metadata for RLS
+        // This enables jwt_nexus_user_id() and jwt_nexus_tenant_id() in RLS policies
+        try {
+          await nexusAdapter.setAuthAppMetadata(
+            user.auth_user_id,
+            user.user_id,      // USR-*
+            user.tenant_id     // TNT-*
+          );
+          // Note: Client will need to refresh session to get updated JWT
+          // For now, server-side queries use service_role so this is mainly for
+          // future direct PostgREST/Realtime access with hardened RLS
+        } catch (metadataError) {
+          console.warn('Failed to set app_metadata (non-fatal):', metadataError.message);
+        }
       } catch (authError) {
         console.log('Supabase Auth failed, trying legacy bcrypt:', authError.message);
         // Fall back to bcrypt
@@ -171,6 +186,19 @@ router.post('/sign-up', async (req, res) => {
           data_source: 'production'
         }
       });
+
+      // CRITICAL: Inject Nexus identity into JWT app_metadata for RLS
+      if (authUser?.id) {
+        try {
+          await nexusAdapter.setAuthAppMetadata(
+            authUser.id,
+            `USR-${tenant.tenant_id.replace('TNT-', '')}0001`,  // Will be overwritten with real user_id after create
+            tenant.tenant_id
+          );
+        } catch (metadataError) {
+          console.warn('Failed to set app_metadata during sign-up (non-fatal):', metadataError.message);
+        }
+      }
     } catch (authError) {
       console.error('Failed to create Supabase Auth user:', authError.message);
       // Continue with bcrypt fallback
@@ -186,6 +214,19 @@ router.post('/sign-up', async (req, res) => {
       role: 'owner',
       authUserId: authUser?.id  // Link to Supabase Auth if created
     });
+
+    // Update app_metadata with actual user_id now that we have it
+    if (authUser?.id && user?.user_id) {
+      try {
+        await nexusAdapter.setAuthAppMetadata(
+          authUser.id,
+          user.user_id,      // Real USR-* ID
+          tenant.tenant_id   // TNT-*
+        );
+      } catch (metadataError) {
+        console.warn('Failed to update app_metadata with real user_id:', metadataError.message);
+      }
+    }
 
 
     // If signing up as vendor, handle client linkage

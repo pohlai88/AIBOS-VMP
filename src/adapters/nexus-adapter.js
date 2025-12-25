@@ -1153,6 +1153,28 @@ async function createAuthUser(options) {
 }
 
 /**
+ * Set Nexus identity claims in auth user's app_metadata
+ * MUST be called server-side (service_role) after successful login
+ * This enables RLS policies to use jwt_nexus_user_id() and jwt_nexus_tenant_id()
+ *
+ * @param {string} authUserId - Supabase Auth UUID
+ * @param {string} nexusUserId - Nexus user ID (USR-*)
+ * @param {string} nexusTenantId - Nexus tenant ID (TNT-*)
+ * @returns {Promise<object>} Updated auth user
+ */
+async function setAuthAppMetadata(authUserId, nexusUserId, nexusTenantId) {
+  const { data, error } = await serviceClient.auth.admin.updateUserById(authUserId, {
+    app_metadata: {
+      nexus_user_id: nexusUserId,
+      nexus_tenant_id: nexusTenantId
+    }
+  });
+
+  if (error) throw new Error(`Failed to set app_metadata: ${error.message}`);
+  return data.user;
+}
+
+/**
  * Get user by auth_user_id (Supabase Auth UUID)
  * @param {string} authUserId - UUID from auth.users
  * @returns {Promise<object|null>} Nexus user with tenant or null
@@ -1371,6 +1393,7 @@ export const nexusAdapter = {
   // Supabase Auth
   signInWithPassword,
   createAuthUser,
+  setAuthAppMetadata,
   verifyAuthToken,
   sendPasswordResetEmail,
   updateAuthPassword,

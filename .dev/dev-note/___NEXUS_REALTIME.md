@@ -833,21 +833,34 @@ SELECT count(*) FROM nexus_notifications LIMIT 1;
 - Supabase `auth.uid()` returns UUID (e.g., `e3935faf-...`)
 - No direct mapping without a join or stored mapping column
 
-**Implementation Path:**
-1. At login success, server/Edge Function (service_role) updates `auth.users.raw_app_meta_data`:
-   ```sql
-   UPDATE auth.users
-   SET raw_app_meta_data = raw_app_meta_data ||
-     jsonb_build_object('nexus_user_id', 'USR-ALIC0001', 'nexus_tenant_id', 'TNT-ALPH0001')
-   WHERE id = <auth_uid>;
-   ```
-   ⚠️ **CRITICAL:** This must be done server-side (service_role), NOT from client.
-   
-2. RLS policies use helper functions:
-   ```sql
-   USING (user_id = public.jwt_nexus_user_id())
-   USING (tenant_id = public.jwt_nexus_tenant_id())
-   ```
+**Implementation: ✅ COMPLETE**
+
+**Files modified:**
+- `src/adapters/nexus-adapter.js` - Added `setAuthAppMetadata()` function
+- `src/routes/nexus-portal.js` - Login and sign-up routes now inject app_metadata
+
+**Login flow:**
+```javascript
+// After successful signInWithPassword:
+await nexusAdapter.setAuthAppMetadata(
+  user.auth_user_id,  // Supabase UUID
+  user.user_id,       // USR-*
+  user.tenant_id      // TNT-*
+);
+```
+
+**Sign-up flow:**
+```javascript
+// After createAuthUser + createUser:
+await nexusAdapter.setAuthAppMetadata(
+  authUser.id,        // Supabase UUID
+  user.user_id,       // USR-*
+  tenant.tenant_id    // TNT-*
+);
+```
+
+**Token refresh note:** Client JWT won't reflect new app_metadata until refresh.
+For now, server-side queries use service_role. Future: call `supabase.auth.refreshSession()`.
 
 ---
 
