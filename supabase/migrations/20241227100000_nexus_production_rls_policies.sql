@@ -63,8 +63,8 @@ LANGUAGE sql
 STABLE
 SECURITY INVOKER
 AS $$
-  SELECT tenant_client_id 
-  FROM public.nexus_tenants 
+  SELECT tenant_client_id
+  FROM public.nexus_tenants
   WHERE tenant_id = (auth.jwt() -> 'app_metadata' ->> 'nexus_tenant_id')
 $$;
 
@@ -75,8 +75,8 @@ LANGUAGE sql
 STABLE
 SECURITY INVOKER
 AS $$
-  SELECT tenant_vendor_id 
-  FROM public.nexus_tenants 
+  SELECT tenant_vendor_id
+  FROM public.nexus_tenants
   WHERE tenant_id = (auth.jwt() -> 'app_metadata' ->> 'nexus_tenant_id')
 $$;
 
@@ -179,13 +179,14 @@ WITH CHECK (
 -- ============================================================================
 
 -- SELECT: User can see payments where their tenant is payer or payee
+-- A tenant may appear as TC-* (when paying) or TV-* (when receiving)
 CREATE POLICY nexus_payments_select
 ON public.nexus_payments
 FOR SELECT
 TO authenticated
 USING (
-  from_id = public.jwt_nexus_tenant_client_id()
-  OR to_id = public.jwt_nexus_tenant_vendor_id()
+  from_id IN (public.jwt_nexus_tenant_client_id(), public.jwt_nexus_tenant_vendor_id())
+  OR to_id IN (public.jwt_nexus_tenant_client_id(), public.jwt_nexus_tenant_vendor_id())
 );
 
 -- ============================================================================
