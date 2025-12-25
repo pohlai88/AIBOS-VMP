@@ -802,6 +802,61 @@ Don't use `auth.uid()::text` unless you add a mapping column.
 
 ---
 
+---
+
+## Failure Matrix (Debug in 2 Minutes)
+
+| Symptom | Root Cause | Fix |
+|---------|------------|-----|
+| Connected but no events | RLS blocking SELECT / wrong tenant filter | Check policy `USING()` clause, verify `user_id`/`tenant_id` in JWT matches row |
+| Events in console but no UI | Render path broken / DOM hook missing | Check `htmx.ajax()` target exists, verify partial template renders |
+| Works in dev but not prod | CSP blocking wss:// or esm.sh | Add `connect-src wss://*.supabase.co` to CSP |
+| Subscription says SUBSCRIBED but INSERT fails | Table not in `supabase_realtime` publication | Run `ALTER PUBLICATION supabase_realtime ADD TABLE <table>` |
+| Events received for wrong user | Filter uses UUID instead of USR-* ID | Use `nexus.user.user_id` not `nexus.user.id` in filter |
+| Toast shows "undefined" | Property name mismatch | Check `notification_type` not `type`, `body` not `message` |
+
+**Pre-Go-Live RLS Verification Query:**
+```sql
+-- Run as authenticated user (not service_role)
+-- If this returns 0 or errors, realtime will also appear dead
+SELECT count(*) FROM nexus_notifications LIMIT 1;
+```
+
+---
+
+## Chosen Identity Strategy: JWT Claims
+
+**Decision:** Use JWT `app_metadata` to inject `tenant_id` and `user_id` at login.
+
+**Why not `auth.uid()`?**
+- Our `user_id` column stores `USR-*` format (e.g., `USR-ALIC0001`)
+- Supabase `auth.uid()` returns UUID (e.g., `e3935faf-...`)
+- No direct mapping without a join or stored mapping column
+
+**Implementation Path:**
+1. At login success, update `auth.users.raw_app_meta_data`:
+   ```sql
+   UPDATE auth.users
+   SET raw_app_meta_data = raw_app_meta_data || 
+     jsonb_build_object('nexus_user_id', 'USR-ALIC0001', 'nexus_tenant_id', 'TNT-ALPH0001')
+   WHERE id = <auth_uid>;
+   ```
+2. RLS policies read from JWT:
+   ```sql
+   USING (user_id = (auth.jwt() -> 'app_metadata' ->> 'nexus_user_id'))
+   USING (tenant_id = (auth.jwt() -> 'app_metadata' ->> 'nexus_tenant_id'))
+   ```
+
+**Tables Requiring Hardened RLS:**
+| Table | Current Policy | Production Policy |
+|-------|----------------|-------------------|
+| `nexus_notifications` | `USING (true)` | `USING (user_id = jwt_user_id())` |
+| `nexus_case_messages` | service_role only | `USING (case_id IN (SELECT id FROM nexus_cases WHERE tenant_client_id = jwt_tenant_id() OR tenant_vendor_id = jwt_tenant_id()))` |
+| `nexus_payments` | service_role only | `USING (tenant_id = jwt_tenant_id())` |
+| `nexus_tenant_relationships` | service_role only | `USING (tenant_client_id = jwt_tenant_id() OR tenant_vendor_id = jwt_tenant_id())` |
+
+---
+
 ## Changelog
 
 | Date | Task | Change |
@@ -821,4 +876,7 @@ Don't use `auth.uid()::text` unless you add a mapping column.
 | 2025-12-26 | - | Fixed property names in realtime-client.js |
 | 2025-12-27 | - | Extended toast duration 5s → 8s for dev visibility |
 | 2025-12-27 | - | Documented RLS hardening TODO for production |
+| 2025-12-27 | - | Added Failure Matrix for quick debugging |
+| 2025-12-27 | - | Chose JWT app_metadata identity strategy |
+| 2025-12-27 | - | Gated toast duration: 8s dev, 5s prod |
 

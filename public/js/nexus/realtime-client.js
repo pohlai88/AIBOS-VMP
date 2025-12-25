@@ -20,6 +20,8 @@ class NexusRealtimeClient {
     this.client = null;
     this.channels = new Map();
     this.initialized = false;
+    // Dev mode detection for extended toast duration
+    this.isDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
   }
 
   /**
@@ -300,11 +302,12 @@ class NexusRealtimeClient {
       toast.classList.add('show');
     });
 
-    // Auto-remove after 8 seconds (extended for dev visibility)
+    // Dev: 8s for visibility during testing, Prod: 5s to avoid spam
+    const duration = this.isDev ? 8000 : 5000;
     setTimeout(() => {
       toast.classList.remove('show');
       setTimeout(() => toast.remove(), 300);
-    }, 8000);
+    }, duration);
   }
 
   /**
