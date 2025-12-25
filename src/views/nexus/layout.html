@@ -7,7 +7,7 @@
 
   <!-- Realtime Meta Tags (for auto-subscription) -->
   {% if nexus and nexus.user %}
-  <meta name="nexus-user-id" content="{{ nexus.user.id }}">
+  <meta name="nexus-user-id" content="{{ nexus.user.user_id }}">
   {% endif %}
   {% if nexus and nexus.activeContext %}
   <meta name="nexus-context-id" content="{{ nexus.activeContext.id }}">

@@ -768,15 +768,21 @@ SUPABASE_ANON_KEY=eyJ...local-anon-key...
 
 ## Resume Point
 
-**PHASE 12 CORE COMPLETE** - All realtime subscriptions working:
-- ✅ Notifications subscription (auto via meta tag)
-- ✅ Case thread subscription (subscribeToCaseMessages)
-- ✅ Payments subscription (auto via meta tag)
+**PHASE 12 FULLY VALIDATED** - Two-session reality test PASSED:
+- ✅ WebSocket connection established
+- ✅ Subscription filter matching `user_id` correctly
+- ✅ INSERT events received in real-time
+- ✅ Multiple notification types working (case_escalated, payment_pending)
+- ✅ Cleanup on page navigation working
 
-**Remaining (Optional Polish):**
-- Toast notification for high-priority alerts
-- Two-session E2E testing
-- Relationship invite live updates
+**Bugs Fixed During Testing:**
+- Fixed `nexus.user.id` → `nexus.user.user_id` in layout meta tag
+- Added RLS policy for anon/authenticated SELECT on notifications
+- Fixed property names in realtime-client.js (`type` → `notification_type`, `message` → `body`)
+
+**Ready for Production:**
+- All core realtime features working
+- Two-session test validated
 
 ---
 
@@ -793,4 +799,8 @@ SUPABASE_ANON_KEY=eyJ...local-anon-key...
 | 2025-12-26 | 12.8 | case-detail.html subscribed to live thread |
 | 2025-12-26 | - | CSP updated to allow esm.sh + wss:// |
 | 2025-12-26 | - | VERIFIED: Subscriptions working in browser |
+| 2025-12-26 | 12.11 | **E2E TEST PASSED** - Real INSERT → realtime event received |
+| 2025-12-26 | - | Fixed user_id filter (UUID → USR-* format) |
+| 2025-12-26 | - | Added RLS policy for realtime SELECT |
+| 2025-12-26 | - | Fixed property names in realtime-client.js |
 

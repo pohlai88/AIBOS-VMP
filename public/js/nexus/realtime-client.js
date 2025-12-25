@@ -181,7 +181,7 @@ class NexusRealtimeClient {
           filter: `user_id=eq.${userId}`
         },
         (payload) => {
-          console.log('🔔 Nexus Realtime: New notification signal', payload.new?.type);
+          console.log('🔔 Nexus Realtime: New notification signal', payload.new?.notification_type);
 
           // 1. Update notification badge
           this.updateNotificationBadge();
@@ -195,7 +195,7 @@ class NexusRealtimeClient {
           if (payload.new && payload.new.priority === 'high') {
             this.showToast(
               payload.new.title || 'New Notification',
-              payload.new.message || 'You have a new high-priority notification',
+              payload.new.body || 'You have a new high-priority notification',
               'warning'
             );
           }
