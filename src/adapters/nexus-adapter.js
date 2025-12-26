@@ -1562,6 +1562,119 @@ async function getInvoicesByClient(clientId, filters = {}) {
 }
 
 /**
+ * C8.1: Invoice Inbox for Client with tabs, filters, and pagination
+ * @param {object} options - Query options
+ * @returns {Promise<{rows: object[], total: number, limit: number, offset: number, tab: string}>}
+ */
+async function getInvoiceInboxByClient({
+  clientId,
+  tab = 'needs_review',
+  vendorId = null,
+  q = null,
+  dateFrom = null,
+  dateTo = null,
+  minAmount = null,
+  maxAmount = null,
+  limit = 20,
+  offset = 0,
+} = {}) {
+  if (!clientId) throw new Error('getInvoiceInboxByClient: clientId required');
+
+  // Normalize tab (support legacy 'pending' → 'needs_review')
+  const normalizeTab = (t) => {
+    const x = String(t || '').toLowerCase();
+    if (x === 'pending') return 'needs_review';
+    return x || 'needs_review';
+  };
+
+  const normalizedTab = normalizeTab(tab);
+
+  // Map tab to status array
+  const tabToStatuses = (t) => {
+    switch (t) {
+      case 'needs_review': return ['sent', 'viewed', 'overdue'];
+      case 'approved': return ['approved'];
+      case 'disputed': return ['disputed'];
+      case 'paid': return ['paid'];
+      case 'overdue': return ['overdue'];
+      case 'all': return null; // no status filter
+      default: return ['sent', 'viewed', 'overdue'];
+    }
+  };
+
+  const statuses = tabToStatuses(normalizedTab);
+
+  // Build base query
+  let query = serviceClient
+    .from('nexus_invoices')
+    .select('*', { count: 'exact' })
+    .eq('client_id', clientId);
+
+  // Apply status filter
+  if (statuses && statuses.length) {
+    query = query.in('status', statuses);
+  }
+
+  // Apply vendor filter
+  if (vendorId) {
+    query = query.eq('vendor_id', vendorId);
+  }
+
+  // Date filters (on invoice_date)
+  if (dateFrom) {
+    query = query.gte('invoice_date', dateFrom);
+  }
+  if (dateTo) {
+    query = query.lte('invoice_date', dateTo);
+  }
+
+  // Amount filters (on total_amount)
+  if (minAmount != null && !isNaN(Number(minAmount))) {
+    query = query.gte('total_amount', Number(minAmount));
+  }
+  if (maxAmount != null && !isNaN(Number(maxAmount))) {
+    query = query.lte('total_amount', Number(maxAmount));
+  }
+
+  // Search filter (invoice_id or invoice_number)
+  if (q && String(q).trim()) {
+    const searchTerm = String(q).trim();
+    query = query.or(`invoice_id.ilike.%${searchTerm}%,invoice_number.ilike.%${searchTerm}%`);
+  }
+
+  // Pagination bounds
+  const safeLimit = Math.max(1, Math.min(100, Number(limit) || 20));
+  const safeOffset = Math.max(0, Number(offset) || 0);
+
+  // Order and paginate
+  query = query
+    .order('created_at', { ascending: false })
+    .range(safeOffset, safeOffset + safeLimit - 1);
+
+  const { data, error, count } = await query;
+
+  if (error) throw new Error(`Failed to get invoice inbox: ${error.message}`);
+
+  // Enrich with vendor tenant info
+  const enriched = await Promise.all((data || []).map(async inv => {
+    const { data: vendorTenant } = await serviceClient
+      .from('nexus_tenants')
+      .select('tenant_id, tenant_vendor_id, name, display_name')
+      .eq('tenant_vendor_id', inv.vendor_id)
+      .single();
+    return { ...inv, vendor_tenant: vendorTenant };
+  }));
+
+  return {
+    rows: enriched,
+    total: count || 0,
+    limit: safeLimit,
+    offset: safeOffset,
+    tab: normalizedTab,
+  };
+}
+
+/**
  * Get payments made by a client (payments I sent - outbound)
  * @param {string} clientId - TC-* ID (the client's tenant_client_id)
  * @param {object} filters - Optional filters { status }
@@ -2462,6 +2575,104 @@ async function disputeInvoiceByClient({ invoiceId, clientId, actorUserId, subjec
 }
 
 // ============================================================================
+// MATCH SIGNAL (C8.2 Matching Pilot)
+// ============================================================================
+
+/**
+ * Compute match signal for an invoice (pilot logic)
+ * Does NOT persist - use refreshInvoiceMatchSignal to persist
+ * @param {object} invoice - Invoice object with status, case_id, etc.
+ * @returns {{ match_status: string, match_score: number|null, match_reason: string }}
+ */
+function computeInvoiceMatchSignal(invoice) {
+  if (!invoice) {
+    return { match_status: 'unknown', match_score: null, match_reason: 'No invoice data' };
+  }
+
+  // Pilot logic: derive match status from invoice state
+  const status = invoice.status;
+  const hasLinkedCase = Boolean(invoice.case_id);
+
+  // Disputed → mismatch
+  if (status === 'disputed') {
+    return {
+      match_status: 'mismatch',
+      match_score: 0,
+      match_reason: 'Invoice is disputed',
+    };
+  }
+
+  // Has linked case but not disputed → needs_review
+  if (hasLinkedCase) {
+    return {
+      match_status: 'needs_review',
+      match_score: 50,
+      match_reason: 'Invoice has a linked case requiring review',
+    };
+  }
+
+  // Approved → matched
+  if (status === 'approved') {
+    return {
+      match_status: 'matched',
+      match_score: 100,
+      match_reason: 'Invoice approved by client',
+    };
+  }
+
+  // Paid → matched (implicit approval)
+  if (status === 'paid') {
+    return {
+      match_status: 'matched',
+      match_score: 95,
+      match_reason: 'Invoice paid',
+    };
+  }
+
+  // Pending, overdue, or unknown status → unknown
+  return {
+    match_status: 'unknown',
+    match_score: null,
+    match_reason: 'Awaiting client review',
+  };
+}
+
+/**
+ * Refresh and persist match signal for an invoice
+ * @param {object} params - { invoiceId, clientId }
+ * @returns {Promise<object>} Updated invoice with match signal
+ */
+async function refreshInvoiceMatchSignal({ invoiceId, clientId }) {
+  if (!invoiceId) throw new Error('refreshInvoiceMatchSignal: invoiceId required');
+  if (!clientId) throw new Error('refreshInvoiceMatchSignal: clientId required');
+
+  // Fetch current invoice
+  const invoice = await getInvoiceDetailByClient(clientId, invoiceId);
+  if (!invoice) throw new Error('Invoice not found for client');
+
+  // Compute signal
+  const signal = computeInvoiceMatchSignal(invoice);
+
+  // Persist signal
+  const { data, error } = await serviceClient
+    .from('nexus_invoices')
+    .update({
+      match_status: signal.match_status,
+      match_score: signal.match_score,
+      match_reason: signal.match_reason,
+      match_updated_at: new Date().toISOString(),
+    })
+    .eq('invoice_id', invoiceId)
+    .eq('client_id', clientId)
+    .select('*')
+    .single();
+
+  if (error) throw new Error(`Failed to refresh match signal: ${error.message}`);
+
+  return data;
+}
+
+// ============================================================================
 // EXPORTS
 // ============================================================================
 
@@ -2495,6 +2706,9 @@ export const nexusAdapter = {
   getPaymentsByClient,
   getCasesByClient,
 
+  // Client-Perspective Inbox (CMP Phase C8.1)
+  getInvoiceInboxByClient,
+
   // Client-Perspective Detail (CMP Phase C5)
   getInvoiceDetailByClient,
   getPaymentDetailByClient,
@@ -2502,6 +2716,10 @@ export const nexusAdapter = {
   // Client-Perspective Invoice Decision (MVP Patch)
   approveInvoiceByClient,
   disputeInvoiceByClient,
+
+  // Match Signal (C8.2 Matching Pilot)
+  computeInvoiceMatchSignal,
+  refreshInvoiceMatchSignal,
 
   // Client-Perspective Case (CMP Phase C6)
   getCaseDetailByClient,

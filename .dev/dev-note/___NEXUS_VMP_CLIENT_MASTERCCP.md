@@ -1,9 +1,9 @@
 # NEXUS CLIENT PORTAL - MASTER PLAN CCP
 
-**Version:** 1.4
+**Version:** 1.5
 **Created:** 2025-12-26
 **Updated:** 2025-12-26
-**Status:** ✅ MVP COMPLETE - Invoice Decision v0 Patched
+**Status:** ✅ MVP COMPLETE - C8.2 Matching Pilot Implemented
 **Companion:** `___NEXUS_VMP_VENDOR_MASTERCCP.md` (Vendor-facing, Phase 12 Complete)
 
 ---
@@ -665,6 +665,58 @@ migrations/
 - ✅ Case Lifecycle (create, note, evidence, status transition)
 - ✅ Invoice Decision (Approve + Dispute → Case)
 - ✅ Adapter Discipline (all data via nexus-adapter.js)
+- ✅ C8.1 Invoice Inbox (tabs, filters, pagination)
+- ✅ C8.2 Matching Pilot (feature-flagged)
+
+---
+
+## C8.2 Matching Pilot - Implementation Details
+
+**Feature Flag:** `FEATURE_MATCHING_PILOT=true`
+
+**Schema Changes (migration 049):**
+```sql
+-- nexus_invoices columns:
+match_status TEXT DEFAULT 'unknown'   -- matched|needs_review|mismatch|unknown
+match_score NUMERIC                   -- 0-100 confidence score
+match_reason TEXT                     -- Human-readable reason
+match_updated_at TIMESTAMPTZ          -- Last computed timestamp
+```
+
+**Adapter Functions:**
+| Function | Purpose |
+|----------|---------|
+| `computeInvoiceMatchSignal(invoice)` | Pure function, returns signal object |
+| `refreshInvoiceMatchSignal({ invoiceId, clientId })` | Computes + persists to DB |
+
+**Match Signal Logic (Pilot):**
+| Condition | Status | Score | Reason |
+|-----------|--------|-------|--------|
+| `status = 'disputed'` | mismatch | 0 | "Invoice is disputed" |
+| `case_id IS NOT NULL` | needs_review | 50 | "Invoice has a linked case" |
+| `status = 'approved'` | matched | 100 | "Invoice approved by client" |
+| `status = 'paid'` | matched | 95 | "Invoice paid" |
+| Otherwise | unknown | null | "Awaiting client review" |
+
+**Route Behavior:**
+- GET `/nexus/client/invoices/:id` checks `process.env.FEATURE_MATCHING_PILOT`
+- If enabled: refreshes match signal + passes `matchSignal` to template
+- Template shows "Match Signal (Pilot)" panel with badge + action
+
+**UI Panel Features:**
+- Match status badge (color-coded: green/yellow/red/gray)
+- Score percentage (if available)
+- Reason text
+- Last computed timestamp
+- "Create Case from Mismatch" shortcut (for mismatch status only)
+
+**Enabling Pilot:**
+```bash
+# Add to .env or environment
+FEATURE_MATCHING_PILOT=true
+```
+
+---
 
 **Next Phase (v1.1):**
 - C8: Payment approval workflow
@@ -682,6 +734,8 @@ migrations/
 | 2025-12-26 | C6.3 | Status transitions signed off |
 | 2025-12-26 | C6.4 | Vendor-side participation COMPLETE |
 | 2025-12-26 | C7 | **MVP PATCH: Invoice Decision v0** - Approve + Dispute |
+| 2025-12-26 | C8.1 | Invoice Inbox (tabs, filters, pagination) |
+| 2025-12-26 | C8.2 | **Matching Pilot** - Feature-flagged match signal |
 
 ---
 

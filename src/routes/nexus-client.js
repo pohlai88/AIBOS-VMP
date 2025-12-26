@@ -174,7 +174,7 @@ router.get('/vendors', async (req, res) => {
 
 /**
  * GET /nexus/client/invoices
- * AP Queue - Invoices I need to review/pay
+ * AP Queue - Invoice Inbox with tabs, filters, and pagination (C8.1)
  */
 router.get('/invoices', async (req, res) => {
   try {
@@ -185,35 +185,63 @@ router.get('/invoices', async (req, res) => {
       });
     }
 
-    // Apply query filters
-    const filters = {};
-    if (req.query.status) filters.status = req.query.status;
-    if (req.query.vendor) filters.vendorId = req.query.vendor;
+    // Parse query params
+    const tab = req.query.tab || req.query.status || 'needs_review';
+    const vendorId = req.query.vendor_id || req.query.vendor || null;
+    const q = req.query.q || null;
+    const dateFrom = req.query.from || null;
+    const dateTo = req.query.to || null;
+    const minAmount = req.query.min || null;
+    const maxAmount = req.query.max || null;
+    const limit = parseInt(req.query.limit, 10) || 20;
+    const offset = parseInt(req.query.offset, 10) || 0;
 
-    const invoices = await nexusAdapter.getInvoicesByClient(clientId, filters);
+    // Get paginated inbox
+    const inbox = await nexusAdapter.getInvoiceInboxByClient({
+      clientId,
+      tab,
+      vendorId,
+      q,
+      dateFrom,
+      dateTo,
+      minAmount,
+      maxAmount,
+      limit,
+      offset,
+    });
 
-    // Group by status for tabs/filters
-    const byStatus = {
-      all: invoices,
-      pending: invoices.filter(i => ['sent', 'viewed'].includes(i.status)),
-      overdue: invoices.filter(i => i.status === 'overdue'),
-      disputed: invoices.filter(i => i.status === 'disputed'),
-      paid: invoices.filter(i => i.status === 'paid'),
+    // Build pagination helpers
+    const hasPrev = inbox.offset > 0;
+    const hasNext = inbox.offset + inbox.limit < inbox.total;
+
+    const pagination = {
+      total: inbox.total,
+      limit: inbox.limit,
+      offset: inbox.offset,
+      hasPrev,
+      hasNext,
+      prevOffset: Math.max(0, inbox.offset - inbox.limit),
+      nextOffset: inbox.offset + inbox.limit,
+      fromRow: inbox.total ? inbox.offset + 1 : 0,
+      toRow: Math.min(inbox.total, inbox.offset + inbox.rows.length),
     };
 
-    // Summary metrics
+    // Summary metrics (from current page - fast approximation)
+    const invoices = inbox.rows;
     const summary = {
-      totalCount: invoices.length,
+      totalCount: inbox.total,
       totalOutstanding: invoices.reduce((sum, i) => sum + parseFloat(i.amount_outstanding || 0), 0),
-      overdueCount: byStatus.overdue.length,
-      overdueAmount: byStatus.overdue.reduce((sum, i) => sum + parseFloat(i.amount_outstanding || 0), 0),
+      overdueCount: invoices.filter(i => i.status === 'overdue').length,
+      overdueAmount: invoices.filter(i => i.status === 'overdue').reduce((sum, i) => sum + parseFloat(i.amount_outstanding || 0), 0),
     };
 
     res.render('nexus/pages/client-invoices.html', {
       invoices,
-      byStatus,
+      tab: inbox.tab,
       summary,
-      filters: req.query,
+      pagination,
+      filters: { tab: inbox.tab, vendorId, q, dateFrom, dateTo, minAmount, maxAmount },
+      query: req.query,
     });
   } catch (error) {
     console.error('Client invoices error:', error);
@@ -246,6 +274,31 @@ router.get('/invoices/:invoice_id', async (req, res) => {
       });
     }
 
+    // C8.2 Matching Pilot: Compute/refresh match signal if feature enabled
+    let matchSignal = null;
+    if (process.env.FEATURE_MATCHING_PILOT === 'true') {
+      try {
+        // Refresh and persist the signal
+        const updated = await nexusAdapter.refreshInvoiceMatchSignal({ invoiceId: invoice_id, clientId });
+        matchSignal = {
+          status: updated.match_status,
+          score: updated.match_score,
+          reason: updated.match_reason,
+          updatedAt: updated.match_updated_at,
+        };
+      } catch (err) {
+        // Fallback to in-memory compute if persist fails
+        console.warn('Match signal refresh failed, using compute-only:', err.message);
+        const signal = nexusAdapter.computeInvoiceMatchSignal(invoice);
+        matchSignal = {
+          status: signal.match_status,
+          score: signal.match_score,
+          reason: signal.match_reason,
+          updatedAt: null,
+        };
+      }
+    }
+
     // Parse line_items from JSONB
     const lineItems = Array.isArray(invoice.line_items) ? invoice.line_items : [];
 
@@ -264,6 +317,7 @@ router.get('/invoices/:invoice_id', async (req, res) => {
       lineItems,
       payments: invoice.payments || [],
       statusHistory,
+      matchSignal,
     });
   } catch (error) {
     console.error('Invoice detail error:', error);

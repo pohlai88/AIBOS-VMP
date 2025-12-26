@@ -18,7 +18,7 @@
       </div>
       <div class="nexus-page-header-stats">
         <span class="nexus-inline-stat">
-          <strong>{{ summary.totalCount }}</strong> Invoices
+          <strong>{{ pagination.total }}</strong> Invoices
         </span>
         <span class="nexus-inline-stat-divider">•</span>
         <span class="nexus-inline-stat">
@@ -34,57 +34,51 @@
     </div>
   </header>
 
-  <!-- Summary Strip -->
-  <section class="nexus-summary-strip">
-    <div class="nexus-summary-item primary">
-      <span class="nexus-summary-value">${{ summary.totalOutstanding | round(2) }}</span>
-      <span class="nexus-summary-label">Total Outstanding</span>
-    </div>
-    {% if summary.overdueCount > 0 %}
-    <div class="nexus-summary-item danger">
-      <span class="nexus-summary-value">${{ summary.overdueAmount | round(2) }}</span>
-      <span class="nexus-summary-label">Overdue ({{ summary.overdueCount }})</span>
-    </div>
-    {% endif %}
-    {% if byStatus.disputed.length > 0 %}
-    <div class="nexus-summary-item warning">
-      <span class="nexus-summary-value">{{ byStatus.disputed.length }}</span>
-      <span class="nexus-summary-label">Disputed</span>
-    </div>
-    {% endif %}
-    <div class="nexus-summary-item success">
-      <span class="nexus-summary-value">{{ byStatus.paid.length }}</span>
-      <span class="nexus-summary-label">Paid</span>
-    </div>
-  </section>
-
   <!-- Invoice List Section -->
   <section class="nexus-list-section">
     <div class="nexus-list-header">
       <h2>Invoices</h2>
+      <!-- Tabs (C8.1) -->
       <div class="nexus-filter-tabs">
-        <a href="/nexus/client/invoices"
-           class="nexus-filter-tab {% if not filters.status %}active{% endif %}">
-          All ({{ byStatus.all.length }})
+        <a href="/nexus/client/invoices?tab=needs_review"
+           class="nexus-filter-tab {% if tab == 'needs_review' %}active{% endif %}">
+          Needs Review
         </a>
-        <a href="/nexus/client/invoices?status=pending"
-           class="nexus-filter-tab {% if filters.status == 'pending' %}active{% endif %}">
-          Pending ({{ byStatus.pending.length }})
+        <a href="/nexus/client/invoices?tab=approved"
+           class="nexus-filter-tab {% if tab == 'approved' %}active{% endif %}">
+          Approved
         </a>
-        <a href="/nexus/client/invoices?status=overdue"
-           class="nexus-filter-tab {% if filters.status == 'overdue' %}active{% endif %} {% if byStatus.overdue.length > 0 %}has-alert{% endif %}">
-          Overdue ({{ byStatus.overdue.length }})
+        <a href="/nexus/client/invoices?tab=disputed"
+           class="nexus-filter-tab {% if tab == 'disputed' %}active{% endif %}">
+          Disputed
         </a>
-        <a href="/nexus/client/invoices?status=disputed"
-           class="nexus-filter-tab {% if filters.status == 'disputed' %}active{% endif %}">
-          Disputed ({{ byStatus.disputed.length }})
+        <a href="/nexus/client/invoices?tab=overdue"
+           class="nexus-filter-tab {% if tab == 'overdue' %}active{% endif %} {% if summary.overdueCount > 0 %}has-alert{% endif %}">
+          Overdue
         </a>
-        <a href="/nexus/client/invoices?status=paid"
-           class="nexus-filter-tab {% if filters.status == 'paid' %}active{% endif %}">
-          Paid ({{ byStatus.paid.length }})
+        <a href="/nexus/client/invoices?tab=paid"
+           class="nexus-filter-tab {% if tab == 'paid' %}active{% endif %}">
+          Paid
+        </a>
+        <a href="/nexus/client/invoices?tab=all"
+           class="nexus-filter-tab {% if tab == 'all' %}active{% endif %}">
+          All
         </a>
       </div>
     </div>
+
+    <!-- Filter Bar (C8.1) -->
+    <form method="GET" action="/nexus/client/invoices" class="nexus-filterbar">
+      <input type="hidden" name="tab" value="{{ tab }}" />
+      <input class="nexus-input" name="q" value="{{ query.q or '' }}" placeholder="Search invoice ID..." style="width:160px;" />
+      <input class="nexus-input" name="vendor_id" value="{{ query.vendor_id or '' }}" placeholder="Vendor ID" style="width:120px;" />
+      <input class="nexus-input" type="date" name="from" value="{{ query.from or '' }}" title="From date" style="width:130px;" />
+      <input class="nexus-input" type="date" name="to" value="{{ query.to or '' }}" title="To date" style="width:130px;" />
+      <input class="nexus-input" type="number" name="min" value="{{ query.min or '' }}" placeholder="Min $" style="width:80px;" />
+      <input class="nexus-input" type="number" name="max" value="{{ query.max or '' }}" placeholder="Max $" style="width:80px;" />
+      <button class="nexus-btn small primary" type="submit">Apply</button>
+      <a class="nexus-btn small muted" href="/nexus/client/invoices?tab={{ tab }}">Reset</a>
+    </form>
 
     {% if invoices.length > 0 %}
     <div class="nexus-table-container">
@@ -142,13 +136,35 @@
         </tbody>
       </table>
     </div>
+
+    <!-- Pagination (C8.1) -->
+    {% if pagination.total > pagination.limit %}
+    <div class="nexus-pagination">
+      <div class="nexus-pagination-meta">
+        Showing {{ pagination.fromRow }}–{{ pagination.toRow }} of {{ pagination.total }}
+      </div>
+      <div class="nexus-pagination-actions">
+        {% if pagination.hasPrev %}
+        <a class="nexus-btn small muted" href="/nexus/client/invoices?tab={{ tab }}&q={{ query.q or '' }}&vendor_id={{ query.vendor_id or '' }}&from={{ query.from or '' }}&to={{ query.to or '' }}&min={{ query.min or '' }}&max={{ query.max or '' }}&limit={{ pagination.limit }}&offset={{ pagination.prevOffset }}">
+          ← Prev
+        </a>
+        {% endif %}
+        {% if pagination.hasNext %}
+        <a class="nexus-btn small muted" href="/nexus/client/invoices?tab={{ tab }}&q={{ query.q or '' }}&vendor_id={{ query.vendor_id or '' }}&from={{ query.from or '' }}&to={{ query.to or '' }}&min={{ query.min or '' }}&max={{ query.max or '' }}&limit={{ pagination.limit }}&offset={{ pagination.nextOffset }}">
+          Next →
+        </a>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
+
     {% else %}
     <!-- Empty State -->
     <div class="nexus-empty-state-box">
       <div class="nexus-empty-state-icon">📄</div>
       <h3>No invoices found</h3>
-      {% if filters.status %}
-      <p>No invoices match the selected filter. <a href="/nexus/client/invoices">View all invoices</a></p>
+      {% if tab != 'all' %}
+      <p>No invoices match the selected filter. <a href="/nexus/client/invoices?tab=all">View all invoices</a></p>
       {% else %}
       <p>You don't have any invoices to pay yet.</p>
       {% endif %}

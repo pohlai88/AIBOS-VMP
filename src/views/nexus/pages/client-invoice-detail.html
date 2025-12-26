@@ -201,6 +201,54 @@
     </div>
   </section>
 
+  <!-- Match Signal (C8.2 Pilot) - Feature-flagged, read-only -->
+  {% if matchSignal %}
+  <section class="nexus-document-section nexus-match-signal-panel">
+    <h2>
+      Match Signal
+      <span class="nexus-pilot-badge">Pilot</span>
+    </h2>
+    <div class="nexus-match-signal-content">
+      <div class="nexus-match-signal-status">
+        <span class="nexus-match-badge {{ matchSignal.status }}">
+          {% if matchSignal.status == 'matched' %}✅ Matched
+          {% elif matchSignal.status == 'needs_review' %}🔍 Needs Review
+          {% elif matchSignal.status == 'mismatch' %}❌ Mismatch
+          {% else %}⏳ Unknown
+          {% endif %}
+        </span>
+        {% if matchSignal.score is not none %}
+        <span class="nexus-match-score">Score: {{ matchSignal.score }}%</span>
+        {% endif %}
+      </div>
+      {% if matchSignal.reason %}
+      <p class="nexus-match-reason">{{ matchSignal.reason }}</p>
+      {% endif %}
+      {% if matchSignal.updatedAt %}
+      <p class="nexus-match-updated">Last computed: {{ matchSignal.updatedAt | truncate(19, true, '') }}</p>
+      {% endif %}
+
+      <!-- Mismatch → Create Case shortcut (uses existing dispute flow) -->
+      {% if matchSignal.status == 'mismatch' and invoice.status not in ['disputed', 'approved', 'paid'] %}
+      <details class="nexus-match-action" style="margin-top:12px;">
+        <summary class="nexus-btn small warning">Create Case from Mismatch</summary>
+        <form method="POST" action="/nexus/client/invoices/{{ invoice.invoice_id }}/dispute" class="nexus-dispute-form" style="margin-top:8px;">
+          <input type="hidden" name="subject" value="Auto-detected mismatch: {{ matchSignal.reason or 'Matching discrepancy' }}" />
+          <label class="nexus-label">
+            Additional Details
+            <textarea name="description" class="nexus-textarea" rows="3" placeholder="Optional: add more context about the mismatch"></textarea>
+          </label>
+          <div style="margin-top:8px; display:flex; gap:8px;">
+            <button class="nexus-btn warning small" type="submit">Create Case</button>
+            <button class="nexus-btn muted small" type="button" onclick="this.closest('details').removeAttribute('open')">Cancel</button>
+          </div>
+        </form>
+      </details>
+      {% endif %}
+    </div>
+  </section>
+  {% endif %}
+
   <!-- Notes/Description -->
   {% if invoice.description or invoice.notes %}
   <section class="nexus-document-section">
