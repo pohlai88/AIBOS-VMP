@@ -5,7 +5,9 @@
 
 -- Add SELECT policy for authenticated and anon users
 -- This allows the Supabase Realtime broadcast to work through RLS
-CREATE POLICY IF NOT EXISTS notification_realtime_select
+-- Drop if exists, then create (PostgreSQL doesn't support CREATE POLICY IF NOT EXISTS)
+DROP POLICY IF EXISTS notification_realtime_select ON nexus_notifications;
+CREATE POLICY notification_realtime_select
   ON nexus_notifications
   FOR SELECT
   TO authenticated, anon

@@ -1,0 +1,174 @@
+{% extends "nexus/layout.html" %}
+
+{% block title %}Payment Outbox{% endblock %}
+
+{% set activeNav = 'client' %}
+
+{% block content %}
+<div class="nexus-page client-payments">
+  <!-- Header with Stats -->
+  <header class="nexus-page-header">
+    <div class="nexus-page-header-top">
+      <span class="nexus-context-badge client">◀ Client Mode</span>
+    </div>
+    <div class="nexus-page-header-main">
+      <div class="nexus-page-header-content">
+        <h1>Payment Outbox</h1>
+        <p>Outgoing payments to vendors</p>
+      </div>
+      <div class="nexus-page-header-stats">
+        <span class="nexus-inline-stat">
+          <strong>{{ summary.totalCount }}</strong> Payments
+        </span>
+        <span class="nexus-inline-stat-divider">•</span>
+        <span class="nexus-inline-stat">
+          <strong>${{ summary.totalAmount | round(2) }}</strong> Total
+        </span>
+        {% if summary.pendingCount > 0 %}
+        <span class="nexus-inline-stat-divider">•</span>
+        <span class="nexus-inline-stat warning">
+          <strong>{{ summary.pendingCount }}</strong> Pending
+        </span>
+        {% endif %}
+      </div>
+    </div>
+  </header>
+
+  <!-- Summary Strip -->
+  <section class="nexus-summary-strip">
+    <div class="nexus-summary-item primary">
+      <span class="nexus-summary-value">${{ summary.totalAmount | round(2) }}</span>
+      <span class="nexus-summary-label">Total Outgoing</span>
+    </div>
+    {% if summary.pendingCount > 0 %}
+    <div class="nexus-summary-item warning">
+      <span class="nexus-summary-value">${{ summary.pendingAmount | round(2) }}</span>
+      <span class="nexus-summary-label">Pending ({{ summary.pendingCount }})</span>
+    </div>
+    {% endif %}
+    {% if byStatus.processing.length > 0 %}
+    <div class="nexus-summary-item info">
+      <span class="nexus-summary-value">{{ byStatus.processing.length }}</span>
+      <span class="nexus-summary-label">Processing</span>
+    </div>
+    {% endif %}
+    {% if byStatus.failed.length > 0 %}
+    <div class="nexus-summary-item danger">
+      <span class="nexus-summary-value">{{ byStatus.failed.length }}</span>
+      <span class="nexus-summary-label">Failed</span>
+    </div>
+    {% endif %}
+    <div class="nexus-summary-item success">
+      <span class="nexus-summary-value">{{ byStatus.completed.length }}</span>
+      <span class="nexus-summary-label">Completed</span>
+    </div>
+  </section>
+
+  <!-- Payment List Section -->
+  <section class="nexus-list-section">
+    <div class="nexus-list-header">
+      <h2>Payments</h2>
+      <div class="nexus-filter-tabs">
+        <a href="/nexus/client/payments"
+           class="nexus-filter-tab {% if not filters.status %}active{% endif %}">
+          All ({{ byStatus.all.length }})
+        </a>
+        <a href="/nexus/client/payments?status=pending"
+           class="nexus-filter-tab {% if filters.status == 'pending' %}active{% endif %} {% if byStatus.pending.length > 0 %}has-alert{% endif %}">
+          Pending ({{ byStatus.pending.length }})
+        </a>
+        <a href="/nexus/client/payments?status=processing"
+           class="nexus-filter-tab {% if filters.status == 'processing' %}active{% endif %}">
+          Processing ({{ byStatus.processing.length }})
+        </a>
+        <a href="/nexus/client/payments?status=completed"
+           class="nexus-filter-tab {% if filters.status == 'completed' %}active{% endif %}">
+          Completed ({{ byStatus.completed.length }})
+        </a>
+        <a href="/nexus/client/payments?status=failed"
+           class="nexus-filter-tab {% if filters.status == 'failed' %}active{% endif %} {% if byStatus.failed.length > 0 %}has-alert{% endif %}">
+          Failed ({{ byStatus.failed.length }})
+        </a>
+      </div>
+    </div>
+
+    {% if payments.length > 0 %}
+    <div class="nexus-table-container">
+      <table class="nexus-table">
+        <thead>
+          <tr>
+            <th>Payment</th>
+            <th>Vendor</th>
+            <th>Amount</th>
+            <th>Method</th>
+            <th>Date</th>
+            <th>Status</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for pmt in payments %}
+          <tr class="nexus-table-row {% if pmt.status == 'failed' %}row-danger{% elif pmt.status == 'pending' %}row-warning{% endif %}">
+            <td>
+              <div class="nexus-cell-main">
+                <span class="nexus-cell-id">{{ pmt.payment_id }}</span>
+                {% if pmt.reference_number %}
+                <span class="nexus-cell-sub">{{ pmt.reference_number }}</span>
+                {% endif %}
+              </div>
+            </td>
+            <td>
+              <span class="nexus-cell-vendor">
+                {{ pmt.to_tenant.display_name or pmt.to_tenant.name or pmt.to_id }}
+              </span>
+            </td>
+            <td>
+              <span class="nexus-cell-amount">${{ pmt.amount | round(2) }}</span>
+            </td>
+            <td>
+              <span class="nexus-cell-method">{{ pmt.payment_method or '—' }}</span>
+            </td>
+            <td>
+              <span class="nexus-cell-date">
+                {{ pmt.payment_date or pmt.created_at | truncate(10, true, '') }}
+              </span>
+            </td>
+            <td>
+              <span class="nexus-badge {{ pmt.status }}">{{ pmt.status }}</span>
+            </td>
+            <td>
+              <a href="/nexus/client/payments/{{ pmt.payment_id }}" class="nexus-btn small secondary">
+                View →
+              </a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <!-- Empty State -->
+    <div class="nexus-empty-state-box">
+      <div class="nexus-empty-state-icon">💳</div>
+      <h3>No payments found</h3>
+      {% if filters.status %}
+      <p>No payments match the selected filter. <a href="/nexus/client/payments">View all payments</a></p>
+      {% else %}
+      <p>You haven't made any payments yet.</p>
+      {% endif %}
+    </div>
+    {% endif %}
+  </section>
+
+  <!-- Quick Actions -->
+  <section class="nexus-quick-actions">
+    <a href="/nexus/client" class="nexus-btn secondary">
+      ← Back to Dashboard
+    </a>
+    <a href="/nexus/client/invoices" class="nexus-btn secondary">
+      📄 View Invoices →
+    </a>
+  </section>
+
+</div>
+{% endblock %}

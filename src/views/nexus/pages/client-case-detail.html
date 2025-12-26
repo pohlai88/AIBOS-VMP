@@ -1,0 +1,217 @@
+{% extends "nexus/layout.html" %}
+
+{% block title %}Case {{ caseData.case_id }}{% endblock %}
+
+{% set activeNav = 'client' %}
+
+{% block content %}
+<div class="nexus-page client-case-detail">
+  <!-- Breadcrumb -->
+  <nav class="nexus-breadcrumb">
+    <a href="/nexus/client">Dashboard</a>
+    <span class="nexus-breadcrumb-sep">→</span>
+    <a href="/nexus/client/cases">Issue Tracker</a>
+    <span class="nexus-breadcrumb-sep">→</span>
+    <span class="nexus-breadcrumb-current">{{ caseData.case_id }}</span>
+  </nav>
+
+  <!-- Case Header -->
+  <header class="nexus-case-header">
+    <div class="nexus-case-header-top">
+      <span class="nexus-context-badge client">◀ Client Mode</span>
+      <div class="nexus-case-badges">
+        <span class="nexus-badge type {{ caseData.case_type }}">{{ caseData.case_type }}</span>
+        <span id="case-status-badge" class="nexus-badge {{ caseData.status | replace('_', '-') }}">{{ caseData.status | replace('_', ' ') }}</span>
+        <span class="nexus-badge priority {{ caseData.priority }}">{{ caseData.priority }}</span>
+      </div>
+    </div>
+    <div class="nexus-case-header-main">
+      <div class="nexus-case-identity">
+        <h1 class="nexus-case-id">{{ caseData.case_id }}</h1>
+        <p class="nexus-case-subject">{{ caseData.subject }}</p>
+      </div>
+      <div class="nexus-case-meta">
+        <div class="nexus-case-meta-item">
+          <span class="nexus-case-meta-label">Vendor</span>
+          <span class="nexus-case-meta-value">
+            {{ caseData.vendor_tenant.display_name or caseData.vendor_tenant.name or caseData.vendor_id }}
+          </span>
+        </div>
+        <div class="nexus-case-meta-item">
+          <span class="nexus-case-meta-label">Created</span>
+          <span class="nexus-case-meta-value">{{ caseData.created_at | truncate(10, true, '') }}</span>
+        </div>
+        <div class="nexus-case-meta-item">
+          <span class="nexus-case-meta-label">Updated</span>
+          <span class="nexus-case-meta-value">{{ caseData.updated_at | truncate(10, true, '') }}</span>
+        </div>
+      </div>
+    </div>
+    {% if caseData.description %}
+    <div class="nexus-case-description">
+      <p>{{ caseData.description }}</p>
+    </div>
+    {% endif %}
+  </header>
+
+  <div class="nexus-case-layout">
+    <!-- Main Column: Timeline -->
+    <main class="nexus-case-main">
+      <!-- Timeline Section -->
+      <section class="nexus-document-section">
+        <h2>Activity Timeline</h2>
+
+        <div id="case-timeline" class="nexus-case-timeline">
+          {% if timeline.length > 0 %}
+            {% for item in timeline %}
+              {% include "nexus/partials/case-timeline-item.html" %}
+            {% endfor %}
+          {% else %}
+          <div class="nexus-empty-state-inline">
+            <p>No activity recorded yet.</p>
+          </div>
+          {% endif %}
+        </div>
+
+        <!-- Add Note Form -->
+        <div class="nexus-note-form-container">
+          <form
+            class="nexus-note-form"
+            hx-post="/nexus/client/cases/{{ caseData.case_id }}/notes"
+            hx-target="#case-timeline"
+            hx-swap="beforeend"
+            hx-on::after-request="if(event.detail.successful) this.reset()">
+            <textarea
+              name="content"
+              placeholder="Add a note to this case..."
+              rows="3"
+              required
+              class="nexus-note-textarea"></textarea>
+            <div class="nexus-note-form-actions">
+              <button type="submit" class="nexus-btn primary">
+                Add Note
+              </button>
+            </div>
+          </form>
+        </div>
+      </section>
+    </main>
+
+    <!-- Sidebar: Evidence & References -->
+    <aside class="nexus-case-sidebar">
+      <!-- Evidence Section -->
+      <section class="nexus-sidebar-section nexus-evidence-section">
+        <h3>Evidence</h3>
+
+        <!-- Upload Form -->
+        <form
+          class="nexus-evidence-upload-form"
+          hx-post="/nexus/client/cases/{{ caseData.case_id }}/evidence"
+          hx-encoding="multipart/form-data"
+          hx-target="#case-timeline"
+          hx-swap="beforeend"
+          hx-on::after-request="if(event.detail.successful) { this.reset(); document.getElementById('evidence-upload-status').classList.add('show'); setTimeout(() => document.getElementById('evidence-upload-status').classList.remove('show'), 2000); }">
+          <div class="nexus-upload-input-wrapper">
+            <input
+              type="file"
+              name="file"
+              id="evidence-file-input"
+              accept=".pdf,.png,.jpg,.jpeg,.docx,.xlsx"
+              required>
+            <label for="evidence-file-input" class="nexus-upload-label">
+              <span class="nexus-upload-icon">📎</span>
+              <span class="nexus-upload-text">Choose file</span>
+            </label>
+          </div>
+          <button type="submit" class="nexus-btn small primary nexus-upload-btn">
+            Upload
+          </button>
+          <div id="evidence-upload-status" class="nexus-upload-status"></div>
+        </form>
+        <p class="nexus-upload-hint">PDF, PNG, JPG, DOCX, XLSX • Max 10MB</p>
+
+        <!-- Evidence List -->
+        <ul id="evidence-list" class="nexus-evidence-list">
+          {% if evidence.length > 0 %}
+            {% for evidenceItem in evidence %}
+              {% include "nexus/partials/case-evidence-item.html" %}
+            {% endfor %}
+          {% endif %}
+        </ul>
+        {% if evidence.length == 0 %}
+        <div class="nexus-sidebar-empty nexus-evidence-empty">
+          <p>No evidence attached yet.</p>
+        </div>
+        {% endif %}
+      </section>
+
+      <!-- References Section -->
+      <section class="nexus-sidebar-section">
+        <h3>Related Records</h3>
+        <div class="nexus-reference-list">
+          {% if references.invoice_id %}
+          <a href="/nexus/client/invoices/{{ references.invoice_id }}" class="nexus-reference-link">
+            <span class="nexus-reference-icon">📄</span>
+            <span class="nexus-reference-label">Invoice</span>
+            <span class="nexus-reference-id">{{ references.invoice_id }}</span>
+          </a>
+          {% endif %}
+          {% if references.payment_id %}
+          <a href="/nexus/client/payments/{{ references.payment_id }}" class="nexus-reference-link">
+            <span class="nexus-reference-icon">💳</span>
+            <span class="nexus-reference-label">Payment</span>
+            <span class="nexus-reference-id">{{ references.payment_id }}</span>
+          </a>
+          {% endif %}
+          {% if not references.invoice_id and not references.payment_id %}
+          <div class="nexus-sidebar-empty">
+            <p>No linked records.</p>
+          </div>
+          {% endif %}
+        </div>
+      </section>
+
+      <!-- Case Info Section -->
+      <section class="nexus-sidebar-section">
+        <h3>Case Details</h3>
+        <dl class="nexus-sidebar-dl">
+          {% if caseData.assigned_to %}
+          <dt>Assigned To</dt>
+          <dd>{{ caseData.assigned_to }}</dd>
+          {% endif %}
+          {% if caseData.sla_due_at %}
+          <dt>SLA Due</dt>
+          <dd class="{% if caseData.sla_breached %}nexus-text-danger{% endif %}">
+            {{ caseData.sla_due_at | truncate(10, true, '') }}
+            {% if caseData.sla_breached %}<span class="nexus-badge small danger">Breached</span>{% endif %}
+          </dd>
+          {% endif %}
+          {% if caseData.amount_disputed %}
+          <dt>Amount Disputed</dt>
+          <dd>${{ caseData.amount_disputed | round(2) }}</dd>
+          {% endif %}
+          {% if caseData.category %}
+          <dt>Category</dt>
+          <dd>{{ caseData.category }}</dd>
+          {% endif %}
+        </dl>
+      </section>
+    </aside>
+  </div>
+
+  <!-- Navigation & Actions -->
+  <section class="nexus-document-actions">
+    <a href="/nexus/client/cases" class="nexus-btn secondary">
+      ← Back to Issue Tracker
+    </a>
+
+    {# Status Transition Actions #}
+    {% include "nexus/partials/case-status-actions.html" with {
+      caseStatus: caseData.status,
+      caseId: caseData.case_id,
+      availableTransitions: availableTransitions
+    } %}
+  </section>
+
+</div>
+{% endblock %}

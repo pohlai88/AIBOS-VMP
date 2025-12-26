@@ -1,0 +1,23 @@
+<div class="nexus-timeline-item {{ item.actorContext }}">
+  <div class="nexus-timeline-marker">
+    <span class="nexus-timeline-dot {{ item.type }}"></span>
+  </div>
+  <div class="nexus-timeline-card">
+    <div class="nexus-timeline-card-header">
+      <span class="nexus-timeline-actor">
+        <span class="nexus-timeline-actor-name">{{ item.actor }}</span>
+        <span class="nexus-badge small {{ item.actorContext }}">{{ item.actorContext }}</span>
+      </span>
+      <span class="nexus-timeline-time">{{ item.timestamp | truncate(19, true, '') }}</span>
+    </div>
+    <div class="nexus-timeline-card-body">
+      {% if item.type == 'status_change' %}
+      <span class="nexus-timeline-status-change">Status changed to <strong>{{ item.content }}</strong></span>
+      {% elif item.type == 'system' %}
+      <span class="nexus-timeline-system">{{ item.content }}</span>
+      {% else %}
+      <p class="nexus-timeline-content">{{ item.content }}</p>
+      {% endif %}
+    </div>
+  </div>
+</div>

@@ -1,0 +1,187 @@
+{% extends "nexus/layout.html" %}
+
+{% block title %}Issue Tracker{% endblock %}
+
+{% set activeNav = 'client' %}
+
+{% block content %}
+<div class="nexus-page client-cases">
+  <!-- Header with Stats -->
+  <header class="nexus-page-header">
+    <div class="nexus-page-header-top">
+      <span class="nexus-context-badge client">◀ Client Mode</span>
+    </div>
+    <div class="nexus-page-header-main">
+      <div class="nexus-page-header-content">
+        <h1>Issue Tracker</h1>
+        <p>Cases and disputes with vendors</p>
+      </div>
+      <div class="nexus-page-header-stats">
+        <span class="nexus-inline-stat">
+          <strong>{{ byStatus.all.length }}</strong> Total Cases
+        </span>
+        <span class="nexus-inline-stat-divider">•</span>
+        <span class="nexus-inline-stat">
+          <strong>{{ byStatus.open.length + byStatus.inProgress.length }}</strong> Active
+        </span>
+        {% if urgent.length > 0 %}
+        <span class="nexus-inline-stat-divider">•</span>
+        <span class="nexus-inline-stat danger">
+          <strong>{{ urgent.length }}</strong> Urgent
+        </span>
+        {% endif %}
+        {% if byStatus.escalated.length > 0 %}
+        <span class="nexus-inline-stat-divider">•</span>
+        <span class="nexus-inline-stat warning">
+          <strong>{{ byStatus.escalated.length }}</strong> Escalated
+        </span>
+        {% endif %}
+      </div>
+    </div>
+  </header>
+
+  <!-- Summary Strip -->
+  <section class="nexus-summary-strip">
+    <div class="nexus-summary-item primary">
+      <span class="nexus-summary-value">{{ byStatus.open.length }}</span>
+      <span class="nexus-summary-label">Open</span>
+    </div>
+    <div class="nexus-summary-item info">
+      <span class="nexus-summary-value">{{ byStatus.inProgress.length }}</span>
+      <span class="nexus-summary-label">In Progress</span>
+    </div>
+    {% if byStatus.escalated.length > 0 %}
+    <div class="nexus-summary-item danger">
+      <span class="nexus-summary-value">{{ byStatus.escalated.length }}</span>
+      <span class="nexus-summary-label">Escalated</span>
+    </div>
+    {% endif %}
+    <div class="nexus-summary-item success">
+      <span class="nexus-summary-value">{{ byStatus.resolved.length }}</span>
+      <span class="nexus-summary-label">Resolved</span>
+    </div>
+    <div class="nexus-summary-item muted">
+      <span class="nexus-summary-value">{{ byStatus.closed.length }}</span>
+      <span class="nexus-summary-label">Closed</span>
+    </div>
+  </section>
+
+  <!-- Urgent Cases Alert -->
+  {% if urgent.length > 0 %}
+  <section class="nexus-alert-banner danger">
+    <span class="nexus-alert-icon">🚨</span>
+    <span class="nexus-alert-text">
+      <strong>{{ urgent.length }} urgent case{{ 's' if urgent.length > 1 else '' }}</strong> require immediate attention
+    </span>
+    <a href="/nexus/client/cases?priority=urgent" class="nexus-btn small danger">View Urgent →</a>
+  </section>
+  {% endif %}
+
+  <!-- Case List Section -->
+  <section class="nexus-list-section">
+    <div class="nexus-list-header">
+      <h2>Cases</h2>
+      <div class="nexus-filter-tabs">
+        <a href="/nexus/client/cases"
+           class="nexus-filter-tab {% if not filters.status %}active{% endif %}">
+          All ({{ byStatus.all.length }})
+        </a>
+        <a href="/nexus/client/cases?status=open"
+           class="nexus-filter-tab {% if filters.status == 'open' %}active{% endif %}">
+          Open ({{ byStatus.open.length }})
+        </a>
+        <a href="/nexus/client/cases?status=in_progress"
+           class="nexus-filter-tab {% if filters.status == 'in_progress' %}active{% endif %}">
+          In Progress ({{ byStatus.inProgress.length }})
+        </a>
+        <a href="/nexus/client/cases?status=escalated"
+           class="nexus-filter-tab {% if filters.status == 'escalated' %}active{% endif %} {% if byStatus.escalated.length > 0 %}has-alert{% endif %}">
+          Escalated ({{ byStatus.escalated.length }})
+        </a>
+        <a href="/nexus/client/cases?status=resolved"
+           class="nexus-filter-tab {% if filters.status == 'resolved' %}active{% endif %}">
+          Resolved ({{ byStatus.resolved.length }})
+        </a>
+        <a href="/nexus/client/cases?status=closed"
+           class="nexus-filter-tab {% if filters.status == 'closed' %}active{% endif %}">
+          Closed ({{ byStatus.closed.length }})
+        </a>
+      </div>
+    </div>
+
+    {% if cases.length > 0 %}
+    <div class="nexus-table-container">
+      <table class="nexus-table">
+        <thead>
+          <tr>
+            <th>Case</th>
+            <th>Subject</th>
+            <th>Vendor</th>
+            <th>Type</th>
+            <th>Priority</th>
+            <th>Status</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for c in cases %}
+          <tr class="nexus-table-row {% if c.status == 'escalated' or c.priority == 'urgent' %}row-danger{% elif c.status == 'open' %}row-warning{% endif %}">
+            <td>
+              <div class="nexus-cell-main">
+                <span class="nexus-cell-id">{{ c.case_id }}</span>
+                <span class="nexus-cell-sub">{{ c.created_at | truncate(10, true, '') }}</span>
+              </div>
+            </td>
+            <td>
+              <span class="nexus-cell-subject">{{ c.subject | truncate(50) }}</span>
+            </td>
+            <td>
+              <span class="nexus-cell-vendor">
+                {{ c.vendor_tenant.display_name or c.vendor_tenant.name or c.vendor_id }}
+              </span>
+            </td>
+            <td>
+              <span class="nexus-badge type {{ c.case_type }}">{{ c.case_type }}</span>
+            </td>
+            <td>
+              <span class="nexus-badge priority {{ c.priority }}">{{ c.priority }}</span>
+            </td>
+            <td>
+              <span class="nexus-badge {{ c.status | replace('_', '-') }}">{{ c.status | replace('_', ' ') }}</span>
+            </td>
+            <td>
+              <a href="/nexus/client/cases/{{ c.case_id }}" class="nexus-btn small secondary">
+                View →
+              </a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <!-- Empty State -->
+    <div class="nexus-empty-state-box">
+      <div class="nexus-empty-state-icon">📋</div>
+      <h3>No cases found</h3>
+      {% if filters.status %}
+      <p>No cases match the selected filter. <a href="/nexus/client/cases">View all cases</a></p>
+      {% else %}
+      <p>You don't have any active cases with your vendors.</p>
+      {% endif %}
+    </div>
+    {% endif %}
+  </section>
+
+  <!-- Quick Actions -->
+  <section class="nexus-quick-actions">
+    <a href="/nexus/client" class="nexus-btn secondary">
+      ← Back to Dashboard
+    </a>
+    <a href="/nexus/client/invoices" class="nexus-btn secondary">
+      📄 View Invoices →
+    </a>
+  </section>
+
+</div>
+{% endblock %}

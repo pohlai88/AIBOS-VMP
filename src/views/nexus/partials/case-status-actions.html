@@ -1,0 +1,27 @@
+{#
+  Case Status Actions - Status transition buttons
+  Used in: case detail page header, OOB swaps
+  Variables: caseStatus (current status), caseId, availableTransitions[]
+#}
+<div id="case-status-actions" class="nexus-status-actions">
+  {% if availableTransitions and availableTransitions.length > 0 %}
+    {% for transition in availableTransitions %}
+    <button
+      class="nexus-btn {% if transition.nextStatus == 'closed' %}muted{% else %}primary{% endif %}"
+      hx-post="/nexus/client/cases/{{ caseId }}/status"
+      hx-target="#case-timeline"
+      hx-swap="beforeend"
+      hx-vals='{"to_status": "{{ transition.nextStatus }}"}'
+      {% if transition.nextStatus == 'closed' %}
+      hx-confirm="Are you sure you want to close this case? This action cannot be undone."
+      {% endif %}>
+      {{ transition.label }}
+    </button>
+    {% endfor %}
+  {% elif caseStatus == 'closed' or caseStatus == 'cancelled' %}
+    <span class="nexus-status-final">✓ Case {{ caseStatus | replace('_', ' ') | capitalize }}</span>
+  {% else %}
+    <span class="nexus-status-readonly">Status: {{ caseStatus | replace('_', ' ') }}</span>
+  {% endif %}
+</div>
+

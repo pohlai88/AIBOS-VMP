@@ -1,0 +1,170 @@
+{% extends "nexus/layout.html" %}
+
+{% block title %}AP Queue{% endblock %}
+
+{% set activeNav = 'client' %}
+
+{% block content %}
+<div class="nexus-page client-invoices">
+  <!-- Header with Stats -->
+  <header class="nexus-page-header">
+    <div class="nexus-page-header-top">
+      <span class="nexus-context-badge client">◀ Client Mode</span>
+    </div>
+    <div class="nexus-page-header-main">
+      <div class="nexus-page-header-content">
+        <h1>AP Queue</h1>
+        <p>Invoices awaiting review and payment</p>
+      </div>
+      <div class="nexus-page-header-stats">
+        <span class="nexus-inline-stat">
+          <strong>{{ summary.totalCount }}</strong> Invoices
+        </span>
+        <span class="nexus-inline-stat-divider">•</span>
+        <span class="nexus-inline-stat">
+          <strong>${{ summary.totalOutstanding | round(2) }}</strong> Outstanding
+        </span>
+        {% if summary.overdueCount > 0 %}
+        <span class="nexus-inline-stat-divider">•</span>
+        <span class="nexus-inline-stat danger">
+          <strong>{{ summary.overdueCount }}</strong> Overdue
+        </span>
+        {% endif %}
+      </div>
+    </div>
+  </header>
+
+  <!-- Summary Strip -->
+  <section class="nexus-summary-strip">
+    <div class="nexus-summary-item primary">
+      <span class="nexus-summary-value">${{ summary.totalOutstanding | round(2) }}</span>
+      <span class="nexus-summary-label">Total Outstanding</span>
+    </div>
+    {% if summary.overdueCount > 0 %}
+    <div class="nexus-summary-item danger">
+      <span class="nexus-summary-value">${{ summary.overdueAmount | round(2) }}</span>
+      <span class="nexus-summary-label">Overdue ({{ summary.overdueCount }})</span>
+    </div>
+    {% endif %}
+    {% if byStatus.disputed.length > 0 %}
+    <div class="nexus-summary-item warning">
+      <span class="nexus-summary-value">{{ byStatus.disputed.length }}</span>
+      <span class="nexus-summary-label">Disputed</span>
+    </div>
+    {% endif %}
+    <div class="nexus-summary-item success">
+      <span class="nexus-summary-value">{{ byStatus.paid.length }}</span>
+      <span class="nexus-summary-label">Paid</span>
+    </div>
+  </section>
+
+  <!-- Invoice List Section -->
+  <section class="nexus-list-section">
+    <div class="nexus-list-header">
+      <h2>Invoices</h2>
+      <div class="nexus-filter-tabs">
+        <a href="/nexus/client/invoices"
+           class="nexus-filter-tab {% if not filters.status %}active{% endif %}">
+          All ({{ byStatus.all.length }})
+        </a>
+        <a href="/nexus/client/invoices?status=pending"
+           class="nexus-filter-tab {% if filters.status == 'pending' %}active{% endif %}">
+          Pending ({{ byStatus.pending.length }})
+        </a>
+        <a href="/nexus/client/invoices?status=overdue"
+           class="nexus-filter-tab {% if filters.status == 'overdue' %}active{% endif %} {% if byStatus.overdue.length > 0 %}has-alert{% endif %}">
+          Overdue ({{ byStatus.overdue.length }})
+        </a>
+        <a href="/nexus/client/invoices?status=disputed"
+           class="nexus-filter-tab {% if filters.status == 'disputed' %}active{% endif %}">
+          Disputed ({{ byStatus.disputed.length }})
+        </a>
+        <a href="/nexus/client/invoices?status=paid"
+           class="nexus-filter-tab {% if filters.status == 'paid' %}active{% endif %}">
+          Paid ({{ byStatus.paid.length }})
+        </a>
+      </div>
+    </div>
+
+    {% if invoices.length > 0 %}
+    <div class="nexus-table-container">
+      <table class="nexus-table">
+        <thead>
+          <tr>
+            <th>Invoice</th>
+            <th>Vendor</th>
+            <th>Amount</th>
+            <th>Outstanding</th>
+            <th>Due Date</th>
+            <th>Status</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for inv in invoices %}
+          <tr class="nexus-table-row {% if inv.status == 'overdue' %}row-danger{% elif inv.status == 'disputed' %}row-warning{% endif %}">
+            <td>
+              <div class="nexus-cell-main">
+                <span class="nexus-cell-id">{{ inv.invoice_id }}</span>
+                {% if inv.invoice_number %}
+                <span class="nexus-cell-sub">{{ inv.invoice_number }}</span>
+                {% endif %}
+              </div>
+            </td>
+            <td>
+              <span class="nexus-cell-vendor">
+                {{ inv.vendor_tenant.display_name or inv.vendor_tenant.name or inv.vendor_id }}
+              </span>
+            </td>
+            <td>
+              <span class="nexus-cell-amount">${{ inv.total_amount | round(2) }}</span>
+            </td>
+            <td>
+              <span class="nexus-cell-amount {% if inv.amount_outstanding > 0 %}outstanding{% endif %}">
+                ${{ inv.amount_outstanding | round(2) }}
+              </span>
+            </td>
+            <td>
+              <span class="nexus-cell-date {% if inv.status == 'overdue' %}overdue{% endif %}">
+                {{ inv.due_date }}
+              </span>
+            </td>
+            <td>
+              <span class="nexus-badge {{ inv.status }}">{{ inv.status }}</span>
+            </td>
+            <td>
+              <a href="/nexus/client/invoices/{{ inv.invoice_id }}" class="nexus-btn small secondary">
+                View →
+              </a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <!-- Empty State -->
+    <div class="nexus-empty-state-box">
+      <div class="nexus-empty-state-icon">📄</div>
+      <h3>No invoices found</h3>
+      {% if filters.status %}
+      <p>No invoices match the selected filter. <a href="/nexus/client/invoices">View all invoices</a></p>
+      {% else %}
+      <p>You don't have any invoices to pay yet.</p>
+      {% endif %}
+    </div>
+    {% endif %}
+  </section>
+
+  <!-- Quick Actions -->
+  <section class="nexus-quick-actions">
+    <a href="/nexus/client" class="nexus-btn secondary">
+      ← Back to Dashboard
+    </a>
+    <a href="/nexus/client/payments" class="nexus-btn secondary">
+      💳 View Payments →
+    </a>
+  </section>
+
+</div>
+{% endblock %}

@@ -5,7 +5,14 @@
     },
     "supabase": {
       "command": "npx",
-      "args": ["-y", "@supabase/mcp-server"]
+      "args": ["-y", "@supabase/mcp-server-supabase@latest", "--read-only", "--project-ref=ggdtgucgrgucnvfsihdt"],
+      "env": {
+        "SUPABASE_ACCESS_TOKEN": "${input:supabase-access-token}"
+      }
+    },
+    "supabase-local": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-postgres", "postgresql://postgres:postgres@127.0.0.1:54322/postgres"]
     }
   }
 }

@@ -1,0 +1,195 @@
+{% extends "nexus/layout.html" %}
+
+{% block title %}Payment {{ payment.payment_id }}{% endblock %}
+
+{% set activeNav = 'client' %}
+
+{% block content %}
+<div class="nexus-page client-payment-detail">
+  <!-- Breadcrumb -->
+  <nav class="nexus-breadcrumb">
+    <a href="/nexus/client">Dashboard</a>
+    <span class="nexus-breadcrumb-sep">→</span>
+    <a href="/nexus/client/payments">Payment Outbox</a>
+    <span class="nexus-breadcrumb-sep">→</span>
+    <span class="nexus-breadcrumb-current">{{ payment.payment_id }}</span>
+  </nav>
+
+  <!-- Document Header -->
+  <header class="nexus-document-header">
+    <div class="nexus-document-header-top">
+      <span class="nexus-context-badge client">◀ Client Mode</span>
+      <span class="nexus-badge {{ payment.status }}">{{ payment.status }}</span>
+    </div>
+    <div class="nexus-document-header-main">
+      <div class="nexus-document-identity">
+        <h1 class="nexus-document-id">{{ payment.payment_id }}</h1>
+        {% if payment.payment_reference %}
+        <span class="nexus-document-ref">Ref: {{ payment.payment_reference }}</span>
+        {% endif %}
+      </div>
+      <div class="nexus-document-vendor">
+        <span class="nexus-document-vendor-label">To</span>
+        <span class="nexus-document-vendor-name">
+          {{ payment.to_tenant.display_name or payment.to_tenant.name or payment.to_id }}
+        </span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Financial Summary -->
+  <section class="nexus-document-summary">
+    <div class="nexus-document-amounts">
+      <div class="nexus-document-amount-item primary">
+        <span class="nexus-document-amount-label">Amount</span>
+        <span class="nexus-document-amount-value">${{ payment.amount | round(2) }}</span>
+      </div>
+      <div class="nexus-document-amount-item">
+        <span class="nexus-document-amount-label">Currency</span>
+        <span class="nexus-document-amount-value currency">{{ payment.currency or 'USD' }}</span>
+      </div>
+      <div class="nexus-document-amount-item">
+        <span class="nexus-document-amount-label">Method</span>
+        <span class="nexus-document-amount-value method">{{ payment.payment_method or '—' }}</span>
+      </div>
+    </div>
+    <div class="nexus-document-dates">
+      {% if payment.payment_date %}
+      <div class="nexus-document-date-item">
+        <span class="nexus-document-date-label">Payment Date</span>
+        <span class="nexus-document-date-value">{{ payment.payment_date }}</span>
+      </div>
+      {% endif %}
+      {% if payment.scheduled_date and not payment.payment_date %}
+      <div class="nexus-document-date-item">
+        <span class="nexus-document-date-label">Scheduled Date</span>
+        <span class="nexus-document-date-value">{{ payment.scheduled_date }}</span>
+      </div>
+      {% endif %}
+      <div class="nexus-document-date-item">
+        <span class="nexus-document-date-label">Created</span>
+        <span class="nexus-document-date-value">{{ payment.created_at | truncate(10, true, '') }}</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- Payment Details -->
+  <section class="nexus-document-section">
+    <h2>Payment Details</h2>
+    <div class="nexus-detail-grid">
+      <div class="nexus-detail-item">
+        <span class="nexus-detail-label">Status</span>
+        <span class="nexus-detail-value">
+          <span class="nexus-badge {{ payment.status }}">{{ payment.status }}</span>
+        </span>
+      </div>
+      <div class="nexus-detail-item">
+        <span class="nexus-detail-label">Payment Method</span>
+        <span class="nexus-detail-value">{{ payment.payment_method or 'Not specified' }}</span>
+      </div>
+      {% if payment.bank_account_last4 %}
+      <div class="nexus-detail-item">
+        <span class="nexus-detail-label">Account</span>
+        <span class="nexus-detail-value">****{{ payment.bank_account_last4 }}</span>
+      </div>
+      {% endif %}
+      <div class="nexus-detail-item">
+        <span class="nexus-detail-label">Reconciled</span>
+        <span class="nexus-detail-value">
+          {% if payment.reconciled %}
+          <span class="nexus-badge success">Yes</span>
+          {% if payment.reconciled_at %}
+          <span class="nexus-detail-sub">{{ payment.reconciled_at | truncate(10, true, '') }}</span>
+          {% endif %}
+          {% else %}
+          <span class="nexus-badge muted">No</span>
+          {% endif %}
+        </span>
+      </div>
+    </div>
+  </section>
+
+  <!-- Linked Invoice -->
+  <section class="nexus-document-section">
+    <h2>Linked Invoice</h2>
+    {% if linkedInvoice %}
+    <div class="nexus-linked-document">
+      <div class="nexus-linked-document-main">
+        <div class="nexus-linked-document-identity">
+          <span class="nexus-linked-document-id">{{ linkedInvoice.invoice_id }}</span>
+          {% if linkedInvoice.invoice_number %}
+          <span class="nexus-linked-document-ref">{{ linkedInvoice.invoice_number }}</span>
+          {% endif %}
+        </div>
+        <div class="nexus-linked-document-meta">
+          <span class="nexus-linked-document-amount">${{ linkedInvoice.total_amount | round(2) }}</span>
+          <span class="nexus-badge {{ linkedInvoice.status }}">{{ linkedInvoice.status }}</span>
+        </div>
+      </div>
+      <div class="nexus-linked-document-details">
+        <span class="nexus-linked-document-detail">
+          Due: {{ linkedInvoice.due_date }}
+        </span>
+        <span class="nexus-linked-document-detail">
+          Outstanding: ${{ linkedInvoice.amount_outstanding | round(2) }}
+        </span>
+      </div>
+      <div class="nexus-linked-document-actions">
+        <a href="/nexus/client/invoices/{{ linkedInvoice.invoice_id }}" class="nexus-btn small secondary">
+          View Invoice →
+        </a>
+      </div>
+    </div>
+    {% else %}
+    <div class="nexus-empty-state-inline">
+      <p>This payment is not linked to a specific invoice.</p>
+    </div>
+    {% endif %}
+  </section>
+
+  <!-- Processing Timeline -->
+  <section class="nexus-document-section">
+    <h2>Processing Timeline</h2>
+    <div class="nexus-status-timeline">
+      {% for entry in statusHistory %}
+      <div class="nexus-timeline-item">
+        <span class="nexus-timeline-dot {{ entry.status }}"></span>
+        <div class="nexus-timeline-content">
+          <span class="nexus-timeline-status">{{ entry.status | capitalize }}</span>
+          <span class="nexus-timeline-date">{{ entry.timestamp | truncate(19, true, '') }}</span>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+
+  <!-- Notes/Description -->
+  {% if payment.description or payment.notes %}
+  <section class="nexus-document-section">
+    <h2>Notes</h2>
+    <div class="nexus-document-notes">
+      {% if payment.description %}
+      <p>{{ payment.description }}</p>
+      {% endif %}
+      {% if payment.notes %}
+      <p class="nexus-document-notes-secondary">{{ payment.notes }}</p>
+      {% endif %}
+    </div>
+  </section>
+  {% endif %}
+
+  <!-- Navigation -->
+  <section class="nexus-document-actions">
+    <a href="/nexus/client/payments" class="nexus-btn secondary">
+      ← Back to Payment Outbox
+    </a>
+    <a href="/nexus/client/invoices" class="nexus-btn secondary">
+      📄 View All Invoices
+    </a>
+    <button class="nexus-btn muted" disabled title="Coming in a future update">
+      🚨 Raise Issue
+    </button>
+  </section>
+
+</div>
+{% endblock %}

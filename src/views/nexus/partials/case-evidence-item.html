@@ -1,0 +1,33 @@
+{#
+  Case Evidence Item - Reusable partial for evidence list
+  Used in: sidebar evidence list, HTMX upload responses
+  Variables: evidenceItem { evidence_id, original_filename, file_type, file_size, created_at, download_url, uploader }
+#}
+<li class="nexus-evidence-item" id="evidence-{{ evidenceItem.evidence_id }}">
+  <div class="nexus-evidence-icon">
+    {% if evidenceItem.file_type.startswith('image/') %}📷
+    {% elif evidenceItem.file_type == 'application/pdf' %}📕
+    {% elif evidenceItem.file_type.includes('spreadsheet') %}📊
+    {% elif evidenceItem.file_type.includes('wordprocessing') %}📝
+    {% else %}📄{% endif %}
+  </div>
+  <div class="nexus-evidence-info">
+    <span class="nexus-evidence-name" title="{{ evidenceItem.original_filename }}">
+      {{ evidenceItem.original_filename | truncate(28, true, '...') }}
+    </span>
+    <span class="nexus-evidence-meta">
+      {{ (evidenceItem.file_size / 1024) | round(1) }}KB
+      • {{ evidenceItem.created_at | truncate(10, true, '') }}
+    </span>
+  </div>
+  <div class="nexus-evidence-actions">
+    {% if evidenceItem.download_url %}
+    <a href="{{ evidenceItem.download_url }}"
+       class="nexus-evidence-download"
+       target="_blank"
+       title="Download">
+      ⬇
+    </a>
+    {% endif %}
+  </div>
+</li>

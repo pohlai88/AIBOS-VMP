@@ -1,0 +1,188 @@
+{% extends "nexus/layout.html" %}
+
+{% block title %}Vendors{% endblock %}
+
+{% set activeNav = 'client' %}
+
+{% block content %}
+<div class="nexus-page vendor-directory">
+  <!-- Header with Stats -->
+  <header class="nexus-page-header">
+    <div class="nexus-page-header-top">
+      <span class="nexus-context-badge client">◀ Client Mode</span>
+    </div>
+    <div class="nexus-page-header-main">
+      <div class="nexus-page-header-content">
+        <h1>Vendors</h1>
+        <p>Companies you work with as a client</p>
+      </div>
+      <div class="nexus-page-header-stats">
+        <span class="nexus-inline-stat">
+          <strong>{{ counts.total }}</strong> Total
+        </span>
+        <span class="nexus-inline-stat-divider">•</span>
+        <span class="nexus-inline-stat success">
+          <strong>{{ counts.active }}</strong> Active
+        </span>
+        {% if counts.pending > 0 %}
+        <span class="nexus-inline-stat-divider">•</span>
+        <span class="nexus-inline-stat warning">
+          <strong>{{ counts.pending }}</strong> Pending
+        </span>
+        {% endif %}
+      </div>
+    </div>
+  </header>
+
+  <!-- Success Toast for Invite -->
+  {% if query.invited == 'true' %}
+  <div class="nexus-alert success">
+    <span class="nexus-alert-icon">✓</span>
+    <span class="nexus-alert-message">Invitation sent successfully! The vendor will receive an email to join.</span>
+  </div>
+  {% endif %}
+
+  <!-- Invite Vendor Panel -->
+  <section class="nexus-action-panel">
+    <div class="nexus-action-panel-header">
+      <h3>➕ Invite a Vendor</h3>
+      <p>Send an invitation to onboard a new vendor to your network</p>
+    </div>
+    <form
+      class="nexus-invite-form"
+      method="POST"
+      action="/nexus/client/invite"
+      hx-post="/nexus/client/invite"
+      hx-target="#invite-result"
+      hx-swap="innerHTML"
+    >
+      <div class="nexus-form-row">
+        <div class="nexus-form-group">
+          <label for="vendor_email">Vendor Email *</label>
+          <input
+            type="email"
+            id="vendor_email"
+            name="vendor_email"
+            placeholder="vendor@company.com"
+            required
+            class="nexus-input"
+          >
+        </div>
+        <div class="nexus-form-group">
+          <label for="vendor_name">Vendor Name (Optional)</label>
+          <input
+            type="text"
+            id="vendor_name"
+            name="vendor_name"
+            placeholder="Acme Corp"
+            class="nexus-input"
+          >
+        </div>
+        <div class="nexus-form-group nexus-form-action">
+          <button type="submit" class="nexus-btn primary">
+            Send Invitation
+          </button>
+        </div>
+      </div>
+      <div id="invite-result"></div>
+    </form>
+  </section>
+
+  <!-- Vendor List -->
+  <section class="nexus-list-section">
+    <div class="nexus-list-header">
+      <h2>Your Vendors</h2>
+      {% if vendors.length > 0 %}
+      <div class="nexus-filter-tabs">
+        <button class="nexus-filter-tab active" data-filter="all">All ({{ counts.total }})</button>
+        <button class="nexus-filter-tab" data-filter="active">Active ({{ counts.active }})</button>
+        {% if groups.inactive.length > 0 %}
+        <button class="nexus-filter-tab" data-filter="inactive">Inactive ({{ groups.inactive.length }})</button>
+        {% endif %}
+      </div>
+      {% endif %}
+    </div>
+
+    {% if vendors.length > 0 %}
+    <ul class="nexus-vendor-list" id="vendor-list">
+      {% for vendor in vendors %}
+      <li class="nexus-vendor-item" data-status="{{ vendor.status }}">
+        <div class="nexus-vendor-item-main">
+          <div class="nexus-vendor-avatar">
+            {{ (vendor.vendor_tenant.display_name or vendor.vendor_tenant.name or 'V')[0] | upper }}
+          </div>
+          <div class="nexus-vendor-info">
+            <span class="nexus-vendor-name">
+              {{ vendor.vendor_tenant.display_name or vendor.vendor_tenant.name or vendor.vendor_id }}
+            </span>
+            <span class="nexus-vendor-id">{{ vendor.vendor_id }}</span>
+          </div>
+        </div>
+        <div class="nexus-vendor-item-meta">
+          <span class="nexus-badge {{ vendor.status }}">{{ vendor.status }}</span>
+          {% if vendor.effective_from %}
+          <span class="nexus-vendor-date">
+            Since {{ vendor.effective_from }}
+          </span>
+          {% elif vendor.created_at %}
+          <span class="nexus-vendor-date">
+            Since {{ vendor.created_at | truncate(10, true, '') }}
+          </span>
+          {% endif %}
+        </div>
+        <div class="nexus-vendor-item-actions">
+          <a href="/nexus/client/vendors/{{ vendor.vendor_id }}" class="nexus-btn small secondary">
+            View →
+          </a>
+        </div>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <!-- Empty State -->
+    <div class="nexus-empty-state-box">
+      <div class="nexus-empty-state-icon">🏢</div>
+      <h3>No vendors yet</h3>
+      <p>Invite your first vendor to get started with vendor management.</p>
+    </div>
+    {% endif %}
+  </section>
+
+  <!-- Quick Actions -->
+  <section class="nexus-quick-actions">
+    <a href="/nexus/client" class="nexus-btn secondary">
+      ← Back to Dashboard
+    </a>
+  </section>
+
+</div>
+
+<!-- Client-side filter script -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const tabs = document.querySelectorAll('.nexus-filter-tab');
+  const items = document.querySelectorAll('.nexus-vendor-item');
+
+  tabs.forEach(tab => {
+    tab.addEventListener('click', function() {
+      const filter = this.dataset.filter;
+
+      // Update active tab
+      tabs.forEach(t => t.classList.remove('active'));
+      this.classList.add('active');
+
+      // Filter items
+      items.forEach(item => {
+        if (filter === 'all') {
+          item.style.display = '';
+        } else if (filter === 'active') {
+          item.style.display = item.dataset.status === 'active' ? '' : 'none';
+        } else if (filter === 'inactive') {
+          item.style.display = (item.dataset.status !== 'active' && item.dataset.status !== 'pending') ? '' : 'none';
+        }
+      });
+    });
+  });
+});
+</script>
+{% endblock %}

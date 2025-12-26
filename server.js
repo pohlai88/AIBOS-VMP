@@ -24,6 +24,8 @@ import { fileURLToPath } from 'url';
 
 // Nexus Portal Routes
 import nexusPortalRouter from './src/routes/nexus-portal.js';
+import nexusClientRouter from './src/routes/nexus-client.js';
+import nexusVendorRouter from './src/routes/nexus-vendor.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -387,6 +389,8 @@ app.get('/reset-password', (req, res) => {
 // ROUTES: NEXUS PORTAL (Main Application)
 // ============================================================================
 
+app.use('/nexus/client', nexusClientRouter);  // Client Command Center (must be before /nexus)
+app.use('/nexus/vendor', nexusVendorRouter);  // Vendor Portal (C6.4 - must be before /nexus)
 app.use('/nexus', nexusPortalRouter);
 
 // ============================================================================

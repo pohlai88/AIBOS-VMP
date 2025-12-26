@@ -1,0 +1,38 @@
+{#
+  Case Status Transition Response - HTMX response for status change
+  Combines:
+    1. Timeline items (appended to #case-timeline)
+    2. Status badge update (OOB swap to #case-status-badge)
+    3. Status actions update (OOB swap to #case-status-actions)
+  Variables: timelineItems[], newStatus, availableTransitions[], caseId
+#}
+
+{# Timeline items - appended to #case-timeline via hx-target #}
+{% for item in timelineItems %}
+  {% include "nexus/partials/case-timeline-item.html" %}
+{% endfor %}
+
+{# Status badge - OOB swap #}
+<span id="case-status-badge" hx-swap-oob="outerHTML" class="nexus-badge {{ newStatus | replace('_', '-') }}">
+  {{ newStatus | replace('_', ' ') }}
+</span>
+
+{# Status actions - OOB swap #}
+<div id="case-status-actions" hx-swap-oob="innerHTML">
+  {% if availableTransitions.length > 0 %}
+    {% for transition in availableTransitions %}
+    <button
+      class="nexus-btn {% if transition.nextStatus == 'closed' %}muted{% else %}primary{% endif %}"
+      hx-post="/nexus/client/cases/{{ caseId }}/status"
+      hx-target="#case-timeline"
+      hx-swap="beforeend"
+      hx-vals='{"to_status": "{{ transition.nextStatus }}"}'
+      hx-confirm="{% if transition.nextStatus == 'closed' %}Are you sure you want to close this case? This action cannot be undone.{% endif %}">
+      {{ transition.label }}
+    </button>
+    {% endfor %}
+  {% else %}
+    <span class="nexus-status-final">✓ Case Closed</span>
+  {% endif %}
+</div>
+

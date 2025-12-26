@@ -1491,6 +1491,977 @@ async function debugAuthContext() {
 }
 
 // ============================================================================
+// CLIENT-PERSPECTIVE OPERATIONS (CMP Phase C2)
+// ============================================================================
+
+/**
+ * Get vendors for a client (relationships where I am the client)
+ * @param {string} clientId - TC-* ID (the client's tenant_client_id)
+ * @returns {Promise<object[]>} Relationships with vendor tenant info
+ */
+async function getVendorsByClient(clientId) {
+  // Get relationships where this tenant is the client
+  const { data: relationships, error } = await serviceClient
+    .from('nexus_tenant_relationships')
+    .select('*')
+    .eq('client_id', clientId)
+    .eq('status', 'active');
+
+  if (error) throw new Error(`Failed to get vendors: ${error.message}`);
+
+  // Enrich with vendor tenant info (no FK on relationships table)
+  const enriched = await Promise.all((relationships || []).map(async rel => {
+    const { data: vendorTenant } = await serviceClient
+      .from('nexus_tenants')
+      .select('tenant_id, tenant_vendor_id, name, display_name')
+      .eq('tenant_vendor_id', rel.vendor_id)
+      .single();
+    return { ...rel, vendor_tenant: vendorTenant };
+  }));
+
+  return enriched;
+}
+
+/**
+ * Get invoices for a client (invoices I need to pay - Accounts Payable)
+ * @param {string} clientId - TC-* ID (the client's tenant_client_id)
+ * @param {object} filters - Optional filters { status, vendorId }
+ * @returns {Promise<object[]>} Invoices with vendor tenant info
+ */
+async function getInvoicesByClient(clientId, filters = {}) {
+  // Invoices table has no FK constraints, so we query and enrich manually
+  let query = serviceClient
+    .from('nexus_invoices')
+    .select('*')
+    .eq('client_id', clientId);
+
+  if (filters.status) {
+    query = query.eq('status', filters.status);
+  }
+  if (filters.vendorId) {
+    query = query.eq('vendor_id', filters.vendorId);
+  }
+
+  query = query.order('due_date', { ascending: true });
+
+  const { data: invoices, error } = await query;
+
+  if (error) throw new Error(`Failed to get invoices: ${error.message}`);
+
+  // Enrich with vendor tenant info
+  const enriched = await Promise.all((invoices || []).map(async inv => {
+    const { data: vendorTenant } = await serviceClient
+      .from('nexus_tenants')
+      .select('tenant_id, tenant_vendor_id, name, display_name')
+      .eq('tenant_vendor_id', inv.vendor_id)
+      .single();
+    return { ...inv, vendor_tenant: vendorTenant };
+  }));
+
+  return enriched;
+}
+
+/**
+ * Get payments made by a client (payments I sent - outbound)
+ * @param {string} clientId - TC-* ID (the client's tenant_client_id)
+ * @param {object} filters - Optional filters { status }
+ * @returns {Promise<object[]>} Payments with from/to tenant info
+ */
+async function getPaymentsByClient(clientId, filters = {}) {
+  // Payments table HAS FK constraints - use PostgREST join syntax
+  let query = serviceClient
+    .from('nexus_payments')
+    .select(`
+      *,
+      from_tenant:nexus_tenants!fk_payments_from_tenant(tenant_id, name, display_name),
+      to_tenant:nexus_tenants!fk_payments_to_tenant(tenant_id, name, display_name)
+    `)
+    .eq('from_id', clientId);
+
+  if (filters.status) {
+    query = query.eq('status', filters.status);
+  }
+
+  query = query.order('created_at', { ascending: false });
+
+  const { data, error } = await query;
+
+  if (error) throw new Error(`Failed to get payments: ${error.message}`);
+  return data || [];
+}
+
+/**
+ * Get cases for a client (cases where I am the client)
+ * @param {string} clientId - TC-* ID (the client's tenant_client_id)
+ * @param {object} filters - Optional filters { status, category, vendorId }
+ * @returns {Promise<object[]>} Cases with client/vendor tenant info
+ */
+async function getCasesByClient(clientId, filters = {}) {
+  // Cases table HAS FK constraints - use PostgREST join syntax
+  let query = serviceClient
+    .from('nexus_cases')
+    .select(`
+      *,
+      client_tenant:nexus_tenants!fk_cases_client_tenant(tenant_id, name, display_name),
+      vendor_tenant:nexus_tenants!fk_cases_vendor_tenant(tenant_id, name, display_name)
+    `)
+    .eq('client_id', clientId);
+
+  if (filters.status) {
+    query = query.eq('status', filters.status);
+  }
+  if (filters.category) {
+    query = query.eq('category', filters.category);
+  }
+  if (filters.vendorId) {
+    query = query.eq('vendor_id', filters.vendorId);
+  }
+
+  query = query.order('created_at', { ascending: false });
+
+  const { data, error } = await query;
+
+  if (error) throw new Error(`Failed to get cases: ${error.message}`);
+  return data || [];
+}
+
+/**
+ * Get invoice detail for a client (single invoice with payments)
+ * @param {string} clientId - TC-* ID (the client's tenant_client_id)
+ * @param {string} invoiceId - INV-* ID
+ * @returns {Promise<object|null>} Invoice with vendor info and linked payments
+ */
+async function getInvoiceDetailByClient(clientId, invoiceId) {
+  // Fetch invoice - scoped to client
+  const { data: invoice, error } = await serviceClient
+    .from('nexus_invoices')
+    .select('*')
+    .eq('invoice_id', invoiceId)
+    .eq('client_id', clientId)
+    .single();
+
+  if (error || !invoice) return null;
+
+  // Enrich with vendor tenant info
+  const { data: vendorTenant } = await serviceClient
+    .from('nexus_tenants')
+    .select('tenant_id, tenant_vendor_id, name, display_name')
+    .eq('tenant_vendor_id', invoice.vendor_id)
+    .single();
+
+  // Fetch linked payments (payments referencing this invoice)
+  const { data: payments } = await serviceClient
+    .from('nexus_payments')
+    .select(`
+      payment_id, amount, status, payment_date, payment_method, created_at,
+      to_tenant:nexus_tenants!fk_payments_to_tenant(tenant_id, name, display_name)
+    `)
+    .eq('invoice_id', invoiceId)
+    .eq('from_id', clientId)
+    .order('created_at', { ascending: false });
+
+  return {
+    ...invoice,
+    vendor_tenant: vendorTenant,
+    payments: payments || [],
+  };
+}
+
+/**
+ * Get payment detail for a client (single payment with invoice info)
+ * @param {string} clientId - TC-* ID (the client's tenant_client_id)
+ * @param {string} paymentId - PAY-* ID
+ * @returns {Promise<object|null>} Payment with tenant info and linked invoice
+ */
+async function getPaymentDetailByClient(clientId, paymentId) {
+  // Fetch payment - scoped to client (from_id = payer)
+  const { data: payment, error } = await serviceClient
+    .from('nexus_payments')
+    .select(`
+      *,
+      from_tenant:nexus_tenants!fk_payments_from_tenant(tenant_id, name, display_name),
+      to_tenant:nexus_tenants!fk_payments_to_tenant(tenant_id, name, display_name)
+    `)
+    .eq('payment_id', paymentId)
+    .eq('from_id', clientId)
+    .single();
+
+  if (error || !payment) return null;
+
+  // Fetch linked invoice if exists
+  let linkedInvoice = null;
+  if (payment.invoice_id) {
+    const { data: invoice } = await serviceClient
+      .from('nexus_invoices')
+      .select('invoice_id, invoice_number, total_amount, amount_outstanding, status, due_date')
+      .eq('invoice_id', payment.invoice_id)
+      .single();
+    linkedInvoice = invoice;
+  }
+
+  return {
+    ...payment,
+    linked_invoice: linkedInvoice,
+  };
+}
+
+/**
+ * Get case detail for a client (single case with timeline)
+ * @param {string} clientId - TC-* ID (the client's tenant_client_id)
+ * @param {string} caseId - CASE-* ID
+ * @returns {Promise<object|null>} Case with vendor info, messages, and evidence
+ */
+async function getCaseDetailByClient(clientId, caseId) {
+  // Fetch case - scoped to client
+  const { data: caseData, error } = await serviceClient
+    .from('nexus_cases')
+    .select(`
+      *,
+      client_tenant:nexus_tenants!fk_cases_client_tenant(tenant_id, name, display_name),
+      vendor_tenant:nexus_tenants!fk_cases_vendor_tenant(tenant_id, name, display_name)
+    `)
+    .eq('case_id', caseId)
+    .eq('client_id', clientId)
+    .single();
+
+  if (error || !caseData) return null;
+
+  // Fetch messages (timeline items)
+  const { data: messages } = await serviceClient
+    .from('nexus_case_messages')
+    .select('*, sender:nexus_users(user_id, display_name, email)')
+    .eq('case_id', caseId)
+    .order('created_at', { ascending: true });
+
+  // Fetch evidence
+  const { data: evidence } = await serviceClient
+    .from('nexus_case_evidence')
+    .select('*')
+    .eq('case_id', caseId)
+    .is('deleted_at', null)
+    .order('created_at', { ascending: false });
+
+  // Build references object
+  const references = {
+    invoice_id: caseData.invoice_ref,
+    payment_id: caseData.payment_ref,
+    vendor_id: caseData.vendor_id,
+  };
+
+  return {
+    ...caseData,
+    messages: messages || [],
+    evidence: evidence || [],
+    references,
+  };
+}
+
+/**
+ * Create a note on a case (client context)
+ * @param {object} data - Note data { caseId, clientId, userId, tenantId, content }
+ * @returns {Promise<object>} Created message
+ */
+async function createCaseNoteByClient(data) {
+  const messageId = generateId('MSG');
+
+  const message = {
+    message_id: messageId,
+    case_id: data.caseId,
+    sender_user_id: data.userId,
+    sender_tenant_id: data.tenantId,
+    sender_context: 'client',
+    sender_context_id: data.clientId,
+    body: data.content,
+    message_type: 'note',
+    metadata: {},
+  };
+
+  const { data: result, error } = await serviceClient
+    .from('nexus_case_messages')
+    .insert(message)
+    .select('*, sender:nexus_users(user_id, display_name, email)')
+    .single();
+
+  if (error) throw new Error(`Failed to create note: ${error.message}`);
+  return result;
+}
+
+// ============================================================================
+// EVIDENCE UPLOAD (CMP Phase C6.2)
+// ============================================================================
+
+/**
+ * File constraints for evidence uploads
+ */
+const EVIDENCE_CONSTRAINTS = {
+  maxSize: 10 * 1024 * 1024, // 10 MB
+  allowedTypes: [
+    'application/pdf',
+    'image/png',
+    'image/jpeg',
+    'image/jpg',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // docx
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // xlsx
+  ],
+  allowedExtensions: ['.pdf', '.png', '.jpg', '.jpeg', '.docx', '.xlsx'],
+  bucket: 'nexus-evidence',
+};
+
+/**
+ * Validate file for evidence upload
+ * @param {object} file - Multer file object
+ * @returns {{ valid: boolean, error?: string }}
+ */
+function validateEvidenceFile(file) {
+  if (!file) {
+    return { valid: false, error: 'No file provided' };
+  }
+
+  if (file.size > EVIDENCE_CONSTRAINTS.maxSize) {
+    return { valid: false, error: `File too large. Maximum size is ${EVIDENCE_CONSTRAINTS.maxSize / (1024 * 1024)}MB` };
+  }
+
+  if (!EVIDENCE_CONSTRAINTS.allowedTypes.includes(file.mimetype)) {
+    return { valid: false, error: 'Invalid file type. Allowed: PDF, PNG, JPG, DOCX, XLSX' };
+  }
+
+  const ext = '.' + file.originalname.split('.').pop().toLowerCase();
+  if (!EVIDENCE_CONSTRAINTS.allowedExtensions.includes(ext)) {
+    return { valid: false, error: 'Invalid file extension' };
+  }
+
+  return { valid: true };
+}
+
+/**
+ * Upload evidence file to a case (client context)
+ * @param {object} data - Upload data { caseId, clientId, userId, tenantId, file }
+ * @returns {Promise<object>} Created evidence record
+ */
+async function createCaseEvidenceByClient(data) {
+  const { caseId, clientId, userId, tenantId, file } = data;
+
+  // 1. Verify case ownership by client
+  const { data: caseData, error: caseError } = await serviceClient
+    .from('nexus_cases')
+    .select('case_id')
+    .eq('case_id', caseId)
+    .eq('client_id', clientId)
+    .single();
+
+  if (caseError || !caseData) {
+    throw new Error('Case not found or access denied');
+  }
+
+  // 2. Validate file
+  const validation = validateEvidenceFile(file);
+  if (!validation.valid) {
+    throw new Error(validation.error);
+  }
+
+  // 3. Generate evidence ID and storage path
+  const evidenceId = generateId('EVD');
+  const fileExt = file.originalname.split('.').pop().toLowerCase();
+  const uniqueFilename = `${evidenceId}_${Date.now()}.${fileExt}`;
+  const storagePath = `cases/${caseId}/${uniqueFilename}`;
+
+  // 4. Upload to storage
+  const { error: uploadError } = await serviceClient.storage
+    .from(EVIDENCE_CONSTRAINTS.bucket)
+    .upload(storagePath, file.buffer, {
+      contentType: file.mimetype,
+      upsert: false, // Never overwrite
+    });
+
+  if (uploadError) {
+    throw new Error(`Storage upload failed: ${uploadError.message}`);
+  }
+
+  // 5. Insert database record
+  const evidenceRecord = {
+    evidence_id: evidenceId,
+    case_id: caseId,
+    uploader_user_id: userId,
+    uploader_tenant_id: tenantId,
+    uploader_context: 'client',
+    filename: uniqueFilename,
+    original_filename: file.originalname,
+    file_type: file.mimetype,
+    file_size: file.size,
+    file_extension: fileExt,
+    storage_path: storagePath,
+    storage_bucket: EVIDENCE_CONSTRAINTS.bucket,
+    evidence_type: mapMimeToEvidenceType(file.mimetype),
+    metadata: {},
+  };
+
+  const { data: result, error: insertError } = await serviceClient
+    .from('nexus_case_evidence')
+    .insert(evidenceRecord)
+    .select('*')
+    .single();
+
+  if (insertError) {
+    // Attempt to clean up the uploaded file if DB insert fails
+    await serviceClient.storage
+      .from(EVIDENCE_CONSTRAINTS.bucket)
+      .remove([storagePath])
+      .catch(() => {}); // Ignore cleanup errors
+    throw new Error(`Failed to record evidence: ${insertError.message}`);
+  }
+
+  return result;
+}
+
+/**
+ * Map MIME type to evidence_type enum
+ */
+function mapMimeToEvidenceType(mimeType) {
+  if (mimeType.startsWith('image/')) return 'image';
+  if (mimeType === 'application/pdf') return 'document';
+  if (mimeType.includes('spreadsheet')) return 'document';
+  if (mimeType.includes('wordprocessing')) return 'document';
+  return 'other';
+}
+
+/**
+ * Get download URL for evidence file
+ * @param {string} storagePath - Path in storage bucket
+ * @param {number} expiresIn - Seconds until URL expires (default 1 hour)
+ * @returns {Promise<string|null>} Signed URL or null
+ */
+async function getEvidenceDownloadUrl(storagePath, expiresIn = 3600) {
+  const { data, error } = await serviceClient.storage
+    .from(EVIDENCE_CONSTRAINTS.bucket)
+    .createSignedUrl(storagePath, expiresIn);
+
+  if (error) return null;
+  return data.signedUrl;
+}
+
+/**
+ * Get evidence list for a case (with download URLs)
+ * @param {string} clientId - Client context ID (TC-*)
+ * @param {string} caseId - Case ID (CASE-*)
+ * @returns {Promise<Array>} Evidence records with download URLs
+ */
+async function getCaseEvidenceByClient(clientId, caseId) {
+  // Verify case ownership
+  const { data: caseData, error: caseError } = await serviceClient
+    .from('nexus_cases')
+    .select('case_id')
+    .eq('case_id', caseId)
+    .eq('client_id', clientId)
+    .single();
+
+  if (caseError || !caseData) return [];
+
+  // Fetch evidence
+  const { data: evidence, error } = await serviceClient
+    .from('nexus_case_evidence')
+    .select('*, uploader:nexus_users(user_id, display_name)')
+    .eq('case_id', caseId)
+    .is('deleted_at', null)
+    .order('created_at', { ascending: false });
+
+  if (error || !evidence) return [];
+
+  // Generate download URLs for each item
+  const withUrls = await Promise.all(
+    evidence.map(async (item) => ({
+      ...item,
+      download_url: await getEvidenceDownloadUrl(item.storage_path),
+    }))
+  );
+
+  return withUrls;
+}
+
+// ============================================================================
+// VENDOR-SIDE CASE ACCESS (CMP Phase C6.4)
+// ============================================================================
+
+/**
+ * Get case detail scoped to vendor (TV-*)
+ * Must match BOTH case_id AND vendor_id
+ * @param {string} vendorId - Vendor context ID (TV-*)
+ * @param {string} caseId - Case ID (CASE-*)
+ * @returns {Promise<object|null>} Case detail with messages and evidence
+ */
+async function getCaseDetailByVendor(vendorId, caseId) {
+  const { data: c, error } = await serviceClient
+    .from('nexus_cases')
+    .select(`
+      *,
+      client_tenant:nexus_tenants!nexus_cases_client_id_fkey(tenant_id, name, display_name)
+    `)
+    .eq('case_id', caseId)
+    .eq('vendor_id', vendorId)
+    .maybeSingle();
+
+  if (error) throw error;
+  if (!c) return null;
+
+  // Fetch messages (case already vendor-scoped)
+  const { data: msgs, error: e2 } = await serviceClient
+    .from('nexus_case_messages')
+    .select('*, sender:nexus_users(user_id, display_name, email)')
+    .eq('case_id', caseId)
+    .order('created_at', { ascending: true });
+
+  if (e2) throw e2;
+
+  // Fetch evidence (scoped by case_id; case already vendor-scoped)
+  const evidence = await getCaseEvidenceByVendor(vendorId, caseId);
+
+  return { case: c, messages: msgs || [], evidence: evidence || [] };
+}
+
+/**
+ * Get evidence list for a case (vendor context)
+ * @param {string} vendorId - Vendor context ID (TV-*)
+ * @param {string} caseId - Case ID (CASE-*)
+ * @returns {Promise<Array|null>} Evidence records with download URLs, or null if no access
+ */
+async function getCaseEvidenceByVendor(vendorId, caseId) {
+  // Verify vendor ownership first
+  const { data: c, error: e0 } = await serviceClient
+    .from('nexus_cases')
+    .select('case_id')
+    .eq('case_id', caseId)
+    .eq('vendor_id', vendorId)
+    .maybeSingle();
+
+  if (e0) throw e0;
+  if (!c) return null;
+
+  const { data: rows, error } = await serviceClient
+    .from('nexus_case_evidence')
+    .select('*, uploader:nexus_users(user_id, display_name)')
+    .eq('case_id', caseId)
+    .is('deleted_at', null)
+    .order('created_at', { ascending: false });
+
+  if (error) throw error;
+
+  // Attach signed URLs (reuse existing function)
+  const enriched = await Promise.all(
+    (rows || []).map(async (r) => ({
+      ...r,
+      download_url: await getEvidenceDownloadUrl(r.storage_path),
+    }))
+  );
+
+  return enriched;
+}
+
+/**
+ * Create a note on a case (vendor context)
+ * Hard locks: sender_context = 'vendor', message_type = 'note'
+ * @param {object} data - { caseId, vendorId, userId, tenantId, content }
+ * @returns {Promise<object|null>} Created message or null if no access
+ */
+async function createCaseNoteByVendor({ caseId, vendorId, userId, tenantId, content }) {
+  // Verify vendor ownership
+  const { data: c, error: e0 } = await serviceClient
+    .from('nexus_cases')
+    .select('case_id')
+    .eq('case_id', caseId)
+    .eq('vendor_id', vendorId)
+    .maybeSingle();
+
+  if (e0) throw e0;
+  if (!c) return null;
+
+  const messageId = generateId('MSG');
+  const payload = {
+    message_id: messageId,
+    case_id: caseId,
+    message_type: 'note',
+    sender_context: 'vendor',
+    sender_context_id: vendorId,
+    sender_user_id: userId,
+    sender_tenant_id: tenantId,
+    body: content,
+  };
+
+  const { data: msg, error } = await serviceClient
+    .from('nexus_case_messages')
+    .insert(payload)
+    .select('*, sender:nexus_users(user_id, display_name, email)')
+    .single();
+
+  if (error) throw error;
+  return msg;
+}
+
+/**
+ * Upload evidence to a case (vendor context)
+ * Hard locks: uploader_context = 'vendor', bucket = 'nexus-evidence'
+ * @param {object} data - { caseId, vendorId, userId, tenantId, file }
+ * @returns {Promise<object|null>} Created evidence record or null if no access
+ */
+async function createCaseEvidenceByVendor({ caseId, vendorId, userId, tenantId, file }) {
+  // Verify vendor ownership
+  const { data: c, error: e0 } = await serviceClient
+    .from('nexus_cases')
+    .select('case_id')
+    .eq('case_id', caseId)
+    .eq('vendor_id', vendorId)
+    .maybeSingle();
+
+  if (e0) throw e0;
+  if (!c) return null;
+
+  // Validate file using existing validator
+  const validation = validateEvidenceFile(file);
+  if (!validation.valid) {
+    throw new Error(validation.error);
+  }
+
+  const bucket = EVIDENCE_CONSTRAINTS.bucket;
+  const ext = (file.originalname.split('.').pop() || '').toLowerCase();
+  const evidenceId = generateId('EVD');
+  const ts = Date.now();
+  const storagePath = `cases/${caseId}/${evidenceId}_${ts}.${ext}`;
+
+  // Upload to storage
+  const { error: uploadError } = await serviceClient.storage
+    .from(bucket)
+    .upload(storagePath, file.buffer, {
+      contentType: file.mimetype,
+      upsert: false,
+    });
+
+  if (uploadError) throw uploadError;
+
+  const row = {
+    evidence_id: evidenceId,
+    case_id: caseId,
+    uploader_user_id: userId,
+    uploader_tenant_id: tenantId,
+    uploader_context: 'vendor',
+    original_filename: file.originalname,
+    file_type: file.mimetype,
+    file_size: file.size,
+    file_extension: ext,
+    storage_bucket: bucket,
+    storage_path: storagePath,
+    evidence_type: 'file',
+  };
+
+  const { data: ins, error } = await serviceClient
+    .from('nexus_case_evidence')
+    .insert(row)
+    .select('*, uploader:nexus_users(user_id, display_name)')
+    .single();
+
+  if (error) throw error;
+
+  const downloadUrl = await getEvidenceDownloadUrl(storagePath);
+  return { evidence: { ...ins, download_url: downloadUrl }, evidenceId };
+}
+
+// ============================================================================
+// STATUS TRANSITIONS (CMP Phase C6.3)
+// ============================================================================
+
+/**
+ * Allowed status transitions (state machine)
+ * Key = current status, Value = array of allowed next statuses
+ */
+const STATUS_TRANSITIONS = {
+  open: ['in_progress'],
+  in_progress: ['resolved'],
+  resolved: ['closed'],
+  // Terminal states - no transitions allowed
+  closed: [],
+  cancelled: [],
+  // Read-only states (not part of C6.3 workflow)
+  draft: [],
+  pending_client: [],
+  pending_vendor: [],
+  escalated: [],
+};
+
+/**
+ * Human-readable action labels for each transition
+ */
+const TRANSITION_LABELS = {
+  in_progress: 'Mark In Progress',
+  resolved: 'Mark Resolved',
+  closed: 'Close Case',
+};
+
+/**
+ * Validate a status transition
+ * @param {string} fromStatus - Current status
+ * @param {string} toStatus - Desired status
+ * @returns {{ valid: boolean, error?: string }}
+ */
+function validateStatusTransition(fromStatus, toStatus) {
+  const allowed = STATUS_TRANSITIONS[fromStatus];
+
+  if (!allowed) {
+    return { valid: false, error: `Current status '${fromStatus}' is not recognized` };
+  }
+
+  if (allowed.length === 0) {
+    return { valid: false, error: `Cannot transition from '${fromStatus}' - case is in a terminal state` };
+  }
+
+  if (!allowed.includes(toStatus)) {
+    return {
+      valid: false,
+      error: `Invalid transition: '${fromStatus}' → '${toStatus}'. Allowed: ${allowed.join(', ')}`
+    };
+  }
+
+  return { valid: true };
+}
+
+/**
+ * Transition case status (client context)
+ * Creates system timeline event + optional note
+ * @param {object} data - { caseId, clientId, userId, tenantId, toStatus, note? }
+ * @returns {Promise<{ case: object, systemEvent: object, noteEvent?: object }>}
+ */
+async function transitionCaseStatusByClient(data) {
+  const { caseId, clientId, userId, tenantId, toStatus, note } = data;
+
+  // 1. Fetch case and verify ownership
+  const { data: caseData, error: fetchError } = await serviceClient
+    .from('nexus_cases')
+    .select('case_id, status, client_id')
+    .eq('case_id', caseId)
+    .eq('client_id', clientId)
+    .single();
+
+  if (fetchError || !caseData) {
+    throw new Error('Case not found or access denied');
+  }
+
+  const fromStatus = caseData.status;
+
+  // 2. Validate transition
+  const validation = validateStatusTransition(fromStatus, toStatus);
+  if (!validation.valid) {
+    throw new Error(validation.error);
+  }
+
+  // 3. Update case status
+  const updatePayload = {
+    status: toStatus,
+    updated_at: new Date().toISOString(),
+  };
+
+  // If resolving, set resolution timestamp
+  if (toStatus === 'resolved') {
+    updatePayload.resolved_at = new Date().toISOString();
+    updatePayload.resolved_by = userId;
+  }
+
+  // If closing, set closed timestamp
+  if (toStatus === 'closed') {
+    updatePayload.closed_at = new Date().toISOString();
+  }
+
+  const { data: updatedCase, error: updateError } = await serviceClient
+    .from('nexus_cases')
+    .update(updatePayload)
+    .eq('case_id', caseId)
+    .select('*')
+    .single();
+
+  if (updateError) {
+    throw new Error(`Failed to update case status: ${updateError.message}`);
+  }
+
+  // 4. Create system timeline event
+  const systemEventId = generateId('MSG');
+  const systemEvent = {
+    message_id: systemEventId,
+    case_id: caseId,
+    sender_user_id: userId,
+    sender_tenant_id: tenantId,
+    sender_context: 'system',
+    sender_context_id: clientId,
+    body: `Status changed: ${fromStatus} → ${toStatus}`,
+    message_type: 'status_change',
+    metadata: {
+      from_status: fromStatus,
+      to_status: toStatus,
+      changed_by_user_id: userId,
+      changed_by_tenant_id: tenantId,
+      changed_by_context: 'client',
+    },
+  };
+
+  const { data: systemEventResult, error: systemEventError } = await serviceClient
+    .from('nexus_case_messages')
+    .insert(systemEvent)
+    .select('*, sender:nexus_users(user_id, display_name, email)')
+    .single();
+
+  if (systemEventError) {
+    // Log but don't fail - status already updated
+    console.error('Failed to create system event:', systemEventError);
+  }
+
+  // 5. Create optional note if provided
+  let noteEventResult = null;
+  if (note && note.trim()) {
+    const noteEventId = generateId('MSG');
+    const noteEvent = {
+      message_id: noteEventId,
+      case_id: caseId,
+      sender_user_id: userId,
+      sender_tenant_id: tenantId,
+      sender_context: 'client',
+      sender_context_id: clientId,
+      body: note.trim(),
+      message_type: 'note',
+      metadata: {
+        transition_context: `${fromStatus} → ${toStatus}`,
+      },
+    };
+
+    const { data: noteResult, error: noteError } = await serviceClient
+      .from('nexus_case_messages')
+      .insert(noteEvent)
+      .select('*, sender:nexus_users(user_id, display_name, email)')
+      .single();
+
+    if (!noteError) {
+      noteEventResult = noteResult;
+    }
+  }
+
+  return {
+    case: updatedCase,
+    systemEvent: systemEventResult,
+    noteEvent: noteEventResult,
+    fromStatus,
+    toStatus,
+  };
+}
+
+/**
+ * Get available status transitions for a case
+ * @param {string} currentStatus - Current case status
+ * @returns {{ nextStatus: string, label: string }[]}
+ */
+function getAvailableTransitions(currentStatus) {
+  const allowed = STATUS_TRANSITIONS[currentStatus] || [];
+  return allowed.map(status => ({
+    nextStatus: status,
+    label: TRANSITION_LABELS[status] || status,
+  }));
+}
+
+// ============================================================================
+// INVOICE DECISION (Client MVP Patch)
+// ============================================================================
+
+/**
+ * Approve an invoice by client
+ * @param {object} params - { invoiceId, clientId, actorUserId }
+ * @returns {Promise<object>} Updated invoice
+ */
+async function approveInvoiceByClient({ invoiceId, clientId, actorUserId }) {
+  if (!invoiceId) throw new Error('approveInvoiceByClient: invoiceId required');
+  if (!clientId) throw new Error('approveInvoiceByClient: clientId required');
+
+  // Ensure invoice belongs to client
+  const invoice = await getInvoiceDetailByClient(clientId, invoiceId);
+  if (!invoice) throw new Error('Invoice not found for client');
+
+  // Idempotent: if already approved, just return
+  if (invoice.status === 'approved') return invoice;
+
+  const { data, error } = await serviceClient
+    .from('nexus_invoices')
+    .update({
+      status: 'approved',
+      approved_at: new Date().toISOString(),
+      approved_by: actorUserId || null,
+    })
+    .eq('invoice_id', invoiceId)
+    .eq('client_id', clientId)
+    .select('*')
+    .single();
+
+  if (error) throw new Error(`Failed to approve invoice: ${error.message}`);
+
+  return data;
+}
+
+/**
+ * Dispute an invoice and create a linked case
+ * @param {object} params - { invoiceId, clientId, actorUserId, subject, description }
+ * @returns {Promise<{ invoice: object, caseId: string }>}
+ */
+async function disputeInvoiceByClient({ invoiceId, clientId, actorUserId, subject, description }) {
+  if (!invoiceId) throw new Error('disputeInvoiceByClient: invoiceId required');
+  if (!clientId) throw new Error('disputeInvoiceByClient: clientId required');
+
+  const invoice = await getInvoiceDetailByClient(clientId, invoiceId);
+  if (!invoice) throw new Error('Invoice not found for client');
+
+  // If already linked to a case, return that relationship (MVP: avoid duplicate cases)
+  if (invoice.case_id) {
+    // Still mark as disputed if not already
+    if (invoice.status !== 'disputed') {
+      await serviceClient
+        .from('nexus_invoices')
+        .update({
+          status: 'disputed',
+          disputed_at: new Date().toISOString(),
+          disputed_by: actorUserId || null,
+        })
+        .eq('invoice_id', invoiceId)
+        .eq('client_id', clientId);
+    }
+    return { invoice: { ...invoice, status: 'disputed' }, caseId: invoice.case_id };
+  }
+
+  // Create a case using existing SSOT createCase()
+  const createdCase = await createCase({
+    clientId: invoice.client_id,
+    vendorId: invoice.vendor_id,
+    relationshipId: invoice.relationship_id || null,
+    subject: subject || `Invoice dispute: ${invoice.invoice_number || invoice.invoice_id}`,
+    description: description || 'Client raised an issue on this invoice.',
+    caseType: 'invoice_dispute',
+    priority: 'normal',
+    invoiceRef: invoice.invoice_id,
+    amountDisputed: invoice.total_amount || null,
+    currency: invoice.currency || 'USD',
+  });
+
+  const caseId = createdCase?.case_id || null;
+  if (!caseId) throw new Error('Failed to create dispute case (missing case id)');
+
+  // Link invoice -> case and set disputed status
+  const { data, error } = await serviceClient
+    .from('nexus_invoices')
+    .update({
+      status: 'disputed',
+      case_id: caseId,
+      disputed_at: new Date().toISOString(),
+      disputed_by: actorUserId || null,
+    })
+    .eq('invoice_id', invoiceId)
+    .eq('client_id', clientId)
+    .select('*')
+    .single();
+
+  if (error) throw new Error(`Failed to dispute invoice: ${error.message}`);
+
+  return { invoice: data, caseId };
+}
+
+// ============================================================================
 // EXPORTS
 // ============================================================================
 
@@ -1517,6 +2488,43 @@ export const nexusAdapter = {
   createRelationship,
   getTenantRelationships,
   getTenantContexts,
+
+  // Client-Perspective (CMP Phase C2)
+  getVendorsByClient,
+  getInvoicesByClient,
+  getPaymentsByClient,
+  getCasesByClient,
+
+  // Client-Perspective Detail (CMP Phase C5)
+  getInvoiceDetailByClient,
+  getPaymentDetailByClient,
+
+  // Client-Perspective Invoice Decision (MVP Patch)
+  approveInvoiceByClient,
+  disputeInvoiceByClient,
+
+  // Client-Perspective Case (CMP Phase C6)
+  getCaseDetailByClient,
+  createCaseNoteByClient,
+
+  // Client-Perspective Evidence (CMP Phase C6.2)
+  getCaseEvidenceByClient,
+  createCaseEvidenceByClient,
+  getEvidenceDownloadUrl,
+  EVIDENCE_CONSTRAINTS,
+
+  // Client-Perspective Status Transitions (CMP Phase C6.3)
+  transitionCaseStatusByClient,
+  getAvailableTransitions,
+  validateStatusTransition,
+  STATUS_TRANSITIONS,
+  TRANSITION_LABELS,
+
+  // Vendor-Perspective Case (CMP Phase C6.4)
+  getCaseDetailByVendor,
+  getCaseEvidenceByVendor,
+  createCaseNoteByVendor,
+  createCaseEvidenceByVendor,
 
   // Invite
   createRelationshipInvite,

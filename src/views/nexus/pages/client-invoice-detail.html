@@ -1,0 +1,278 @@
+{% extends "nexus/layout.html" %}
+
+{% block title %}Invoice {{ invoice.invoice_id }}{% endblock %}
+
+{% set activeNav = 'client' %}
+
+{% block content %}
+<div class="nexus-page client-invoice-detail">
+  <!-- Breadcrumb -->
+  <nav class="nexus-breadcrumb">
+    <a href="/nexus/client">Dashboard</a>
+    <span class="nexus-breadcrumb-sep">→</span>
+    <a href="/nexus/client/invoices">AP Queue</a>
+    <span class="nexus-breadcrumb-sep">→</span>
+    <span class="nexus-breadcrumb-current">{{ invoice.invoice_id }}</span>
+  </nav>
+
+  <!-- Success Toast (top placement for immediate visibility) -->
+  {% if query.ok == 'approved' %}
+  <div class="nexus-toast success" role="alert">
+    ✅ Invoice approved successfully
+  </div>
+  {% elif query.ok == 'disputed' %}
+  <div class="nexus-toast warning" role="alert">
+    🚨 Invoice disputed - case created
+  </div>
+  {% endif %}
+
+  <!-- Document Header -->
+  <header class="nexus-document-header">
+    <div class="nexus-document-header-top">
+      <span class="nexus-context-badge client">◀ Client Mode</span>
+      <span class="nexus-badge {{ invoice.status }}">{{ invoice.status }}</span>
+    </div>
+    <div class="nexus-document-header-main">
+      <div class="nexus-document-identity">
+        <h1 class="nexus-document-id">{{ invoice.invoice_id }}</h1>
+        {% if invoice.invoice_number %}
+        <span class="nexus-document-ref">Ref: {{ invoice.invoice_number }}</span>
+        {% endif %}
+      </div>
+      <div class="nexus-document-vendor">
+        <span class="nexus-document-vendor-label">From</span>
+        <span class="nexus-document-vendor-name">
+          {{ invoice.vendor_tenant.display_name or invoice.vendor_tenant.name or invoice.vendor_id }}
+        </span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Financial Summary -->
+  <section class="nexus-document-summary">
+    <div class="nexus-document-amounts">
+      <div class="nexus-document-amount-item">
+        <span class="nexus-document-amount-label">Total Amount</span>
+        <span class="nexus-document-amount-value">${{ invoice.total_amount | round(2) }}</span>
+      </div>
+      <div class="nexus-document-amount-item">
+        <span class="nexus-document-amount-label">Amount Paid</span>
+        <span class="nexus-document-amount-value paid">${{ invoice.amount_paid | round(2) }}</span>
+      </div>
+      <div class="nexus-document-amount-item primary">
+        <span class="nexus-document-amount-label">Outstanding</span>
+        <span class="nexus-document-amount-value {% if invoice.amount_outstanding > 0 %}outstanding{% endif %}">
+          ${{ invoice.amount_outstanding | round(2) }}
+        </span>
+      </div>
+    </div>
+    <div class="nexus-document-dates">
+      <div class="nexus-document-date-item">
+        <span class="nexus-document-date-label">Invoice Date</span>
+        <span class="nexus-document-date-value">{{ invoice.invoice_date }}</span>
+      </div>
+      <div class="nexus-document-date-item {% if invoice.status == 'overdue' %}overdue{% endif %}">
+        <span class="nexus-document-date-label">Due Date</span>
+        <span class="nexus-document-date-value">{{ invoice.due_date }}</span>
+        {% if invoice.status == 'overdue' %}
+        <span class="nexus-overdue-indicator">⚠ OVERDUE</span>
+        {% endif %}
+      </div>
+    </div>
+  </section>
+
+  <!-- Line Items -->
+  <section class="nexus-document-section">
+    <h2>Line Items</h2>
+    {% if lineItems.length > 0 %}
+    <div class="nexus-table-container">
+      <table class="nexus-table">
+        <thead>
+          <tr>
+            <th>Description</th>
+            <th class="text-right">Qty</th>
+            <th class="text-right">Unit Price</th>
+            <th class="text-right">Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in lineItems %}
+          <tr>
+            <td>{{ item.description or '—' }}</td>
+            <td class="text-right">{{ item.quantity or 1 }}</td>
+            <td class="text-right">${{ (item.unit_price or 0) | round(2) }}</td>
+            <td class="text-right">${{ (item.line_total or item.amount or 0) | round(2) }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+        <tfoot>
+          {% if invoice.subtotal %}
+          <tr>
+            <td colspan="3" class="text-right"><strong>Subtotal</strong></td>
+            <td class="text-right">${{ invoice.subtotal | round(2) }}</td>
+          </tr>
+          {% endif %}
+          {% if invoice.tax_amount and invoice.tax_amount > 0 %}
+          <tr>
+            <td colspan="3" class="text-right">Tax</td>
+            <td class="text-right">${{ invoice.tax_amount | round(2) }}</td>
+          </tr>
+          {% endif %}
+          {% if invoice.discount_amount and invoice.discount_amount > 0 %}
+          <tr>
+            <td colspan="3" class="text-right">Discount</td>
+            <td class="text-right">-${{ invoice.discount_amount | round(2) }}</td>
+          </tr>
+          {% endif %}
+          <tr class="nexus-table-total">
+            <td colspan="3" class="text-right"><strong>Total</strong></td>
+            <td class="text-right"><strong>${{ invoice.total_amount | round(2) }}</strong></td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+    {% else %}
+    <div class="nexus-empty-state-inline">
+      <p>No line items recorded for this invoice.</p>
+    </div>
+    {% endif %}
+  </section>
+
+  <!-- Payment References -->
+  <section class="nexus-document-section">
+    <h2>Payments</h2>
+    {% if payments.length > 0 %}
+    <div class="nexus-table-container">
+      <table class="nexus-table">
+        <thead>
+          <tr>
+            <th>Payment ID</th>
+            <th>Amount</th>
+            <th>Method</th>
+            <th>Date</th>
+            <th>Status</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for pmt in payments %}
+          <tr>
+            <td>
+              <span class="nexus-cell-id">{{ pmt.payment_id }}</span>
+            </td>
+            <td>
+              <span class="nexus-cell-amount">${{ pmt.amount | round(2) }}</span>
+            </td>
+            <td>{{ pmt.payment_method or '—' }}</td>
+            <td>{{ pmt.payment_date or pmt.created_at | truncate(10, true, '') }}</td>
+            <td>
+              <span class="nexus-badge {{ pmt.status }}">{{ pmt.status }}</span>
+            </td>
+            <td>
+              <a href="/nexus/client/payments/{{ pmt.payment_id }}" class="nexus-btn small secondary">
+                View →
+              </a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="nexus-empty-state-inline">
+      <p>No payments recorded for this invoice yet.</p>
+    </div>
+    {% endif %}
+  </section>
+
+  <!-- Status History -->
+  <section class="nexus-document-section">
+    <h2>Status History</h2>
+    <div class="nexus-status-timeline">
+      {% for entry in statusHistory %}
+      <div class="nexus-timeline-item">
+        <span class="nexus-timeline-dot {{ entry.status }}"></span>
+        <div class="nexus-timeline-content">
+          <span class="nexus-timeline-status">{{ entry.status | capitalize }}</span>
+          <span class="nexus-timeline-date">{{ entry.timestamp | truncate(19, true, '') }}</span>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+
+  <!-- Notes/Description -->
+  {% if invoice.description or invoice.notes %}
+  <section class="nexus-document-section">
+    <h2>Notes</h2>
+    <div class="nexus-document-notes">
+      {% if invoice.description %}
+      <p>{{ invoice.description }}</p>
+      {% endif %}
+      {% if invoice.notes %}
+      <p class="nexus-document-notes-secondary">{{ invoice.notes }}</p>
+      {% endif %}
+    </div>
+  </section>
+  {% endif %}
+
+  <!-- Navigation + Decision Actions -->
+  <section class="nexus-document-actions">
+    <a href="/nexus/client/invoices" class="nexus-btn secondary">
+      ← Back to AP Queue
+    </a>
+    <a href="/nexus/client/payments" class="nexus-btn secondary">
+      💳 View All Payments
+    </a>
+
+    {% if invoice.status not in ['approved', 'paid', 'cancelled', 'written_off'] %}
+    <!-- Invoice Decision Block (MVP) -->
+    <div class="nexus-invoice-decision">
+      <!-- Approve Button -->
+      <form method="POST" action="/nexus/client/invoices/{{ invoice.invoice_id }}/approve" style="display:inline;">
+        <button class="nexus-btn primary" type="submit">
+          ✅ Approve
+        </button>
+      </form>
+
+      <!-- Raise Issue (Dispute) -->
+      {% if invoice.status != 'disputed' %}
+      <details class="nexus-dispute-details" style="display:inline-block; margin-left:8px;">
+        <summary class="nexus-btn danger" role="button" aria-label="Raise issue (dispute invoice)">
+          🚨 Raise Issue
+        </summary>
+
+        <form method="POST" action="/nexus/client/invoices/{{ invoice.invoice_id }}/dispute" class="nexus-dispute-form">
+          <label class="nexus-label">
+            Subject
+            <input name="subject" class="nexus-input" placeholder="e.g., Pricing mismatch / Missing PO / Quantity variance" required />
+          </label>
+
+          <label class="nexus-label" style="margin-top:8px;">
+            Description
+            <textarea name="description" class="nexus-textarea" rows="4" placeholder="Describe the issue and what you need from the vendor." required></textarea>
+          </label>
+
+          <div style="margin-top:10px; display:flex; gap:8px;">
+            <button class="nexus-btn danger" type="submit">Submit Dispute</button>
+            <button class="nexus-btn muted" type="button" onclick="this.closest('details').removeAttribute('open')">Cancel</button>
+          </div>
+        </form>
+      </details>
+      {% else %}
+      <a href="/nexus/client/cases/{{ invoice.case_id }}" class="nexus-btn warning">
+        📋 View Dispute Case
+      </a>
+      {% endif %}
+    </div>
+    {% elif invoice.status == 'approved' %}
+    <span class="nexus-badge approved" style="margin-left:8px;">✅ Approved</span>
+    {% elif invoice.status == 'disputed' %}
+    <a href="/nexus/client/cases/{{ invoice.case_id }}" class="nexus-btn warning">
+      📋 View Dispute Case
+    </a>
+    {% endif %}
+  </section>
+
+</div>
+{% endblock %}

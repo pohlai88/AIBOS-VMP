@@ -1,0 +1,263 @@
+{% extends "nexus/layout.html" %}
+
+{% block title %}Client Command Center{% endblock %}
+
+{% set activeNav = 'client' %}
+
+{% block content %}
+<div class="nexus-page client-dashboard">
+  <!-- Header with Client Mode Badge -->
+  <header class="nexus-page-header">
+    <div class="nexus-page-header-top">
+      <span class="nexus-context-badge client">◀ Client Mode</span>
+    </div>
+    <h1>Client Command Center</h1>
+    <p>Accounts Payable & Vendor Oversight</p>
+  </header>
+
+  <!-- AP Exposure Hero -->
+  <section class="nexus-hero-section ap-exposure">
+    <h2 class="nexus-section-title">AP Exposure</h2>
+    <div class="nexus-hero-stats">
+      <div class="nexus-hero-stat primary">
+        <span class="nexus-hero-value">${{ metrics.invoices.totalOutstanding | round(2) }}</span>
+        <span class="nexus-hero-label">Total Outstanding</span>
+      </div>
+      {% if metrics.invoices.overdue > 0 %}
+      <div class="nexus-hero-stat danger">
+        <span class="nexus-hero-value">{{ metrics.invoices.overdue }}</span>
+        <span class="nexus-hero-label">Overdue Invoices</span>
+      </div>
+      {% endif %}
+      {% if metrics.invoices.disputed > 0 %}
+      <div class="nexus-hero-stat warning">
+        <span class="nexus-hero-value">{{ metrics.invoices.disputed }}</span>
+        <span class="nexus-hero-label">Disputed</span>
+      </div>
+      {% endif %}
+    </div>
+  </section>
+
+  <!-- KPI Grid -->
+  <section class="nexus-kpi-grid">
+    <!-- Vendors Card -->
+    <div class="nexus-dashboard-card">
+      <div class="nexus-dashboard-card-header">
+        <h3>🏢 Vendors</h3>
+        <a href="/nexus/client/vendors" class="nexus-link-subtle">View All →</a>
+      </div>
+      <div class="nexus-dashboard-card-stats">
+        <div class="nexus-stat">
+          <span class="nexus-stat-value">{{ metrics.vendors.total }}</span>
+          <span class="nexus-stat-label">Total</span>
+        </div>
+        <div class="nexus-stat">
+          <span class="nexus-stat-value">{{ metrics.vendors.active }}</span>
+          <span class="nexus-stat-label">Active</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Invoices Card -->
+    <div class="nexus-dashboard-card {% if metrics.invoices.overdue > 0 %}has-alert{% endif %}">
+      <div class="nexus-dashboard-card-header">
+        <h3>📄 Invoices</h3>
+        <a href="/nexus/client/invoices" class="nexus-link-subtle">View All →</a>
+      </div>
+      <div class="nexus-dashboard-card-stats">
+        <div class="nexus-stat">
+          <span class="nexus-stat-value">{{ metrics.invoices.pending }}</span>
+          <span class="nexus-stat-label">Pending</span>
+        </div>
+        <div class="nexus-stat {% if metrics.invoices.overdue > 0 %}danger{% endif %}">
+          <span class="nexus-stat-value">{{ metrics.invoices.overdue }}</span>
+          <span class="nexus-stat-label">Overdue</span>
+        </div>
+        <div class="nexus-stat {% if metrics.invoices.disputed > 0 %}warning{% endif %}">
+          <span class="nexus-stat-value">{{ metrics.invoices.disputed }}</span>
+          <span class="nexus-stat-label">Disputed</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Payments Card -->
+    <div class="nexus-dashboard-card">
+      <div class="nexus-dashboard-card-header">
+        <h3>💳 Payments</h3>
+        <a href="/nexus/client/payments" class="nexus-link-subtle">View All →</a>
+      </div>
+      <div class="nexus-dashboard-card-stats">
+        <div class="nexus-stat">
+          <span class="nexus-stat-value">{{ metrics.payments.pending }}</span>
+          <span class="nexus-stat-label">Pending</span>
+        </div>
+        <div class="nexus-stat">
+          <span class="nexus-stat-value">{{ metrics.payments.processing }}</span>
+          <span class="nexus-stat-label">Processing</span>
+        </div>
+        <div class="nexus-stat success">
+          <span class="nexus-stat-value">{{ metrics.payments.completed }}</span>
+          <span class="nexus-stat-label">Completed</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Cases Card -->
+    <div class="nexus-dashboard-card {% if metrics.cases.escalated > 0 %}has-alert{% endif %}">
+      <div class="nexus-dashboard-card-header">
+        <h3>📋 Cases</h3>
+        <a href="/nexus/client/cases" class="nexus-link-subtle">View All →</a>
+      </div>
+      <div class="nexus-dashboard-card-stats">
+        <div class="nexus-stat">
+          <span class="nexus-stat-value">{{ metrics.cases.open }}</span>
+          <span class="nexus-stat-label">Open</span>
+        </div>
+        <div class="nexus-stat">
+          <span class="nexus-stat-value">{{ metrics.cases.inProgress }}</span>
+          <span class="nexus-stat-label">In Progress</span>
+        </div>
+        <div class="nexus-stat {% if metrics.cases.escalated > 0 %}danger{% endif %}">
+          <span class="nexus-stat-value">{{ metrics.cases.escalated }}</span>
+          <span class="nexus-stat-label">Escalated</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Urgent Attention Strip -->
+  {% if metrics.invoices.overdue > 0 or metrics.invoices.disputed > 0 or metrics.cases.escalated > 0 %}
+  <section class="nexus-attention-strip">
+    <h2 class="nexus-section-title">⚠️ Needs Attention</h2>
+    <div class="nexus-attention-items">
+      {% if metrics.invoices.overdue > 0 %}
+      <a href="/nexus/client/invoices?status=overdue" class="nexus-attention-item danger">
+        <span class="nexus-attention-count">{{ metrics.invoices.overdue }}</span>
+        <span class="nexus-attention-label">Overdue Invoices</span>
+      </a>
+      {% endif %}
+      {% if metrics.invoices.disputed > 0 %}
+      <a href="/nexus/client/invoices?status=disputed" class="nexus-attention-item warning">
+        <span class="nexus-attention-count">{{ metrics.invoices.disputed }}</span>
+        <span class="nexus-attention-label">Disputed Invoices</span>
+      </a>
+      {% endif %}
+      {% if metrics.cases.escalated > 0 %}
+      <a href="/nexus/client/cases?priority=urgent" class="nexus-attention-item danger">
+        <span class="nexus-attention-count">{{ metrics.cases.escalated }}</span>
+        <span class="nexus-attention-label">Escalated Cases</span>
+      </a>
+      {% endif %}
+    </div>
+  </section>
+  {% endif %}
+
+  <!-- Recent Activity -->
+  <section class="nexus-recent-activity">
+    <h2 class="nexus-section-title">Recent Activity</h2>
+    <div class="nexus-recent-grid">
+
+      <!-- Recent Invoices -->
+      <div class="nexus-recent-section">
+        <div class="nexus-recent-header">
+          <h3>📄 Recent Invoices</h3>
+          <a href="/nexus/client/invoices" class="nexus-link-subtle">View All →</a>
+        </div>
+        {% if recent.invoices.length > 0 %}
+        <ul class="nexus-recent-list">
+          {% for inv in recent.invoices %}
+          <li class="nexus-recent-item">
+            <div class="nexus-recent-item-main">
+              <span class="nexus-recent-item-id">{{ inv.invoice_id }}</span>
+              <span class="nexus-recent-item-vendor">{{ inv.vendor_tenant.display_name or inv.vendor_tenant.name or inv.vendor_id }}</span>
+            </div>
+            <div class="nexus-recent-item-meta">
+              <span class="nexus-badge {{ inv.status }}">{{ inv.status }}</span>
+              <span class="nexus-recent-item-amount">${{ inv.amount_outstanding | round(2) }}</span>
+            </div>
+          </li>
+          {% endfor %}
+        </ul>
+        {% else %}
+        <p class="nexus-empty-state">No invoices yet</p>
+        {% endif %}
+      </div>
+
+      <!-- Recent Payments -->
+      <div class="nexus-recent-section">
+        <div class="nexus-recent-header">
+          <h3>💳 Recent Payments</h3>
+          <a href="/nexus/client/payments" class="nexus-link-subtle">View All →</a>
+        </div>
+        {% if recent.payments.length > 0 %}
+        <ul class="nexus-recent-list">
+          {% for pmt in recent.payments %}
+          <li class="nexus-recent-item">
+            <div class="nexus-recent-item-main">
+              <span class="nexus-recent-item-id">{{ pmt.payment_id }}</span>
+              <span class="nexus-recent-item-vendor">{{ pmt.to_tenant.display_name or pmt.to_tenant.name or pmt.to_id }}</span>
+            </div>
+            <div class="nexus-recent-item-meta">
+              <span class="nexus-badge {{ pmt.status }}">{{ pmt.status }}</span>
+              <span class="nexus-recent-item-amount">${{ pmt.amount | round(2) }}</span>
+            </div>
+          </li>
+          {% endfor %}
+        </ul>
+        {% else %}
+        <p class="nexus-empty-state">No payments yet</p>
+        {% endif %}
+      </div>
+
+      <!-- Recent Cases -->
+      <div class="nexus-recent-section">
+        <div class="nexus-recent-header">
+          <h3>📋 Recent Cases</h3>
+          <a href="/nexus/client/cases" class="nexus-link-subtle">View All →</a>
+        </div>
+        {% if recent.cases.length > 0 %}
+        <ul class="nexus-recent-list">
+          {% for c in recent.cases %}
+          <li class="nexus-recent-item">
+            <div class="nexus-recent-item-main">
+              <span class="nexus-recent-item-id">{{ c.case_id }}</span>
+              <span class="nexus-recent-item-title">{{ c.title | truncate(30) }}</span>
+            </div>
+            <div class="nexus-recent-item-meta">
+              <span class="nexus-badge {{ c.status }}">{{ c.status | replace('_', ' ') }}</span>
+              {% if c.priority == 'urgent' or c.priority == 'critical' %}
+              <span class="nexus-badge danger">{{ c.priority }}</span>
+              {% endif %}
+            </div>
+          </li>
+          {% endfor %}
+        </ul>
+        {% else %}
+        <p class="nexus-empty-state">No cases yet</p>
+        {% endif %}
+      </div>
+
+    </div>
+  </section>
+
+  <!-- Quick Actions -->
+  <section class="nexus-quick-actions">
+    <h3>Quick Actions</h3>
+    <div class="nexus-quick-action-buttons">
+      <a href="/nexus/client/vendors" class="nexus-btn secondary">
+        🏢 Vendor Directory
+      </a>
+      <a href="/nexus/client/invoices" class="nexus-btn secondary">
+        📄 AP Queue
+      </a>
+      <a href="/nexus/client/payments" class="nexus-btn secondary">
+        💳 Payment Outbox
+      </a>
+      <a href="/nexus/client/cases" class="nexus-btn secondary">
+        📋 Issue Tracker
+      </a>
+    </div>
+  </section>
+
+</div>
+{% endblock %}

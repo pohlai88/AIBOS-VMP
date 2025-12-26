@@ -2,9 +2,9 @@
 
 > **Positioning:** Platform Spine + Tenant Orchestrator + ERP Ecosystem Gateway
 
-**Document Status:** SSOT Architecture Document  
-**Last Updated:** 2025-12-26  
-**Version:** v0.1.0  
+**Document Status:** SSOT Architecture Document
+**Last Updated:** 2025-12-26
+**Version:** v0.1.0
 **Scope:** Super Admin, Global Configuration, Multi-Canon Integration
 
 ---
@@ -120,15 +120,15 @@ CREATE TABLE nexus_feature_flags (
     id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     flag_key        TEXT UNIQUE NOT NULL,
     enabled         BOOLEAN DEFAULT false,
-    
+
     -- Targeting
     scope           TEXT DEFAULT 'global',  -- global | tenant | user
     tenant_ids      TEXT[],                 -- If scope = tenant
     user_ids        TEXT[],                 -- If scope = user
-    
+
     -- Rollout
     rollout_percent INTEGER DEFAULT 100,    -- Gradual rollout
-    
+
     -- Metadata
     description     TEXT,
     created_at      TIMESTAMPTZ DEFAULT now(),
@@ -148,25 +148,25 @@ CREATE TABLE nexus_feature_flags (
 -- nexus_integration_registry
 CREATE TABLE nexus_integration_registry (
     id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    
+
     -- Integration identity
     integration_key TEXT UNIQUE NOT NULL,   -- e.g., "erp.autocount", "erp.sap"
     display_name    TEXT NOT NULL,
     category        TEXT NOT NULL,          -- erp | payment | notification | storage
-    
+
     -- Connection config (encrypted)
     config          JSONB NOT NULL,         -- {base_url, api_version, ...}
     credentials     JSONB,                  -- Encrypted: {api_key, secret, ...}
-    
+
     -- Status
     status          TEXT DEFAULT 'inactive',-- inactive | active | error
     last_health_check TIMESTAMPTZ,
     health_status   TEXT,                   -- healthy | degraded | down
-    
+
     -- Tenant assignment
     scope           TEXT DEFAULT 'global',  -- global | tenant-specific
     tenant_ids      TEXT[],                 -- Which tenants use this
-    
+
     -- Metadata
     created_at      TIMESTAMPTZ DEFAULT now(),
     updated_at      TIMESTAMPTZ DEFAULT now()
@@ -186,12 +186,12 @@ CREATE TABLE nexus_integration_registry (
 -- nexus_workflow_templates
 CREATE TABLE nexus_workflow_templates (
     id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    
+
     -- Identity
     template_key    TEXT UNIQUE NOT NULL,
     display_name    TEXT NOT NULL,
     category        TEXT NOT NULL,          -- invoice | payment | onboarding | document
-    
+
     -- Definition (JSONB workflow DSL)
     definition      JSONB NOT NULL,
     /*
@@ -209,11 +209,11 @@ CREATE TABLE nexus_workflow_templates (
       }
     }
     */
-    
+
     -- Versioning
     version         INTEGER DEFAULT 1,
     is_active       BOOLEAN DEFAULT true,
-    
+
     -- Metadata
     created_at      TIMESTAMPTZ DEFAULT now(),
     updated_at      TIMESTAMPTZ DEFAULT now()
@@ -226,24 +226,24 @@ CREATE TABLE nexus_workflow_templates (
 -- nexus_super_admins (Platform-level admins, NOT tenant users)
 CREATE TABLE nexus_super_admins (
     id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    
+
     -- Identity
     admin_id        TEXT UNIQUE NOT NULL,   -- SADM-XXXXXXXX
     email           TEXT UNIQUE NOT NULL,
     password_hash   TEXT NOT NULL,
-    
+
     -- Profile
     display_name    TEXT NOT NULL,
     phone           TEXT,
-    
+
     -- Permissions
     permissions     TEXT[] DEFAULT ARRAY['read'],
     -- Possible: read, write, tenant_manage, integration_manage, super
-    
+
     -- Status
     status          TEXT DEFAULT 'active',
     last_login_at   TIMESTAMPTZ,
-    
+
     -- Audit
     created_at      TIMESTAMPTZ DEFAULT now(),
     created_by      UUID
@@ -344,7 +344,7 @@ interface InvoicePort {
   // Inbound (ERP → Nexus)
   getOpenInvoices(vendorId: string): Promise<Invoice[]>;
   getInvoiceDetail(invoiceId: string): Promise<Invoice>;
-  
+
   // Outbound (Nexus → ERP)
   syncInvoiceStatus(invoiceId: string, status: string): Promise<void>;
   createInvoice(invoice: Invoice): Promise<string>;
@@ -355,7 +355,7 @@ interface PaymentPort {
   // Inbound
   getPaymentHistory(vendorId: string): Promise<Payment[]>;
   getPaymentDetail(paymentId: string): Promise<Payment>;
-  
+
   // Outbound
   schedulePayment(payment: Payment): Promise<string>;
   cancelPayment(paymentId: string): Promise<void>;
@@ -367,7 +367,7 @@ interface VendorPort {
   // Inbound
   getVendorMaster(vendorId: string): Promise<VendorMaster>;
   searchVendors(query: string): Promise<VendorMaster[]>;
-  
+
   // Outbound
   createVendor(vendor: VendorMaster): Promise<string>;
   updateVendor(vendorId: string, updates: Partial<VendorMaster>): Promise<void>;
@@ -430,11 +430,11 @@ class AIBOSFinanceAdapter {
       },
       body: body ? JSON.stringify(body) : null,
     });
-    
+
     if (!response.ok) {
       throw new IntegrationError(`AIBOS Finance: ${response.statusText}`);
     }
-    
+
     return response.json();
   }
 
@@ -543,21 +543,21 @@ permissions:
     - View all dashboards
     - View tenant list
     - View audit logs
-  
+
   write:
     - Update configurations
     - Manage feature flags
     - Edit workflow templates
-  
+
   tenant_manage:
     - Create/suspend tenants
     - Impersonate users (for support)
-  
+
   integration_manage:
     - Register integrations
     - Rotate credentials
     - View sensitive configs
-  
+
   super:
     - Manage super admins
     - Access all functions
@@ -682,6 +682,6 @@ ALTER TABLE nexus_tenants ADD COLUMN
 
 ---
 
-**Document Status:** SSOT Architecture Document  
-**Last Updated:** 2025-12-26  
+**Document Status:** SSOT Architecture Document
+**Last Updated:** 2025-12-26
 **Version:** v0.1.0

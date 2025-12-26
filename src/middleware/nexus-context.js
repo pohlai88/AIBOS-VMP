@@ -124,35 +124,94 @@ export function requireNexusRole(...roles) {
 
 /**
  * Require active context to be set
+ *
+ * Usage patterns:
+ *   - requireNexusContext - auto-selects context (legacy/portal)
+ *   - requireNexusContext('client') - requires client context (TC-*)
+ *   - requireNexusContext('vendor') - requires vendor context (TV-*)
+ *
  * Redirects to Role Dashboard if dual-context tenant hasn't selected
  */
-export function requireNexusContext(req, res, next) {
-  if (!req.nexus?.user) {
-    return res.status(401).json({ error: 'Authentication required' });
+export function requireNexusContext(requiredContext) {
+  // Support both factory and direct middleware patterns
+  // If called with req/res/next directly (legacy), treat as no required context
+  if (requiredContext && typeof requiredContext === 'object' && requiredContext.nexus !== undefined) {
+    // Called as direct middleware: requireNexusContext(req, res, next)
+    return requireNexusContextMiddleware(null)(requiredContext, arguments[1], arguments[2]);
   }
 
-  // If dual-context and no active context, redirect to role dashboard
-  if (req.nexus.hasDualContext && !req.nexus.activeContext) {
-    if (req.xhr || req.headers.accept?.includes('application/json')) {
-      return res.status(400).json({ error: 'Context selection required', redirect: '/nexus/portal' });
+  // Called as factory: requireNexusContext('client') or requireNexusContext()
+  return requireNexusContextMiddleware(requiredContext);
+}
+
+/**
+ * Internal middleware factory for context requirement
+ */
+function requireNexusContextMiddleware(requiredContext) {
+  return (req, res, next) => {
+    if (!req.nexus?.user) {
+      if (req.xhr || req.headers.accept?.includes('application/json')) {
+        return res.status(401).json({ error: 'Authentication required' });
+      }
+      return res.redirect('/nexus/login');
     }
-    return res.redirect('/nexus/portal');
-  }
 
-  // Single context tenants auto-select
-  if (!req.nexus.activeContext) {
-    if (req.nexus.contexts.hasVendorContext) {
-      req.nexus.activeContext = 'vendor';
-      req.nexus.activeContextId = req.nexus.tenantVendorId;
-      req.nexus.facing = 'up';
-    } else {
-      req.nexus.activeContext = 'client';
-      req.nexus.activeContextId = req.nexus.tenantClientId;
-      req.nexus.facing = 'down';
+    // If dual-context and no active context, redirect to role dashboard
+    if (req.nexus.hasDualContext && !req.nexus.activeContext) {
+      if (req.xhr || req.headers.accept?.includes('application/json')) {
+        return res.status(400).json({ error: 'Context selection required', redirect: '/nexus/portal' });
+      }
+      return res.redirect('/nexus/portal');
     }
-  }
 
-  next();
+    // Single context tenants auto-select
+    if (!req.nexus.activeContext) {
+      if (req.nexus.contexts.hasVendorContext) {
+        req.nexus.activeContext = 'vendor';
+        req.nexus.activeContextId = req.nexus.tenantVendorId;
+        req.nexus.facing = 'up';
+      } else {
+        req.nexus.activeContext = 'client';
+        req.nexus.activeContextId = req.nexus.tenantClientId;
+        req.nexus.facing = 'down';
+      }
+    }
+
+    // Enforce required context if specified
+    if (requiredContext) {
+      const hasRequiredContext = requiredContext === 'client'
+        ? req.nexus.contexts?.hasClientContext
+        : req.nexus.contexts?.hasVendorContext;
+
+      if (!hasRequiredContext) {
+        if (req.xhr || req.headers.accept?.includes('application/json')) {
+          return res.status(403).json({
+            error: `${requiredContext} context required`,
+            message: `You do not have ${requiredContext} access`
+          });
+        }
+        return res.status(403).render('nexus/pages/error.html', {
+          error: {
+            status: 403,
+            message: `Access denied. You do not have ${requiredContext} privileges.`
+          }
+        });
+      }
+
+      // Force the required context as active
+      if (requiredContext === 'client') {
+        req.nexus.activeContext = 'client';
+        req.nexus.activeContextId = req.nexus.tenantClientId;
+        req.nexus.facing = 'down';
+      } else if (requiredContext === 'vendor') {
+        req.nexus.activeContext = 'vendor';
+        req.nexus.activeContextId = req.nexus.tenantVendorId;
+        req.nexus.facing = 'up';
+      }
+    }
+
+    next();
+  };
 }
 
 // ============================================================================

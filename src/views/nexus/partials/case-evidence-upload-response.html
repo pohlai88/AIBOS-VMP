@@ -1,0 +1,20 @@
+{#
+  Case Evidence Upload Response - HTMX response for successful upload
+  Combines:
+    1. Timeline item (appended to #case-timeline)
+    2. Evidence item (OOB swap to prepend to #evidence-list)
+  Variables: timelineItem, evidenceItem
+#}
+
+{# Timeline item - appended to #case-timeline via hx-target #}
+{% include "nexus/partials/case-timeline-item.html" with { item: timelineItem } %}
+
+{# Evidence item - OOB prepend to sidebar list #}
+<ul id="evidence-list" hx-swap-oob="afterbegin">
+  {% include "nexus/partials/case-evidence-item.html" %}
+</ul>
+
+{# Clear the file input and show success indicator #}
+<div id="evidence-upload-status" hx-swap-oob="innerHTML" class="nexus-upload-success">
+  ✓ Uploaded
+</div>
