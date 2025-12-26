@@ -3881,3 +3881,110 @@
 .nexus-match-action[open] summary {
   margin-bottom: 8px;
 }
+/* ============================================================================
+   C8.3 NOTIFICATIONS - List Styling
+   ============================================================================ */
+
+.nexus-notification-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.nexus-notification-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 16px;
+  background: var(--nexus-surface);
+  border: 1px solid var(--nexus-border);
+  border-radius: 8px;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.nexus-notification-item.unread {
+  background: rgba(59, 130, 246, 0.05);
+  border-color: rgba(59, 130, 246, 0.2);
+}
+
+.nexus-notification-item:hover {
+  border-color: var(--nexus-primary);
+}
+
+.nexus-notification-icon {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--nexus-bg);
+  font-size: 20px;
+}
+
+.nexus-notification-icon .icon.approved {
+  color: #22c55e;
+}
+
+.nexus-notification-icon .icon.disputed {
+  color: #ef4444;
+}
+
+.nexus-notification-icon .icon.case {
+  color: #f59e0b;
+}
+
+.nexus-notification-icon .icon.payment {
+  color: #3b82f6;
+}
+
+.nexus-notification-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.nexus-notification-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--nexus-text);
+  margin: 0 0 4px 0;
+}
+
+.nexus-notification-body {
+  font-size: 14px;
+  color: var(--nexus-text-muted);
+  margin: 0 0 8px 0;
+  line-height: 1.4;
+}
+
+.nexus-notification-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.nexus-notification-time {
+  color: var(--nexus-text-dim);
+}
+
+.nexus-notification-action {
+  flex-shrink: 0;
+  align-self: center;
+}
+
+.nexus-notification-more {
+  text-align: center;
+  padding: 16px 0;
+}
+
+.nexus-badge.high {
+  background: #f59e0b;
+  color: white;
+}
+
+.nexus-badge.critical {
+  background: #dc2626;
+  color: white;
+}

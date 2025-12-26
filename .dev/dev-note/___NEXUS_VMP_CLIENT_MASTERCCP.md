@@ -1,9 +1,9 @@
 # NEXUS CLIENT PORTAL - MASTER PLAN CCP
 
-**Version:** 1.5
+**Version:** 1.6
 **Created:** 2025-12-26
 **Updated:** 2025-12-26
-**Status:** ✅ MVP COMPLETE - C8.2 Matching Pilot Implemented
+**Status:** ✅ C8 COMPLETE - Notifications (C8.3) Shipped
 **Companion:** `___NEXUS_VMP_VENDOR_MASTERCCP.md` (Vendor-facing, Phase 12 Complete)
 
 ---
@@ -667,6 +667,42 @@ migrations/
 - ✅ Adapter Discipline (all data via nexus-adapter.js)
 - ✅ C8.1 Invoice Inbox (tabs, filters, pagination)
 - ✅ C8.2 Matching Pilot (feature-flagged)
+- ✅ C8.3 Notifications (minimal, adapter-driven)
+
+---
+
+## C8.3 Notifications - Implementation Details
+
+**Trigger Points:**
+| Event | Trigger Location | Notification Type |
+|-------|------------------|-------------------|
+| Invoice approved | `approveInvoiceByClient()` | `invoice_approved` |
+| Invoice disputed | `disputeInvoiceByClient()` | `invoice_disputed` |
+| Mismatch → case | Same dispute endpoint | `invoice_disputed` |
+
+**Idempotency:**
+- Approval: Fires only if status changes (idempotent check in adapter)
+- Dispute: Fires only for NEW case creation; re-disputes with existing case → no notification
+
+**Notification Scope:**
+- Each decision creates 2 notifications: one for `client`, one for `vendor`
+- `context_id` = TC-* (client) or TV-* (vendor)
+- `action_url` links to appropriate context portal
+
+**Adapter Functions:**
+| Function | Purpose |
+|----------|--------|
+| `getNotificationsByClient(clientId, opts)` | Client context notifications |
+| `getNotificationsByVendor(vendorId, opts)` | Vendor context notifications |
+| `createInvoiceDecisionNotification(params)` | Helper for decision triggers |
+
+**Routes:**
+| Route | Template |
+|-------|----------|
+| `GET /nexus/client/notifications` | `client-notifications.html` |
+| `GET /nexus/vendor/notifications` | `vendor-notifications.html` |
+
+**Schema:** Reused existing `nexus_notifications` table; extended `notification_type` CHECK to include `invoice_approved`, `invoice_disputed`.
 
 ---
 
@@ -736,6 +772,7 @@ FEATURE_MATCHING_PILOT=true
 | 2025-12-26 | C7 | **MVP PATCH: Invoice Decision v0** - Approve + Dispute |
 | 2025-12-26 | C8.1 | Invoice Inbox (tabs, filters, pagination) |
 | 2025-12-26 | C8.2 | **Matching Pilot** - Feature-flagged match signal |
+| 2025-12-26 | C8.3 | **Notifications** - Approve/dispute triggers, client+vendor pages |
 
 ---
 

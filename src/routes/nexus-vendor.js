@@ -235,4 +235,35 @@ router.post('/cases/:case_id/evidence', evidenceUpload.single('file'), async (re
   }
 });
 
+// ============================================================================
+// NOTIFICATIONS (C8.3)
+// ============================================================================
+
+/**
+ * GET /nexus/vendor/notifications
+ * Vendor notification list
+ */
+router.get('/notifications', async (req, res) => {
+  try {
+    const vendorId = req.nexus?.tenant?.tenant_vendor_id;
+    if (!vendorId) {
+      return res.status(400).render('nexus/pages/error.html', {
+        error: { status: 400, message: 'Vendor context not found' }
+      });
+    }
+
+    const { rows, total } = await nexusAdapter.getNotificationsByVendor(vendorId, { limit: 20 });
+
+    res.render('nexus/pages/vendor-notifications.html', {
+      notifications: rows,
+      total,
+    });
+  } catch (error) {
+    console.error('Vendor notifications error:', error);
+    res.status(500).render('nexus/pages/error.html', {
+      error: { status: 500, message: 'Failed to load notifications' }
+    });
+  }
+});
+
 export default router;

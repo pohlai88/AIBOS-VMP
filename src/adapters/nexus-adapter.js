@@ -1038,6 +1038,125 @@ async function markNotificationsRead(userId, tenantId, notificationIds = []) {
 }
 
 // ============================================================================
+// CONTEXT-BASED NOTIFICATIONS (C8.3)
+// ============================================================================
+
+/**
+ * Get notifications by client context
+ * Returns notifications where context_id matches clientId or context='client'/'both'
+ * @param {string} clientId - TC-* client ID
+ * @param {object} options - { limit, offset }
+ * @returns {Promise<{ rows: object[], total: number }>}
+ */
+async function getNotificationsByClient(clientId, options = {}) {
+  const limit = options.limit || 20;
+  const offset = options.offset || 0;
+
+  // Query notifications targeted at this client
+  const { data, error, count } = await serviceClient
+    .from('nexus_notifications')
+    .select('*', { count: 'exact' })
+    .eq('context_id', clientId)
+    .or('context.eq.client,context.eq.both')
+    .order('created_at', { ascending: false })
+    .range(offset, offset + limit - 1);
+
+  if (error) throw new Error(`Failed to get client notifications: ${error.message}`);
+
+  return { rows: data || [], total: count || 0 };
+}
+
+/**
+ * Get notifications by vendor context
+ * Returns notifications where context_id matches vendorId or context='vendor'/'both'
+ * @param {string} vendorId - TV-* vendor ID
+ * @param {object} options - { limit, offset }
+ * @returns {Promise<{ rows: object[], total: number }>}
+ */
+async function getNotificationsByVendor(vendorId, options = {}) {
+  const limit = options.limit || 20;
+  const offset = options.offset || 0;
+
+  // Query notifications targeted at this vendor
+  const { data, error, count } = await serviceClient
+    .from('nexus_notifications')
+    .select('*', { count: 'exact' })
+    .eq('context_id', vendorId)
+    .or('context.eq.vendor,context.eq.both')
+    .order('created_at', { ascending: false })
+    .range(offset, offset + limit - 1);
+
+  if (error) throw new Error(`Failed to get vendor notifications: ${error.message}`);
+
+  return { rows: data || [], total: count || 0 };
+}
+
+/**
+ * Create invoice decision notification (C8.3 helper)
+ * Called from approveInvoiceByClient / disputeInvoiceByClient
+ * @param {object} params
+ * @returns {Promise<object>}
+ */
+async function createInvoiceDecisionNotification({
+  eventType,       // 'invoice_approved' | 'invoice_disputed'
+  clientId,        // TC-*
+  vendorId,        // TV-*
+  invoiceId,
+  invoiceNumber,
+  caseId,          // Only for disputes
+  actorUserId,
+  actorName,
+}) {
+  const isApproval = eventType === 'invoice_approved';
+
+  const title = isApproval
+    ? `Invoice ${invoiceNumber || invoiceId} approved`
+    : `Invoice ${invoiceNumber || invoiceId} disputed`;
+
+  const body = isApproval
+    ? `${actorName || 'Client'} approved invoice ${invoiceNumber || invoiceId}.`
+    : `${actorName || 'Client'} raised an issue on invoice ${invoiceNumber || invoiceId}. Case ${caseId} created.`;
+
+  // Client notification
+  const clientNotif = await createNotification({
+    tenantId: clientId.replace('TC-', 'TNT-'),
+    context: 'client',
+    contextId: clientId,
+    type: eventType,
+    priority: isApproval ? 'normal' : 'high',
+    title,
+    body,
+    referenceType: isApproval ? 'invoice' : 'case',
+    referenceId: isApproval ? invoiceId : caseId,
+    actionUrl: isApproval
+      ? `/nexus/client/invoices/${invoiceId}`
+      : `/nexus/client/cases/${caseId}`,
+    actionLabel: isApproval ? 'View Invoice' : 'View Case',
+    metadata: { invoiceId, caseId, actorUserId },
+  });
+
+  // Vendor notification (they should know about the decision)
+  const vendorNotif = await createNotification({
+    tenantId: vendorId.replace('TV-', 'TNT-'),
+    context: 'vendor',
+    contextId: vendorId,
+    type: eventType,
+    priority: isApproval ? 'normal' : 'high',
+    title,
+    body,
+    referenceType: isApproval ? 'invoice' : 'case',
+    referenceId: isApproval ? invoiceId : caseId,
+    actionUrl: isApproval
+      ? `/nexus/vendor/invoices/${invoiceId}`
+      : `/nexus/vendor/cases/${caseId}`,
+    actionLabel: isApproval ? 'View Invoice' : 'View Case',
+    metadata: { invoiceId, caseId, actorUserId },
+  });
+
+  return { clientNotif, vendorNotif };
+}
+
+// ============================================================================
 // SESSION OPERATIONS
 // ============================================================================
 
@@ -2506,6 +2625,20 @@ async function approveInvoiceByClient({ invoiceId, clientId, actorUserId }) {
 
   if (error) throw new Error(`Failed to approve invoice: ${error.message}`);
 
+  // C8.3: Create notification (fire-and-forget, don't block on failure)
+  try {
+    await createInvoiceDecisionNotification({
+      eventType: 'invoice_approved',
+      clientId: data.client_id,
+      vendorId: data.vendor_id,
+      invoiceId: data.invoice_id,
+      invoiceNumber: data.invoice_number,
+      actorUserId,
+    });
+  } catch (notifError) {
+    console.warn('Failed to create approval notification:', notifError.message);
+  }
+
   return data;
 }
 
@@ -2522,6 +2655,7 @@ async function disputeInvoiceByClient({ invoiceId, clientId, actorUserId, subjec
   if (!invoice) throw new Error('Invoice not found for client');
 
   // If already linked to a case, return that relationship (MVP: avoid duplicate cases)
+  // NOTE: No notification on idempotent path to avoid spam (C8.3)
   if (invoice.case_id) {
     // Still mark as disputed if not already
     if (invoice.status !== 'disputed') {
@@ -2570,6 +2704,21 @@ async function disputeInvoiceByClient({ invoiceId, clientId, actorUserId, subjec
     .single();
 
   if (error) throw new Error(`Failed to dispute invoice: ${error.message}`);
+
+  // C8.3: Create notification for NEW dispute only (fire-and-forget)
+  try {
+    await createInvoiceDecisionNotification({
+      eventType: 'invoice_disputed',
+      clientId: data.client_id,
+      vendorId: data.vendor_id,
+      invoiceId: data.invoice_id,
+      invoiceNumber: data.invoice_number,
+      caseId,
+      actorUserId,
+    });
+  } catch (notifError) {
+    console.warn('Failed to create dispute notification:', notifError.message);
+  }
 
   return { invoice: data, caseId };
 }
@@ -2770,6 +2919,11 @@ export const nexusAdapter = {
   getNotifications,
   getUnreadCount,
   markNotificationsRead,
+
+  // Context-based Notifications (C8.3)
+  getNotificationsByClient,
+  getNotificationsByVendor,
+  createInvoiceDecisionNotification,
 
   // Session
   createSession,

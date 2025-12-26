@@ -1,0 +1,77 @@
+{% extends "nexus/layout.html" %}
+
+{% block title %}Notifications{% endblock %}
+
+{% set activeNav = 'vendor' %}
+
+{% block content %}
+<div class="nexus-page vendor-notifications">
+  <!-- Breadcrumb -->
+  <nav class="nexus-breadcrumb">
+    <a href="/nexus/vendor">Dashboard</a>
+    <span class="nexus-breadcrumb-sep">→</span>
+    <span class="nexus-breadcrumb-current">Notifications</span>
+  </nav>
+
+  <header class="nexus-page-header">
+    <div>
+      <h1>Notifications</h1>
+      <p class="nexus-page-subtitle">Updates from your clients</p>
+    </div>
+    <span class="nexus-context-badge vendor">▶ Vendor Mode</span>
+  </header>
+
+  {% if notifications.length > 0 %}
+  <section class="nexus-notification-list">
+    {% for notif in notifications %}
+    <article class="nexus-notification-item {{ 'unread' if not notif.is_read else '' }}">
+      <div class="nexus-notification-icon">
+        {% if notif.notification_type == 'invoice_approved' %}
+          <span class="icon approved">✅</span>
+        {% elif notif.notification_type == 'invoice_disputed' %}
+          <span class="icon disputed">🚨</span>
+        {% elif notif.notification_type == 'case_created' %}
+          <span class="icon case">📋</span>
+        {% elif notif.notification_type == 'payment_received' %}
+          <span class="icon payment">💰</span>
+        {% else %}
+          <span class="icon default">🔔</span>
+        {% endif %}
+      </div>
+      <div class="nexus-notification-content">
+        <h3 class="nexus-notification-title">{{ notif.title }}</h3>
+        {% if notif.body %}
+        <p class="nexus-notification-body">{{ notif.body }}</p>
+        {% endif %}
+        <div class="nexus-notification-meta">
+          <span class="nexus-notification-time">{{ notif.created_at | truncate(19, true, '') }}</span>
+          {% if notif.priority == 'high' or notif.priority == 'critical' %}
+          <span class="nexus-badge {{ notif.priority }}">{{ notif.priority }}</span>
+          {% endif %}
+        </div>
+      </div>
+      {% if notif.action_url %}
+      <a href="{{ notif.action_url }}" class="nexus-notification-action nexus-btn small secondary">
+        {{ notif.action_label or 'View' }} →
+      </a>
+      {% endif %}
+    </article>
+    {% endfor %}
+  </section>
+
+  {% if total > 20 %}
+  <div class="nexus-notification-more">
+    <p class="nexus-text-muted">Showing 20 of {{ total }} notifications</p>
+  </div>
+  {% endif %}
+
+  {% else %}
+  <div class="nexus-empty-state">
+    <div class="nexus-empty-icon">🔔</div>
+    <h2>No notifications yet</h2>
+    <p>When clients approve invoices or raise issues, you'll see them here.</p>
+    <a href="/nexus/vendor" class="nexus-btn primary">Back to Dashboard</a>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

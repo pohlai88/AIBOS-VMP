@@ -860,6 +860,37 @@ router.post('/cases/:case_id/status', async (req, res) => {
 });
 
 // ============================================================================
+// NOTIFICATIONS (C8.3)
+// ============================================================================
+
+/**
+ * GET /nexus/client/notifications
+ * Client notification list
+ */
+router.get('/notifications', async (req, res) => {
+  try {
+    const clientId = getClientId(req);
+    if (!clientId) {
+      return res.status(400).render('nexus/pages/error.html', {
+        error: { status: 400, message: 'Client context not found' }
+      });
+    }
+
+    const { rows, total } = await nexusAdapter.getNotificationsByClient(clientId, { limit: 20 });
+
+    res.render('nexus/pages/client-notifications.html', {
+      notifications: rows,
+      total,
+    });
+  } catch (error) {
+    console.error('Client notifications error:', error);
+    res.status(500).render('nexus/pages/error.html', {
+      error: { status: 500, message: 'Failed to load notifications' }
+    });
+  }
+});
+
+// ============================================================================
 // EXPORT
 // ============================================================================
 

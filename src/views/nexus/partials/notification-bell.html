@@ -51,7 +51,13 @@
     </div>
 
     <div class="nexus-dropdown-footer">
+      {% if activeNav == 'client' %}
+      <a href="/nexus/client/notifications">View all notifications</a>
+      {% elif activeNav == 'vendor' %}
+      <a href="/nexus/vendor/notifications">View all notifications</a>
+      {% else %}
       <a href="/nexus/notifications">View all notifications</a>
+      {% endif %}
     </div>
   </div>
 </div>
