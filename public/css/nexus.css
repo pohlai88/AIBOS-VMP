@@ -3988,3 +3988,232 @@
   background: #dc2626;
   color: white;
 }
+
+/* ============================================================================
+   DOCUMENT REQUESTS (C10)
+   ============================================================================ */
+
+/* Status badges for document requests */
+.nexus-badge-requested {
+  background: #fbbf24;
+  color: #78350f;
+}
+
+.nexus-badge-uploaded {
+  background: #60a5fa;
+  color: #1e3a8a;
+}
+
+.nexus-badge-accepted {
+  background: #34d399;
+  color: #064e3b;
+}
+
+.nexus-badge-rejected {
+  background: #f87171;
+  color: #7f1d1d;
+}
+
+.nexus-badge-cancelled {
+  background: #9ca3af;
+  color: #374151;
+}
+
+/* Document type display */
+.nexus-document-type {
+  font-weight: 500;
+  color: var(--nexus-text-primary);
+}
+
+/* Entity link in table */
+.nexus-entity-link {
+  font-size: 0.85rem;
+  color: var(--nexus-text-secondary);
+}
+
+/* Row attention (pending action needed) */
+.nexus-row-attention {
+  background: #fef9c3;
+}
+
+.nexus-row-attention:hover {
+  background: #fef08a;
+}
+
+/* Document info display */
+.nexus-document-info {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  background: var(--nexus-bg-subtle);
+  border-radius: 8px;
+  margin-bottom: 1rem;
+}
+
+.nexus-document-icon {
+  font-size: 2rem;
+}
+
+.nexus-document-details {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.nexus-document-name {
+  font-weight: 500;
+  color: var(--nexus-text-primary);
+}
+
+.nexus-document-meta {
+  font-size: 0.85rem;
+  color: var(--nexus-text-secondary);
+}
+
+/* Pending/cancelled states */
+.nexus-document-pending,
+.nexus-document-cancelled {
+  text-align: center;
+  padding: 2rem;
+  color: var(--nexus-text-secondary);
+}
+
+.nexus-pending-icon,
+.nexus-cancelled-icon {
+  font-size: 3rem;
+  margin-bottom: 0.5rem;
+}
+
+/* Status info */
+.nexus-status-info {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  background: var(--nexus-bg-subtle);
+  border-radius: 6px;
+  color: var(--nexus-text-secondary);
+}
+
+.nexus-status-info.nexus-status-success {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.nexus-status-info.nexus-status-warning {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.nexus-status-icon {
+  font-size: 1.25rem;
+}
+
+/* Upload form */
+.nexus-upload-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.nexus-file-input-wrapper {
+  position: relative;
+}
+
+.nexus-file-input {
+  position: absolute;
+  opacity: 0;
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+}
+
+.nexus-file-label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  border: 2px dashed var(--nexus-border);
+  border-radius: 8px;
+  background: var(--nexus-bg-subtle);
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.nexus-file-label:hover {
+  border-color: var(--nexus-primary);
+  background: #f0f7ff;
+}
+
+.nexus-file-icon {
+  font-size: 2rem;
+  margin-bottom: 0.5rem;
+}
+
+.nexus-file-text {
+  font-weight: 500;
+  color: var(--nexus-text-primary);
+}
+
+.nexus-file-hint {
+  font-size: 0.8rem;
+  color: var(--nexus-text-secondary);
+  margin-top: 0.25rem;
+}
+
+/* Card variants */
+.nexus-card-upload {
+  border: 2px solid var(--nexus-primary);
+  background: #f0f7ff;
+}
+
+.nexus-card-actions {
+  border-left: 4px solid var(--nexus-primary);
+}
+
+/* Action buttons */
+.nexus-action-buttons {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.nexus-action-form {
+  display: inline;
+}
+
+/* Reject form */
+.nexus-reject-form {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--nexus-border);
+}
+
+.nexus-reject-form.hidden {
+  display: none;
+}
+
+/* Alerts */
+.nexus-alert {
+  padding: 0.75rem 1rem;
+  border-radius: 6px;
+  margin-bottom: 1rem;
+}
+
+.nexus-alert-warning {
+  background: #fef3c7;
+  border: 1px solid #f59e0b;
+  color: #92400e;
+}
+
+/* Detail message (longer text) */
+.nexus-detail-message {
+  white-space: pre-wrap;
+  background: var(--nexus-bg-subtle);
+  padding: 0.75rem;
+  border-radius: 6px;
+  font-size: 0.9rem;
+}

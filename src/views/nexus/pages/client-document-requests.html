@@ -1,0 +1,106 @@
+{% extends "nexus/layout.html" %}
+
+{% block title %}Document Requests | Nexus{% endblock %}
+
+{% block content %}
+<div class="nexus-page-header">
+  <div class="nexus-page-header-content">
+    <h1 class="nexus-page-title">Document Requests</h1>
+    <p class="nexus-page-subtitle">Track requested documents from your vendors</p>
+  </div>
+</div>
+
+<div class="nexus-content-wrapper">
+  <!-- Status Tabs -->
+  <div class="nexus-tabs">
+    <a href="/nexus/client/document-requests"
+       class="nexus-tab {% if not activeStatus %}nexus-tab-active{% endif %}">
+      All
+    </a>
+    <a href="/nexus/client/document-requests?status=requested"
+       class="nexus-tab {% if activeStatus == 'requested' %}nexus-tab-active{% endif %}">
+      Pending
+    </a>
+    <a href="/nexus/client/document-requests?status=uploaded"
+       class="nexus-tab {% if activeStatus == 'uploaded' %}nexus-tab-active{% endif %}">
+      Uploaded
+    </a>
+    <a href="/nexus/client/document-requests?status=accepted"
+       class="nexus-tab {% if activeStatus == 'accepted' %}nexus-tab-active{% endif %}">
+      Accepted
+    </a>
+    <a href="/nexus/client/document-requests?status=rejected"
+       class="nexus-tab {% if activeStatus == 'rejected' %}nexus-tab-active{% endif %}">
+      Rejected
+    </a>
+  </div>
+
+  <!-- Requests List -->
+  {% if requests.length > 0 %}
+  <div class="nexus-card">
+    <table class="nexus-table">
+      <thead>
+        <tr>
+          <th>Document Type</th>
+          <th>Related To</th>
+          <th>Vendor</th>
+          <th>Status</th>
+          <th>Requested</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for req in requests %}
+        <tr>
+          <td>
+            <span class="nexus-document-type">
+              {{ documentTypeLabels[req.document_type] or req.document_type }}
+            </span>
+          </td>
+          <td>
+            <span class="nexus-entity-link">
+              {{ req.entity_type | capitalize }}: {{ req.entity_id }}
+            </span>
+          </td>
+          <td>{{ req.vendor_id }}</td>
+          <td>
+            <span class="nexus-badge nexus-badge-{{ req.status }}">
+              {{ documentStatusLabels[req.status] or req.status }}
+            </span>
+          </td>
+          <td>
+            <span class="nexus-date">
+              {{ req.created_at | date('MMM D, YYYY') }}
+            </span>
+          </td>
+          <td>
+            <a href="/nexus/client/document-requests/{{ req.request_id }}"
+               class="nexus-btn nexus-btn-sm nexus-btn-secondary">
+              View
+            </a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="nexus-empty-state">
+    <div class="nexus-empty-icon">📄</div>
+    <h3>No document requests</h3>
+    <p>
+      {% if activeStatus %}
+        No {{ activeStatus }} requests found. Try a different filter.
+      {% else %}
+        When you request documents from vendors, they'll appear here.
+      {% endif %}
+    </p>
+  </div>
+  {% endif %}
+
+  <!-- Summary -->
+  <div class="nexus-summary-bar">
+    <span class="nexus-summary-count">{{ total }} request{% if total != 1 %}s{% endif %}</span>
+  </div>
+</div>
+{% endblock %}

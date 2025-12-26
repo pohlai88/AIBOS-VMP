@@ -891,6 +891,234 @@ router.get('/notifications', async (req, res) => {
 });
 
 // ============================================================================
+// DOCUMENT REQUESTS (C10)
+// ============================================================================
+
+/**
+ * GET /document-requests - Document request list
+ */
+router.get('/document-requests', async (req, res) => {
+  try {
+    const clientId = res.locals.nexus?.activeContextId;
+    if (!clientId) {
+      return res.redirect('/nexus/login');
+    }
+
+    const status = req.query.status || null;
+    const { rows, total } = await nexusAdapter.getDocumentRequestsByClient(clientId, {
+      status,
+      limit: 50
+    });
+
+    res.render('nexus/pages/client-document-requests.html', {
+      requests: rows,
+      total,
+      activeStatus: status,
+      documentTypeLabels: nexusAdapter.DOCUMENT_TYPE_LABELS,
+      documentStatusLabels: nexusAdapter.DOCUMENT_STATUS_LABELS
+    });
+  } catch (error) {
+    console.error('Document requests error:', error);
+    res.status(500).render('nexus/pages/error.html', {
+      error: { status: 500, message: 'Failed to load document requests' }
+    });
+  }
+});
+
+/**
+ * GET /document-requests/:id - Document request detail
+ */
+router.get('/document-requests/:id', async (req, res) => {
+  try {
+    const clientId = res.locals.nexus?.activeContextId;
+    if (!clientId) {
+      return res.redirect('/nexus/login');
+    }
+
+    const request = await nexusAdapter.getDocumentRequest(req.params.id);
+    if (!request || request.client_id !== clientId) {
+      return res.status(404).render('nexus/pages/error.html', {
+        error: { status: 404, message: 'Document request not found' }
+      });
+    }
+
+    res.render('nexus/pages/client-document-request-detail.html', {
+      request,
+      documentTypeLabels: nexusAdapter.DOCUMENT_TYPE_LABELS,
+      documentStatusLabels: nexusAdapter.DOCUMENT_STATUS_LABELS
+    });
+  } catch (error) {
+    console.error('Document request detail error:', error);
+    res.status(500).render('nexus/pages/error.html', {
+      error: { status: 500, message: 'Failed to load document request' }
+    });
+  }
+});
+
+/**
+ * POST /document-requests - Create new document request
+ */
+router.post('/document-requests', async (req, res) => {
+  try {
+    const clientId = res.locals.nexus?.activeContextId;
+    const userId = res.locals.nexus?.user?.user_id;
+    if (!clientId || !userId) {
+      return res.redirect('/nexus/login');
+    }
+
+    const { vendorId, entityType, entityId, documentType, message } = req.body;
+
+    if (!vendorId || !entityType || !entityId || !documentType) {
+      return res.status(400).render('nexus/pages/error.html', {
+        error: { status: 400, message: 'Missing required fields' }
+      });
+    }
+
+    const request = await nexusAdapter.createDocumentRequest({
+      clientId,
+      vendorId,
+      entityType,
+      entityId,
+      documentType,
+      message: message || null,
+      createdBy: userId
+    });
+
+    // HTMX request returns partial, otherwise redirect
+    if (req.headers['hx-request']) {
+      res.set('HX-Redirect', `/nexus/client/document-requests/${request.request_id}`);
+      return res.status(200).send('');
+    }
+
+    res.redirect(`/nexus/client/document-requests/${request.request_id}?toast=success&message=Document%20request%20created`);
+  } catch (error) {
+    console.error('Create document request error:', error);
+    res.status(500).render('nexus/pages/error.html', {
+      error: { status: 500, message: 'Failed to create document request' }
+    });
+  }
+});
+
+/**
+ * POST /document-requests/:id/accept - Accept uploaded document
+ */
+router.post('/document-requests/:id/accept', async (req, res) => {
+  try {
+    const clientId = res.locals.nexus?.activeContextId;
+    const userId = res.locals.nexus?.user?.user_id;
+    if (!clientId || !userId) {
+      return res.redirect('/nexus/login');
+    }
+
+    const request = await nexusAdapter.getDocumentRequest(req.params.id);
+    if (!request || request.client_id !== clientId) {
+      return res.status(404).render('nexus/pages/error.html', {
+        error: { status: 404, message: 'Document request not found' }
+      });
+    }
+
+    await nexusAdapter.acceptDocument({
+      requestId: req.params.id,
+      reviewedBy: userId,
+      reviewNotes: req.body.notes || null
+    });
+
+    if (req.headers['hx-request']) {
+      res.set('HX-Redirect', `/nexus/client/document-requests/${req.params.id}?toast=success&message=Document%20accepted`);
+      return res.status(200).send('');
+    }
+
+    res.redirect(`/nexus/client/document-requests/${req.params.id}?toast=success&message=Document%20accepted`);
+  } catch (error) {
+    console.error('Accept document error:', error);
+    res.status(500).render('nexus/pages/error.html', {
+      error: { status: 500, message: error.message || 'Failed to accept document' }
+    });
+  }
+});
+
+/**
+ * POST /document-requests/:id/reject - Reject uploaded document
+ */
+router.post('/document-requests/:id/reject', async (req, res) => {
+  try {
+    const clientId = res.locals.nexus?.activeContextId;
+    const userId = res.locals.nexus?.user?.user_id;
+    if (!clientId || !userId) {
+      return res.redirect('/nexus/login');
+    }
+
+    const request = await nexusAdapter.getDocumentRequest(req.params.id);
+    if (!request || request.client_id !== clientId) {
+      return res.status(404).render('nexus/pages/error.html', {
+        error: { status: 404, message: 'Document request not found' }
+      });
+    }
+
+    if (!req.body.notes) {
+      return res.status(400).render('nexus/pages/error.html', {
+        error: { status: 400, message: 'Rejection reason is required' }
+      });
+    }
+
+    await nexusAdapter.rejectDocument({
+      requestId: req.params.id,
+      reviewedBy: userId,
+      reviewNotes: req.body.notes
+    });
+
+    if (req.headers['hx-request']) {
+      res.set('HX-Redirect', `/nexus/client/document-requests/${req.params.id}?toast=warning&message=Document%20rejected`);
+      return res.status(200).send('');
+    }
+
+    res.redirect(`/nexus/client/document-requests/${req.params.id}?toast=warning&message=Document%20rejected`);
+  } catch (error) {
+    console.error('Reject document error:', error);
+    res.status(500).render('nexus/pages/error.html', {
+      error: { status: 500, message: error.message || 'Failed to reject document' }
+    });
+  }
+});
+
+/**
+ * POST /document-requests/:id/cancel - Cancel document request
+ */
+router.post('/document-requests/:id/cancel', async (req, res) => {
+  try {
+    const clientId = res.locals.nexus?.activeContextId;
+    const userId = res.locals.nexus?.user?.user_id;
+    if (!clientId || !userId) {
+      return res.redirect('/nexus/login');
+    }
+
+    const request = await nexusAdapter.getDocumentRequest(req.params.id);
+    if (!request || request.client_id !== clientId) {
+      return res.status(404).render('nexus/pages/error.html', {
+        error: { status: 404, message: 'Document request not found' }
+      });
+    }
+
+    await nexusAdapter.cancelDocumentRequest({
+      requestId: req.params.id,
+      cancelledBy: userId
+    });
+
+    if (req.headers['hx-request']) {
+      res.set('HX-Redirect', `/nexus/client/document-requests?toast=info&message=Request%20cancelled`);
+      return res.status(200).send('');
+    }
+
+    res.redirect('/nexus/client/document-requests?toast=info&message=Request%20cancelled');
+  } catch (error) {
+    console.error('Cancel document request error:', error);
+    res.status(500).render('nexus/pages/error.html', {
+      error: { status: 500, message: error.message || 'Failed to cancel request' }
+    });
+  }
+});
+
+// ============================================================================
 // EXPORT
 // ============================================================================
 

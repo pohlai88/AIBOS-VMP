@@ -266,4 +266,130 @@ router.get('/notifications', async (req, res) => {
   }
 });
 
+// ============================================================================
+// DOCUMENT REQUESTS (C10)
+// ============================================================================
+
+/**
+ * GET /document-requests - Vendor document request inbox
+ */
+router.get('/document-requests', async (req, res) => {
+  try {
+    const vendorId = res.locals.nexus?.activeContextId;
+    if (!vendorId) {
+      return res.redirect('/nexus/login');
+    }
+
+    const status = req.query.status || null;
+    const { rows, total } = await nexusAdapter.getDocumentRequestsByVendor(vendorId, {
+      status,
+      limit: 50
+    });
+
+    res.render('nexus/pages/vendor-document-requests.html', {
+      requests: rows,
+      total,
+      activeStatus: status,
+      documentTypeLabels: nexusAdapter.DOCUMENT_TYPE_LABELS,
+      documentStatusLabels: nexusAdapter.DOCUMENT_STATUS_LABELS
+    });
+  } catch (error) {
+    console.error('Vendor document requests error:', error);
+    res.status(500).render('nexus/pages/error.html', {
+      error: { status: 500, message: 'Failed to load document requests' }
+    });
+  }
+});
+
+/**
+ * GET /document-requests/:id - Document request detail
+ */
+router.get('/document-requests/:id', async (req, res) => {
+  try {
+    const vendorId = res.locals.nexus?.activeContextId;
+    if (!vendorId) {
+      return res.redirect('/nexus/login');
+    }
+
+    const request = await nexusAdapter.getDocumentRequest(req.params.id);
+    if (!request || request.vendor_id !== vendorId) {
+      return res.status(404).render('nexus/pages/error.html', {
+        error: { status: 404, message: 'Document request not found' }
+      });
+    }
+
+    res.render('nexus/pages/vendor-document-request-detail.html', {
+      request,
+      documentTypeLabels: nexusAdapter.DOCUMENT_TYPE_LABELS,
+      documentStatusLabels: nexusAdapter.DOCUMENT_STATUS_LABELS
+    });
+  } catch (error) {
+    console.error('Vendor document request detail error:', error);
+    res.status(500).render('nexus/pages/error.html', {
+      error: { status: 500, message: 'Failed to load document request' }
+    });
+  }
+});
+
+/**
+ * POST /document-requests/:id/upload - Upload document to fulfill request
+ */
+router.post('/document-requests/:id/upload', evidenceUpload.single('file'), async (req, res) => {
+  try {
+    const vendorId = res.locals.nexus?.activeContextId;
+    const userId = res.locals.nexus?.user?.user_id;
+    if (!vendorId || !userId) {
+      return res.redirect('/nexus/login');
+    }
+
+    const request = await nexusAdapter.getDocumentRequest(req.params.id);
+    if (!request || request.vendor_id !== vendorId) {
+      return res.status(404).render('nexus/pages/error.html', {
+        error: { status: 404, message: 'Document request not found' }
+      });
+    }
+
+    if (!req.file) {
+      return res.status(400).render('nexus/pages/error.html', {
+        error: { status: 400, message: 'No file uploaded' }
+      });
+    }
+
+    // Upload to storage
+    const filePath = `documents/${req.params.id}/${req.file.originalname}`;
+    const { error: uploadError } = await nexusAdapter.serviceClient.storage
+      .from('nexus-evidence')
+      .upload(filePath, req.file.buffer, {
+        contentType: req.file.mimetype,
+        upsert: true
+      });
+
+    if (uploadError) {
+      throw new Error(`Storage upload failed: ${uploadError.message}`);
+    }
+
+    // Update request
+    await nexusAdapter.uploadDocumentForRequest({
+      requestId: req.params.id,
+      filePath,
+      fileName: req.file.originalname,
+      fileSizeBytes: req.file.size,
+      fileMimeType: req.file.mimetype,
+      respondedBy: userId
+    });
+
+    if (req.headers['hx-request']) {
+      res.set('HX-Redirect', `/nexus/vendor/document-requests/${req.params.id}?toast=success&message=Document%20uploaded`);
+      return res.status(200).send('');
+    }
+
+    res.redirect(`/nexus/vendor/document-requests/${req.params.id}?toast=success&message=Document%20uploaded`);
+  } catch (error) {
+    console.error('Document upload error:', error);
+    res.status(500).render('nexus/pages/error.html', {
+      error: { status: 500, message: error.message || 'Failed to upload document' }
+    });
+  }
+});
+
 export default router;

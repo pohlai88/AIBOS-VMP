@@ -1,0 +1,169 @@
+{% extends "nexus/layout.html" %}
+
+{% block title %}Document Request | Nexus{% endblock %}
+
+{% block content %}
+<div class="nexus-page-header">
+  <div class="nexus-page-header-content">
+    <a href="/nexus/client/document-requests" class="nexus-back-link">← Back to Requests</a>
+    <h1 class="nexus-page-title">
+      {{ documentTypeLabels[request.document_type] or request.document_type }}
+    </h1>
+    <p class="nexus-page-subtitle">Request ID: {{ request.request_id }}</p>
+  </div>
+  <div class="nexus-page-header-actions">
+    <span class="nexus-badge nexus-badge-lg nexus-badge-{{ request.status }}">
+      {{ documentStatusLabels[request.status] or request.status }}
+    </span>
+  </div>
+</div>
+
+<div class="nexus-content-wrapper">
+  <div class="nexus-detail-grid">
+    <!-- Main Info -->
+    <div class="nexus-card">
+      <h3 class="nexus-card-title">Request Details</h3>
+
+      <div class="nexus-detail-row">
+        <span class="nexus-detail-label">Document Type</span>
+        <span class="nexus-detail-value">
+          {{ documentTypeLabels[request.document_type] or request.document_type }}
+        </span>
+      </div>
+
+      <div class="nexus-detail-row">
+        <span class="nexus-detail-label">Related To</span>
+        <span class="nexus-detail-value">
+          <a href="/nexus/client/{{ request.entity_type }}s/{{ request.entity_id }}" class="nexus-link">
+            {{ request.entity_type | capitalize }}: {{ request.entity_id }}
+          </a>
+        </span>
+      </div>
+
+      <div class="nexus-detail-row">
+        <span class="nexus-detail-label">Vendor</span>
+        <span class="nexus-detail-value">{{ request.vendor_id }}</span>
+      </div>
+
+      <div class="nexus-detail-row">
+        <span class="nexus-detail-label">Requested</span>
+        <span class="nexus-detail-value">
+          {{ request.created_at | date('MMM D, YYYY h:mm A') }}
+        </span>
+      </div>
+
+      {% if request.message %}
+      <div class="nexus-detail-row">
+        <span class="nexus-detail-label">Message</span>
+        <span class="nexus-detail-value nexus-detail-message">{{ request.message }}</span>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Document Section -->
+    <div class="nexus-card">
+      <h3 class="nexus-card-title">Document</h3>
+
+      {% if request.status == 'requested' %}
+      <div class="nexus-document-pending">
+        <div class="nexus-pending-icon">⏳</div>
+        <p>Waiting for vendor to upload document</p>
+      </div>
+
+      {% elif request.status == 'cancelled' %}
+      <div class="nexus-document-cancelled">
+        <div class="nexus-cancelled-icon">🚫</div>
+        <p>This request was cancelled</p>
+      </div>
+
+      {% else %}
+      <!-- Document uploaded -->
+      <div class="nexus-document-info">
+        <div class="nexus-document-icon">📄</div>
+        <div class="nexus-document-details">
+          <span class="nexus-document-name">{{ request.file_name }}</span>
+          <span class="nexus-document-meta">
+            {% if request.file_size_bytes %}
+              {{ (request.file_size_bytes / 1024) | round(1) }} KB
+            {% endif %}
+            • Uploaded {{ request.responded_at | date('MMM D, YYYY') }}
+          </span>
+        </div>
+        <a href="/api/nexus/documents/{{ request.request_id }}/download"
+           class="nexus-btn nexus-btn-primary" target="_blank">
+          Download
+        </a>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Actions Section -->
+    {% if request.status == 'uploaded' %}
+    <div class="nexus-card nexus-card-actions">
+      <h3 class="nexus-card-title">Review Document</h3>
+      <p class="nexus-card-subtitle">Accept or reject the uploaded document</p>
+
+      <div class="nexus-action-buttons">
+        <form action="/nexus/client/document-requests/{{ request.request_id }}/accept"
+              method="POST" class="nexus-action-form">
+          <button type="submit" class="nexus-btn nexus-btn-success">
+            ✅ Accept Document
+          </button>
+        </form>
+
+        <button type="button" class="nexus-btn nexus-btn-danger"
+                onclick="document.getElementById('reject-form').classList.toggle('hidden')">
+          ❌ Reject Document
+        </button>
+      </div>
+
+      <form id="reject-form"
+            action="/nexus/client/document-requests/{{ request.request_id }}/reject"
+            method="POST" class="nexus-reject-form hidden">
+        <textarea name="notes" placeholder="Reason for rejection (required)"
+                  required class="nexus-textarea"></textarea>
+        <button type="submit" class="nexus-btn nexus-btn-danger">
+          Confirm Rejection
+        </button>
+      </form>
+    </div>
+    {% endif %}
+
+    {% if request.status == 'requested' %}
+    <div class="nexus-card nexus-card-actions">
+      <h3 class="nexus-card-title">Cancel Request</h3>
+      <p class="nexus-card-subtitle">Cancel this request if no longer needed</p>
+
+      <form action="/nexus/client/document-requests/{{ request.request_id }}/cancel"
+            method="POST">
+        <button type="submit" class="nexus-btn nexus-btn-secondary"
+                onclick="return confirm('Are you sure you want to cancel this request?')">
+          Cancel Request
+        </button>
+      </form>
+    </div>
+    {% endif %}
+
+    <!-- Review Info (if accepted/rejected) -->
+    {% if request.reviewed_at %}
+    <div class="nexus-card">
+      <h3 class="nexus-card-title">Review</h3>
+
+      <div class="nexus-detail-row">
+        <span class="nexus-detail-label">Reviewed</span>
+        <span class="nexus-detail-value">
+          {{ request.reviewed_at | date('MMM D, YYYY h:mm A') }}
+        </span>
+      </div>
+
+      {% if request.review_notes %}
+      <div class="nexus-detail-row">
+        <span class="nexus-detail-label">Notes</span>
+        <span class="nexus-detail-value">{{ request.review_notes }}</span>
+      </div>
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

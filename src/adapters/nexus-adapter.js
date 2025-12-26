@@ -1157,6 +1157,377 @@ async function createInvoiceDecisionNotification({
 }
 
 // ============================================================================
+// DOCUMENT REQUEST OPERATIONS (C10)
+// ============================================================================
+
+/**
+ * Document type labels for display
+ */
+const DOCUMENT_TYPE_LABELS = {
+  po: 'Purchase Order',
+  grn: 'Goods Received Note',
+  dn: 'Debit Note',
+  cn: 'Credit Note',
+  invoice_copy: 'Invoice Copy',
+  contract: 'Contract / Agreement',
+  pod: 'Proof of Delivery',
+  soa: 'Statement of Account',
+  other: 'Other Document'
+};
+
+/**
+ * Document request status labels
+ */
+const DOCUMENT_STATUS_LABELS = {
+  requested: 'Requested',
+  uploaded: 'Uploaded',
+  rejected: 'Rejected',
+  accepted: 'Accepted',
+  cancelled: 'Cancelled'
+};
+
+/**
+ * Create a document request (client action)
+ * @param {object} params
+ * @returns {Promise<object>} Created request
+ */
+async function createDocumentRequest({
+  clientId,
+  vendorId,
+  entityType,
+  entityId,
+  documentType,
+  message,
+  createdBy
+}) {
+  const requestId = generateId('DRQ');
+
+  const request = {
+    request_id: requestId,
+    client_id: clientId,
+    vendor_id: vendorId,
+    entity_type: entityType,
+    entity_id: entityId,
+    document_type: documentType,
+    message: message || null,
+    status: 'requested',
+    created_by: createdBy
+  };
+
+  const { data, error } = await serviceClient
+    .from('nexus_document_requests')
+    .insert(request)
+    .select()
+    .single();
+
+  if (error) throw new Error(`Failed to create document request: ${error.message}`);
+
+  // Notify vendor (fire-and-forget)
+  try {
+    await createNotification({
+      tenantId: vendorId.replace('TV-', 'TNT-'),
+      context: 'vendor',
+      contextId: vendorId,
+      type: 'document_requested',
+      priority: 'normal',
+      title: `Document requested: ${DOCUMENT_TYPE_LABELS[documentType] || documentType}`,
+      body: message || `Client has requested a ${DOCUMENT_TYPE_LABELS[documentType] || documentType}`,
+      referenceType: 'document_request',
+      referenceId: requestId,
+      actionUrl: `/nexus/vendor/document-requests/${requestId}`,
+      actionLabel: 'View Request',
+      metadata: { entityType, entityId, documentType }
+    });
+  } catch (notifError) {
+    console.error('Failed to create document request notification:', notifError.message);
+  }
+
+  return data;
+}
+
+/**
+ * Get document requests by client
+ * @param {string} clientId - TC-* client ID
+ * @param {object} options - { status, entityType, entityId, limit, offset }
+ * @returns {Promise<{ rows: object[], total: number }>}
+ */
+async function getDocumentRequestsByClient(clientId, options = {}) {
+  const limit = options.limit || 20;
+  const offset = options.offset || 0;
+
+  let query = serviceClient
+    .from('nexus_document_requests')
+    .select('*', { count: 'exact' })
+    .eq('client_id', clientId);
+
+  if (options.status) {
+    query = query.eq('status', options.status);
+  }
+  if (options.entityType) {
+    query = query.eq('entity_type', options.entityType);
+  }
+  if (options.entityId) {
+    query = query.eq('entity_id', options.entityId);
+  }
+
+  const { data, error, count } = await query
+    .order('created_at', { ascending: false })
+    .range(offset, offset + limit - 1);
+
+  if (error) throw new Error(`Failed to get document requests: ${error.message}`);
+
+  return { rows: data || [], total: count || 0 };
+}
+
+/**
+ * Get document requests by vendor
+ * @param {string} vendorId - TV-* vendor ID
+ * @param {object} options - { status, entityType, entityId, limit, offset }
+ * @returns {Promise<{ rows: object[], total: number }>}
+ */
+async function getDocumentRequestsByVendor(vendorId, options = {}) {
+  const limit = options.limit || 20;
+  const offset = options.offset || 0;
+
+  let query = serviceClient
+    .from('nexus_document_requests')
+    .select('*', { count: 'exact' })
+    .eq('vendor_id', vendorId);
+
+  if (options.status) {
+    query = query.eq('status', options.status);
+  }
+  if (options.entityType) {
+    query = query.eq('entity_type', options.entityType);
+  }
+  if (options.entityId) {
+    query = query.eq('entity_id', options.entityId);
+  }
+
+  const { data, error, count } = await query
+    .order('created_at', { ascending: false })
+    .range(offset, offset + limit - 1);
+
+  if (error) throw new Error(`Failed to get vendor document requests: ${error.message}`);
+
+  return { rows: data || [], total: count || 0 };
+}
+
+/**
+ * Get a single document request by ID
+ * @param {string} requestId - DRQ-* ID
+ * @returns {Promise<object|null>}
+ */
+async function getDocumentRequest(requestId) {
+  const { data, error } = await serviceClient
+    .from('nexus_document_requests')
+    .select('*')
+    .eq('request_id', requestId)
+    .single();
+
+  if (error && error.code !== 'PGRST116') {
+    throw new Error(`Failed to get document request: ${error.message}`);
+  }
+
+  return data || null;
+}
+
+/**
+ * Upload document to fulfill a request (vendor action)
+ * @param {object} params
+ * @returns {Promise<object>} Updated request
+ */
+async function uploadDocumentForRequest({
+  requestId,
+  filePath,
+  fileName,
+  fileSizeBytes,
+  fileMimeType,
+  respondedBy
+}) {
+  // Get current request to verify status
+  const request = await getDocumentRequest(requestId);
+  if (!request) {
+    throw new Error('Document request not found');
+  }
+  if (request.status !== 'requested' && request.status !== 'rejected') {
+    throw new Error(`Cannot upload to request with status: ${request.status}`);
+  }
+
+  const { data, error } = await serviceClient
+    .from('nexus_document_requests')
+    .update({
+      status: 'uploaded',
+      file_path: filePath,
+      file_name: fileName,
+      file_size_bytes: fileSizeBytes,
+      file_mime_type: fileMimeType,
+      responded_at: new Date().toISOString(),
+      responded_by: respondedBy
+    })
+    .eq('request_id', requestId)
+    .select()
+    .single();
+
+  if (error) throw new Error(`Failed to update document request: ${error.message}`);
+
+  // Notify client (fire-and-forget)
+  try {
+    await createNotification({
+      tenantId: request.client_id.replace('TC-', 'TNT-'),
+      context: 'client',
+      contextId: request.client_id,
+      type: 'document_uploaded',
+      priority: 'normal',
+      title: `Document uploaded: ${DOCUMENT_TYPE_LABELS[request.document_type] || request.document_type}`,
+      body: `Vendor has uploaded the requested ${DOCUMENT_TYPE_LABELS[request.document_type] || request.document_type}`,
+      referenceType: 'document_request',
+      referenceId: requestId,
+      actionUrl: `/nexus/client/document-requests/${requestId}`,
+      actionLabel: 'Review Document',
+      metadata: { entityType: request.entity_type, entityId: request.entity_id }
+    });
+  } catch (notifError) {
+    console.error('Failed to create document upload notification:', notifError.message);
+  }
+
+  return data;
+}
+
+/**
+ * Accept a document (client action)
+ * @param {object} params
+ * @returns {Promise<object>} Updated request
+ */
+async function acceptDocument({ requestId, reviewedBy, reviewNotes }) {
+  const request = await getDocumentRequest(requestId);
+  if (!request) {
+    throw new Error('Document request not found');
+  }
+  if (request.status !== 'uploaded') {
+    throw new Error(`Cannot accept document with status: ${request.status}`);
+  }
+
+  const { data, error } = await serviceClient
+    .from('nexus_document_requests')
+    .update({
+      status: 'accepted',
+      reviewed_at: new Date().toISOString(),
+      reviewed_by: reviewedBy,
+      review_notes: reviewNotes || null
+    })
+    .eq('request_id', requestId)
+    .select()
+    .single();
+
+  if (error) throw new Error(`Failed to accept document: ${error.message}`);
+
+  // Notify vendor (fire-and-forget)
+  try {
+    await createNotification({
+      tenantId: request.vendor_id.replace('TV-', 'TNT-'),
+      context: 'vendor',
+      contextId: request.vendor_id,
+      type: 'document_accepted',
+      priority: 'normal',
+      title: `Document accepted: ${DOCUMENT_TYPE_LABELS[request.document_type] || request.document_type}`,
+      body: reviewNotes || 'Client has accepted your document submission',
+      referenceType: 'document_request',
+      referenceId: requestId,
+      actionUrl: `/nexus/vendor/document-requests/${requestId}`,
+      actionLabel: 'View Details',
+      metadata: { entityType: request.entity_type, entityId: request.entity_id }
+    });
+  } catch (notifError) {
+    console.error('Failed to create document accepted notification:', notifError.message);
+  }
+
+  return data;
+}
+
+/**
+ * Reject a document (client action)
+ * @param {object} params
+ * @returns {Promise<object>} Updated request
+ */
+async function rejectDocument({ requestId, reviewedBy, reviewNotes }) {
+  const request = await getDocumentRequest(requestId);
+  if (!request) {
+    throw new Error('Document request not found');
+  }
+  if (request.status !== 'uploaded') {
+    throw new Error(`Cannot reject document with status: ${request.status}`);
+  }
+
+  const { data, error } = await serviceClient
+    .from('nexus_document_requests')
+    .update({
+      status: 'rejected',
+      reviewed_at: new Date().toISOString(),
+      reviewed_by: reviewedBy,
+      review_notes: reviewNotes || null
+    })
+    .eq('request_id', requestId)
+    .select()
+    .single();
+
+  if (error) throw new Error(`Failed to reject document: ${error.message}`);
+
+  // Notify vendor (fire-and-forget)
+  try {
+    await createNotification({
+      tenantId: request.vendor_id.replace('TV-', 'TNT-'),
+      context: 'vendor',
+      contextId: request.vendor_id,
+      type: 'document_rejected',
+      priority: 'high',
+      title: `Document rejected: ${DOCUMENT_TYPE_LABELS[request.document_type] || request.document_type}`,
+      body: reviewNotes || 'Client has rejected your document submission. Please re-upload.',
+      referenceType: 'document_request',
+      referenceId: requestId,
+      actionUrl: `/nexus/vendor/document-requests/${requestId}`,
+      actionLabel: 'Re-upload',
+      metadata: { entityType: request.entity_type, entityId: request.entity_id }
+    });
+  } catch (notifError) {
+    console.error('Failed to create document rejected notification:', notifError.message);
+  }
+
+  return data;
+}
+
+/**
+ * Cancel a document request (client action)
+ * @param {object} params
+ * @returns {Promise<object>} Updated request
+ */
+async function cancelDocumentRequest({ requestId, cancelledBy }) {
+  const request = await getDocumentRequest(requestId);
+  if (!request) {
+    throw new Error('Document request not found');
+  }
+  if (request.status === 'accepted' || request.status === 'cancelled') {
+    throw new Error(`Cannot cancel request with status: ${request.status}`);
+  }
+
+  const { data, error } = await serviceClient
+    .from('nexus_document_requests')
+    .update({
+      status: 'cancelled',
+      reviewed_at: new Date().toISOString(),
+      reviewed_by: cancelledBy,
+      review_notes: 'Request cancelled by client'
+    })
+    .eq('request_id', requestId)
+    .select()
+    .single();
+
+  if (error) throw new Error(`Failed to cancel document request: ${error.message}`);
+
+  return data;
+}
+
+// ============================================================================
 // SESSION OPERATIONS
 // ============================================================================
 
@@ -2924,6 +3295,18 @@ export const nexusAdapter = {
   getNotificationsByClient,
   getNotificationsByVendor,
   createInvoiceDecisionNotification,
+
+  // Document Requests (C10)
+  DOCUMENT_TYPE_LABELS,
+  DOCUMENT_STATUS_LABELS,
+  createDocumentRequest,
+  getDocumentRequestsByClient,
+  getDocumentRequestsByVendor,
+  getDocumentRequest,
+  uploadDocumentForRequest,
+  acceptDocument,
+  rejectDocument,
+  cancelDocumentRequest,
 
   // Session
   createSession,

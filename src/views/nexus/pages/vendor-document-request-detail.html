@@ -1,0 +1,170 @@
+{% extends "nexus/layout.html" %}
+
+{% block title %}Document Request | Nexus Vendor{% endblock %}
+
+{% block content %}
+<div class="nexus-page-header">
+  <div class="nexus-page-header-content">
+    <a href="/nexus/vendor/document-requests" class="nexus-back-link">← Back to Requests</a>
+    <h1 class="nexus-page-title">
+      {{ documentTypeLabels[request.document_type] or request.document_type }}
+    </h1>
+    <p class="nexus-page-subtitle">Request ID: {{ request.request_id }}</p>
+  </div>
+  <div class="nexus-page-header-actions">
+    <span class="nexus-badge nexus-badge-lg nexus-badge-{{ request.status }}">
+      {{ documentStatusLabels[request.status] or request.status }}
+    </span>
+  </div>
+</div>
+
+<div class="nexus-content-wrapper">
+  <div class="nexus-detail-grid">
+    <!-- Main Info -->
+    <div class="nexus-card">
+      <h3 class="nexus-card-title">Request Details</h3>
+
+      <div class="nexus-detail-row">
+        <span class="nexus-detail-label">Document Type</span>
+        <span class="nexus-detail-value">
+          {{ documentTypeLabels[request.document_type] or request.document_type }}
+        </span>
+      </div>
+
+      <div class="nexus-detail-row">
+        <span class="nexus-detail-label">Related To</span>
+        <span class="nexus-detail-value">
+          {{ request.entity_type | capitalize }}: {{ request.entity_id }}
+        </span>
+      </div>
+
+      <div class="nexus-detail-row">
+        <span class="nexus-detail-label">Client</span>
+        <span class="nexus-detail-value">{{ request.client_id }}</span>
+      </div>
+
+      <div class="nexus-detail-row">
+        <span class="nexus-detail-label">Requested</span>
+        <span class="nexus-detail-value">
+          {{ request.created_at | date('MMM D, YYYY h:mm A') }}
+        </span>
+      </div>
+
+      {% if request.message %}
+      <div class="nexus-detail-row">
+        <span class="nexus-detail-label">Client's Message</span>
+        <span class="nexus-detail-value nexus-detail-message">{{ request.message }}</span>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Upload Section -->
+    {% if request.status == 'requested' or request.status == 'rejected' %}
+    <div class="nexus-card nexus-card-upload">
+      <h3 class="nexus-card-title">
+        {% if request.status == 'rejected' %}
+          Re-upload Document
+        {% else %}
+          Upload Document
+        {% endif %}
+      </h3>
+
+      {% if request.status == 'rejected' and request.review_notes %}
+      <div class="nexus-alert nexus-alert-warning">
+        <strong>Rejection reason:</strong> {{ request.review_notes }}
+      </div>
+      {% endif %}
+
+      <form action="/nexus/vendor/document-requests/{{ request.request_id }}/upload"
+            method="POST"
+            enctype="multipart/form-data"
+            class="nexus-upload-form">
+
+        <div class="nexus-file-input-wrapper">
+          <input type="file" name="file" id="document-file" required
+                 accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg"
+                 class="nexus-file-input">
+          <label for="document-file" class="nexus-file-label">
+            <span class="nexus-file-icon">📎</span>
+            <span class="nexus-file-text">Choose file or drag here</span>
+            <span class="nexus-file-hint">PDF, DOC, DOCX, XLS, XLSX, PNG, JPG (max 10MB)</span>
+          </label>
+        </div>
+
+        <button type="submit" class="nexus-btn nexus-btn-primary nexus-btn-lg">
+          📤 Upload Document
+        </button>
+      </form>
+    </div>
+    {% endif %}
+
+    <!-- Uploaded Document Info -->
+    {% if request.file_path %}
+    <div class="nexus-card">
+      <h3 class="nexus-card-title">Uploaded Document</h3>
+
+      <div class="nexus-document-info">
+        <div class="nexus-document-icon">📄</div>
+        <div class="nexus-document-details">
+          <span class="nexus-document-name">{{ request.file_name }}</span>
+          <span class="nexus-document-meta">
+            {% if request.file_size_bytes %}
+              {{ (request.file_size_bytes / 1024) | round(1) }} KB
+            {% endif %}
+            • Uploaded {{ request.responded_at | date('MMM D, YYYY') }}
+          </span>
+        </div>
+      </div>
+
+      {% if request.status == 'uploaded' %}
+      <div class="nexus-status-info">
+        <span class="nexus-status-icon">⏳</span>
+        <span>Awaiting client review</span>
+      </div>
+      {% elif request.status == 'accepted' %}
+      <div class="nexus-status-info nexus-status-success">
+        <span class="nexus-status-icon">✅</span>
+        <span>Document accepted by client</span>
+      </div>
+      {% elif request.status == 'rejected' %}
+      <div class="nexus-status-info nexus-status-warning">
+        <span class="nexus-status-icon">❌</span>
+        <span>Document rejected - please re-upload</span>
+      </div>
+      {% endif %}
+    </div>
+    {% endif %}
+
+    <!-- Cancelled Notice -->
+    {% if request.status == 'cancelled' %}
+    <div class="nexus-card">
+      <div class="nexus-document-cancelled">
+        <div class="nexus-cancelled-icon">🚫</div>
+        <p>This request was cancelled by the client</p>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Review Info (if accepted/rejected) -->
+    {% if request.reviewed_at %}
+    <div class="nexus-card">
+      <h3 class="nexus-card-title">Client Review</h3>
+
+      <div class="nexus-detail-row">
+        <span class="nexus-detail-label">Reviewed</span>
+        <span class="nexus-detail-value">
+          {{ request.reviewed_at | date('MMM D, YYYY h:mm A') }}
+        </span>
+      </div>
+
+      {% if request.review_notes %}
+      <div class="nexus-detail-row">
+        <span class="nexus-detail-label">Notes</span>
+        <span class="nexus-detail-value">{{ request.review_notes }}</span>
+      </div>
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
