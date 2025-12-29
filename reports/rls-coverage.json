@@ -1,20 +1,25 @@
 {
-  "timestamp": "2025-12-29T00:44:18.150Z",
+  "timestamp": "2025-12-29T14:03:31.974Z",
+  "compliance_level": "L1 Documented",
   "tables": [
     {
       "table": "nexus_tenants",
+      "semantic_role": "*Configuration*",
       "tenant_scoped": true,
       "has_tenant_id": true,
+      "derived": false,
+      "tenant_scope": "tenant_id",
+      "derived_path": null,
       "rls_enabled": true,
       "policies": [
         {
-          "name": "rls:nexus_tenants_isolation",
-          "operation": "SELECT",
+          "name": "rls:tenant_isolation",
+          "operation": "ALL",
           "tested": true,
           "status": "compliant"
         },
         {
-          "name": "rls:nexus_tenants_service_bypass",
+          "name": "rls:tenant_service_bypass",
           "operation": "ALL",
           "tested": true,
           "status": "compliant"
@@ -26,22 +31,36 @@
         "update": true,
         "delete": true
       },
-      "status": "compliant"
+      "status": "compliant",
+      "compliance_level": "L1 Documented",
+      "severity": "NONE"
     },
     {
       "table": "nexus_tenant_relationships",
+      "semantic_role": "*Ledger*",
       "tenant_scoped": true,
       "has_tenant_id": false,
+      "derived": true,
+      "tenant_scope": "derived:client_id/vendor_id",
+      "derived_path": [
+        "client_id"
+      ],
       "rls_enabled": true,
       "policies": [
         {
-          "name": "rls:nexus_tenant_relationships_isolation",
-          "operation": "SELECT",
+          "name": "rls:relationship_isolation",
+          "operation": "ALL",
           "tested": true,
           "status": "compliant"
         },
         {
-          "name": "rls:nexus_tenant_relationships_service_bypass",
+          "name": "rls:relationship_create",
+          "operation": "ALL",
+          "tested": true,
+          "status": "compliant"
+        },
+        {
+          "name": "rls:relationship_service_bypass",
           "operation": "ALL",
           "tested": true,
           "status": "compliant"
@@ -53,22 +72,30 @@
         "update": true,
         "delete": true
       },
-      "status": "compliant"
+      "status": "compliant",
+      "compliance_level": "L1 Documented",
+      "severity": "NONE"
     },
     {
       "table": "nexus_relationship_invites",
+      "semantic_role": "*Event Log*",
       "tenant_scoped": true,
       "has_tenant_id": false,
+      "derived": true,
+      "tenant_scope": "derived:inviting_tenant_id",
+      "derived_path": [
+        "inviting_tenant_id"
+      ],
       "rls_enabled": true,
       "policies": [
         {
-          "name": "rls:nexus_relationship_invites_isolation",
-          "operation": "SELECT",
+          "name": "rls:invite_isolation",
+          "operation": "ALL",
           "tested": true,
           "status": "compliant"
         },
         {
-          "name": "rls:nexus_relationship_invites_service_bypass",
+          "name": "rls:invite_service_bypass",
           "operation": "ALL",
           "tested": true,
           "status": "compliant"
@@ -80,22 +107,28 @@
         "update": true,
         "delete": true
       },
-      "status": "compliant"
+      "status": "compliant",
+      "compliance_level": "L1 Documented",
+      "severity": "NONE"
     },
     {
       "table": "nexus_users",
+      "semantic_role": "*Ledger*",
       "tenant_scoped": true,
       "has_tenant_id": true,
+      "derived": false,
+      "tenant_scope": "tenant_id",
+      "derived_path": null,
       "rls_enabled": true,
       "policies": [
         {
-          "name": "rls:nexus_users_isolation",
-          "operation": "SELECT",
+          "name": "rls:user_isolation",
+          "operation": "ALL",
           "tested": true,
           "status": "compliant"
         },
         {
-          "name": "rls:nexus_users_service_bypass",
+          "name": "rls:user_service_bypass",
           "operation": "ALL",
           "tested": true,
           "status": "compliant"
@@ -107,22 +140,28 @@
         "update": true,
         "delete": true
       },
-      "status": "compliant"
+      "status": "compliant",
+      "compliance_level": "L1 Documented",
+      "severity": "NONE"
     },
     {
       "table": "nexus_sessions",
+      "semantic_role": "*Event Log*",
       "tenant_scoped": true,
       "has_tenant_id": true,
+      "derived": false,
+      "tenant_scope": "tenant_id",
+      "derived_path": null,
       "rls_enabled": true,
       "policies": [
         {
-          "name": "rls:nexus_sessions_isolation",
-          "operation": "SELECT",
+          "name": "rls:session_isolation",
+          "operation": "ALL",
           "tested": true,
           "status": "compliant"
         },
         {
-          "name": "rls:nexus_sessions_service_bypass",
+          "name": "rls:session_service_bypass",
           "operation": "ALL",
           "tested": true,
           "status": "compliant"
@@ -134,22 +173,30 @@
         "update": true,
         "delete": true
       },
-      "status": "compliant"
+      "status": "compliant",
+      "compliance_level": "L1 Documented",
+      "severity": "NONE"
     },
     {
       "table": "nexus_cases",
+      "semantic_role": "*Ledger*",
       "tenant_scoped": true,
       "has_tenant_id": false,
+      "derived": true,
+      "tenant_scope": "derived:client_id/vendor_id",
+      "derived_path": [
+        "client_id"
+      ],
       "rls_enabled": true,
       "policies": [
         {
-          "name": "rls:nexus_cases_isolation",
-          "operation": "SELECT",
+          "name": "rls:case_isolation",
+          "operation": "ALL",
           "tested": true,
           "status": "compliant"
         },
         {
-          "name": "rls:nexus_cases_service_bypass",
+          "name": "rls:case_service_bypass",
           "operation": "ALL",
           "tested": true,
           "status": "compliant"
@@ -161,22 +208,32 @@
         "update": true,
         "delete": true
       },
-      "status": "compliant"
+      "status": "compliant",
+      "compliance_level": "L1 Documented",
+      "severity": "NONE"
     },
     {
       "table": "nexus_case_messages",
+      "semantic_role": "*Event Log*",
       "tenant_scoped": true,
       "has_tenant_id": false,
+      "derived": true,
+      "tenant_scope": "derived:case_id→client_id/vendor_id",
+      "derived_path": [
+        "case_id",
+        "client_id",
+        "vendor_id"
+      ],
       "rls_enabled": true,
       "policies": [
         {
-          "name": "rls:nexus_case_messages_isolation",
-          "operation": "SELECT",
+          "name": "rls:message_isolation",
+          "operation": "ALL",
           "tested": true,
           "status": "compliant"
         },
         {
-          "name": "rls:nexus_case_messages_service_bypass",
+          "name": "rls:message_service_bypass",
           "operation": "ALL",
           "tested": true,
           "status": "compliant"
@@ -188,22 +245,32 @@
         "update": true,
         "delete": true
       },
-      "status": "compliant"
+      "status": "compliant",
+      "compliance_level": "L1 Documented",
+      "severity": "NONE"
     },
     {
       "table": "nexus_case_evidence",
+      "semantic_role": "*Projection*",
       "tenant_scoped": true,
       "has_tenant_id": false,
+      "derived": true,
+      "tenant_scope": "derived:case_id→client_id/vendor_id",
+      "derived_path": [
+        "case_id",
+        "client_id",
+        "vendor_id"
+      ],
       "rls_enabled": true,
       "policies": [
         {
-          "name": "rls:nexus_case_evidence_isolation",
-          "operation": "SELECT",
+          "name": "rls:evidence_isolation",
+          "operation": "ALL",
           "tested": true,
           "status": "compliant"
         },
         {
-          "name": "rls:nexus_case_evidence_service_bypass",
+          "name": "rls:evidence_service_bypass",
           "operation": "ALL",
           "tested": true,
           "status": "compliant"
@@ -215,22 +282,32 @@
         "update": true,
         "delete": true
       },
-      "status": "compliant"
+      "status": "compliant",
+      "compliance_level": "L1 Documented",
+      "severity": "NONE"
     },
     {
       "table": "nexus_case_checklist",
+      "semantic_role": "*Projection*",
       "tenant_scoped": true,
       "has_tenant_id": false,
+      "derived": true,
+      "tenant_scope": "derived:case_id→client_id/vendor_id",
+      "derived_path": [
+        "case_id",
+        "client_id",
+        "vendor_id"
+      ],
       "rls_enabled": true,
       "policies": [
         {
-          "name": "rls:nexus_case_checklist_isolation",
-          "operation": "SELECT",
+          "name": "rls:checklist_isolation",
+          "operation": "ALL",
           "tested": true,
           "status": "compliant"
         },
         {
-          "name": "rls:nexus_case_checklist_service_bypass",
+          "name": "rls:checklist_service_bypass",
           "operation": "ALL",
           "tested": true,
           "status": "compliant"
@@ -242,22 +319,32 @@
         "update": true,
         "delete": true
       },
-      "status": "compliant"
+      "status": "compliant",
+      "compliance_level": "L1 Documented",
+      "severity": "NONE"
     },
     {
       "table": "nexus_case_activity",
+      "semantic_role": "*Event Log*",
       "tenant_scoped": true,
       "has_tenant_id": false,
+      "derived": true,
+      "tenant_scope": "derived:case_id→client_id/vendor_id",
+      "derived_path": [
+        "case_id",
+        "client_id",
+        "vendor_id"
+      ],
       "rls_enabled": true,
       "policies": [
         {
-          "name": "rls:nexus_case_activity_isolation",
-          "operation": "SELECT",
+          "name": "rls:activity_isolation",
+          "operation": "ALL",
           "tested": true,
           "status": "compliant"
         },
         {
-          "name": "rls:nexus_case_activity_service_bypass",
+          "name": "rls:activity_service_bypass",
           "operation": "ALL",
           "tested": true,
           "status": "compliant"
@@ -269,22 +356,30 @@
         "update": true,
         "delete": true
       },
-      "status": "compliant"
+      "status": "compliant",
+      "compliance_level": "L1 Documented",
+      "severity": "NONE"
     },
     {
       "table": "nexus_invoices",
+      "semantic_role": "*Ledger*",
       "tenant_scoped": true,
       "has_tenant_id": false,
+      "derived": true,
+      "tenant_scope": "derived:client_id/vendor_id",
+      "derived_path": [
+        "client_id"
+      ],
       "rls_enabled": true,
       "policies": [
         {
-          "name": "rls:nexus_invoices_isolation",
-          "operation": "SELECT",
+          "name": "rls:invoice_isolation",
+          "operation": "ALL",
           "tested": true,
           "status": "compliant"
         },
         {
-          "name": "rls:nexus_invoices_service_bypass",
+          "name": "rls:invoice_service_bypass",
           "operation": "ALL",
           "tested": true,
           "status": "compliant"
@@ -296,22 +391,30 @@
         "update": true,
         "delete": true
       },
-      "status": "compliant"
+      "status": "compliant",
+      "compliance_level": "L1 Documented",
+      "severity": "NONE"
     },
     {
       "table": "nexus_payments",
+      "semantic_role": "*Ledger*",
       "tenant_scoped": true,
       "has_tenant_id": false,
+      "derived": true,
+      "tenant_scope": "derived:from_id/to_id",
+      "derived_path": [
+        "from_id"
+      ],
       "rls_enabled": true,
       "policies": [
         {
-          "name": "rls:nexus_payments_isolation",
-          "operation": "SELECT",
+          "name": "rls:payment_isolation",
+          "operation": "ALL",
           "tested": true,
           "status": "compliant"
         },
         {
-          "name": "rls:nexus_payments_service_bypass",
+          "name": "rls:payment_service_bypass",
           "operation": "ALL",
           "tested": true,
           "status": "compliant"
@@ -323,22 +426,30 @@
         "update": true,
         "delete": true
       },
-      "status": "compliant"
+      "status": "compliant",
+      "compliance_level": "L1 Documented",
+      "severity": "NONE"
     },
     {
       "table": "nexus_payment_schedule",
+      "semantic_role": "*Configuration*",
       "tenant_scoped": true,
       "has_tenant_id": false,
+      "derived": true,
+      "tenant_scope": "derived:from_id/to_id",
+      "derived_path": [
+        "from_id"
+      ],
       "rls_enabled": true,
       "policies": [
         {
-          "name": "rls:nexus_payment_schedule_isolation",
-          "operation": "SELECT",
+          "name": "rls:schedule_isolation",
+          "operation": "ALL",
           "tested": true,
           "status": "compliant"
         },
         {
-          "name": "rls:nexus_payment_schedule_service_bypass",
+          "name": "rls:schedule_service_bypass",
           "operation": "ALL",
           "tested": true,
           "status": "compliant"
@@ -350,22 +461,32 @@
         "update": true,
         "delete": true
       },
-      "status": "compliant"
+      "status": "compliant",
+      "compliance_level": "L1 Documented",
+      "severity": "NONE"
     },
     {
       "table": "nexus_payment_activity",
+      "semantic_role": "*Event Log*",
       "tenant_scoped": true,
       "has_tenant_id": false,
+      "derived": true,
+      "tenant_scope": "derived:payment_id→from_id/to_id",
+      "derived_path": [
+        "payment_id",
+        "from_id",
+        "to_id"
+      ],
       "rls_enabled": true,
       "policies": [
         {
-          "name": "rls:nexus_payment_activity_isolation",
-          "operation": "SELECT",
+          "name": "rls:pay_activity_isolation",
+          "operation": "ALL",
           "tested": true,
           "status": "compliant"
         },
         {
-          "name": "rls:nexus_payment_activity_service_bypass",
+          "name": "rls:pay_activity_service_bypass",
           "operation": "ALL",
           "tested": true,
           "status": "compliant"
@@ -377,22 +498,28 @@
         "update": true,
         "delete": true
       },
-      "status": "compliant"
+      "status": "compliant",
+      "compliance_level": "L1 Documented",
+      "severity": "NONE"
     },
     {
       "table": "nexus_notifications",
+      "semantic_role": "*Event Log*",
       "tenant_scoped": true,
       "has_tenant_id": true,
+      "derived": false,
+      "tenant_scope": "tenant_id",
+      "derived_path": null,
       "rls_enabled": true,
       "policies": [
         {
-          "name": "rls:nexus_notifications_isolation",
-          "operation": "SELECT",
+          "name": "rls:notification_isolation",
+          "operation": "ALL",
           "tested": true,
           "status": "compliant"
         },
         {
-          "name": "rls:nexus_notifications_service_bypass",
+          "name": "rls:notification_service_bypass",
           "operation": "ALL",
           "tested": true,
           "status": "compliant"
@@ -404,22 +531,28 @@
         "update": true,
         "delete": true
       },
-      "status": "compliant"
+      "status": "compliant",
+      "compliance_level": "L1 Documented",
+      "severity": "NONE"
     },
     {
       "table": "nexus_notification_config",
+      "semantic_role": "*Configuration*",
       "tenant_scoped": true,
       "has_tenant_id": true,
+      "derived": false,
+      "tenant_scope": "tenant_id` (PK)",
+      "derived_path": null,
       "rls_enabled": true,
       "policies": [
         {
-          "name": "rls:nexus_notification_config_isolation",
-          "operation": "SELECT",
+          "name": "rls:notif_config_isolation",
+          "operation": "ALL",
           "tested": true,
           "status": "compliant"
         },
         {
-          "name": "rls:nexus_notification_config_service_bypass",
+          "name": "rls:notif_config_service_bypass",
           "operation": "ALL",
           "tested": true,
           "status": "compliant"
@@ -431,22 +564,28 @@
         "update": true,
         "delete": true
       },
-      "status": "compliant"
+      "status": "compliant",
+      "compliance_level": "L1 Documented",
+      "severity": "NONE"
     },
     {
       "table": "nexus_user_notification_prefs",
+      "semantic_role": "*Configuration*",
       "tenant_scoped": true,
       "has_tenant_id": true,
+      "derived": false,
+      "tenant_scope": "tenant_id",
+      "derived_path": null,
       "rls_enabled": true,
       "policies": [
         {
-          "name": "rls:nexus_user_notification_prefs_isolation",
-          "operation": "SELECT",
+          "name": "rls:user_prefs_isolation",
+          "operation": "ALL",
           "tested": true,
           "status": "compliant"
         },
         {
-          "name": "rls:nexus_user_notification_prefs_service_bypass",
+          "name": "rls:user_prefs_service_bypass",
           "operation": "ALL",
           "tested": true,
           "status": "compliant"
@@ -458,22 +597,28 @@
         "update": true,
         "delete": true
       },
-      "status": "compliant"
+      "status": "compliant",
+      "compliance_level": "L1 Documented",
+      "severity": "NONE"
     },
     {
       "table": "nexus_notification_queue",
+      "semantic_role": "*Event Log*",
       "tenant_scoped": true,
       "has_tenant_id": true,
+      "derived": false,
+      "tenant_scope": "tenant_id",
+      "derived_path": null,
       "rls_enabled": true,
       "policies": [
         {
-          "name": "rls:nexus_notification_queue_isolation",
-          "operation": "SELECT",
+          "name": "rls:queue_isolation",
+          "operation": "ALL",
           "tested": true,
           "status": "compliant"
         },
         {
-          "name": "rls:nexus_notification_queue_service_bypass",
+          "name": "rls:queue_service_bypass",
           "operation": "ALL",
           "tested": true,
           "status": "compliant"
@@ -485,22 +630,28 @@
         "update": true,
         "delete": true
       },
-      "status": "compliant"
+      "status": "compliant",
+      "compliance_level": "L1 Documented",
+      "severity": "NONE"
     },
     {
       "table": "nexus_push_subscriptions",
+      "semantic_role": "*Configuration*",
       "tenant_scoped": true,
       "has_tenant_id": true,
+      "derived": false,
+      "tenant_scope": "tenant_id",
+      "derived_path": null,
       "rls_enabled": true,
       "policies": [
         {
-          "name": "rls:nexus_push_subscriptions_isolation",
-          "operation": "SELECT",
+          "name": "rls:push_sub_isolation",
+          "operation": "ALL",
           "tested": true,
           "status": "compliant"
         },
         {
-          "name": "rls:nexus_push_subscriptions_service_bypass",
+          "name": "rls:push_sub_service_bypass",
           "operation": "ALL",
           "tested": true,
           "status": "compliant"
@@ -512,22 +663,30 @@
         "update": true,
         "delete": true
       },
-      "status": "compliant"
+      "status": "compliant",
+      "compliance_level": "L1 Documented",
+      "severity": "NONE"
     },
     {
       "table": "nexus_audit_log",
+      "semantic_role": "*Event Log*",
       "tenant_scoped": true,
       "has_tenant_id": false,
+      "derived": true,
+      "tenant_scope": "derived:actor_tenant_id",
+      "derived_path": [
+        "actor_tenant_id"
+      ],
       "rls_enabled": true,
       "policies": [
         {
-          "name": "rls:nexus_audit_log_isolation",
-          "operation": "SELECT",
+          "name": "rls:audit_isolation",
+          "operation": "ALL",
           "tested": true,
           "status": "compliant"
         },
         {
-          "name": "rls:nexus_audit_log_service_bypass",
+          "name": "rls:audit_service_bypass",
           "operation": "ALL",
           "tested": true,
           "status": "compliant"
@@ -539,7 +698,9 @@
         "update": true,
         "delete": true
       },
-      "status": "compliant"
+      "status": "compliant",
+      "compliance_level": "L1 Documented",
+      "severity": "NONE"
     }
   ],
   "summary": {
@@ -548,6 +709,7 @@
     "rls_enabled": 20,
     "coverage_percentage": 100,
     "compliant": 20,
-    "non_compliant": 0
+    "non_compliant": 0,
+    "severity": "NONE"
   }
 }

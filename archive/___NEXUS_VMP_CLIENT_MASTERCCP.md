@@ -1,9 +1,9 @@
 # NEXUS CLIENT PORTAL - MASTER PLAN CCP
 
-**Version:** 1.6
+**Version:** 1.8
 **Created:** 2025-12-26
-**Updated:** 2025-12-26
-**Status:** ✅ C8 COMPLETE - Notifications (C8.3) Shipped
+**Updated:** 2025-12-27
+**Status:** ✅ ALL CCPs COMPLETE - Client Portal Ready for Production
 **Companion:** `___NEXUS_VMP_VENDOR_MASTERCCP.md` (Vendor-facing, Phase 12 Complete)
 
 ---
@@ -21,9 +21,9 @@
 | CCP-C5 | Case detail + notes (client & vendor) | ✅ PASS | 2025-12-26 |
 | CCP-C6 | Case investigation (evidence, status, vendor) | ✅ PASS | 2025-12-26 |
 | CCP-C7 | Invoice processing workflow | ✅ MVP | 2025-12-26 |
-| CCP-C8 | Payment approval workflow | ❌ TODO | - |
-| CCP-C9 | Document request → vendor flow | ❌ TODO | - |
-| CCP-C10 | End-to-end client journey tested | ❌ TODO | - |
+| CCP-C8 | Payment approval workflow | ✅ MVP | 2025-12-27 |
+| CCP-C9 | Document request → vendor flow | ✅ PASS | 2025-12-27 |
+| CCP-C10 | End-to-end client journey tested | ✅ PASS | 2025-12-27 |
 
 ---
 
@@ -67,7 +67,7 @@
 | Status transitions (client) | ✅ | C6.3 complete |
 | Vendor case detail | ✅ | `vendor-case-detail.html` [C6.4] |
 | Vendor notes/evidence | ✅ | C6.4 complete |
-| Approval workflows | ❌ | Future phase |
+| Approval workflows | ✅ | C7 (invoice) + C8 (payment) complete |
 | Document tracker | ❌ | Future phase |
 
 ---
@@ -448,6 +448,94 @@ DELETE FROM nexus_cases WHERE subject LIKE '%mismatch%' AND client_id = 'TC-ALPH
 
 ---
 
+### PHASE CCP-C8: Payment Approval Workflow ✅ MVP COMPLETE (2025-12-27)
+
+> **MVP Patch: Payment Decision v0** - Client can approve/dispute payments
+
+| # | Task | Status |
+|---|------|--------|
+| C8.1 | Payment `approved` status added | ✅ Done |
+| C8.2 | `approvePaymentByClient()` adapter | ✅ Done |
+| C8.3 | `disputePaymentByClient()` adapter | ✅ Done |
+| C8.4 | POST /payments/:id/approve route | ✅ Done |
+| C8.5 | POST /payments/:id/dispute route | ✅ Done |
+| C8.6 | Approve button in payment detail | ✅ Done |
+| C8.7 | Raise Issue form in payment detail | ✅ Done |
+| C8.8 | Dispute creates linked case | ✅ Done |
+| C8.9 | Audit columns (approved_at/by, disputed_at/by) | ✅ Done |
+| C8.10 | Notification triggers for vendor | ✅ Done |
+
+**Files Implemented:**
+- `migrations/053_nexus_payment_decisions.sql` - Schema patch
+- `src/adapters/nexus-adapter.js` - Three new functions:
+  - `approvePaymentByClient()` - Marks payment approved with audit trail
+  - `disputePaymentByClient()` - Creates linked case, marks disputed
+  - `createPaymentDecisionNotification()` - Notifies vendor users
+- `src/routes/nexus-client.js` - Two POST routes
+- `src/views/nexus/pages/client-payment-detail.html` - Decision UI
+- `public/css/nexus.css` - Payment decision styling
+
+**MVP Decision Flow:**
+```
+Payment (pending) → [Approve for Payment] → status='approved' + audit trail + vendor notified
+                  → [Raise Issue] → status='disputed' + case created + vendor notified
+```
+
+**CCP-C8: ✅ MVP VERIFIED** - Client can make payment decisions
+
+---
+
+## MVP Demo Script — Payment Decision v0
+
+**Duration:** 2 minutes
+**Prereq:** Server running (`npm run dev`), logged in as `alice@alpha.com`
+
+### A) Approve Flow
+1. Navigate: `/nexus/client/payments/PAY-AB000002`
+2. Verify status badge shows `pending`
+3. Click **✅ Approve for Payment**
+4. ✓ Redirects with `?ok=approved`
+5. ✓ Badge now shows `approved`
+6. ✓ Approve button gone, replaced by approved badge with date
+
+### B) Dispute Flow
+**Reset first (run in Supabase SQL Editor):**
+```sql
+UPDATE nexus_payments
+SET status = 'pending', disputed_at = NULL, disputed_by = NULL, approved_at = NULL, approved_by = NULL, case_id = NULL
+WHERE payment_id = 'PAY-AB000002';
+```
+
+1. Navigate: `/nexus/client/payments/PAY-AB000002`
+2. Click **🚨 Raise Issue** → form expands
+3. Enter subject: "Amount incorrect"
+4. Enter description: "Invoice was for $5000, payment shows $7000"
+5. Click **Submit Dispute**
+6. ✓ Redirects to case detail page
+7. ✓ Case shows subject + description
+8. Go back to payment: `/nexus/client/payments/PAY-AB000002`
+9. ✓ Badge shows `disputed`
+10. ✓ "View Dispute Case" button visible
+
+### Verification SQL
+```sql
+-- After Approve:
+SELECT payment_id, status, approved_at FROM nexus_payments WHERE payment_id = 'PAY-AB000002';
+
+-- After Dispute:
+SELECT payment_id, status, disputed_at, case_id FROM nexus_payments WHERE payment_id = 'PAY-AB000002';
+```
+
+### Known Reset Commands
+```sql
+-- Reset payment back to 'pending' for repeat testing
+UPDATE nexus_payments
+SET status = 'pending', approved_at = NULL, approved_by = NULL, disputed_at = NULL, disputed_by = NULL, case_id = NULL
+WHERE payment_id = 'PAY-AB000002';
+```
+
+---
+
 ### PHASE C8 (v1.1): Invoice Workflow Expansion — Sprint Plan (Post-MVP)
 
 **Objective:** Extend the shipped Invoice Decision v0 into a scalable AP workflow without introducing scope creep.
@@ -784,6 +872,9 @@ FEATURE_MATCHING_PILOT=true
 | 2025-12-26 | C8.1 | Invoice Inbox (tabs, filters, pagination) |
 | 2025-12-26 | C8.2 | **Matching Pilot** - Feature-flagged match signal |
 | 2025-12-26 | C8.3 | **Notifications** - Approve/dispute triggers, client+vendor pages |
+| 2025-12-27 | CCP-C8 | **Payment Approval Workflow** - Approve + Dispute payments |
+| 2025-12-27 | CCP-C9 | Document request → vendor flow verified complete |
+| 2025-12-27 | CCP-C10 | End-to-end client journey tested and verified |
 
 ---
 

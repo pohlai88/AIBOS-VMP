@@ -178,7 +178,62 @@
   </section>
   {% endif %}
 
-  <!-- Navigation -->
+  <!-- Approval Workflow (CCP-C9) -->
+  {% if workflowState %}
+  <section class="nexus-document-section">
+    <h2>Approval Workflow</h2>
+    <div class="nexus-workflow-state">
+      <div class="nexus-workflow-current">
+        <span class="nexus-badge {{ workflowState }}">{{ workflowState | replace('_', ' ') | title }}</span>
+        {% if approvalRules.threshold_amount %}
+        <span class="nexus-workflow-meta">Threshold: ${{ approvalRules.threshold_amount | round(2) }}</span>
+        {% endif %}
+        {% if approvalRules.requires_dual_control %}
+        <span class="nexus-workflow-meta">Dual Control: Required</span>
+        {% endif %}
+      </div>
+
+      {% if approvals.length > 0 %}
+      <div class="nexus-approval-queue" style="margin-top:16px;">
+        <h3 style="font-size:14px; font-weight:600; margin-bottom:8px;">Approvals</h3>
+        <div class="nexus-approval-list">
+          {% for approval in approvals %}
+          <div class="nexus-approval-item">
+            <span class="nexus-badge success">✅ Approved</span>
+            <span class="nexus-approval-meta">{{ approval.timestamp | truncate(10, true, '') }}</span>
+            {% if approval.approver_id %}
+            <span class="nexus-approval-meta">by {{ approval.approver_id }}</span>
+            {% endif %}
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+
+      {% if approvalHistory.length > 0 %}
+      <div class="nexus-workflow-history" style="margin-top:16px;">
+        <h3 style="font-size:14px; font-weight:600; margin-bottom:8px;">State History</h3>
+        <div class="nexus-status-timeline">
+          {% for entry in approvalHistory %}
+          <div class="nexus-timeline-item">
+            <span class="nexus-timeline-dot {{ entry.state }}"></span>
+            <div class="nexus-timeline-content">
+              <span class="nexus-timeline-status">{{ entry.state | replace('_', ' ') | title }}</span>
+              <span class="nexus-timeline-date">{{ entry.timestamp | truncate(19, true, '') }}</span>
+              {% if entry.action %}
+              <span class="nexus-timeline-action">{{ entry.action | title }}</span>
+              {% endif %}
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+    </div>
+  </section>
+  {% endif %}
+
+  <!-- Navigation + Decision Actions -->
   <section class="nexus-document-actions">
     <a href="/nexus/client/payments" class="nexus-btn secondary">
       ← Back to Payment Outbox
@@ -186,9 +241,88 @@
     <a href="/nexus/client/invoices" class="nexus-btn secondary">
       📄 View All Invoices
     </a>
-    <button class="nexus-btn muted" disabled title="Coming in a future update">
-      🚨 Raise Issue
-    </button>
+
+    {% if workflowState == 'pending_approval' or payment.status == 'pending' %}
+    <!-- Payment Decision Block (CCP-C9 Enhanced) -->
+    <div class="nexus-payment-decision">
+      <!-- Approve Button -->
+      <form method="POST" action="/nexus/client/payments/{{ payment.payment_id }}/approve" style="display:inline;">
+        <button class="nexus-btn primary" type="submit">
+          ✅ Approve for Payment
+        </button>
+      </form>
+
+      <!-- Reject Button -->
+      <details class="nexus-reject-details" style="display:inline-block; margin-left:8px;">
+        <summary class="nexus-btn warning" role="button" aria-label="Reject payment">
+          ❌ Reject
+        </summary>
+        <form method="POST" action="/nexus/client/payments/{{ payment.payment_id }}/reject" class="nexus-reject-form" style="margin-top:8px; padding:12px; border:1px solid #ddd; border-radius:4px;">
+          <label class="nexus-label">
+            Reason
+            <textarea name="reason" class="nexus-textarea" rows="2" placeholder="Reason for rejection..." required></textarea>
+          </label>
+          <div style="margin-top:8px; display:flex; gap:8px;">
+            <button class="nexus-btn warning small" type="submit">Reject Payment</button>
+            <button class="nexus-btn muted small" type="button" onclick="this.closest('details').removeAttribute('open')">Cancel</button>
+          </div>
+        </form>
+      </details>
+
+      <!-- Raise Issue (Dispute) -->
+      <details class="nexus-dispute-details" style="display:inline-block; margin-left:8px;">
+        <summary class="nexus-btn danger" role="button" aria-label="Raise issue (dispute payment)">
+          🚨 Raise Issue
+        </summary>
+
+        <form method="POST" action="/nexus/client/payments/{{ payment.payment_id }}/dispute" class="nexus-dispute-form">
+          <label class="nexus-label">
+            Subject
+            <input name="subject" class="nexus-input" placeholder="e.g., Amount incorrect / Wrong vendor / Duplicate payment" required />
+          </label>
+
+          <label class="nexus-label" style="margin-top:8px;">
+            Description
+            <textarea name="description" class="nexus-textarea" rows="3" placeholder="Describe the issue in detail..."></textarea>
+          </label>
+
+          <div style="margin-top:12px; display:flex; gap:8px;">
+            <button class="nexus-btn danger small" type="submit">Submit Dispute</button>
+            <button class="nexus-btn muted small" type="button" onclick="this.closest('details').removeAttribute('open')">Cancel</button>
+          </div>
+        </form>
+      </details>
+    </div>
+    {% elif workflowState == 'approved' or payment.status == 'approved' %}
+    <div class="nexus-payment-approved-badge">
+      <span class="nexus-badge success">✅ Approved</span>
+      {% if payment.approved_at %}
+      <span class="nexus-approved-meta">on {{ payment.approved_at | truncate(10, true, '') }}</span>
+      {% endif %}
+      <!-- Release Button -->
+      <form method="POST" action="/nexus/client/payments/{{ payment.payment_id }}/release" style="display:inline; margin-left:8px;">
+        <button class="nexus-btn primary small" type="submit">
+          🚀 Release Payment
+        </button>
+      </form>
+    </div>
+    {% elif workflowState == 'rejected' %}
+    <div class="nexus-payment-rejected-badge">
+      <span class="nexus-badge warning">❌ Rejected</span>
+      {% if workflow.approval_workflow.rejection_reason %}
+      <span class="nexus-rejection-reason" style="margin-left:8px;">{{ workflow.approval_workflow.rejection_reason }}</span>
+      {% endif %}
+    </div>
+    {% elif payment.status == 'disputed' %}
+    <div class="nexus-payment-disputed-badge">
+      <span class="nexus-badge danger">🚨 Disputed</span>
+      {% if payment.case_id %}
+      <a href="/nexus/client/cases/{{ payment.case_id }}" class="nexus-btn warning small" style="margin-left:8px;">
+        View Dispute Case →
+      </a>
+      {% endif %}
+    </div>
+    {% endif %}
   </section>
 
 </div>

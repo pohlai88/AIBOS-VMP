@@ -1,12 +1,85 @@
 # SSOT Guardrail Matrix (Master)
 
-**Version:** 1.1.0  
+## Document Status & Authority
+
+**Authority Level:** NORMATIVE  
+**SSOT:** Yes  
+**Enforcement:** Enforced by CI (`check:drift`)  
+**Applies To:** All database tables, JSONB contracts, RLS policies  
+**Owner:** Architecture Team  
+**Effective From:** 2025-01-22  
+**Version:** 1.1.0
+
+**Definitions:**
+- **NORMATIVE:** Defines requirements. If this changes, enforcement MUST change.
+- **INFORMATIVE:** Explains or guides. MUST NOT introduce new rules.
+- **EVIDENCE:** Generated proof / reports. MUST be reproducible.
+
+**Precedence (Conflict Resolution):**
+1. **NORMATIVE SSOT** (this document - highest authority)
+2. Enforcement code (must follow SSOT)
+3. INFORMATIVE guides
+4. EVIDENCE reports (derived output)
+
+**Change Control:**
+- Changes to NORMATIVE sections require:
+  1) Version bump
+  2) Update to enforcement or explicit "Declared" status
+  3) Entry in Promotion / Decision log (if data semantics affected)
+
+---
+
 **Last Updated:** 2025-01-22  
 **Status:** ✅ Active (L1 Documented - DRIFT checks pending implementation)  
 **Purpose:** Single Source of Truth operational matrix for database schema guardrails - anti-drift enforcement  
 **Aligned To:** [PRD_DB_SCHEMA.md](../../development/prds/PRD_DB_SCHEMA.md)
 
 **⚠️ Critical Rule:** ✅ (passes `check:drift`) requires DRIFT-01/02/03 passing on live DB OR on a DB snapshot generated in CI. "It passed locally" is not acceptable. No table can be marked ✅ unless DRIFT checks are actually enforced in CI.
+
+**⚠️ Claim Control (No False Compliance):**
+- "✅ compliant" may only be used when enforcement exists at the stated level.
+- "⚠️ Declared" means documented only; **external claims MUST NOT treat it as enforced.**
+
+---
+
+## SSOT Compilation Contract (Machine-Enforceable)
+
+This SSOT is considered valid **only if**:
+1. It is version-controlled (Git)
+2. It is parseable by the SSOT compiler (`matrix-parser.mjs`)
+3. It produces deterministic machine reports (`check-drift.mjs`)
+4. CI gates reference those reports
+
+**SSOT Format Guarantees:**
+- Each table row MUST include:
+  - `table`
+  - `tenant_scope` (direct `tenant_id`, `derived:<path>`, or `global`)
+  - `rls_required` (yes/no)
+  - `jsonb_columns` (if any)
+  - `owner`
+  - `status` (✅ compliant / ⚠️ declared / ❌ non-compliant)
+- Any JSONB column MUST have a registered contract:
+  - `contract_type`
+  - `canonical_contract_id`
+  - `validator_ref`
+  - version range (`min_version`..`max_version`)
+
+---
+
+## SSOT Definition (Machine-Enforceable)
+
+**A structure is considered SSOT only if it is:**
+
+1. **Version-controlled** - Stored in version control (Git) with full history
+2. **Validated in CI** - Automatically checked in continuous integration pipelines
+3. **Queried by automation** - Validated by machine-readable scripts, not human interpretation
+
+**This prevents future drift where someone claims a Google Doc, README, or wiki page is "SSOT".**
+
+**Enforcement:**
+- All SSOT artifacts must be in `docs/ssot/` directory
+- All SSOT artifacts must be validated by `scripts/check-drift.mjs` or equivalent automation
+- All SSOT artifacts must produce machine-readable reports (JSON) for CI/CD integration
 
 ---
 
@@ -30,30 +103,38 @@
 - **Compliance Level:** `L0 Draft | L1 Documented | L2 Enforced | L3 Enforced+Tested`
 - **Drift Status:** ✅ passes `check:drift` (L2+ - requires DRIFT-01/02/03 on live DB or CI snapshot) | ⚠️ Declared (L1) | ❌ blocks merge
 
-| Table | Purpose | Tenant Scope | Derived Scope Proof | Core Columns (immutable) | JSONB Columns | JSONB Contract Types (registered) | RLS Policy ID | Index Requirements | Index Justification Link | Promotion Candidates | Adapter Owner | Validator Owner | Test Coverage | Compliance Level | Drift Status |
-|-------|---------|--------------|--------------------------|---------------|-----------------------------------|---------------|-------------------|---------------------|---------------|---------------|--------------|
-| `nexus_tenants` | Master tenant table with explicit sub-IDs | `tenant_id` | N/A (direct) | `id (pk)`, `tenant_id`, `tenant_client_id`, `tenant_vendor_id`, `created_at`, `updated_at` | `settings`, `metadata` | `tenant_settings`, `tenant_metadata` | `rls:tenant_isolation` | PK + all IDs indexed | [PROMO-002](./PROMOTION_LOG.md#promo-002) | `settings.feature_flags`, `metadata.plan_config` | `src/adapters/nexus-adapter.js` | `src/schemas/metadata.schema.js` | unit+int | L1 Documented | ⚠️ Declared |
-| `nexus_tenant_relationships` | Binary client-vendor relationships | `derived:client_id/vendor_id` | [RLS_COVERAGE.md#2](./RLS_COVERAGE.md#2-nexus_tenant_relationships) | `id (pk)`, `client_id`, `vendor_id`, `created_at`, `updated_at` | `metadata` | `relationship_metadata` | `rls:relationship_isolation` | PK + client_id + vendor_id indexed | None | None | `src/adapters/nexus-adapter.js` | `src/schemas/metadata.schema.js` | unit+int | L1 Documented | ⚠️ Declared |
-| `nexus_relationship_invites` | Pending relationship invitations | `derived:inviting_tenant_id` | [RLS_COVERAGE.md#19](./RLS_COVERAGE.md#19-nexus_relationship_invites) | `id (pk)`, `token`, `inviting_tenant_id`, `created_at` | None | None | `rls:invite_isolation` | PK + token + email indexed | None | None | `src/adapters/nexus-adapter.js` | N/A | unit+int | L1 Documented | ⚠️ Declared |
-| `nexus_users` | Users belonging to tenants | `tenant_id` | N/A (direct) | `id (pk)`, `user_id`, `tenant_id`, `email`, `created_at`, `updated_at` | `preferences` | `user_preferences` | `rls:user_isolation` | PK + user_id + tenant_id + email indexed | [PROMO-003](./PROMOTION_LOG.md#promo-003) | `preferences.ui.theme`, `preferences.notifications` | `src/adapters/nexus-adapter.js` | `src/schemas/metadata.schema.js` | unit+int | L1 Documented | ⚠️ Declared |
-| `nexus_sessions` | User session management | `tenant_id` | N/A (direct) | `id (pk)`, `user_id`, `tenant_id`, `expires_at`, `created_at` | `data` | `session_data` | `rls:session_isolation` | PK + user_id + tenant_id + expires_at indexed | None | None | `src/adapters/nexus-adapter.js` | `src/schemas/metadata.schema.js` | unit+int | L1 Documented | ⚠️ Declared |
-| `nexus_cases` | Case management (vendor interactions) | `derived:client_id/vendor_id` | [RLS_COVERAGE.md#4](./RLS_COVERAGE.md#4-nexus_cases) | `id (pk)`, `case_id`, `client_id`, `vendor_id`, `status`, `priority`, `created_at`, `updated_at` | `metadata` | `case_metadata` | `rls:case_isolation` | PK + case_id + client_id + vendor_id + status + priority indexed | None | `metadata.priority` (already promoted), `metadata.escalation_level` | `src/adapters/nexus-adapter.js` | `src/schemas/metadata.schema.js` | unit+int | L1 Documented | ⚠️ Declared |
-| `nexus_case_messages` | Case communication thread | `derived:case_id→client_id/vendor_id` | [RLS_COVERAGE.md#5](./RLS_COVERAGE.md#5-nexus_case_messages) (EXISTS policy) | `id (pk)`, `message_id`, `case_id`, `sender_user_id`, `created_at` | `metadata` | `message_metadata` | `rls:message_isolation` | PK + case_id + sender_user_id indexed | None | None | `src/adapters/nexus-adapter.js` | `src/schemas/metadata.schema.js` | unit+int | L1 Documented | ⚠️ Declared |
-| `nexus_case_evidence` | Case evidence files | `derived:case_id→client_id/vendor_id` | [RLS_COVERAGE.md#6](./RLS_COVERAGE.md#6-nexus_case_evidence) (EXISTS policy) | `id (pk)`, `evidence_id`, `case_id`, `uploader_user_id`, `created_at` | `metadata` | `evidence_metadata` | `rls:evidence_isolation` | PK + case_id + uploader_user_id indexed | None | None | `src/adapters/nexus-adapter.js` | `src/schemas/metadata.schema.js` | unit+int | L1 Documented | ⚠️ Declared |
-| `nexus_case_checklist` | Case checklist items | `derived:case_id→client_id/vendor_id` | [RLS_COVERAGE.md#7](./RLS_COVERAGE.md#7-nexus_case_checklist) (EXISTS policy) | `id (pk)`, `item_id`, `case_id`, `created_at`, `updated_at` | `metadata` | `checklist_metadata` | `rls:checklist_isolation` | PK + case_id indexed | None | None | `src/adapters/nexus-adapter.js` | `src/schemas/metadata.schema.js` | unit+int | L1 Documented | ⚠️ Declared |
-| `nexus_case_activity` | Case activity log | `derived:case_id→client_id/vendor_id` | [RLS_COVERAGE.md#8](./RLS_COVERAGE.md#8-nexus_case_activity) (EXISTS policy) | `id (pk)`, `activity_id`, `case_id`, `created_at` | `metadata` | `activity_metadata` | `rls:activity_isolation` | PK + case_id + activity_type indexed | None | None | `src/adapters/nexus-adapter.js` | `src/schemas/metadata.schema.js` | unit+int | L1 Documented | ⚠️ Declared |
-| `nexus_invoices` | Invoice shadow ledger | `derived:client_id/vendor_id` | [RLS_COVERAGE.md#9](./RLS_COVERAGE.md#9-nexus_invoices) | `id (pk)`, `invoice_id`, `vendor_id`, `client_id`, `status`, `created_at`, `updated_at` | `line_items`, `metadata` | `invoice_line_items`, `invoice_metadata` | `rls:invoice_isolation` | PK + invoice_id + vendor_id + client_id + status indexed | None | `line_items.items[].amount` (if frequently aggregated) | `src/adapters/nexus-adapter.js` | `src/schemas/metadata.schema.js` | unit+int | L1 Documented | ⚠️ Declared |
-| `nexus_payments` | Payment records | `derived:from_id/to_id` | [RLS_COVERAGE.md#10](./RLS_COVERAGE.md#10-nexus_payments) | `id (pk)`, `payment_id`, `from_id`, `to_id`, `status`, `created_at`, `updated_at` | `metadata` | `payment_metadata` | `rls:payment_isolation` | PK + payment_id + from_id + to_id + status indexed | None | None | `src/adapters/nexus-adapter.js` | `src/schemas/metadata.schema.js` | unit+int | L1 Documented | ⚠️ Declared |
-| `nexus_payment_schedule` | Recurring payment schedules | `derived:from_id/to_id` | [RLS_COVERAGE.md#11](./RLS_COVERAGE.md#11-nexus_payment_schedule) | `id (pk)`, `schedule_id`, `from_id`, `to_id`, `status`, `created_at`, `updated_at` | `metadata` | `schedule_metadata` | `rls:schedule_isolation` | PK + from_id + to_id indexed | None | None | `src/adapters/nexus-adapter.js` | `src/schemas/metadata.schema.js` | unit+int | L1 Documented | ⚠️ Declared |
-| `nexus_payment_activity` | Payment activity log | `derived:payment_id→from_id/to_id` | [RLS_COVERAGE.md#12](./RLS_COVERAGE.md#12-nexus_payment_activity) (EXISTS policy) | `id (pk)`, `activity_id`, `payment_id`, `created_at` | `metadata` | `activity_metadata` | `rls:pay_activity_isolation` | PK + payment_id + activity_type indexed | None | None | `src/adapters/nexus-adapter.js` | `src/schemas/metadata.schema.js` | unit+int | L1 Documented | ⚠️ Declared |
-| `nexus_notifications` | User notifications | `tenant_id` | N/A (direct) | `id (pk)`, `notification_id`, `user_id`, `tenant_id`, `created_at` | `delivery_attempts`, `metadata` | `notification_delivery_attempts`, `notification_metadata` | `rls:notification_isolation` | PK + user_id + tenant_id + notification_type indexed | None | None | `src/adapters/nexus-adapter.js` | `src/schemas/metadata.schema.js` | unit+int | L1 Documented | ⚠️ Declared |
-| `nexus_notification_config` | Tenant notification configuration | `tenant_id` (PK) | N/A (direct) | `tenant_id (pk)` | `metadata` | `notification_config_metadata` | `rls:notif_config_isolation` | PK only | None | None | `src/adapters/nexus-adapter.js` | `src/schemas/metadata.schema.js` | unit+int | L1 Documented | ⚠️ Declared |
-| `nexus_user_notification_prefs` | User notification preferences | `tenant_id` | N/A (direct) | `user_id (pk)`, `tenant_id` | `metadata` | `user_notif_prefs_metadata` | `rls:user_prefs_isolation` | PK + tenant_id indexed | None | None | `src/adapters/nexus-adapter.js` | `src/schemas/metadata.schema.js` | unit+int | L1 Documented | ⚠️ Declared |
-| `nexus_notification_queue` | Notification delivery queue | `tenant_id` | N/A (direct) | `id (pk)`, `user_id`, `tenant_id`, `created_at` | None | None | `rls:queue_isolation` | PK + scheduled_for + status indexed | None | None | `src/adapters/nexus-adapter.js` | N/A | unit+int | L1 Documented | ⚠️ Declared |
-| `nexus_push_subscriptions` | Push notification subscriptions | `tenant_id` | N/A (direct) | `id (pk)`, `user_id`, `tenant_id`, `created_at` | None | None | `rls:push_sub_isolation` | PK + user_id + endpoint indexed | None | None | `src/adapters/nexus-adapter.js` | N/A | unit+int | L1 Documented | ⚠️ Declared |
-| `nexus_audit_log` | System audit log | `derived:actor_tenant_id` | [RLS_COVERAGE.md#18](./RLS_COVERAGE.md#18-nexus_audit_log) | `id (pk)`, `table_name`, `record_id`, `action`, `created_at` | `old_data`, `new_data` | `audit_old_data`, `audit_new_data` | `rls:audit_isolation` | PK + table_name + record_id + actor_user_id indexed | None | None | `src/adapters/nexus-adapter.js` | `src/schemas/metadata.schema.js` | unit+int | L1 Documented | ⚠️ Declared |
+| Table | Purpose | Semantic Role | Tenant Scope | Derived Scope Proof | Core Columns (immutable) | JSONB Columns | JSONB Contract Types (registered) | RLS Policy ID | Index Requirements | Index Justification Link | Promotion Candidates | Adapter Owner | Validator Owner | Test Coverage | Compliance Level | Drift Status |
+|-------|---------|---------------|--------------|--------------------------|---------------|-----------------------------------|---------------|-------------------|---------------------|---------------|---------------|--------------|
+| `nexus_tenants` | Master tenant table with explicit sub-IDs | *Configuration* | `tenant_id` | N/A (direct) | `id (pk)`, `tenant_id`, `tenant_client_id`, `tenant_vendor_id`, `created_at`, `updated_at` | `settings`, `metadata` | `tenant_settings`, `tenant_metadata` | `rls:tenant_isolation` | PK + all IDs indexed | [PROMO-002](./PROMOTION_LOG.md#promo-002) | `settings.feature_flags`, `metadata.plan_config` | `src/adapters/nexus-adapter.js` | `src/schemas/metadata.schema.js` | unit+int | L1 Documented | ⚠️ Declared |
+| `nexus_tenant_relationships` | Binary client-vendor relationships | *Ledger* | `derived:client_id/vendor_id` | [RLS_COVERAGE.md#2](./RLS_COVERAGE.md#2-nexus_tenant_relationships) | `id (pk)`, `client_id`, `vendor_id`, `created_at`, `updated_at` | `metadata` | `relationship_metadata` | `rls:relationship_isolation` | PK + client_id + vendor_id indexed | None | None | `src/adapters/nexus-adapter.js` | `src/schemas/metadata.schema.js` | unit+int | L1 Documented | ⚠️ Declared |
+| `nexus_relationship_invites` | Pending relationship invitations | *Event Log* | `derived:inviting_tenant_id` | [RLS_COVERAGE.md#19](./RLS_COVERAGE.md#19-nexus_relationship_invites) | `id (pk)`, `token`, `inviting_tenant_id`, `created_at` | None | None | `rls:invite_isolation` | PK + token + email indexed | None | None | `src/adapters/nexus-adapter.js` | N/A | unit+int | L1 Documented | ⚠️ Declared |
+| `nexus_users` | Users belonging to tenants | *Ledger* | `tenant_id` | N/A (direct) | `id (pk)`, `user_id`, `tenant_id`, `email`, `created_at`, `updated_at` | `preferences` | `user_preferences` | `rls:user_isolation` | PK + user_id + tenant_id + email indexed | [PROMO-003](./PROMOTION_LOG.md#promo-003) | `preferences.ui.theme`, `preferences.notifications` | `src/adapters/nexus-adapter.js` | `src/schemas/metadata.schema.js` | unit+int | L1 Documented | ⚠️ Declared |
+| `nexus_sessions` | User session management | *Event Log* | `tenant_id` | N/A (direct) | `id (pk)`, `user_id`, `tenant_id`, `expires_at`, `created_at` | `data` | `session_data` | `rls:session_isolation` | PK + user_id + tenant_id + expires_at indexed | None | None | `src/adapters/nexus-adapter.js` | `src/schemas/metadata.schema.js` | unit+int | L1 Documented | ⚠️ Declared |
+| `nexus_cases` | Case management (vendor interactions) | *Ledger* | `derived:client_id/vendor_id` | [RLS_COVERAGE.md#4](./RLS_COVERAGE.md#4-nexus_cases) | `id (pk)`, `case_id`, `client_id`, `vendor_id`, `status`, `priority`, `created_at`, `updated_at` | `metadata` | `case_metadata` | `rls:case_isolation` | PK + case_id + client_id + vendor_id + status + priority indexed | None | `metadata.priority` (already promoted), `metadata.escalation_level` | `src/adapters/nexus-adapter.js` | `src/schemas/metadata.schema.js` | unit+int | L1 Documented | ⚠️ Declared |
+| `nexus_case_messages` | Case communication thread | *Event Log* | `derived:case_id→client_id/vendor_id` | [RLS_COVERAGE.md#5](./RLS_COVERAGE.md#5-nexus_case_messages) (EXISTS policy) | `id (pk)`, `message_id`, `case_id`, `sender_user_id`, `created_at` | `metadata` | `message_metadata` | `rls:message_isolation` | PK + case_id + sender_user_id indexed | None | None | `src/adapters/nexus-adapter.js` | `src/schemas/metadata.schema.js` | unit+int | L1 Documented | ⚠️ Declared |
+| `nexus_case_evidence` | Case evidence files | *Projection* | `derived:case_id→client_id/vendor_id` | [RLS_COVERAGE.md#6](./RLS_COVERAGE.md#6-nexus_case_evidence) (EXISTS policy) | `id (pk)`, `evidence_id`, `case_id`, `uploader_user_id`, `created_at` | `metadata` | `evidence_metadata` | `rls:evidence_isolation` | PK + case_id + uploader_user_id indexed | None | None | `src/adapters/nexus-adapter.js` | `src/schemas/metadata.schema.js` | unit+int | L1 Documented | ⚠️ Declared |
+| `nexus_case_checklist` | Case checklist items | *Projection* | `derived:case_id→client_id/vendor_id` | [RLS_COVERAGE.md#7](./RLS_COVERAGE.md#7-nexus_case_checklist) (EXISTS policy) | `id (pk)`, `item_id`, `case_id`, `created_at`, `updated_at` | `metadata` | `checklist_metadata` | `rls:checklist_isolation` | PK + case_id indexed | None | None | `src/adapters/nexus-adapter.js` | `src/schemas/metadata.schema.js` | unit+int | L1 Documented | ⚠️ Declared |
+| `nexus_case_activity` | Case activity log | *Event Log* | `derived:case_id→client_id/vendor_id` | [RLS_COVERAGE.md#8](./RLS_COVERAGE.md#8-nexus_case_activity) (EXISTS policy) | `id (pk)`, `activity_id`, `case_id`, `created_at` | `metadata` | `activity_metadata` | `rls:activity_isolation` | PK + case_id + activity_type indexed | None | None | `src/adapters/nexus-adapter.js` | `src/schemas/metadata.schema.js` | unit+int | L1 Documented | ⚠️ Declared |
+| `nexus_invoices` | Invoice shadow ledger | *Ledger* | `derived:client_id/vendor_id` | [RLS_COVERAGE.md#9](./RLS_COVERAGE.md#9-nexus_invoices) | `id (pk)`, `invoice_id`, `vendor_id`, `client_id`, `status`, `created_at`, `updated_at` | `line_items`, `metadata` | `invoice_line_items`, `invoice_metadata` | `rls:invoice_isolation` | PK + invoice_id + vendor_id + client_id + status indexed | None | `line_items.items[].amount` (if frequently aggregated) | `src/adapters/nexus-adapter.js` | `src/schemas/metadata.schema.js` | unit+int | L1 Documented | ⚠️ Declared |
+| `nexus_payments` | Payment records | *Ledger* | `derived:from_id/to_id` | [RLS_COVERAGE.md#10](./RLS_COVERAGE.md#10-nexus_payments) | `id (pk)`, `payment_id`, `from_id`, `to_id`, `status`, `created_at`, `updated_at` | `metadata` | `payment_metadata` | `rls:payment_isolation` | PK + payment_id + from_id + to_id + status indexed | None | None | `src/adapters/nexus-adapter.js` | `src/schemas/metadata.schema.js` | unit+int | L1 Documented | ⚠️ Declared |
+| `nexus_payment_schedule` | Recurring payment schedules | *Configuration* | `derived:from_id/to_id` | [RLS_COVERAGE.md#11](./RLS_COVERAGE.md#11-nexus_payment_schedule) | `id (pk)`, `schedule_id`, `from_id`, `to_id`, `status`, `created_at`, `updated_at` | `metadata` | `schedule_metadata` | `rls:schedule_isolation` | PK + from_id + to_id indexed | None | None | `src/adapters/nexus-adapter.js` | `src/schemas/metadata.schema.js` | unit+int | L1 Documented | ⚠️ Declared |
+| `nexus_payment_activity` | Payment activity log | *Event Log* | `derived:payment_id→from_id/to_id` | [RLS_COVERAGE.md#12](./RLS_COVERAGE.md#12-nexus_payment_activity) (EXISTS policy) | `id (pk)`, `activity_id`, `payment_id`, `created_at` | `metadata` | `activity_metadata` | `rls:pay_activity_isolation` | PK + payment_id + activity_type indexed | None | None | `src/adapters/nexus-adapter.js` | `src/schemas/metadata.schema.js` | unit+int | L1 Documented | ⚠️ Declared |
+| `nexus_notifications` | User notifications | *Event Log* | `tenant_id` | N/A (direct) | `id (pk)`, `notification_id`, `user_id`, `tenant_id`, `created_at` | `delivery_attempts`, `metadata` | `notification_delivery_attempts`, `notification_metadata` | `rls:notification_isolation` | PK + user_id + tenant_id + notification_type indexed | None | None | `src/adapters/nexus-adapter.js` | `src/schemas/metadata.schema.js` | unit+int | L1 Documented | ⚠️ Declared |
+| `nexus_notification_config` | Tenant notification configuration | *Configuration* | `tenant_id` (PK) | N/A (direct) | `tenant_id (pk)` | `metadata` | `notification_config_metadata` | `rls:notif_config_isolation` | PK only | None | None | `src/adapters/nexus-adapter.js` | `src/schemas/metadata.schema.js` | unit+int | L1 Documented | ⚠️ Declared |
+| `nexus_user_notification_prefs` | User notification preferences | *Configuration* | `tenant_id` | N/A (direct) | `user_id (pk)`, `tenant_id` | `metadata` | `user_notif_prefs_metadata` | `rls:user_prefs_isolation` | PK + tenant_id indexed | None | None | `src/adapters/nexus-adapter.js` | `src/schemas/metadata.schema.js` | unit+int | L1 Documented | ⚠️ Declared |
+| `nexus_notification_queue` | Notification delivery queue | *Event Log* | `tenant_id` | N/A (direct) | `id (pk)`, `user_id`, `tenant_id`, `created_at` | None | None | `rls:queue_isolation` | PK + scheduled_for + status indexed | None | None | `src/adapters/nexus-adapter.js` | N/A | unit+int | L1 Documented | ⚠️ Declared |
+| `nexus_push_subscriptions` | Push notification subscriptions | *Configuration* | `tenant_id` | N/A (direct) | `id (pk)`, `user_id`, `tenant_id`, `created_at` | None | None | `rls:push_sub_isolation` | PK + user_id + endpoint indexed | None | None | `src/adapters/nexus-adapter.js` | N/A | unit+int | L1 Documented | ⚠️ Declared |
+| `nexus_audit_log` | System audit log | *Event Log* | `derived:actor_tenant_id` | [RLS_COVERAGE.md#18](./RLS_COVERAGE.md#18-nexus_audit_log) | `id (pk)`, `table_name`, `record_id`, `action`, `created_at` | `old_data`, `new_data` | `audit_old_data`, `audit_new_data` | `rls:audit_isolation` | PK + table_name + record_id + actor_user_id indexed | None | None | `src/adapters/nexus-adapter.js` | `src/schemas/metadata.schema.js` | unit+int | L1 Documented | ⚠️ Declared |
 
 ### Column Definitions
+
+**Semantic Role:**
+- **Ledger** = Transactional data representing business events (cases, invoices, payments, relationships)
+- **Event Log** = Append-only audit trail or activity log (audit_log, case_activity, notifications)
+- **Configuration** = Settings, preferences, or system configuration (tenants, users, notification_config)
+- **Projection** = Derived or computed data (evidence, checklist items)
+
+**Purpose:** Prevents misuse (e.g., querying audit log as transactional data), helps AI agents understand intent, future data-warehouse modeling clarity.
 
 **Tenant Scope Rules:**
 - `tenant_id` = Direct tenant_id column (default pattern)
@@ -181,6 +262,11 @@ WHERE deprecated_field IS NOT NULL;
 - ✅ ✅ Missing registry entries block deployment
 - ✅ ✅ Contract updates require PR review
 
+**`_schema_version` Directionality Rule:**
+- `_schema_version` MUST be monotonic per contract type (versions only increase, never decrease)
+- Lower versions may be read (for backward compatibility) but MUST NOT be written after upgrade
+- This prevents rollback corruption and ensures data integrity during schema evolution
+
 **See:** [JSONB_CONTRACT_REGISTRY.md](./JSONB_CONTRACT_REGISTRY.md) for detailed contract definitions
 
 ---
@@ -261,6 +347,14 @@ WHERE deprecated_field IS NOT NULL;
 - 🔄 In Progress = Currently being implemented
 
 **Priority:** Implement DRIFT-01, DRIFT-02, DRIFT-03 first (directly enforce PRD promises)
+
+**Drift Ownership Rule:**
+Any drift failure must name:
+- **Fix owner** - Individual or team responsible for resolving the drift
+- **ETA** - Expected resolution date/time
+- **Risk level** - Low/Medium/High/Critical (based on security, data integrity, or compliance impact)
+
+This prevents drift being "someone else's problem" and ensures accountability.
 
 ---
 

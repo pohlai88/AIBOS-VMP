@@ -12,6 +12,22 @@
 
 This log tracks all promotions from JSONB to typed columns, documenting the complete Phase A/B/C process for auditability and learning.
 
+**Critical Rule: Promotion ≠ Schema Evolution**
+
+Promotion does not change business meaning. Promotion only changes **storage efficiency and queryability**.
+
+**What Promotion Does:**
+- Moves data from JSONB to typed columns for better performance
+- Enables B-tree indexes instead of JSONB queries
+- Improves query performance and reporting capabilities
+
+**What Promotion Does NOT Do:**
+- Change the semantic meaning of the data
+- Alter business logic or validation rules
+- Modify the data model's conceptual structure
+
+**Purpose:** This prevents semantic drift during refactors and ensures promotions are purely optimization, not business logic changes.
+
 ---
 
 ## Promotion History
@@ -205,6 +221,23 @@ Before starting any promotion:
 - [ ] Monitoring/alerting configured
 - [ ] Stakeholders notified
 - [ ] PR created with promotion plan
+
+### Abort Clause
+
+**Abort promotion immediately if:**
+
+- **Mismatch rate > 0.1%** - Dual-write consistency check shows more than 0.1% mismatches between column and JSONB
+- **Dual-write latency exceeds SLA** - Application latency increases beyond acceptable thresholds during dual-write phase
+- **Downstream reports diverge** - Any reporting or analytics queries show different results between column and JSONB sources
+
+**Abort Procedure:**
+1. Stop dual-write immediately (revert to read-old pattern)
+2. Document mismatch/latency/divergence details
+3. Notify stakeholders and architecture team
+4. Execute rollback script if necessary
+5. Root cause analysis before retry
+
+**Authority:** Any team member can trigger abort if abort conditions are met. No approval required for safety-critical abort.
 
 ---
 

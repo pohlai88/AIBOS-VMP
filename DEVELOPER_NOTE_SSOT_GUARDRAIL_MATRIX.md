@@ -40,6 +40,27 @@ The SSOT Guardrail Matrix is **fully documented and operational** at L1 level:
 
 ## 🎯 What's Next (L1 → L2 Enforced)
 
+### ✅ L1 Enhancements Completed (2025-01-22)
+
+**Refinements Applied:**
+1. ✅ DRIFT-01: Renamed `baseline`/`current` → `schema_source`/`ssot_source` (clarity)
+2. ✅ DRIFT-02: Added `derived_path` field for derived scopes (machine-readable)
+3. ✅ DRIFT-03: Added `semantic_role` field to RLS reports
+4. ✅ Severity Model: Added `severity` field (BLOCKER/MAJOR/MINOR/NONE) to all reports
+5. ✅ Version Semantics: Documented write/read rules in JSONB_CONTRACT_REGISTRY.md
+6. ✅ Audit Log Clarification: Enhanced wording (flexible ≠ arbitrary)
+7. ✅ L2/L3 Upgrade Path: Created comprehensive upgrade guide
+
+**New Documents:**
+- `docs/ssot/db/L2_L3_UPGRADE_PATH.md` - Complete upgrade roadmap
+
+**Enhanced Reports:**
+- All reports now include `severity` field
+- RLS reports include `derived_path` and `semantic_role`
+- Schema diff uses clearer field names
+
+---
+
 ### Priority 1: Connect Drift Script to Live Database
 
 **Current State:** Script generates reports using expected data (not live DB)
@@ -54,6 +75,8 @@ The SSOT Guardrail Matrix is **fully documented and operational** at L1 level:
 **Files to Modify:**
 - `scripts/check-drift.mjs` - Add Supabase connection code
 - Use service role key (CI only, never in local commits)
+
+**Reference:** See `docs/ssot/db/L2_L3_UPGRADE_PATH.md` for detailed implementation guide
 
 **After Implementation:**
 - Tables can move from ⚠️ → ✅

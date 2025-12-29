@@ -1,223 +1,456 @@
 {
-  "timestamp": "2025-12-29T00:44:18.153Z",
+  "timestamp": "2025-12-29T14:03:31.982Z",
+  "compliance_level": "L1 Documented",
   "jsonb_columns": [
     {
       "table": "nexus_tenants",
       "column": "settings",
       "registered": true,
       "contract_type": "tenant_settings",
+      "canonical_contract_id": "CONTRACT-TENANT-SETTINGS-V1",
       "min_version": 1,
       "max_version": 1,
-      "validator_ref": "src/schemas/metadata.schema.js:tenant_settingsSchema",
-      "status": "compliant"
+      "validator_ref": "TenantSettingsSchema@src/schemas/metadata.schema.js",
+      "required_keys": "_schema_version`, `_context`, `type",
+      "allowed_keys": "feature_flags`, `ui_preferences`, `plan_config",
+      "check_constraint": true,
+      "status": "compliant",
+      "compliance_level": "L1 Documented",
+      "severity": "NONE"
     },
     {
       "table": "nexus_tenants",
       "column": "metadata",
       "registered": true,
       "contract_type": "tenant_metadata",
+      "canonical_contract_id": "CONTRACT-TENANT-METADATA-V1",
       "min_version": 1,
       "max_version": 1,
-      "validator_ref": "src/schemas/metadata.schema.js:tenant_metadataSchema",
-      "status": "compliant"
+      "validator_ref": "TenantMetadataSchema@src/schemas/metadata.schema.js",
+      "required_keys": "_schema_version`, `_context`, `type",
+      "allowed_keys": "custom_fields`, `integration_data",
+      "check_constraint": true,
+      "status": "compliant",
+      "compliance_level": "L1 Documented",
+      "severity": "NONE"
     },
     {
       "table": "nexus_tenant_relationships",
       "column": "metadata",
       "registered": true,
       "contract_type": "relationship_metadata",
+      "canonical_contract_id": "CONTRACT-RELATIONSHIP-METADATA-V1",
       "min_version": 1,
       "max_version": 1,
-      "validator_ref": "src/schemas/metadata.schema.js:relationship_metadataSchema",
-      "status": "compliant"
+      "validator_ref": "RelationshipMetadataSchema@src/schemas/metadata.schema.js",
+      "required_keys": "_schema_version`, `_context`, `type",
+      "allowed_keys": "contract_terms`, `custom_fields",
+      "check_constraint": true,
+      "status": "compliant",
+      "compliance_level": "L1 Documented",
+      "severity": "NONE"
     },
     {
       "table": "nexus_users",
       "column": "preferences",
       "registered": true,
       "contract_type": "user_preferences",
+      "canonical_contract_id": "CONTRACT-USER-PREFS-V1",
       "min_version": 1,
       "max_version": 1,
-      "validator_ref": "src/schemas/metadata.schema.js:user_preferencesSchema",
-      "status": "compliant"
+      "validator_ref": "UserPreferencesSchema@src/schemas/metadata.schema.js",
+      "required_keys": "_schema_version`, `_context`, `type",
+      "allowed_keys": "ui`, `notifications`, `limits",
+      "check_constraint": true,
+      "status": "compliant",
+      "compliance_level": "L1 Documented",
+      "severity": "NONE"
     },
     {
       "table": "nexus_sessions",
       "column": "data",
       "registered": true,
       "contract_type": "session_data",
+      "canonical_contract_id": "CONTRACT-SESSION-DATA-V1",
       "min_version": 1,
       "max_version": 1,
-      "validator_ref": "src/schemas/metadata.schema.js:session_dataSchema",
-      "status": "compliant"
+      "validator_ref": "SessionDataSchema@src/schemas/metadata.schema.js",
+      "required_keys": "_schema_version`, `_context`, `type",
+      "allowed_keys": "session_state`, `ui_state",
+      "check_constraint": true,
+      "status": "compliant",
+      "compliance_level": "L1 Documented",
+      "severity": "NONE"
     },
     {
       "table": "nexus_cases",
       "column": "metadata",
       "registered": true,
       "contract_type": "case_metadata",
+      "canonical_contract_id": "CONTRACT-CASE-METADATA-V2",
       "min_version": 1,
-      "max_version": 1,
-      "validator_ref": "src/schemas/metadata.schema.js:case_metadataSchema",
-      "status": "compliant"
+      "max_version": 2,
+      "validator_ref": "CaseMetadataSchema@src/schemas/metadata.schema.js",
+      "required_keys": "_schema_version`, `_context`, `type",
+      "allowed_keys": "priority` (v1), `escalation_level` (v2), `custom_fields",
+      "check_constraint": true,
+      "status": "compliant",
+      "compliance_level": "L1 Documented",
+      "severity": "NONE"
     },
     {
       "table": "nexus_case_messages",
       "column": "metadata",
       "registered": true,
       "contract_type": "message_metadata",
+      "canonical_contract_id": "CONTRACT-MESSAGE-METADATA-V1",
       "min_version": 1,
       "max_version": 1,
-      "validator_ref": "src/schemas/metadata.schema.js:message_metadataSchema",
-      "status": "compliant"
+      "validator_ref": "MessageMetadataSchema@src/schemas/metadata.schema.js",
+      "required_keys": "_schema_version`, `_context`, `type",
+      "allowed_keys": "channel`, `whatsapp`, `email`, `thread_id",
+      "check_constraint": true,
+      "status": "compliant",
+      "compliance_level": "L1 Documented",
+      "severity": "NONE"
     },
     {
       "table": "nexus_case_evidence",
       "column": "metadata",
       "registered": true,
       "contract_type": "evidence_metadata",
+      "canonical_contract_id": "CONTRACT-EVIDENCE-METADATA-V1",
       "min_version": 1,
       "max_version": 1,
-      "validator_ref": "src/schemas/metadata.schema.js:evidence_metadataSchema",
-      "status": "compliant"
+      "validator_ref": "EvidenceMetadataSchema@src/schemas/metadata.schema.js",
+      "required_keys": "_schema_version`, `_context`, `type",
+      "allowed_keys": "verification_status`, `ocr_data`, `tags",
+      "check_constraint": true,
+      "status": "compliant",
+      "compliance_level": "L1 Documented",
+      "severity": "NONE"
     },
     {
       "table": "nexus_case_checklist",
       "column": "metadata",
       "registered": true,
       "contract_type": "checklist_metadata",
+      "canonical_contract_id": "CONTRACT-CHECKLIST-METADATA-V1",
       "min_version": 1,
       "max_version": 1,
-      "validator_ref": "src/schemas/metadata.schema.js:checklist_metadataSchema",
-      "status": "compliant"
+      "validator_ref": "ChecklistMetadataSchema@src/schemas/metadata.schema.js",
+      "required_keys": "_schema_version`, `_context`, `type",
+      "allowed_keys": "custom_fields`, `notes",
+      "check_constraint": true,
+      "status": "compliant",
+      "compliance_level": "L1 Documented",
+      "severity": "NONE"
     },
     {
       "table": "nexus_case_activity",
       "column": "metadata",
       "registered": true,
       "contract_type": "activity_metadata",
+      "canonical_contract_id": "CONTRACT-ACTIVITY-METADATA-V1",
       "min_version": 1,
       "max_version": 1,
-      "validator_ref": "src/schemas/metadata.schema.js:activity_metadataSchema",
-      "status": "compliant"
+      "validator_ref": "ActivityMetadataSchema@src/schemas/metadata.schema.js",
+      "required_keys": "_schema_version`, `_context`, `type",
+      "allowed_keys": "system_data`, `ui_state",
+      "check_constraint": true,
+      "status": "compliant",
+      "compliance_level": "L1 Documented",
+      "severity": "NONE"
     },
     {
       "table": "nexus_invoices",
       "column": "line_items",
       "registered": true,
       "contract_type": "invoice_line_items",
+      "canonical_contract_id": "CONTRACT-INVOICE-LINE-ITEMS-V1",
       "min_version": 1,
       "max_version": 1,
-      "validator_ref": "src/schemas/metadata.schema.js:invoice_line_itemsSchema",
-      "status": "compliant"
+      "validator_ref": "InvoiceLineItemsSchema@src/schemas/metadata.schema.js",
+      "required_keys": "_schema_version`, `_context`, `type`, `items",
+      "allowed_keys": "items` (array of line item objects)",
+      "check_constraint": true,
+      "status": "compliant",
+      "compliance_level": "L1 Documented",
+      "severity": "NONE"
     },
     {
       "table": "nexus_invoices",
       "column": "metadata",
       "registered": true,
       "contract_type": "invoice_metadata",
+      "canonical_contract_id": "CONTRACT-INVOICE-METADATA-V1",
       "min_version": 1,
       "max_version": 1,
-      "validator_ref": "src/schemas/metadata.schema.js:invoice_metadataSchema",
-      "status": "compliant"
+      "validator_ref": "InvoiceMetadataSchema@src/schemas/metadata.schema.js",
+      "required_keys": "_schema_version`, `_context`, `type",
+      "allowed_keys": "custom_fields`, `integration_data",
+      "check_constraint": true,
+      "status": "compliant",
+      "compliance_level": "L1 Documented",
+      "severity": "NONE"
     },
     {
       "table": "nexus_payments",
       "column": "metadata",
       "registered": true,
       "contract_type": "payment_metadata",
+      "canonical_contract_id": "CONTRACT-PAYMENT-METADATA-V1",
       "min_version": 1,
       "max_version": 1,
-      "validator_ref": "src/schemas/metadata.schema.js:payment_metadataSchema",
-      "status": "compliant"
+      "validator_ref": "PaymentMetadataSchema@src/schemas/metadata.schema.js",
+      "required_keys": "_schema_version`, `_context`, `type",
+      "allowed_keys": "bank_details`, `reconciliation_data",
+      "check_constraint": true,
+      "status": "compliant",
+      "compliance_level": "L1 Documented",
+      "severity": "NONE"
     },
     {
       "table": "nexus_payment_schedule",
       "column": "metadata",
       "registered": true,
       "contract_type": "schedule_metadata",
+      "canonical_contract_id": "CONTRACT-SCHEDULE-METADATA-V1",
       "min_version": 1,
       "max_version": 1,
-      "validator_ref": "src/schemas/metadata.schema.js:schedule_metadataSchema",
-      "status": "compliant"
+      "validator_ref": "ScheduleMetadataSchema@src/schemas/metadata.schema.js",
+      "required_keys": "_schema_version`, `_context`, `type",
+      "allowed_keys": "custom_fields",
+      "check_constraint": true,
+      "status": "compliant",
+      "compliance_level": "L1 Documented",
+      "severity": "NONE"
     },
     {
       "table": "nexus_payment_activity",
       "column": "metadata",
       "registered": true,
       "contract_type": "activity_metadata",
+      "canonical_contract_id": "CONTRACT-ACTIVITY-METADATA-V1",
       "min_version": 1,
       "max_version": 1,
-      "validator_ref": "src/schemas/metadata.schema.js:activity_metadataSchema",
-      "status": "compliant"
+      "validator_ref": "ActivityMetadataSchema@src/schemas/metadata.schema.js",
+      "required_keys": "_schema_version`, `_context`, `type",
+      "allowed_keys": "system_data`, `ui_state",
+      "check_constraint": true,
+      "status": "compliant",
+      "compliance_level": "L1 Documented",
+      "severity": "NONE"
     },
     {
       "table": "nexus_notifications",
       "column": "delivery_attempts",
       "registered": true,
       "contract_type": "notification_delivery_attempts",
+      "canonical_contract_id": "CONTRACT-NOTIF-DELIVERY-V1",
       "min_version": 1,
       "max_version": 1,
-      "validator_ref": "src/schemas/metadata.schema.js:notification_delivery_attemptsSchema",
-      "status": "compliant"
+      "validator_ref": "DeliveryAttemptsSchema@src/schemas/metadata.schema.js",
+      "required_keys": "_schema_version`, `_context`, `type`, `attempts",
+      "allowed_keys": "attempts` (array of attempt objects)",
+      "check_constraint": true,
+      "status": "compliant",
+      "compliance_level": "L1 Documented",
+      "severity": "NONE"
     },
     {
       "table": "nexus_notifications",
       "column": "metadata",
       "registered": true,
       "contract_type": "notification_metadata",
+      "canonical_contract_id": "CONTRACT-NOTIF-METADATA-V1",
       "min_version": 1,
       "max_version": 1,
-      "validator_ref": "src/schemas/metadata.schema.js:notification_metadataSchema",
-      "status": "compliant"
+      "validator_ref": "NotificationMetadataSchema@src/schemas/metadata.schema.js",
+      "required_keys": "_schema_version`, `_context`, `type",
+      "allowed_keys": "custom_fields`, `ui_state",
+      "check_constraint": true,
+      "status": "compliant",
+      "compliance_level": "L1 Documented",
+      "severity": "NONE"
     },
     {
       "table": "nexus_notification_config",
       "column": "metadata",
       "registered": true,
       "contract_type": "notification_config_metadata",
+      "canonical_contract_id": "CONTRACT-NOTIF-CONFIG-V1",
       "min_version": 1,
       "max_version": 1,
-      "validator_ref": "src/schemas/metadata.schema.js:notification_config_metadataSchema",
-      "status": "compliant"
+      "validator_ref": "NotificationConfigMetadataSchema@src/schemas/metadata.schema.js",
+      "required_keys": "_schema_version`, `_context`, `type",
+      "allowed_keys": "custom_settings",
+      "check_constraint": true,
+      "status": "compliant",
+      "compliance_level": "L1 Documented",
+      "severity": "NONE"
     },
     {
       "table": "nexus_user_notification_prefs",
       "column": "metadata",
       "registered": true,
       "contract_type": "user_notif_prefs_metadata",
+      "canonical_contract_id": "CONTRACT-USER-NOTIF-PREFS-V1",
       "min_version": 1,
       "max_version": 1,
-      "validator_ref": "src/schemas/metadata.schema.js:user_notif_prefs_metadataSchema",
-      "status": "compliant"
+      "validator_ref": "UserNotifPrefsMetadataSchema@src/schemas/metadata.schema.js",
+      "required_keys": "_schema_version`, `_context`, `type",
+      "allowed_keys": "custom_preferences",
+      "check_constraint": true,
+      "status": "compliant",
+      "compliance_level": "L1 Documented",
+      "severity": "NONE"
     },
     {
       "table": "nexus_audit_log",
       "column": "old_data",
       "registered": true,
       "contract_type": "audit_old_data",
+      "canonical_contract_id": "CONTRACT-AUDIT-OLD-V1",
       "min_version": 1,
       "max_version": 1,
-      "validator_ref": "src/schemas/metadata.schema.js:audit_old_dataSchema",
-      "status": "compliant"
+      "validator_ref": "AuditDataSchema@src/schemas/metadata.schema.js",
+      "required_keys": "_schema_version`, `_context`, `type",
+      "allowed_keys": "Any (flexible)",
+      "check_constraint": false,
+      "status": "compliant",
+      "compliance_level": "L1 Documented",
+      "severity": "NONE"
     },
     {
       "table": "nexus_audit_log",
       "column": "new_data",
       "registered": true,
       "contract_type": "audit_new_data",
+      "canonical_contract_id": "CONTRACT-AUDIT-NEW-V1",
       "min_version": 1,
       "max_version": 1,
-      "validator_ref": "src/schemas/metadata.schema.js:audit_new_dataSchema",
-      "status": "compliant"
+      "validator_ref": "AuditDataSchema@src/schemas/metadata.schema.js",
+      "required_keys": "_schema_version`, `_context`, `type",
+      "allowed_keys": "Any (flexible)",
+      "check_constraint": false,
+      "status": "compliant",
+      "compliance_level": "L1 Documented",
+      "severity": "NONE"
     }
   ],
+  "contract_registry": {
+    "total_contracts": 20,
+    "contracts": [
+      {
+        "type": "tenant_settings",
+        "canonical_id": "CONTRACT-TENANT-SETTINGS-V1",
+        "status": "✅"
+      },
+      {
+        "type": "tenant_metadata",
+        "canonical_id": "CONTRACT-TENANT-METADATA-V1",
+        "status": "✅"
+      },
+      {
+        "type": "user_preferences",
+        "canonical_id": "CONTRACT-USER-PREFS-V1",
+        "status": "✅"
+      },
+      {
+        "type": "case_metadata",
+        "canonical_id": "CONTRACT-CASE-METADATA-V2",
+        "status": "✅"
+      },
+      {
+        "type": "message_metadata",
+        "canonical_id": "CONTRACT-MESSAGE-METADATA-V1",
+        "status": "✅"
+      },
+      {
+        "type": "evidence_metadata",
+        "canonical_id": "CONTRACT-EVIDENCE-METADATA-V1",
+        "status": "✅"
+      },
+      {
+        "type": "checklist_metadata",
+        "canonical_id": "CONTRACT-CHECKLIST-METADATA-V1",
+        "status": "✅"
+      },
+      {
+        "type": "activity_metadata",
+        "canonical_id": "CONTRACT-ACTIVITY-METADATA-V1",
+        "status": "✅"
+      },
+      {
+        "type": "invoice_line_items",
+        "canonical_id": "CONTRACT-INVOICE-LINE-ITEMS-V1",
+        "status": "✅"
+      },
+      {
+        "type": "invoice_metadata",
+        "canonical_id": "CONTRACT-INVOICE-METADATA-V1",
+        "status": "✅"
+      },
+      {
+        "type": "payment_metadata",
+        "canonical_id": "CONTRACT-PAYMENT-METADATA-V1",
+        "status": "✅"
+      },
+      {
+        "type": "schedule_metadata",
+        "canonical_id": "CONTRACT-SCHEDULE-METADATA-V1",
+        "status": "✅"
+      },
+      {
+        "type": "notification_delivery_attempts",
+        "canonical_id": "CONTRACT-NOTIF-DELIVERY-V1",
+        "status": "✅"
+      },
+      {
+        "type": "notification_metadata",
+        "canonical_id": "CONTRACT-NOTIF-METADATA-V1",
+        "status": "✅"
+      },
+      {
+        "type": "notification_config_metadata",
+        "canonical_id": "CONTRACT-NOTIF-CONFIG-V1",
+        "status": "✅"
+      },
+      {
+        "type": "user_notif_prefs_metadata",
+        "canonical_id": "CONTRACT-USER-NOTIF-PREFS-V1",
+        "status": "✅"
+      },
+      {
+        "type": "session_data",
+        "canonical_id": "CONTRACT-SESSION-DATA-V1",
+        "status": "✅"
+      },
+      {
+        "type": "relationship_metadata",
+        "canonical_id": "CONTRACT-RELATIONSHIP-METADATA-V1",
+        "status": "✅"
+      },
+      {
+        "type": "audit_old_data",
+        "canonical_id": "CONTRACT-AUDIT-OLD-V1",
+        "status": "✅"
+      },
+      {
+        "type": "audit_new_data",
+        "canonical_id": "CONTRACT-AUDIT-NEW-V1",
+        "status": "✅"
+      }
+    ]
+  },
   "summary": {
     "total_jsonb_columns": 21,
     "registered": 21,
     "unregistered": 0,
     "coverage_percentage": 100,
     "compliant": 21,
-    "non_compliant": 0
+    "non_compliant": 0,
+    "severity": "NONE"
   }
 }

@@ -1,0 +1,137 @@
+{# ============================================================================
+   VIEW CONTRACT
+   ============================================================================
+   Type: View
+   Category: Full Page
+   Trust Level: Authenticated (client context required)
+   Writes Data: Yes (creates payment runs)
+   Domain: finance
+   Safe for Reuse: Yes (standalone page)
+   
+   DO NOT MODIFY WITHOUT UPDATING:
+   - docs/architecture/TEMPLATE_PATTERN_GUIDE.md
+   - docs/architecture/TEMPLATE_CONSTITUTION.md
+   
+   Version: 1.0.0
+   Last Updated: 2025-01-22
+   ============================================================================ #}
+
+{% extends "nexus/layout.html" %}
+
+{% block title %}Create Payment Run{% endblock %}
+
+{% set activeNav = 'client' %}
+
+{% block content %}
+<div class="nexus-page client-payment-run-create">
+  <!-- Breadcrumb -->
+  <nav class="nexus-breadcrumb">
+    <a href="/nexus/client">Dashboard</a>
+    <span class="nexus-breadcrumb-sep">→</span>
+    <a href="/nexus/client/payments">Payment Outbox</a>
+    <span class="nexus-breadcrumb-sep">→</span>
+    <span class="nexus-breadcrumb-current">Create Payment Run</span>
+  </nav>
+
+  <!-- Page Header -->
+  <header class="nexus-page-header">
+    <h1 class="nexus-page-title">Create Payment Run</h1>
+    <p class="nexus-page-subtitle">Select payments to batch for approval</p>
+  </header>
+
+  <!-- Payment Run Form -->
+  <section class="nexus-document-section">
+    <form method="POST" action="/nexus/client/payment-runs" id="payment-run-form">
+      <!-- Payment Selection -->
+      <div class="nexus-payment-selection">
+        <h2 style="font-size:18px; font-weight:600; margin-bottom:16px;">Select Payments</h2>
+        
+        {% if payments.length > 0 %}
+        <div class="nexus-payment-list" style="border:1px solid #ddd; border-radius:4px; padding:12px; max-height:400px; overflow-y:auto;">
+          {% for payment in payments %}
+          <div class="nexus-payment-item" style="display:flex; align-items:center; padding:12px; border-bottom:1px solid #eee;">
+            <input 
+              type="checkbox" 
+              name="payment_ids" 
+              value="{{ payment.payment_id }}" 
+              id="payment-{{ payment.payment_id }}"
+              style="margin-right:12px;"
+            />
+            <label for="payment-{{ payment.payment_id }}" style="flex:1; cursor:pointer;">
+              <div style="display:flex; justify-content:space-between; align-items:center;">
+                <div>
+                  <span class="nexus-document-id" style="font-weight:600;">{{ payment.payment_id }}</span>
+                  {% if payment.to_tenant %}
+                  <span class="nexus-document-vendor-name" style="margin-left:8px; color:#666;">
+                    To: {{ payment.to_tenant.display_name or payment.to_tenant.name }}
+                  </span>
+                  {% endif %}
+                </div>
+                <div style="text-align:right;">
+                  <span class="nexus-document-amount-value" style="font-weight:600;">${{ payment.amount | round(2) }}</span>
+                  <span class="nexus-badge {{ payment.status }}" style="margin-left:8px;">{{ payment.status }}</span>
+                </div>
+              </div>
+            </label>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <div class="nexus-empty-state-inline">
+          <p>No payments available for batching. All payments are already processed or in a payment run.</p>
+          <a href="/nexus/client/payments" class="nexus-btn secondary" style="margin-top:12px;">
+            ← Back to Payments
+          </a>
+        </div>
+        {% endif %}
+      </div>
+
+      <!-- Scheduled Date (Optional) -->
+      {% if payments.length > 0 %}
+      <div style="margin-top:24px;">
+        <label class="nexus-label">
+          Scheduled Date (Optional)
+          <input 
+            type="date" 
+            name="scheduled_date" 
+            class="nexus-input" 
+            min="{{ "now" | date("%Y-%m-%d") }}"
+          />
+          <span class="nexus-label-hint">Schedule this payment run for a future date</span>
+        </label>
+      </div>
+
+      <!-- Form Actions -->
+      <div class="nexus-document-actions" style="margin-top:24px;">
+        <button type="submit" class="nexus-btn primary" id="create-run-btn" disabled>
+          Create Payment Run
+        </button>
+        <a href="/nexus/client/payments" class="nexus-btn secondary">
+          Cancel
+        </a>
+      </div>
+      {% endif %}
+    </form>
+  </section>
+</div>
+
+<script>
+  // Enable/disable submit button based on selection
+  const form = document.getElementById('payment-run-form');
+  const checkboxes = form.querySelectorAll('input[type="checkbox"][name="payment_ids"]');
+  const submitBtn = document.getElementById('create-run-btn');
+
+  function updateSubmitButton() {
+    const selected = Array.from(checkboxes).some(cb => cb.checked);
+    submitBtn.disabled = !selected;
+  }
+
+  checkboxes.forEach(cb => {
+    cb.addEventListener('change', updateSubmitButton);
+  });
+
+  // Initial state
+  updateSubmitButton();
+</script>
+{% endblock %}
+

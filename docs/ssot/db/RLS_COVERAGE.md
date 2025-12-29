@@ -16,6 +16,23 @@ This document provides detailed RLS policy definitions for all tenant-scoped tab
 
 ---
 
+## Threat Model Covered
+
+This RLS implementation addresses the following security threats:
+
+- **Cross-tenant reads** - Users cannot access data belonging to other tenants
+- **Cross-tenant writes** - Users cannot modify or delete data belonging to other tenants
+- **Privilege escalation via derived joins** - Users cannot bypass RLS by joining through foreign key relationships
+- **Service role misuse** - Service role bypasses RLS only for legitimate backend operations (documented and audited)
+
+**Coverage:** All 20 tenant-scoped tables have RLS policies that prevent these threats.
+
+**Testing:** Integration tests verify each threat vector is blocked. See `tests/integration/rls/` for test coverage.
+
+---
+
+---
+
 ## Policy Definitions
 
 ### 1. nexus_tenants

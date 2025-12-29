@@ -19,6 +19,7 @@
 
 import { createClient } from '@supabase/supabase-js';
 import crypto from 'crypto';
+import * as paymentWorkflow from '../services/payment-workflow.service.js';
 
 // ============================================================================
 // CLIENT INITIALIZATION (Lazy - created on first use)
@@ -3115,6 +3116,401 @@ async function disputeInvoiceByClient({ invoiceId, clientId, actorUserId, subjec
 }
 
 // ============================================================================
+// PAYMENT DECISION (CCP-C8)
+// ============================================================================
+
+/**
+ * Approve a payment by client
+ * Validates client ownership, updates status to 'approved' with audit trail
+ * @param {object} params - { paymentId, clientId, actorUserId }
+ * @returns {Promise<object>} Updated payment
+ */
+async function approvePaymentByClient({ paymentId, clientId, actorUserId }) {
+  if (!paymentId) throw new Error('approvePaymentByClient: paymentId required');
+  if (!clientId) throw new Error('approvePaymentByClient: clientId required');
+
+  // Ensure payment belongs to client (from_id = client)
+  const payment = await getPaymentDetailByClient(clientId, paymentId);
+  if (!payment) throw new Error('Payment not found for client');
+
+  // Use workflow service to validate approval
+  const canApprove = paymentWorkflow.canApprovePayment(payment, actorUserId);
+  if (!canApprove.canApprove) {
+    throw new Error(canApprove.reason);
+  }
+
+  // Get current workflow metadata
+  const workflowMetadata = paymentWorkflow.getWorkflowMetadata(payment);
+  
+  // Add approval to history
+  const updatedWorkflow = paymentWorkflow.addApprovalHistory(
+    workflowMetadata,
+    'approved',
+    actorUserId,
+    paymentWorkflow.VALID_STATES.APPROVED
+  );
+
+  // Update payment with new status and workflow metadata
+  const currentMetadata = payment.metadata || {};
+  const updatedMetadata = {
+    ...currentMetadata,
+    approval_workflow: updatedWorkflow,
+  };
+
+  const { data, error } = await serviceClient
+    .from('nexus_payments')
+    .update({
+      status: 'approved',
+      approved_at: new Date().toISOString(),
+      approved_by: actorUserId || null,
+      metadata: updatedMetadata,
+    })
+    .eq('payment_id', paymentId)
+    .eq('from_id', clientId)
+    .select('*')
+    .single();
+
+  if (error) throw new Error(`Failed to approve payment: ${error.message}`);
+
+  // Create notification for vendor (fire-and-forget)
+  try {
+    await createPaymentDecisionNotification({
+      eventType: 'payment_approved',
+      clientId: data.from_id,
+      vendorId: data.to_id,
+      paymentId: data.payment_id,
+      amount: data.amount,
+      actorUserId,
+    });
+  } catch (notifError) {
+    console.warn('Failed to create payment approval notification:', notifError.message);
+  }
+
+  return data;
+}
+
+/**
+ * Dispute a payment and create a linked case
+ * @param {object} params - { paymentId, clientId, actorUserId, subject, description }
+ * @returns {Promise<{ payment: object, caseId: string }>}
+ */
+async function disputePaymentByClient({ paymentId, clientId, actorUserId, subject, description }) {
+  if (!paymentId) throw new Error('disputePaymentByClient: paymentId required');
+  if (!clientId) throw new Error('disputePaymentByClient: clientId required');
+
+  const payment = await getPaymentDetailByClient(clientId, paymentId);
+  if (!payment) throw new Error('Payment not found for client');
+
+  // If already linked to a case, return that relationship (avoid duplicate cases)
+  if (payment.case_id) {
+    // Still mark as disputed if not already
+    if (payment.status !== 'disputed') {
+      await serviceClient
+        .from('nexus_payments')
+        .update({
+          status: 'disputed',
+          disputed_at: new Date().toISOString(),
+          disputed_by: actorUserId || null,
+        })
+        .eq('payment_id', paymentId)
+        .eq('from_id', clientId);
+    }
+    return { payment: { ...payment, status: 'disputed' }, caseId: payment.case_id };
+  }
+
+  // Create a case using existing SSOT createCase()
+  const createdCase = await createCase({
+    clientId: payment.from_id,
+    vendorId: payment.to_id,
+    relationshipId: payment.relationship_id || null,
+    subject: subject || `Payment dispute: ${payment.payment_id}`,
+    description: description || 'Client raised an issue on this payment.',
+    caseType: 'payment_dispute',
+    priority: 'normal',
+    paymentRef: payment.payment_id,
+    amountDisputed: payment.amount || null,
+    currency: payment.currency || 'USD',
+  });
+
+  const caseId = createdCase?.case_id || null;
+  if (!caseId) throw new Error('Failed to create dispute case (missing case id)');
+
+  // Link payment -> case and set disputed status
+  const { data, error } = await serviceClient
+    .from('nexus_payments')
+    .update({
+      status: 'disputed',
+      case_id: caseId,
+      disputed_at: new Date().toISOString(),
+      disputed_by: actorUserId || null,
+    })
+    .eq('payment_id', paymentId)
+    .eq('from_id', clientId)
+    .select('*')
+    .single();
+
+  if (error) throw new Error(`Failed to dispute payment: ${error.message}`);
+
+  // Create notification for vendor (fire-and-forget)
+  try {
+    await createPaymentDecisionNotification({
+      eventType: 'payment_disputed',
+      clientId: data.from_id,
+      vendorId: data.to_id,
+      paymentId: data.payment_id,
+      amount: data.amount,
+      caseId,
+      actorUserId,
+    });
+  } catch (notifError) {
+    console.warn('Failed to create payment dispute notification:', notifError.message);
+  }
+
+  return { payment: data, caseId };
+}
+
+/**
+ * Reject a payment by client
+ * Transitions payment from pending_approval to rejected state
+ * @param {object} params - { paymentId, clientId, actorUserId, reason }
+ * @returns {Promise<object>} Updated payment
+ */
+async function rejectPaymentByClient({ paymentId, clientId, actorUserId, reason }) {
+  if (!paymentId) throw new Error('rejectPaymentByClient: paymentId required');
+  if (!clientId) throw new Error('rejectPaymentByClient: clientId required');
+
+  const payment = await getPaymentDetailByClient(clientId, paymentId);
+  if (!payment) throw new Error('Payment not found for client');
+
+  // Get workflow metadata
+  const workflowMetadata = paymentWorkflow.getWorkflowMetadata(payment);
+  const currentState = workflowMetadata.current_state || payment.status;
+
+  // Validate state transition
+  if (!paymentWorkflow.validateStateTransition(currentState, paymentWorkflow.VALID_STATES.REJECTED)) {
+    throw new Error(`Cannot reject payment in '${currentState}' state. Only '${paymentWorkflow.VALID_STATES.PENDING_APPROVAL}' payments can be rejected.`);
+  }
+
+  // Add rejection to history
+  const updatedWorkflow = paymentWorkflow.addApprovalHistory(
+    workflowMetadata,
+    'rejected',
+    actorUserId,
+    paymentWorkflow.VALID_STATES.REJECTED
+  );
+
+  // Store rejection reason in metadata
+  const currentMetadata = payment.metadata || {};
+  const updatedMetadata = {
+    ...currentMetadata,
+    approval_workflow: {
+      ...updatedWorkflow,
+      rejection_reason: reason || 'Payment rejected by client',
+    },
+  };
+
+  const { data, error } = await serviceClient
+    .from('nexus_payments')
+    .update({
+      status: 'rejected',
+      metadata: updatedMetadata,
+    })
+    .eq('payment_id', paymentId)
+    .eq('from_id', clientId)
+    .select('*')
+    .single();
+
+  if (error) throw new Error(`Failed to reject payment: ${error.message}`);
+
+  return data;
+}
+
+/**
+ * Create a payment run (batch of payments for approval)
+ * @param {object} params - { clientId, paymentIds, actorUserId, scheduledDate }
+ * @returns {Promise<object>} Payment run object
+ */
+async function createPaymentRun({ clientId, paymentIds, actorUserId, scheduledDate }) {
+  if (!clientId) throw new Error('createPaymentRun: clientId required');
+  if (!paymentIds || !Array.isArray(paymentIds) || paymentIds.length === 0) {
+    throw new Error('createPaymentRun: paymentIds array required');
+  }
+
+  // Validate all payments belong to client
+  const payments = [];
+  for (const paymentId of paymentIds) {
+    const payment = await getPaymentDetailByClient(clientId, paymentId);
+    if (!payment) {
+      throw new Error(`Payment ${paymentId} not found for client`);
+    }
+    payments.push(payment);
+  }
+
+  // Create payment run metadata
+  const runId = `RUN-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
+  const runMetadata = {
+    run_id: runId,
+    client_id: clientId,
+    payment_ids: paymentIds,
+    created_by: actorUserId,
+    created_at: new Date().toISOString(),
+    scheduled_date: scheduledDate || null,
+    status: 'pending_approval',
+  };
+
+  // Update all payments to link to run and set to pending_approval
+  const updatePromises = payments.map(payment => {
+    const currentMetadata = payment.metadata || {};
+    const workflowMetadata = paymentWorkflow.getWorkflowMetadata(payment);
+    
+    // Initialize workflow if not exists
+    const updatedWorkflow = workflowMetadata.current_state
+      ? workflowMetadata
+      : paymentWorkflow.createInitialWorkflowMetadata(payment);
+
+    // Update to pending_approval if not already
+    if (updatedWorkflow.current_state !== paymentWorkflow.VALID_STATES.PENDING_APPROVAL) {
+      updatedWorkflow.current_state = paymentWorkflow.VALID_STATES.PENDING_APPROVAL;
+      updatedWorkflow.state_history.push({
+        state: paymentWorkflow.VALID_STATES.PENDING_APPROVAL,
+        timestamp: new Date().toISOString(),
+        user_id: actorUserId,
+        action: 'added_to_run',
+      });
+    }
+
+    const updatedMetadata = {
+      ...currentMetadata,
+      approval_workflow: updatedWorkflow,
+      payment_run: {
+        run_id: runId,
+        added_at: new Date().toISOString(),
+        added_by: actorUserId,
+      },
+    };
+
+    return serviceClient
+      .from('nexus_payments')
+      .update({
+        status: 'pending_approval',
+        metadata: updatedMetadata,
+      })
+      .eq('payment_id', payment.payment_id)
+      .eq('from_id', clientId);
+  });
+
+  await Promise.all(updatePromises);
+
+  return {
+    run_id: runId,
+    client_id: clientId,
+    payment_ids: paymentIds,
+    payment_count: paymentIds.length,
+    total_amount: payments.reduce((sum, p) => sum + parseFloat(p.amount || 0), 0),
+    created_at: runMetadata.created_at,
+    scheduled_date: scheduledDate,
+    status: 'pending_approval',
+  };
+}
+
+/**
+ * Release a payment (transition from approved/scheduled to released)
+ * @param {object} params - { paymentId, clientId, actorUserId }
+ * @returns {Promise<object>} Updated payment
+ */
+async function releasePayment({ paymentId, clientId, actorUserId }) {
+  if (!paymentId) throw new Error('releasePayment: paymentId required');
+  if (!clientId) throw new Error('releasePayment: clientId required');
+
+  const payment = await getPaymentDetailByClient(clientId, paymentId);
+  if (!payment) throw new Error('Payment not found for client');
+
+  // Check if payment can be released
+  const canRelease = paymentWorkflow.canReleasePayment(payment);
+  if (!canRelease.canRelease) {
+    throw new Error(canRelease.reason);
+  }
+
+  // Get workflow metadata
+  const workflowMetadata = paymentWorkflow.getWorkflowMetadata(payment);
+  
+  // Add release to history
+  const updatedWorkflow = paymentWorkflow.addApprovalHistory(
+    workflowMetadata,
+    'released',
+    actorUserId,
+    paymentWorkflow.VALID_STATES.RELEASED
+  );
+
+  const currentMetadata = payment.metadata || {};
+  const updatedMetadata = {
+    ...currentMetadata,
+    approval_workflow: updatedWorkflow,
+  };
+
+  const { data, error } = await serviceClient
+    .from('nexus_payments')
+    .update({
+      status: 'released',
+      metadata: updatedMetadata,
+      released_at: new Date().toISOString(),
+      released_by: actorUserId || null,
+    })
+    .eq('payment_id', paymentId)
+    .eq('from_id', clientId)
+    .select('*')
+    .single();
+
+  if (error) throw new Error(`Failed to release payment: ${error.message}`);
+
+  return data;
+}
+
+/**
+ * Create payment decision notification
+ * Helper for payment approval/dispute events
+ * @param {object} params - Event details
+ */
+async function createPaymentDecisionNotification({ eventType, clientId, vendorId, paymentId, amount, caseId, actorUserId }) {
+  // Resolve vendor tenant for notification
+  const vendorTenantId = vendorId?.replace('TV-', 'TNT-')?.replace(/^TNT-/, 'TNT-');
+
+  // Find vendor users to notify
+  const { data: vendorUsers } = await serviceClient
+    .from('nexus_users')
+    .select('user_id, tenant_id')
+    .eq('tenant_id', vendorTenantId?.replace('TV-', 'TNT-'))
+    .limit(10);
+
+  if (!vendorUsers?.length) return;
+
+  const notifications = vendorUsers.map(user => ({
+    notification_id: generateId('NTF'),
+    user_id: user.user_id,
+    tenant_id: user.tenant_id,
+    context: 'vendor',
+    context_id: vendorId,
+    notification_type: eventType,
+    priority: eventType === 'payment_disputed' ? 'high' : 'normal',
+    title: eventType === 'payment_approved'
+      ? `Payment ${paymentId} approved`
+      : `Payment ${paymentId} disputed`,
+    body: eventType === 'payment_approved'
+      ? `Payment of $${amount} has been approved for processing.`
+      : `Payment of $${amount} has been disputed. A case has been created for resolution.`,
+    reference_type: 'payment',
+    reference_id: paymentId,
+    action_url: caseId ? `/nexus/vendor/cases/${caseId}` : `/nexus/vendor/payments/${paymentId}`,
+    action_label: caseId ? 'View Case' : 'View Payment',
+    metadata: { caseId, amount, actorUserId },
+  }));
+
+  if (notifications.length > 0) {
+    await serviceClient.from('nexus_notifications').insert(notifications);
+  }
+}
+
+// ============================================================================
 // MATCH SIGNAL (C8.2 Matching Pilot)
 // ============================================================================
 
@@ -3472,6 +3868,10 @@ export const nexusAdapter = {
   approveInvoiceByClient,
   disputeInvoiceByClient,
 
+  // Client-Perspective Payment Decision (CCP-C8)
+  approvePaymentByClient,
+  disputePaymentByClient,
+
   // Match Signal (C8.2 Matching Pilot)
   computeInvoiceMatchSignal,
   refreshInvoiceMatchSignal,
@@ -3519,6 +3919,10 @@ export const nexusAdapter = {
   createPayment,
   getPaymentsByContext,
   updatePaymentStatus,
+  approvePaymentByClient,
+  rejectPaymentByClient,
+  createPaymentRun,
+  releasePayment,
 
   // Notification
   createNotification,

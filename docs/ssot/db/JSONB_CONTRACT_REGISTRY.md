@@ -1,6 +1,27 @@
 # JSONB Contract Registry (Detailed)
 
-**Version:** 1.0.0  
+## Document Status & Authority
+
+**Authority Level:** NORMATIVE (Annex)  
+**SSOT:** Yes (Annex to DB_GUARDRAIL_MATRIX.md)  
+**Enforcement:** Enforced by CI (`check:drift` DRIFT-03)  
+**Applies To:** All JSONB columns across database schema  
+**Owner:** Architecture Team  
+**Effective From:** 2025-01-22  
+**Version:** 1.0.0
+
+**Definitions:**
+- **NORMATIVE:** Defines requirements. If this changes, enforcement MUST change.
+- **Annex:** Detailed expansion of Section B in DB_GUARDRAIL_MATRIX.md
+
+**Precedence:**
+1. **NORMATIVE SSOT** (`DB_GUARDRAIL_MATRIX.md` Section B - primary)
+2. **This Annex** (detailed definitions - secondary)
+3. Enforcement code (must follow SSOT)
+4. INFORMATIVE guides
+
+---
+
 **Last Updated:** 2025-01-22  
 **Status:** ✅ Active  
 **Purpose:** Detailed JSONB contract definitions with Zod schemas and validation rules  
@@ -349,6 +370,65 @@ CHECK (
 
 **Migration Notes:**
 - v1: Initial schema
+
+---
+
+## Version Semantics Enforcement
+
+**Critical Rule:** Version handling is **asymmetric** for writes vs reads.
+
+### Write Semantics (Strict)
+- **MUST use `max_version`** when writing new data
+- Writes with `_schema_version < max_version` are **forbidden** (prevents downgrades)
+- Writes with `_schema_version > max_version` are **forbidden** (prevents future versions)
+- Adapter layer **must enforce** this at write-time
+
+### Read Semantics (Backward Compatible)
+- **MAY accept `[min_version … max_version]`** when reading
+- Reads must handle all versions in the supported range
+- Migration logic should upgrade old versions to `max_version` on read (if needed)
+- This enables gradual migration without breaking existing data
+
+### Implementation
+```javascript
+// Write-time validation (adapter layer)
+function validateWrite(data, contract) {
+  if (data._schema_version !== contract.max_version) {
+    throw new Error(`Write must use max_version ${contract.max_version}`);
+  }
+  return contract.validator.parse(data);
+}
+
+// Read-time validation (adapter layer)
+function validateRead(data, contract) {
+  const version = data._schema_version || 1;
+  if (version < contract.min_version || version > contract.max_version) {
+    throw new Error(`Version ${version} out of supported range [${contract.min_version}...${contract.max_version}]`);
+  }
+  // Handle version-specific validation/migration
+  return contract.validator.parse(data);
+}
+```
+
+**Future Enhancement (DRIFT-06):** Automate this check in drift validation.
+
+---
+
+## Flexible Contracts Clarification
+
+**For `audit_old_data` and `audit_new_data` contracts:**
+
+"Flexible" means **schema-agnostic**, not **meaning-agnostic**.
+
+**Rules:**
+- Keys must still represent **real historical field snapshots** from the source table
+- Keys should follow naming conventions of the source table (e.g., `user_id`, `status`, `amount`)
+- Arbitrary or meaningless keys are **forbidden** (e.g., `random_data`, `temp_field`, `runtime_junk`)
+- The contract is flexible in structure (can store any table's schema) but **strict in meaning** (must be valid historical data)
+
+**Purpose:** This avoids audit logs becoming dumping grounds for unstructured data while maintaining flexibility to audit any table's schema changes.
+
+**Enforcement:** Adapter layer should validate that keys match source table schema when writing audit logs.
 
 ---
 

@@ -1519,6 +1519,29 @@
 }
 
 /* ============================================================================
+   Payment Decision (CCP-C8)
+   ============================================================================ */
+.nexus-payment-decision {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-left: 8px;
+}
+
+.nexus-payment-approved-badge,
+.nexus-payment-disputed-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: 12px;
+}
+
+.nexus-approved-meta {
+  font-size: 0.85rem;
+  color: var(--nexus-text-muted, #888);
+}
+
+/* ============================================================================
    Spinner
    ============================================================================ */
 .nexus-spinner {

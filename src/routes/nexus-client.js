@@ -481,15 +481,276 @@ router.get('/payments/:payment_id', async (req, res) => {
       statusHistory.push({ status: payment.status, timestamp: payment.updated_at || payment.created_at });
     }
 
+    // Extract workflow metadata
+    const metadata = payment.metadata || {};
+    const workflow = metadata.approval_workflow || {};
+    const workflowState = workflow.current_state || payment.status;
+    const approvalHistory = workflow.state_history || [];
+    const approvals = workflow.approvals || [];
+    const approvalRules = workflow.approval_rules || {};
+
     res.render('nexus/pages/client-payment-detail.html', {
       payment,
       linkedInvoice: payment.linked_invoice,
       statusHistory,
+      workflowState,
+      approvalHistory,
+      approvals,
+      approvalRules,
     });
   } catch (error) {
     console.error('Payment detail error:', error);
     res.status(500).render('nexus/pages/error.html', {
       error: { status: 500, message: 'Failed to load payment' }
+    });
+  }
+});
+
+// ============================================================================
+// PAYMENT DECISION (CCP-C8)
+// ============================================================================
+
+/**
+ * POST /nexus/client/payments/:payment_id/approve
+ * Approve a payment - marks status as 'approved'
+ */
+router.post('/payments/:payment_id/approve', async (req, res) => {
+  try {
+    const clientId = getClientId(req);
+    if (!clientId) {
+      return res.status(401).send('Unauthorized: missing client context');
+    }
+
+    const { payment_id } = req.params;
+    const actorUserId = req.nexus?.user?.user_id || null;
+
+    await nexusAdapter.approvePaymentByClient({
+      paymentId: payment_id,
+      clientId,
+      actorUserId,
+    });
+
+    return res.redirect(`/nexus/client/payments/${payment_id}?ok=approved`);
+  } catch (error) {
+    console.error('Payment approve error:', error);
+    return res.status(500).render('nexus/pages/error.html', {
+      error: { status: 500, message: error.message || 'Failed to approve payment' }
+    });
+  }
+});
+
+/**
+ * POST /nexus/client/payments/:payment_id/reject
+ * Reject a payment - transitions from pending_approval to rejected
+ */
+router.post('/payments/:payment_id/reject', async (req, res) => {
+  try {
+    const clientId = getClientId(req);
+    if (!clientId) {
+      return res.status(401).send('Unauthorized: missing client context');
+    }
+
+    const { payment_id } = req.params;
+    const actorUserId = req.nexus?.user?.user_id || null;
+    const reason = (req.body?.reason || '').trim() || 'Payment rejected by client';
+
+    await nexusAdapter.rejectPaymentByClient({
+      paymentId: payment_id,
+      clientId,
+      actorUserId,
+      reason,
+    });
+
+    return res.redirect(`/nexus/client/payments/${payment_id}?ok=rejected`);
+  } catch (error) {
+    console.error('Payment reject error:', error);
+    return res.status(500).render('nexus/pages/error.html', {
+      error: { status: 500, message: error.message || 'Failed to reject payment' }
+    });
+  }
+});
+
+/**
+ * POST /nexus/client/payments/:payment_id/dispute
+ * Dispute a payment - creates a case linked to the payment
+ */
+router.post('/payments/:payment_id/dispute', async (req, res) => {
+  try {
+    const clientId = getClientId(req);
+    if (!clientId) {
+      return res.status(401).send('Unauthorized: missing client context');
+    }
+
+    const { payment_id } = req.params;
+    const actorUserId = req.nexus?.user?.user_id || null;
+    const subject = (req.body?.subject || '').trim();
+    const description = (req.body?.description || '').trim();
+
+    const result = await nexusAdapter.disputePaymentByClient({
+      paymentId: payment_id,
+      clientId,
+      actorUserId,
+      subject,
+      description,
+    });
+
+    // Redirect to case detail for best UX
+    if (result?.caseId) {
+      return res.redirect(`/nexus/client/cases/${result.caseId}?ok=disputed`);
+    }
+    return res.redirect(`/nexus/client/payments/${payment_id}?ok=disputed`);
+  } catch (error) {
+    console.error('Payment dispute error:', error);
+    return res.status(500).render('nexus/pages/error.html', {
+      error: { status: 500, message: error.message || 'Failed to dispute payment' }
+    });
+  }
+});
+
+// ============================================================================
+// PAYMENT RUNS (CCP-C9)
+// ============================================================================
+
+/**
+ * GET /nexus/client/payment-runs/create
+ * Payment Run Creation Page
+ */
+router.get('/payment-runs/create', async (req, res) => {
+  try {
+    const clientId = getClientId(req);
+    if (!clientId) {
+      return res.status(400).render('nexus/pages/error.html', {
+        error: { status: 400, message: 'Client context not found' }
+      });
+    }
+
+    // Get pending payments that can be added to a run
+    const filters = { status: 'pending' };
+    const payments = await nexusAdapter.getPaymentsByClient(clientId, filters);
+
+    res.render('nexus/pages/client-payment-run-create.html', {
+      payments: payments.filter(p => {
+        // Only include payments that are in draft or pending_approval
+        const metadata = p.metadata || {};
+        const workflow = metadata.approval_workflow || {};
+        const state = workflow.current_state || p.status;
+        return state === 'draft' || state === 'pending_approval';
+      }),
+    });
+  } catch (error) {
+    console.error('Payment run create page error:', error);
+    res.status(500).render('nexus/pages/error.html', {
+      error: { status: 500, message: 'Failed to load payment run creation page' }
+    });
+  }
+});
+
+/**
+ * POST /nexus/client/payment-runs
+ * Create a payment run (batch of payments)
+ */
+router.post('/payment-runs', async (req, res) => {
+  try {
+    const clientId = getClientId(req);
+    if (!clientId) {
+      return res.status(401).send('Unauthorized: missing client context');
+    }
+
+    const actorUserId = req.nexus?.user?.user_id || null;
+    const paymentIds = Array.isArray(req.body.payment_ids) ? req.body.payment_ids : [];
+    const scheduledDate = req.body.scheduled_date || null;
+
+    if (paymentIds.length === 0) {
+      return res.status(400).render('nexus/pages/error.html', {
+        error: { status: 400, message: 'At least one payment must be selected' }
+      });
+    }
+
+    const run = await nexusAdapter.createPaymentRun({
+      clientId,
+      paymentIds,
+      actorUserId,
+      scheduledDate,
+    });
+
+    return res.redirect(`/nexus/client/payments?ok=run_created&run_id=${run.run_id}`);
+  } catch (error) {
+    console.error('Payment run creation error:', error);
+    return res.status(500).render('nexus/pages/error.html', {
+      error: { status: 500, message: error.message || 'Failed to create payment run' }
+    });
+  }
+});
+
+/**
+ * POST /nexus/client/payments/:payment_id/release
+ * Release a payment (transition to released state)
+ */
+router.post('/payments/:payment_id/release', async (req, res) => {
+  try {
+    const clientId = getClientId(req);
+    if (!clientId) {
+      return res.status(401).send('Unauthorized: missing client context');
+    }
+
+    const { payment_id } = req.params;
+    const actorUserId = req.nexus?.user?.user_id || null;
+
+    await nexusAdapter.releasePayment({
+      paymentId: payment_id,
+      clientId,
+      actorUserId,
+    });
+
+    return res.redirect(`/nexus/client/payments/${payment_id}?ok=released`);
+  } catch (error) {
+    console.error('Payment release error:', error);
+    return res.status(500).render('nexus/pages/error.html', {
+      error: { status: 500, message: error.message || 'Failed to release payment' }
+    });
+  }
+});
+
+/**
+ * GET /nexus/client/approvals
+ * Approval Dashboard - Pending approvals requiring action
+ */
+router.get('/approvals', async (req, res) => {
+  try {
+    const clientId = getClientId(req);
+    if (!clientId) {
+      return res.status(400).render('nexus/pages/error.html', {
+        error: { status: 400, message: 'Client context not found' }
+      });
+    }
+
+    // Get all payments
+    const allPayments = await nexusAdapter.getPaymentsByClient(clientId, {});
+    
+    // Filter for pending approvals
+    const pendingPayments = allPayments.filter(payment => {
+      const metadata = payment.metadata || {};
+      const workflow = metadata.approval_workflow || {};
+      const state = workflow.current_state || payment.status;
+      return state === 'pending_approval' || (payment.status === 'pending' && !workflow.current_state);
+    });
+
+    // Calculate summary
+    const totalAmount = pendingPayments.reduce((sum, p) => sum + parseFloat(p.amount || 0), 0);
+    const dualControlCount = pendingPayments.filter(p => {
+      const workflow = (p.metadata || {}).approval_workflow || {};
+      return workflow.approval_rules?.requires_dual_control || false;
+    }).length;
+
+    res.render('nexus/pages/client-approval-dashboard.html', {
+      pendingPayments,
+      totalAmount,
+      dualControlCount,
+    });
+  } catch (error) {
+    console.error('Approval dashboard error:', error);
+    res.status(500).render('nexus/pages/error.html', {
+      error: { status: 500, message: 'Failed to load approval dashboard' }
     });
   }
 });

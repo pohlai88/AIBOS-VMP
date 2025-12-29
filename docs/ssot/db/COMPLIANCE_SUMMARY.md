@@ -10,6 +10,15 @@
 
 ### Overall Compliance: **95%** ✅
 
+**⚠️ Critical Gating Rule:**
+Any table marked ⚠️ Declared **MUST NOT** be referenced as "compliant", "secure", or "ready" in external docs, diagrams, or investor materials.
+
+**Rationale:** Declared status means documentation exists but enforcement is not yet active. This protects legal and reputation risk by preventing premature claims of compliance.
+
+---
+
+### Overall Compliance: **95%** ✅
+
 **Breakdown:**
 - ✅ **Matrix Structure:** 100% (All 7 upgrades implemented)
 - ✅ **Table Documentation:** 100% (20/20 tables documented)
@@ -196,6 +205,18 @@
 - [x] Reports directory structure created
 - [ ] DB connection implemented (Priority 1)
 - [ ] CI/CD gate added (Priority 1)
+
+---
+
+## 🎯 Confidence Statement
+
+**Internal Use (L1):**
+This system is safe for internal use at L1 (Documented) level. All tables are properly documented, contracts are registered, and RLS policies are defined.
+
+**External Commitments (L2+):**
+External commitments (SLA, compliance claims, investor materials, customer contracts) require L2+ (Enforced) level. Currently at L1, so external claims must explicitly state "documented but not yet enforced" or wait for L2 milestone.
+
+**Protection:** This statement protects the organization in legal, sales, and compliance contexts by clearly delineating internal readiness vs. external commitments.
 
 ---
 

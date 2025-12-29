@@ -1,0 +1,117 @@
+{# ============================================================================
+VIEW CONTRACT
+============================================================================
+Type: View
+Category: Full Page
+Trust Level: Authenticated (client context required)
+Writes Data: No (read-only dashboard)
+Domain: finance
+Safe for Reuse: Yes (standalone page)
+
+DO NOT MODIFY WITHOUT UPDATING:
+- docs/architecture/TEMPLATE_PATTERN_GUIDE.md
+- docs/architecture/TEMPLATE_CONSTITUTION.md
+
+Version: 1.0.0
+Last Updated: 2025-01-22
+============================================================================ #}
+
+{% extends "nexus/layout.html" %}
+
+{% block title %}Approval Dashboard{% endblock %}
+
+{% set activeNav = 'client' %}
+
+{% block content %}
+<div class="nexus-page client-approval-dashboard">
+  <!-- Breadcrumb -->
+  <nav class="nexus-breadcrumb">
+    <a href="/nexus/client">Dashboard</a>
+    <span class="nexus-breadcrumb-sep">→</span>
+    <span class="nexus-breadcrumb-current">Approval Dashboard</span>
+  </nav>
+
+  <!-- Page Header -->
+  <header class="nexus-page-header">
+    <h1 class="nexus-page-title">Approval Dashboard</h1>
+    <p class="nexus-page-subtitle">Pending approvals requiring your action</p>
+  </header>
+
+  <!-- Summary Cards -->
+  <section class="nexus-dashboard-summary"
+    style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:16px; margin-bottom:24px;">
+    <div class="nexus-summary-card" style="padding:16px; border:1px solid #ddd; border-radius:4px;">
+      <div class="nexus-summary-label">Pending Approvals</div>
+      <div class="nexus-summary-value" style="font-size:24px; font-weight:600; margin-top:8px;">
+        {{ pendingPayments.length }}
+      </div>
+    </div>
+    <div class="nexus-summary-card" style="padding:16px; border:1px solid #ddd; border-radius:4px;">
+      <div class="nexus-summary-label">Total Amount</div>
+      <div class="nexus-summary-value" style="font-size:24px; font-weight:600; margin-top:8px;">
+        ${{ totalAmount | round(2) }}
+      </div>
+    </div>
+    <div class="nexus-summary-card" style="padding:16px; border:1px solid #ddd; border-radius:4px;">
+      <div class="nexus-summary-label">Requiring Dual Control</div>
+      <div class="nexus-summary-value" style="font-size:24px; font-weight:600; margin-top:8px;">
+        {{ dualControlCount }}
+      </div>
+    </div>
+  </section>
+
+  <!-- Pending Approvals List -->
+  <section class="nexus-document-section">
+    <h2>Pending Approvals</h2>
+
+    {% if pendingPayments.length > 0 %}
+    <div class="nexus-payment-list">
+      {% for payment in pendingPayments %}
+      <div class="nexus-payment-item"
+        style="padding:16px; border:1px solid #ddd; border-radius:4px; margin-bottom:12px;">
+        <div style="display:flex; justify-content:space-between; align-items:start;">
+          <div style="flex:1;">
+            <div style="display:flex; align-items:center; gap:12px; margin-bottom:8px;">
+              <a href="/nexus/client/payments/{{ payment.payment_id }}" class="nexus-document-id"
+                style="font-weight:600; text-decoration:none;">
+                {{ payment.payment_id }}
+              </a>
+              <span class="nexus-badge {{ payment.status }}">{{ payment.status }}</span>
+              {% if payment.metadata.approval_workflow.approval_rules.requires_dual_control %}
+              <span class="nexus-badge warning">Dual Control Required</span>
+              {% endif %}
+            </div>
+            {% if payment.to_tenant %}
+            <div style="color:#666; font-size:14px; margin-bottom:4px;">
+              To: {{ payment.to_tenant.display_name or payment.to_tenant.name }}
+            </div>
+            {% endif %}
+            <div style="font-size:18px; font-weight:600; color:#333;">
+              ${{ payment.amount | round(2) }}
+            </div>
+            {% if payment.metadata.approval_workflow.approval_rules.threshold_amount %}
+            <div style="font-size:12px; color:#666; margin-top:4px;">
+              Threshold: ${{ payment.metadata.approval_workflow.approval_rules.threshold_amount | round(2) }}
+            </div>
+            {% endif %}
+          </div>
+          <div style="display:flex; gap:8px;">
+            <a href="/nexus/client/payments/{{ payment.payment_id }}" class="nexus-btn primary small">
+              Review →
+            </a>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="nexus-empty-state-inline">
+      <p>No pending approvals. All payments are processed.</p>
+      <a href="/nexus/client/payments" class="nexus-btn secondary" style="margin-top:12px;">
+        View All Payments →
+      </a>
+    </div>
+    {% endif %}
+  </section>
+</div>
+{% endblock %}

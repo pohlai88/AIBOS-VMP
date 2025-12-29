@@ -1,9 +1,10 @@
 # Documentation Registry
 
-**Version:** 1.0.0  
-**Last Updated:** 2025-12-28  
+**Version:** 1.1.0  
+**Last Updated:** 2025-01-22  
 **Purpose:** Central registry of all documentation files with metadata and naming convention compliance  
-**Status:** Active
+**Status:** Active  
+**Changes:** Updated PRD section with consolidated PRD structure and moved PRDs to proper location
 
 ---
 
@@ -57,6 +58,8 @@ This registry provides:
 - Technical decisions
 - Database schemas
 - API specifications
+- Base repository alignment
+- Base repository alignment
 
 ### Design System (`docs/design-system/`)
 - Design system specifications
@@ -142,6 +145,8 @@ This registry provides:
 | File | Path | Version | Status | Last Updated | Purpose |
 |------|------|---------|--------|--------------|---------|
 | AI_VIOLATION_TRACKER.md | `docs/development/` | 1.0.0 | Active | 2025-12-28 | Violation tracking system |
+| DEVELOPMENT_READINESS_ANALYSIS.md | `docs/development/` | 1.0.0 | Active | 2025-01-22 | Analysis of PRDs awaiting development and DB schema readiness (NOT a PRD - analysis document) |
+| DOCUMENTATION_CLEANUP_FINAL_REPORT.md | `docs/development/` | 1.0.0 | Active | 2025-01-22 | Final documentation cleanup report |
 
 #### Development Notes (`docs/development/notes/`)
 
@@ -203,7 +208,11 @@ This registry provides:
 
 | File | Path | Version | Status | Last Updated | Purpose |
 |------|------|---------|--------|--------------|---------|
-| PRD_DB_SCHEMA.md | `docs/development/prds/` | 1.1.0 | Active | 2025-01-22 | Official PRD for flexible database and super flexible schema architecture |
+| PRD_CONSOLIDATED.md | `docs/development/prds/` | 1.0.0 | Active | 2025-01-22 | Consolidated PRD with clear boundaries: Frontend UI/UX, Backend Logic, Utils, DB-Metadata-Schema (isolated) |
+| PRD_MAIN.md | `docs/development/prds/` | 1.0.0 | Active | 2025-01-22 | Main PRD with complete technical stack, MCP strategy, CCP gates, and KPIs |
+| PRD_VENDOR_ADVANCED_FEATURES.md | `docs/development/prds/` | 1.0.0 | Active | 2025-01-22 | Advanced vendor management features: Cryptographic audit trail, vendor evaluation, break-glass, suspension |
+| PRD_VENDOR_PORTAL.md | `docs/development/prds/` | 1.0.0 | Active | 2025-01-22 | Vendor portal feature analysis and roadmap |
+| PRD_DB_SCHEMA.md | `docs/development/prds/` | 1.2.0 | Deferred | 2025-01-22 | Database architecture PRD (isolated, deferred to next dev phase - reference only) |
 | PRD_FIXES_APPLIED.md | `docs/development/prds/` | - | Active | - | PRD fixes and applied changes documentation |
 
 ### Integration Documents

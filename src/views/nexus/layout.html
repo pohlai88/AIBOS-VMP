@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en" class="nexus-layout">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#5b4cff" />
+  <meta name="description" content="Nexus Portal - Vendor Management Platform" />
+
+  <title>{% block title %}Nexus Portal{% endblock %}</title>
+
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  
+  <!-- Nexus CSS -->
+  <link rel="stylesheet" href="/css/nexus.css" />
+</head>
+<body>
+  <!-- Header -->
+  <header class="nexus-header">
+    <div class="nexus-header-left">
+      <a href="/nexus/portal" class="nexus-logo">
+        <span class="nexus-logo-icon">⬡</span>
+        <span class="nexus-logo-text">Nexus</span>
+      </a>
+      
+      {% if nexus and nexus.user %}
+      <nav class="nexus-nav">
+        {% if nexus.activeContext == 'client' %}
+        <a href="/nexus/client" class="nexus-nav-link {% if activeNav == 'client' %}active{% endif %}">
+          Dashboard
+        </a>
+        <a href="/nexus/client/invoices" class="nexus-nav-link {% if activeNav == 'invoices' %}active{% endif %}">
+          Invoices
+        </a>
+        <a href="/nexus/client/payments" class="nexus-nav-link {% if activeNav == 'payments' %}active{% endif %}">
+          Payments
+        </a>
+        <a href="/nexus/client/cases" class="nexus-nav-link {% if activeNav == 'cases' %}active{% endif %}">
+          Cases
+        </a>
+        {% elif nexus.activeContext == 'vendor' %}
+        <a href="/nexus/vendor" class="nexus-nav-link {% if activeNav == 'vendor' %}active{% endif %}">
+          Dashboard
+        </a>
+        <a href="/nexus/vendor/cases" class="nexus-nav-link {% if activeNav == 'cases' %}active{% endif %}">
+          Cases
+        </a>
+        {% else %}
+        <a href="/nexus/portal" class="nexus-nav-link {% if activeNav == 'portal' %}active{% endif %}">
+          Portal
+        </a>
+        <a href="/nexus/inbox" class="nexus-nav-link {% if activeNav == 'inbox' %}active{% endif %}">
+          Inbox
+        </a>
+        {% endif %}
+      </nav>
+      {% endif %}
+    </div>
+
+    <div class="nexus-header-right">
+      {% if nexus and nexus.user %}
+      <div class="nexus-user-menu">
+        <span class="nexus-user-name">{{ nexus.user.display_name or nexus.user.email }}</span>
+        {% if nexus.activeContext %}
+        <span class="nexus-context-badge {{ nexus.activeContext }}">
+          {% if nexus.activeContext == 'client' %}TC{% elif nexus.activeContext == 'vendor' %}TV{% endif %}
+        </span>
+        {% endif %}
+        <a href="/nexus/logout" class="nexus-btn secondary small">Logout</a>
+      </div>
+      {% else %}
+      <a href="/nexus/login" class="nexus-btn primary">Sign In</a>
+      {% endif %}
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="nexus-main">
+    {% block content %}{% endblock %}
+  </main>
+
+  <!-- Scripts -->
+  {% block scripts %}{% endblock %}
+</body>
+</html>
+

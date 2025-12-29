@@ -1,0 +1,6 @@
+{
+  "watch": ["server.js", "src/", "nexus-server.js"],
+  "ext": "js,json,html",
+  "ignore": ["public/*", "node_modules/*", "tests/*", ".dev/*"],
+  "delay": 500
+}
