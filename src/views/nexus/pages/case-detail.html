@@ -260,14 +260,14 @@ function switchTab(tab) {
 {% block scripts %}
 <script>
 // Subscribe to live case thread updates
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
   if (window.NexusRealtime && window.NexusRealtime.initialized) {
     // Subscribe to messages for this case
     window.NexusRealtime.subscribeToCaseMessages('{{ case.id }}', '#case-thread');
     console.log('📡 Case Detail: Subscribed to live thread updates');
   } else {
     // Client not ready yet, wait for init
-    const checkInterval = setInterval(function() {
+    const checkInterval = setInterval(function () {
       if (window.NexusRealtime && window.NexusRealtime.initialized) {
         window.NexusRealtime.subscribeToCaseMessages('{{ case.id }}', '#case-thread');
         console.log('📡 Case Detail: Subscribed to live thread updates (delayed)');
@@ -275,7 +275,9 @@ document.addEventListener('DOMContentLoaded', function() {
       }
     }, 500);
     // Stop checking after 10 seconds
-    setTimeout(function() { clearInterval(checkInterval); }, 10000);
+    setTimeout(function () {
+      clearInterval(checkInterval);
+    }, 10000);
   }
 });
 </script>

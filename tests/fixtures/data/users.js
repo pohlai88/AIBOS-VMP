@@ -1,9 +1,9 @@
 /**
  * Standard User Fixtures
- * 
+ *
  * Centralized user objects for testing.
  * Use these instead of creating user objects inline.
- * 
+ *
  * Example:
  *   import { standardUser, adminUser } from '@tests/fixtures/data/users';
  *   const user = { ...standardUser, role: 'guest' };
@@ -48,4 +48,3 @@ export const inactiveUser = {
   name: 'Inactive User',
   is_active: false,
 };
-

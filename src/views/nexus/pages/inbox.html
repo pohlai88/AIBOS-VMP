@@ -231,7 +231,7 @@
 // New case form handler
 const newCaseForm = document.getElementById('new-case-form');
 if (newCaseForm) {
-  newCaseForm.addEventListener('submit', async (e) => {
+  newCaseForm.addEventListener('submit', async e => {
     e.preventDefault();
 
     const errorDiv = document.getElementById('new-case-error');
@@ -246,15 +246,15 @@ if (newCaseForm) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Accept': 'application/json'
+          Accept: 'application/json',
         },
         body: JSON.stringify({
           vendorId: newCaseForm.vendorId.value,
           subject: newCaseForm.subject.value,
           description: newCaseForm.description.value,
           caseType: newCaseForm.caseType.value,
-          priority: newCaseForm.priority.value
-        })
+          priority: newCaseForm.priority.value,
+        }),
       });
 
       const data = await response.json();

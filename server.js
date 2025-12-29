@@ -134,11 +134,11 @@ const supabase = supabaseAdmin;
 // Falls back to service role if anon key not provided (for admin auth operations)
 const supabaseAuth = env.SUPABASE_ANON_KEY
   ? createClient(env.SUPABASE_URL, env.SUPABASE_ANON_KEY, {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-    },
-  })
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
+    })
   : supabase; // Fallback to service role client if anon key not set
 
 const app = express();
@@ -421,19 +421,22 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Global error handler for uncaught exceptions
-process.on('uncaughtException', (err) => {
+process.on('uncaughtException', err => {
   console.error('Uncaught Exception:', err);
   try {
     require('fs').appendFileSync('server-run.log', `\n[UNCAUGHT EXCEPTION] ${err.stack || err}`);
-  } catch { }
+  } catch {}
   process.exit(1);
 });
 
 process.on('unhandledRejection', (reason, promise) => {
   console.error('Unhandled Rejection:', reason);
   try {
-    require('fs').appendFileSync('server-run.log', `\n[UNHANDLED REJECTION] ${reason.stack || reason}`);
-  } catch { }
+    require('fs').appendFileSync(
+      'server-run.log',
+      `\n[UNHANDLED REJECTION] ${reason.stack || reason}`
+    );
+  } catch {}
   process.exit(1);
 });
 
@@ -595,7 +598,12 @@ app.use(async (req, res, next) => {
     let sessionSet = false;
     let refreshedSession = false;
 
-    console.log('[AUTH] AuthMiddleware check - path:', req.path, 'has session:', !!req.session.userId);
+    console.log(
+      '[AUTH] AuthMiddleware check - path:',
+      req.path,
+      'has session:',
+      !!req.session.userId
+    );
 
     // Try setSession if we have a refresh token
     if (req.session.refreshToken) {
@@ -716,7 +724,10 @@ app.use(async (req, res, next) => {
 
     if (error || !user) {
       // Invalid token - destroy session
-      console.error('[AUTH ERROR] Failed to get user from token:', error?.message || 'User not found');
+      console.error(
+        '[AUTH ERROR] Failed to get user from token:',
+        error?.message || 'User not found'
+      );
       logError(error || new Error('User not found from token'), {
         operation: 'authMiddleware-getUser',
         path: req.path,
@@ -774,7 +785,10 @@ app.use(async (req, res, next) => {
     try {
       console.log('[AUTH] Getting vendor context for user:', user.id, user.email);
       userContext = await vmpAdapter.getVendorContext(user.id);
-      console.log('[AUTH] Vendor context retrieved:', userContext ? `id=${userContext.id}, vendor_id=${userContext.vendor_id}` : 'null');
+      console.log(
+        '[AUTH] Vendor context retrieved:',
+        userContext ? `id=${userContext.id}, vendor_id=${userContext.vendor_id}` : 'null'
+      );
     } catch (contextError) {
       // Check if this is a dev mode UUID that should be handled gracefully
       const DEV_AUTH_UUID = '00000000-0000-0000-0000-000000000000';
@@ -1541,7 +1555,7 @@ async function renderHomePage(req, res) {
       }
     }
 
-    const hasMetrics = (actionCount + openCount + soaCount + paidCount) > 0;
+    const hasMetrics = actionCount + openCount + soaCount + paidCount > 0;
 
     res.render('pages/home.html', {
       user: req.user,
@@ -1634,7 +1648,7 @@ app.get('/vendor-management', async (req, res) => {
       user: req.user,
       vendors,
       isInternal: true,
-      currentPath: '/vendor-management'
+      currentPath: '/vendor-management',
     });
   } catch (error) {
     handleRouteError(error, req, res);
@@ -8426,17 +8440,15 @@ app.post('/ops/invites', async (req, res) => {
         supabaseInviteSent = false; // Can't send invite to existing user
       } else {
         // Create new Supabase Auth user with invite
-        const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.inviteUserByEmail(
-          email.toLowerCase().trim(),
-          {
+        const { data: newUser, error: createError } =
+          await supabaseAdmin.auth.admin.inviteUserByEmail(email.toLowerCase().trim(), {
             data: {
               vendor_id: vendorId,
               user_tier: 'institutional',
               is_active: true,
             },
             redirectTo: `${env.BASE_URL}${env.BASE_PATH || ''}/accept?type=invite`,
-          }
-        );
+          });
 
         if (createError) {
           // If invite fails, log but continue with custom invite
@@ -8503,11 +8515,13 @@ app.post('/ops/invites', async (req, res) => {
         supabase_invite_sent: supabaseInviteSent,
         custom_invite_sent: emailSent,
       },
-      supabase_user: supabaseUser ? {
-        id: supabaseUser.id,
-        email: supabaseUser.email,
-        created: !!supabaseUser,
-      } : null,
+      supabase_user: supabaseUser
+        ? {
+            id: supabaseUser.id,
+            email: supabaseUser.email,
+            created: !!supabaseUser,
+          }
+        : null,
     });
   } catch (error) {
     logError(error, { path: req.path, userId: req.user?.id });
@@ -9041,10 +9055,12 @@ app.post('/accept', async (req, res) => {
 
       if (existingUser) {
         // User exists - sign in with password
-        const { data: signInData, error: signInError } = await supabaseAuth.auth.signInWithPassword({
-          email: invite.email.toLowerCase().trim(),
-          password: password,
-        });
+        const { data: signInData, error: signInError } = await supabaseAuth.auth.signInWithPassword(
+          {
+            email: invite.email.toLowerCase().trim(),
+            password: password,
+          }
+        );
 
         if (signInError) {
           // Password might be wrong or user needs to set password
@@ -9067,10 +9083,11 @@ app.post('/accept', async (req, res) => {
 
           supabaseAuthUser = newUser.user;
           // Sign in to get session
-          const { data: sessionData, error: sessionError } = await supabaseAuth.auth.signInWithPassword({
-            email: invite.email.toLowerCase().trim(),
-            password: password,
-          });
+          const { data: sessionData, error: sessionError } =
+            await supabaseAuth.auth.signInWithPassword({
+              email: invite.email.toLowerCase().trim(),
+              password: password,
+            });
 
           if (sessionError || !sessionData?.session) {
             throw sessionError || new Error('Failed to create session');
@@ -9101,10 +9118,11 @@ app.post('/accept', async (req, res) => {
 
         supabaseAuthUser = newUser.user;
         // Sign in to get session
-        const { data: sessionData, error: sessionError } = await supabaseAuth.auth.signInWithPassword({
-          email: invite.email.toLowerCase().trim(),
-          password: password,
-        });
+        const { data: sessionData, error: sessionError } =
+          await supabaseAuth.auth.signInWithPassword({
+            email: invite.email.toLowerCase().trim(),
+            password: password,
+          });
 
         if (sessionError || !sessionData?.session) {
           throw sessionError || new Error('Failed to create session');
@@ -9328,7 +9346,10 @@ app.post('/login', async (req, res) => {
 
     // Ensure vendor_id is in user metadata (for users created via old invite system)
     // If missing, look up vendor_user by email and update metadata
-    if (!authData.user.user_metadata?.vendor_id && authData.user.user_metadata?.user_tier !== 'independent') {
+    if (
+      !authData.user.user_metadata?.vendor_id &&
+      authData.user.user_metadata?.user_tier !== 'independent'
+    ) {
       try {
         const vendorUser = await vmpAdapter.getUserByEmail(authData.user.email);
         if (vendorUser && vendorUser.vendor_id) {
@@ -9546,7 +9567,9 @@ app.get('/vendor-management', (req, res) => {
 
       if (error) {
         console.error('[VENDOR-MGMT] Database error:', error);
-        return res.status(500).render('error.html', { error: 'Failed to load vendors: ' + error.message });
+        return res
+          .status(500)
+          .render('error.html', { error: 'Failed to load vendors: ' + error.message });
       }
 
       console.log('[VENDOR-MGMT] Loaded vendors:', vendors?.length || 0);
@@ -9554,7 +9577,7 @@ app.get('/vendor-management', (req, res) => {
       res.render('pages/vendor-management.html', {
         vendors: vendors || [],
         user: req.user,
-        isInternal: req.user?.isInternal || false
+        isInternal: req.user?.isInternal || false,
       });
     } catch (error) {
       console.error('[VENDOR-MGMT] Error:', error);
@@ -9582,12 +9605,13 @@ app.post('/api/vendors', (req, res) => {
 
   (async () => {
     try {
-      const { name, code, contact_name, contact_email, contact_phone, address, status, notes } = req.body;
+      const { name, code, contact_name, contact_email, contact_phone, address, status, notes } =
+        req.body;
 
       // Validate required fields
       if (!name || !code) {
         return res.status(400).render('partials/error-toast.html', {
-          message: 'Vendor name and code are required'
+          message: 'Vendor name and code are required',
         });
       }
 
@@ -9601,20 +9625,21 @@ app.post('/api/vendors', (req, res) => {
           contact_phone,
           address,
           status: status || 'active',
-          notes
+          notes,
         })
         .select()
         .single();
 
       if (error) {
         console.error('[VENDOR-CREATE] Error:', error);
-        if (error.code === '23505') { // Unique constraint violation
+        if (error.code === '23505') {
+          // Unique constraint violation
           return res.status(400).render('partials/error-toast.html', {
-            message: `Vendor code "${code}" already exists`
+            message: `Vendor code "${code}" already exists`,
           });
         }
         return res.status(500).render('partials/error-toast.html', {
-          message: 'Failed to create vendor: ' + error.message
+          message: 'Failed to create vendor: ' + error.message,
         });
       }
 
@@ -9625,7 +9650,7 @@ app.post('/api/vendors', (req, res) => {
       console.error('[VENDOR-CREATE] Exception:', error);
       logError(error, req, { operation: 'createVendor' });
       res.status(500).render('partials/error-toast.html', {
-        message: 'An unexpected error occurred'
+        message: 'An unexpected error occurred',
       });
     }
   })();
@@ -9648,7 +9673,7 @@ app.get('/api/vendors/:id/edit-modal', (req, res) => {
 
       if (error || !vendor) {
         return res.status(404).render('partials/error-toast.html', {
-          message: 'Vendor not found'
+          message: 'Vendor not found',
         });
       }
 
@@ -9656,7 +9681,7 @@ app.get('/api/vendors/:id/edit-modal', (req, res) => {
     } catch (error) {
       console.error('[VENDOR-EDIT-MODAL] Error:', error);
       res.status(500).render('partials/error-toast.html', {
-        message: 'Failed to load vendor details'
+        message: 'Failed to load vendor details',
       });
     }
   })();
@@ -9671,7 +9696,8 @@ app.put('/api/vendors/:id', (req, res) => {
 
   (async () => {
     try {
-      const { name, code, contact_name, contact_email, contact_phone, address, status, notes } = req.body;
+      const { name, code, contact_name, contact_email, contact_phone, address, status, notes } =
+        req.body;
 
       const { data: vendor, error } = await supabaseAdmin
         .from('vmp_vendors')
@@ -9684,7 +9710,7 @@ app.put('/api/vendors/:id', (req, res) => {
           address,
           status,
           notes,
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
         })
         .eq('id', req.params.id)
         .select()
@@ -9694,11 +9720,11 @@ app.put('/api/vendors/:id', (req, res) => {
         console.error('[VENDOR-UPDATE] Error:', error);
         if (error.code === '23505') {
           return res.status(400).render('partials/error-toast.html', {
-            message: `Vendor code \"${code}\" already exists`
+            message: `Vendor code \"${code}\" already exists`,
           });
         }
         return res.status(500).render('partials/error-toast.html', {
-          message: 'Failed to update vendor: ' + error.message
+          message: 'Failed to update vendor: ' + error.message,
         });
       }
 
@@ -9708,7 +9734,7 @@ app.put('/api/vendors/:id', (req, res) => {
       console.error('[VENDOR-UPDATE] Exception:', error);
       logError(error, req, { operation: 'updateVendor' });
       res.status(500).render('partials/error-toast.html', {
-        message: 'An unexpected error occurred'
+        message: 'An unexpected error occurred',
       });
     }
   })();
@@ -9731,7 +9757,7 @@ app.get('/api/vendors/:id/delete-modal', (req, res) => {
 
       if (error || !vendor) {
         return res.status(404).render('partials/error-toast.html', {
-          message: 'Vendor not found'
+          message: 'Vendor not found',
         });
       }
 
@@ -9739,7 +9765,7 @@ app.get('/api/vendors/:id/delete-modal', (req, res) => {
     } catch (error) {
       console.error('[VENDOR-DELETE-MODAL] Error:', error);
       res.status(500).render('partials/error-toast.html', {
-        message: 'Failed to load vendor details'
+        message: 'Failed to load vendor details',
       });
     }
   })();
@@ -9754,15 +9780,12 @@ app.delete('/api/vendors/:id', (req, res) => {
 
   (async () => {
     try {
-      const { error } = await supabaseAdmin
-        .from('vmp_vendors')
-        .delete()
-        .eq('id', req.params.id);
+      const { error } = await supabaseAdmin.from('vmp_vendors').delete().eq('id', req.params.id);
 
       if (error) {
         console.error('[VENDOR-DELETE] Error:', error);
         return res.status(500).render('partials/error-toast.html', {
-          message: 'Failed to delete vendor: ' + error.message
+          message: 'Failed to delete vendor: ' + error.message,
         });
       }
 
@@ -9772,7 +9795,7 @@ app.delete('/api/vendors/:id', (req, res) => {
       console.error('[VENDOR-DELETE] Exception:', error);
       logError(error, req, { operation: 'deleteVendor' });
       res.status(500).render('partials/error-toast.html', {
-        message: 'An unexpected error occurred'
+        message: 'An unexpected error occurred',
       });
     }
   })();
@@ -10872,7 +10895,10 @@ app.post('/admin/set-password', async (req, res) => {
     }
 
     // Find user
-    const { data: { users }, error: listError } = await supabaseAdmin.auth.admin.listUsers();
+    const {
+      data: { users },
+      error: listError,
+    } = await supabaseAdmin.auth.admin.listUsers();
     if (listError) throw listError;
 
     const user = users?.find(u => u.email?.toLowerCase() === email.toLowerCase().trim());
@@ -10926,8 +10952,8 @@ app.use((err, req, res, next) => {
       message: errorResponse.body.error.message,
       code: errorResponse.body.error.code,
       ...(env.NODE_ENV !== 'production' &&
-        'details' in errorResponse.body.error &&
-        errorResponse.body.error.details
+      'details' in errorResponse.body.error &&
+      errorResponse.body.error.details
         ? { details: errorResponse.body.error.details }
         : {}),
     },

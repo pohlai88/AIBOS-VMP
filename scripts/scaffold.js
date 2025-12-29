@@ -2,21 +2,21 @@
 
 /**
  * Scaffold Script
- * 
+ *
  * Automatically generates files from templates by replacing placeholders.
- * 
+ *
  * Usage:
  *   node scripts/scaffold.js <EntityName> <table_name>
- * 
+ *
  * Example:
  *   node scripts/scaffold.js Invoice invoices
- * 
+ *
  * This creates:
  *   - src/services/invoice.service.js
  *   - src/app/api/invoice/route.js
  *   - migrations/052_create_invoices.sql (manual - prompts user)
  *   - tests/unit/invoice.service.test.js (manual - prompts user)
- * 
+ *
  * @module scripts/scaffold
  */
 
@@ -51,7 +51,14 @@ const TEMPLATE_FILES = {
 /**
  * Replace placeholders in template content
  */
-function replacePlaceholders(content, entityName, tableName, domain, idColumn = 'id', hasDeletedBy = true) {
+function replacePlaceholders(
+  content,
+  entityName,
+  tableName,
+  domain,
+  idColumn = 'id',
+  hasDeletedBy = true
+) {
   const entityNameLower = entityName.toLowerCase();
   const entityNameKebab = entityNameLower.replace(/([A-Z])/g, '-$1').toLowerCase();
   const date = new Date().toISOString().split('T')[0];
@@ -87,7 +94,8 @@ function getNextMigrationNumber() {
     return '052';
   }
 
-  const files = fs.readdirSync(migrationsDir)
+  const files = fs
+    .readdirSync(migrationsDir)
     .filter(f => f.match(/^\d+_.*\.sql$/))
     .map(f => parseInt(f.split('_')[0]))
     .filter(n => !isNaN(n))
@@ -106,8 +114,8 @@ function prompt(question) {
     output: process.stdout,
   });
 
-  return new Promise((resolve) => {
-    rl.question(question, (answer) => {
+  return new Promise(resolve => {
+    rl.question(question, answer => {
       rl.close();
       resolve(answer);
     });
@@ -135,7 +143,9 @@ async function scaffold() {
     console.log('\nDomains: finance | vendor | client | compliance | system');
     console.log('\nid_column: Primary key column name (default: "id")');
     console.log('  - Standard tables: "id"');
-    console.log('  - Nexus tables: "case_id", "payment_id", "invoice_id", "user_id", "tenant_id", etc.');
+    console.log(
+      '  - Nexus tables: "case_id", "payment_id", "invoice_id", "user_id", "tenant_id", etc.'
+    );
     process.exit(1);
   }
 
@@ -148,7 +158,7 @@ async function scaffold() {
 
   const normalizedDomain = domain.toLowerCase();
   const normalizedIdColumn = idColumn || 'id'; // Default to 'id' if not provided
-  
+
   // Check if table is CRUD-S capable (from registry)
   // Note: This is a dynamic import to avoid circular dependencies
   let hasDeletedBy = true; // Default to true for new entities
@@ -161,8 +171,12 @@ async function scaffold() {
       hasDeletedBy = crudSConfig.hasDeletedBy;
       console.log(`ℹ️  Table '${tableName}' is CRUD-S capable (hasDeletedBy: ${hasDeletedBy})`);
     } else {
-      console.log(`⚠️  Table '${tableName}' is NOT in CRUD-S registry. Soft delete/restore routes will be generated but will fail at runtime.`);
-      console.log(`   Add to SOFT_DELETE_CAPABLE registry in nexus-adapter.js if this is a business entity.`);
+      console.log(
+        `⚠️  Table '${tableName}' is NOT in CRUD-S registry. Soft delete/restore routes will be generated but will fail at runtime.`
+      );
+      console.log(
+        `   Add to SOFT_DELETE_CAPABLE registry in nexus-adapter.js if this is a business entity.`
+      );
     }
   } catch (error) {
     console.warn(`⚠️  Could not check CRUD-S registry: ${error.message}`);
@@ -198,11 +212,18 @@ async function scaffold() {
     }
 
     const templateContent = fs.readFileSync(templatePath, 'utf8');
-    const serviceContent = replacePlaceholders(templateContent, entityName, tableName, normalizedDomain, normalizedIdColumn, hasDeletedBy);
-    
+    const serviceContent = replacePlaceholders(
+      templateContent,
+      entityName,
+      tableName,
+      normalizedDomain,
+      normalizedIdColumn,
+      hasDeletedBy
+    );
+
     ensureDirectory(OUTPUT_DIRS.service);
     const servicePath = path.join(OUTPUT_DIRS.service, `${tableName}.service.js`);
-    
+
     if (fs.existsSync(servicePath)) {
       const overwrite = await prompt(`⚠️  File exists: ${servicePath}\n   Overwrite? (y/N): `);
       if (overwrite.toLowerCase() !== 'y') {
@@ -225,11 +246,18 @@ async function scaffold() {
   try {
     const templatePath = path.join(TEMPLATES_DIR, TEMPLATE_FILES.routePage);
     const templateContent = fs.readFileSync(templatePath, 'utf8');
-    const routeContent = replacePlaceholders(templateContent, entityName, tableName, normalizedDomain, normalizedIdColumn, hasDeletedBy);
-    
+    const routeContent = replacePlaceholders(
+      templateContent,
+      entityName,
+      tableName,
+      normalizedDomain,
+      normalizedIdColumn,
+      hasDeletedBy
+    );
+
     ensureDirectory(OUTPUT_DIRS.route);
     const routePath = path.join(OUTPUT_DIRS.route, `${tableName}.js`);
-    
+
     if (fs.existsSync(routePath)) {
       const overwrite = await prompt(`⚠️  File exists: ${routePath}\n   Overwrite? (y/N): `);
       if (overwrite.toLowerCase() !== 'y') {
@@ -252,11 +280,18 @@ async function scaffold() {
   try {
     const templatePath = path.join(TEMPLATES_DIR, TEMPLATE_FILES.routeApi);
     const templateContent = fs.readFileSync(templatePath, 'utf8');
-    const routeContent = replacePlaceholders(templateContent, entityName, tableName, normalizedDomain, normalizedIdColumn, hasDeletedBy);
-    
+    const routeContent = replacePlaceholders(
+      templateContent,
+      entityName,
+      tableName,
+      normalizedDomain,
+      normalizedIdColumn,
+      hasDeletedBy
+    );
+
     ensureDirectory(OUTPUT_DIRS.route);
     const routeApiPath = path.join(OUTPUT_DIRS.route, `${tableName}-api.js`);
-    
+
     if (fs.existsSync(routeApiPath)) {
       const overwrite = await prompt(`⚠️  File exists: ${routeApiPath}\n   Overwrite? (y/N): `);
       if (overwrite.toLowerCase() !== 'y') {
@@ -282,11 +317,21 @@ async function scaffold() {
   try {
     const templatePath = path.join(TEMPLATES_DIR, TEMPLATE_FILES.migration);
     const templateContent = fs.readFileSync(templatePath, 'utf8');
-    const migrationContent = replacePlaceholders(templateContent, entityName, tableName, normalizedDomain, normalizedIdColumn, hasDeletedBy);
-    
+    const migrationContent = replacePlaceholders(
+      templateContent,
+      entityName,
+      tableName,
+      normalizedDomain,
+      normalizedIdColumn,
+      hasDeletedBy
+    );
+
     const migrationNum = getNextMigrationNumber();
-    const migrationPath = path.join(OUTPUT_DIRS.migration, `${migrationNum}_create_${tableName}.sql`);
-    
+    const migrationPath = path.join(
+      OUTPUT_DIRS.migration,
+      `${migrationNum}_create_${tableName}.sql`
+    );
+
     if (fs.existsSync(migrationPath)) {
       console.log(`⏭️  Migration file exists: ${migrationPath}`);
       console.log(`   Please create migration manually or use different number`);
@@ -308,11 +353,18 @@ async function scaffold() {
   try {
     const templatePath = path.join(TEMPLATES_DIR, TEMPLATE_FILES.test);
     const templateContent = fs.readFileSync(templatePath, 'utf8');
-    const testContent = replacePlaceholders(templateContent, entityName, tableName, normalizedDomain, normalizedIdColumn, hasDeletedBy);
-    
+    const testContent = replacePlaceholders(
+      templateContent,
+      entityName,
+      tableName,
+      normalizedDomain,
+      normalizedIdColumn,
+      hasDeletedBy
+    );
+
     ensureDirectory(OUTPUT_DIRS.test);
     const testPath = path.join(OUTPUT_DIRS.test, `${tableName}.service.test.js`);
-    
+
     if (fs.existsSync(testPath)) {
       const overwrite = await prompt(`⚠️  File exists: ${testPath}\n   Overwrite? (y/N): `);
       if (overwrite.toLowerCase() !== 'y') {
@@ -363,11 +415,10 @@ async function scaffold() {
 // ============================================================================
 
 if (require.main === module) {
-  scaffold().catch((error) => {
+  scaffold().catch(error => {
     console.error('❌ Fatal error:', error);
     process.exit(1);
   });
 }
 
 module.exports = { scaffold, replacePlaceholders };
-

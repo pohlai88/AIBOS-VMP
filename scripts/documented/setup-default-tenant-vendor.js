@@ -2,7 +2,7 @@
 /**
  * Setup Default Tenant and Vendor
  * Creates default tenant "DE LETTUCE BEAR BERHAD" and a default vendor for onboarding
- * 
+ *
  * Usage: node scripts/setup-default-tenant-vendor.js
  */
 
@@ -68,13 +68,11 @@ async function setupDefaultTenantAndVendor() {
       console.log(`   ✅ Tenant updated: ${TENANT_NAME}`);
     } else {
       // Create new tenant
-      const { error: createError } = await supabase
-        .from('vmp_tenants')
-        .insert({
-          id: DEFAULT_TENANT_ID,
-          name: TENANT_NAME,
-          created_at: new Date().toISOString(),
-        });
+      const { error: createError } = await supabase.from('vmp_tenants').insert({
+        id: DEFAULT_TENANT_ID,
+        name: TENANT_NAME,
+        created_at: new Date().toISOString(),
+      });
 
       if (createError) {
         console.error('   ❌ Error creating tenant:', createError.message);
@@ -114,15 +112,13 @@ async function setupDefaultTenantAndVendor() {
       console.log(`   ✅ Vendor updated: ${DEFAULT_VENDOR_NAME}`);
     } else {
       // Create new vendor
-      const { error: createError } = await supabase
-        .from('vmp_vendors')
-        .insert({
-          id: DEFAULT_VENDOR_ID,
-          tenant_id: DEFAULT_TENANT_ID,
-          name: DEFAULT_VENDOR_NAME,
-          status: 'active',
-          created_at: new Date().toISOString(),
-        });
+      const { error: createError } = await supabase.from('vmp_vendors').insert({
+        id: DEFAULT_VENDOR_ID,
+        tenant_id: DEFAULT_TENANT_ID,
+        name: DEFAULT_VENDOR_NAME,
+        status: 'active',
+        created_at: new Date().toISOString(),
+      });
 
       if (createError) {
         console.error('   ❌ Error creating vendor:', createError.message);
@@ -165,7 +161,6 @@ async function setupDefaultTenantAndVendor() {
     console.log(`📊 Vendor Status: ${vendor.status}`);
     console.log('\n💡 You can now create invites for vendors under this tenant.');
     console.log(`💡 Use vendor ID: ${DEFAULT_VENDOR_ID} for testing.`);
-
   } catch (error) {
     console.error('\n❌ Setup failed:', error.message);
     console.error(error);
@@ -179,8 +174,7 @@ setupDefaultTenantAndVendor()
     console.log('\n✨ Done!');
     process.exit(0);
   })
-  .catch((error) => {
+  .catch(error => {
     console.error('\n❌ Fatal error:', error);
     process.exit(1);
   });
-

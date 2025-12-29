@@ -13,8 +13,8 @@ if (!supabaseUrl || !supabaseKey) {
 const supabase = createClient(supabaseUrl, supabaseKey, {
   auth: {
     autoRefreshToken: false,
-    persistSession: false
-  }
+    persistSession: false,
+  },
 });
 
 async function createSupabaseAuthUser() {
@@ -38,19 +38,19 @@ async function createSupabaseAuthUser() {
       id: vmpUser.id,
       email: vmpUser.email,
       display_name: vmpUser.display_name,
-      vendor_id: vmpUser.vendor_id
+      vendor_id: vmpUser.vendor_id,
     });
 
     // Check if auth user already exists
     const { data: existingAuthUsers, error: listError } = await supabase.auth.admin.listUsers();
-    
+
     if (listError) {
       console.error('Error listing users:', listError);
     } else {
       const existingUser = existingAuthUsers.users.find(u => u.email === email);
       if (existingUser) {
         console.log('\n⚠️  Auth user already exists. Updating password and metadata...');
-        
+
         // Update existing user
         const { data: updateData, error: updateError } = await supabase.auth.admin.updateUserById(
           existingUser.id,
@@ -63,7 +63,7 @@ async function createSupabaseAuthUser() {
               is_active: vmpUser.is_active,
               is_internal: vmpUser.is_internal,
               is_super_admin: vmpUser.is_super_admin,
-            }
+            },
           }
         );
 
@@ -93,7 +93,7 @@ async function createSupabaseAuthUser() {
         is_active: vmpUser.is_active,
         is_internal: vmpUser.is_internal,
         is_super_admin: vmpUser.is_super_admin,
-      }
+      },
     });
 
     if (authError) {

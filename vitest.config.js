@@ -27,7 +27,7 @@ export default defineConfig({
     // Unit tests: tests/unit/**/*.test.js (fast, isolated)
     // Integration tests: tests/integration/**/*.test.js (DB, API)
     // Browser tests: tests/browser/**/*.browser.test.js (Vitest Browser, mocks backend)
-    include: process.env.VITEST_BROWSER 
+    include: process.env.VITEST_BROWSER
       ? ['tests/browser/**/*.browser.test.js']
       : ['tests/unit/**/*.test.js', 'tests/integration/**/*.test.js'],
     exclude: process.env.VITEST_BROWSER

@@ -1,8 +1,5 @@
 import { describe, test, expect } from 'vitest';
-import {
-  getChecklistStepsForCaseType,
-  ensureChecklistSteps,
-} from '@/utils/checklist-rules.js';
+import { getChecklistStepsForCaseType, ensureChecklistSteps } from '@/utils/checklist-rules.js';
 
 describe('Checklist Rules Engine', () => {
   // ============================================================================

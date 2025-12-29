@@ -1,11 +1,11 @@
 /**
  * Test Template
- * 
+ *
  * This is a template for creating new test files.
  * Copy this file and customize for your specific test needs.
- * 
+ *
  * Template Pattern: Standardized test structure for consistency
- * 
+ *
  * @module tests/templates/test-template
  */
 
@@ -20,10 +20,10 @@ describe('Feature Name', () => {
   beforeEach(async () => {
     // Setup test database
     await setupTestDatabase();
-    
+
     // Create test client (authenticated)
     testClient = await createTestClient();
-    
+
     // Create test data
     testData = {
       // Test data structure
@@ -38,11 +38,13 @@ describe('Feature Name', () => {
   describe('Method/Function Name', () => {
     it('should do something when condition is met', async () => {
       // Arrange
-      const input = { /* test input */ };
-      
+      const input = {
+        /* test input */
+      };
+
       // Act
       const result = await functionUnderTest(input);
-      
+
       // Assert
       expect(result).toBeDefined();
       expect(result.property).toBe(expectedValue);
@@ -50,20 +52,22 @@ describe('Feature Name', () => {
 
     it('should handle error case gracefully', async () => {
       // Arrange
-      const invalidInput = { /* invalid input */ };
-      
+      const invalidInput = {
+        /* invalid input */
+      };
+
       // Act & Assert
       await expect(functionUnderTest(invalidInput)).rejects.toThrow();
     });
 
     it('should validate input parameters', async () => {
       // Arrange
-      const missingRequiredField = { /* incomplete input */ };
-      
+      const missingRequiredField = {
+        /* incomplete input */
+      };
+
       // Act & Assert
-      await expect(functionUnderTest(missingRequiredField)).rejects.toThrow(
-        /required/i
-      );
+      await expect(functionUnderTest(missingRequiredField)).rejects.toThrow(/required/i);
     });
   });
 
@@ -91,4 +95,3 @@ describe('Feature Name', () => {
     });
   });
 });
-

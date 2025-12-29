@@ -105,7 +105,11 @@ describe('SOA Adapter Methods', () => {
     });
 
     test('should filter SOA lines by status', async () => {
-      const lines = await vmpAdapter.getSOALines(testData.soaCase.id, testData.vendor.id, 'extracted');
+      const lines = await vmpAdapter.getSOALines(
+        testData.soaCase.id,
+        testData.vendor.id,
+        'extracted'
+      );
       expect(Array.isArray(lines)).toBe(true);
       lines.forEach(line => {
         expect(line.status).toBe('extracted');
@@ -378,7 +382,11 @@ describe('SOA Adapter Methods', () => {
         action: 'corrected',
       };
 
-      const issue = await vmpAdapter.resolveSOAIssue(testData.issue.id, testData.user.id, resolutionData);
+      const issue = await vmpAdapter.resolveSOAIssue(
+        testData.issue.id,
+        testData.user.id,
+        resolutionData
+      );
       expect(issue).toBeDefined();
       expect(issue.status).toBe('resolved');
       expect(issue.resolved_by_user_id).toBe(testData.user.id);
@@ -394,21 +402,21 @@ describe('SOA Adapter Methods', () => {
 
   describe('signOffSOA', () => {
     test('should throw ValidationError for missing caseId', async () => {
-      await expect(vmpAdapter.signOffSOA(null, testData.vendor.id, testData.user.id, {})).rejects.toThrow(
-        'signOffSOA requires caseId, vendorId, and userId'
-      );
+      await expect(
+        vmpAdapter.signOffSOA(null, testData.vendor.id, testData.user.id, {})
+      ).rejects.toThrow('signOffSOA requires caseId, vendorId, and userId');
     });
 
     test('should throw ValidationError for missing vendorId', async () => {
-      await expect(vmpAdapter.signOffSOA(testData.soaCase.id, null, testData.user.id, {})).rejects.toThrow(
-        'signOffSOA requires caseId, vendorId, and userId'
-      );
+      await expect(
+        vmpAdapter.signOffSOA(testData.soaCase.id, null, testData.user.id, {})
+      ).rejects.toThrow('signOffSOA requires caseId, vendorId, and userId');
     });
 
     test('should throw ValidationError for missing userId', async () => {
-      await expect(vmpAdapter.signOffSOA(testData.soaCase.id, testData.vendor.id, null, {})).rejects.toThrow(
-        'signOffSOA requires caseId, vendorId, and userId'
-      );
+      await expect(
+        vmpAdapter.signOffSOA(testData.soaCase.id, testData.vendor.id, null, {})
+      ).rejects.toThrow('signOffSOA requires caseId, vendorId, and userId');
     });
 
     test.skip('should sign off SOA reconciliation successfully', async () => {

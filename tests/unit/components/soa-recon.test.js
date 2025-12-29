@@ -30,7 +30,7 @@ describe('SOA Reconciliation Components', () => {
     await cleanupTestData(supabase, 'vmp_soa_items', { case_id: testData.case.id });
     await cleanupTestData(supabase, 'vmp_soa_matches', {});
     await cleanupTestData(supabase, 'vmp_soa_discrepancies', { case_id: testData.case.id });
-    
+
     // Then cleanup server test data
     await cleanupServerTestData(supabase, testData);
   });

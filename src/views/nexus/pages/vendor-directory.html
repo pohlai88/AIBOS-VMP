@@ -159,12 +159,12 @@
 
 <!-- Client-side filter script -->
 <script>
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
   const tabs = document.querySelectorAll('.nexus-filter-tab');
   const items = document.querySelectorAll('.nexus-vendor-item');
 
   tabs.forEach(tab => {
-    tab.addEventListener('click', function() {
+    tab.addEventListener('click', function () {
       const filter = this.dataset.filter;
 
       // Update active tab
@@ -178,7 +178,8 @@ document.addEventListener('DOMContentLoaded', function() {
         } else if (filter === 'active') {
           item.style.display = item.dataset.status === 'active' ? '' : 'none';
         } else if (filter === 'inactive') {
-          item.style.display = (item.dataset.status !== 'active' && item.dataset.status !== 'pending') ? '' : 'none';
+          item.style.display =
+            item.dataset.status !== 'active' && item.dataset.status !== 'pending' ? '' : 'none';
         }
       });
     });

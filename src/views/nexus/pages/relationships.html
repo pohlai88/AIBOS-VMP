@@ -240,7 +240,9 @@ document.querySelectorAll('.nexus-tab[data-tab]').forEach(tab => {
     tab.classList.add('active');
 
     // Show/hide content
-    document.querySelectorAll('.nexus-tab-content').forEach(content => content.classList.add('hidden'));
+    document
+      .querySelectorAll('.nexus-tab-content')
+      .forEach(content => content.classList.add('hidden'));
     document.getElementById('tab-' + tab.dataset.tab).classList.remove('hidden');
   });
 });
@@ -263,7 +265,7 @@ function copyInviteLink(token) {
 
 // Invite form
 const inviteForm = document.getElementById('invite-vendor-form');
-inviteForm.addEventListener('submit', async (e) => {
+inviteForm.addEventListener('submit', async e => {
   e.preventDefault();
 
   const errorDiv = document.getElementById('invite-error');
@@ -280,12 +282,12 @@ inviteForm.addEventListener('submit', async (e) => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Accept': 'application/json'
+        Accept: 'application/json',
       },
       body: JSON.stringify({
         email: inviteForm.email.value,
-        name: inviteForm.name.value
-      })
+        name: inviteForm.name.value,
+      }),
     });
 
     const data = await response.json();

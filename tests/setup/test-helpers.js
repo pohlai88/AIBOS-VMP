@@ -523,7 +523,7 @@ export async function createTestSOAIssue(supabase, issueData = {}) {
 
 /**
  * Setup SOA test data (reduces "Setup Wall" pattern)
- * 
+ *
  * Creates all common SOA test data in one call:
  * - Vendor
  * - User
@@ -532,7 +532,7 @@ export async function createTestSOAIssue(supabase, issueData = {}) {
  * - Invoice
  * - Match
  * - Issue
- * 
+ *
  * @param {object} supabase - Supabase client
  * @param {object} options - Optional overrides
  * @returns {Promise<object>} Test data object
@@ -580,12 +580,12 @@ export async function setupSOATestData(supabase, options = {}) {
 
 /**
  * Setup basic server test data (reduces "Setup Wall" pattern)
- * 
+ *
  * Creates common server test data:
  * - Vendor
  * - User
  * - Case
- * 
+ *
  * @param {object} supabase - Supabase client
  * @param {object} options - Optional overrides
  * @returns {Promise<object>} Test data object
@@ -610,9 +610,9 @@ export async function setupServerTestData(supabase, options = {}) {
 
 /**
  * Cleanup SOA test data
- * 
+ *
  * Cleans up all SOA-related test data in correct order
- * 
+ *
  * @param {object} supabase - Supabase client
  * @param {object} data - Test data object from setupSOATestData
  */
@@ -642,9 +642,9 @@ export async function cleanupSOATestData(supabase, data) {
 
 /**
  * Cleanup server test data
- * 
+ *
  * Cleans up basic server test data
- * 
+ *
  * @param {object} supabase - Supabase client
  * @param {object} data - Test data object from setupServerTestData
  */

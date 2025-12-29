@@ -94,7 +94,7 @@
 
 {% block scripts %}
 <script>
-document.querySelector('.nexus-auth-form').addEventListener('submit', async (e) => {
+document.querySelector('.nexus-auth-form').addEventListener('submit', async e => {
   e.preventDefault();
 
   const form = e.target;
@@ -110,13 +110,13 @@ document.querySelector('.nexus-auth-form').addEventListener('submit', async (e) 
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Accept': 'application/json'
+        Accept: 'application/json',
       },
       body: JSON.stringify({
         email: form.email.value,
         password: form.password.value,
-        redirect: form.querySelector('[name="redirect"]').value
-      })
+        redirect: form.querySelector('[name="redirect"]').value,
+      }),
     });
 
     const data = await response.json();

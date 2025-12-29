@@ -24,13 +24,13 @@ async function runTests() {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Accept': 'application/json'
+      Accept: 'application/json',
     },
     body: JSON.stringify({
       email: 'alice@alpha.com',
-      password: 'Demo123!'
+      password: 'Demo123!',
     }),
-    redirect: 'manual'
+    redirect: 'manual',
   });
 
   // Extract session cookie
@@ -47,12 +47,12 @@ async function runTests() {
 
   console.log('✅ Login successful - session cookie obtained\n');
 
-  const authHeaders = { 'Cookie': sessionCookie.split(';')[0] };
+  const authHeaders = { Cookie: sessionCookie.split(';')[0] };
 
   // Step 2: Test realtime-token endpoint
   console.log('2. Testing /nexus/api/realtime-token...');
   const tokenRes = await fetch(`${BASE_URL}/nexus/api/realtime-token`, {
-    headers: authHeaders
+    headers: authHeaders,
   });
 
   console.log('   Status:', tokenRes.status);
@@ -92,7 +92,7 @@ async function runTests() {
   // Step 3: Test notifications endpoint for targeted notification
   console.log('3. Testing targeted notification visibility...');
   const notifRes = await fetch(`${BASE_URL}/nexus/notifications`, {
-    headers: authHeaders
+    headers: authHeaders,
   });
 
   if (notifRes.status !== 200) {
@@ -101,7 +101,8 @@ async function runTests() {
   }
 
   const notifHtml = await notifRes.text();
-  const hasTargeted = notifHtml.includes('For Alice Only') || notifHtml.includes('NTF-ALICE-ONLY-TEST');
+  const hasTargeted =
+    notifHtml.includes('For Alice Only') || notifHtml.includes('NTF-ALICE-ONLY-TEST');
 
   if (hasTargeted) {
     console.log('✅ Targeted notification visible to Alice\n');
@@ -111,7 +112,8 @@ async function runTests() {
 
   // Step 4: Test broadcast notification visibility
   console.log('4. Testing broadcast notification visibility...');
-  const hasBroadcast = notifHtml.includes('System Announcement') || notifHtml.includes('NTF-BROADCAST-TEST');
+  const hasBroadcast =
+    notifHtml.includes('System Announcement') || notifHtml.includes('NTF-BROADCAST-TEST');
 
   if (hasBroadcast) {
     console.log('✅ Broadcast notification visible to Alice\n');
@@ -122,7 +124,7 @@ async function runTests() {
   // Step 5: Test unread count includes broadcasts
   console.log('5. Testing unread count API...');
   const countRes = await fetch(`${BASE_URL}/nexus/api/notifications/unread`, {
-    headers: authHeaders
+    headers: authHeaders,
   });
 
   if (countRes.status === 200) {

@@ -1,6 +1,6 @@
 /**
  * Path Alias Verification Test
- * 
+ *
  * This test verifies that path aliases are correctly configured
  * and can be resolved by both the IDE and the test runner.
  */
@@ -69,4 +69,3 @@ describe('System Configuration - Path Aliases', () => {
     expect(testPath).toContain('path-check.test.js');
   });
 });
-

@@ -1,6 +1,6 @@
 /**
  * Standard Case Fixtures
- * 
+ *
  * Centralized case objects for testing.
  * Use these instead of creating case objects inline.
  */
@@ -44,4 +44,3 @@ export const onboardingCase = {
   subject: 'Test Onboarding Case',
   // Note: vendor_id, company_id, tenant_id are set at runtime
 };
-

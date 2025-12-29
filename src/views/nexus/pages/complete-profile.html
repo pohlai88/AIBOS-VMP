@@ -73,12 +73,12 @@
 {% block scripts %}
 <script>
 // Show/hide client code field based on role
-document.getElementById('role').addEventListener('change', (e) => {
+document.getElementById('role').addEventListener('change', e => {
   const clientCodeGroup = document.getElementById('client-code-group');
   clientCodeGroup.style.display = e.target.value === 'vendor' ? 'block' : 'none';
 });
 
-document.getElementById('complete-profile-form').addEventListener('submit', async (e) => {
+document.getElementById('complete-profile-form').addEventListener('submit', async e => {
   e.preventDefault();
 
   const form = e.target;
@@ -94,14 +94,14 @@ document.getElementById('complete-profile-form').addEventListener('submit', asyn
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Accept': 'application/json'
+        Accept: 'application/json',
       },
       body: JSON.stringify({
         name: form.name.value,
         phone: form.phone.value,
         role: form.role.value,
-        clientCode: form.clientCode?.value || ''
-      })
+        clientCode: form.clientCode?.value || '',
+      }),
     });
 
     const data = await response.json();

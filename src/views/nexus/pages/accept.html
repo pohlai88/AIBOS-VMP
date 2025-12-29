@@ -108,7 +108,7 @@
 {% block scripts %}
 {% if not error %}
 <script>
-document.getElementById('accept-form').addEventListener('submit', async (e) => {
+document.getElementById('accept-form').addEventListener('submit', async e => {
   e.preventDefault();
 
   const form = e.target;
@@ -132,15 +132,15 @@ document.getElementById('accept-form').addEventListener('submit', async (e) => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Accept': 'application/json'
+        Accept: 'application/json',
       },
       body: JSON.stringify({
         token: form.querySelector('[name="token"]').value,
         name: form.name.value,
         email: form.email.value,
         password: form.password.value,
-        phone: form.phone.value
-      })
+        phone: form.phone.value,
+      }),
     });
 
     const data = await response.json();

@@ -1,10 +1,10 @@
 /**
  * Legacy VMP Adapter Compatibility Layer
- * 
+ *
  * This file provides backward compatibility for tests and server.js that still use vmpAdapter.
- * 
+ *
  * TODO: Migrate all code to use nexusAdapter directly
- * 
+ *
  * @deprecated Use nexusAdapter from './nexus-adapter.js' instead
  */
 
@@ -24,7 +24,9 @@ function getServiceClient() {
   const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
   if (!supabaseUrl || !supabaseServiceKey) {
-    throw new Error('Missing Supabase configuration. Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in .env');
+    throw new Error(
+      'Missing Supabase configuration. Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in .env'
+    );
   }
 
   _serviceClient = createClient(supabaseUrl, supabaseServiceKey, {
@@ -154,11 +156,14 @@ async function getSOASummary(caseId, vendorId) {
   }
 
   const soaItemIds = (soaItems || []).map(item => item.id);
-  
+
   const { data: matches, error: matchesError } = await supabase
     .from('vmp_soa_matches')
     .select('soa_item_id, status')
-    .in('soa_item_id', soaItemIds.length > 0 ? soaItemIds : ['00000000-0000-0000-0000-000000000000']);
+    .in(
+      'soa_item_id',
+      soaItemIds.length > 0 ? soaItemIds : ['00000000-0000-0000-0000-000000000000']
+    );
 
   if (matchesError) {
     throw new Error(`Failed to get SOA summary: ${matchesError.message}`);
@@ -170,8 +175,10 @@ async function getSOASummary(caseId, vendorId) {
 
   const matchedLineIds = new Set((matches || []).map(m => m.soa_item_id));
   const matchedLines = lines?.filter(l => matchedLineIds.has(l.id)).length || 0;
-  const matchedAmount = lines?.filter(l => matchedLineIds.has(l.id))
-    .reduce((sum, line) => sum + parseFloat(line.amount || 0), 0) || 0;
+  const matchedAmount =
+    lines
+      ?.filter(l => matchedLineIds.has(l.id))
+      .reduce((sum, line) => sum + parseFloat(line.amount || 0), 0) || 0;
 
   const unmatchedLines = totalLines - matchedLines;
   const unmatchedAmount = totalAmount - matchedAmount;
@@ -189,8 +196,10 @@ async function getSOASummary(caseId, vendorId) {
 
   const discrepancyLineIds = new Set((issues || []).map(i => i.soa_item_id));
   const discrepancyLines = lines?.filter(l => discrepancyLineIds.has(l.id)).length || 0;
-  const discrepancyAmount = lines?.filter(l => discrepancyLineIds.has(l.id))
-    .reduce((sum, line) => sum + parseFloat(line.amount || 0), 0) || 0;
+  const discrepancyAmount =
+    lines
+      ?.filter(l => discrepancyLineIds.has(l.id))
+      .reduce((sum, line) => sum + parseFloat(line.amount || 0), 0) || 0;
 
   const netVariance = totalAmount - matchedAmount;
 
@@ -252,20 +261,21 @@ async function createSOAMatch(soaItemId, invoiceId, matchData) {
     match_confidence: matchData.confidence !== undefined ? matchData.confidence : 1.0,
     match_score: matchData.matchScore || 0,
     match_criteria: matchData.matchCriteria || {},
-    soa_amount: matchData.soaAmount !== undefined ? matchData.soaAmount : parseFloat(soaItemFull.amount || 0),
-    invoice_amount: matchData.invoiceAmount !== undefined ? matchData.invoiceAmount : parseFloat(invoice.total_amount || 0),
+    soa_amount:
+      matchData.soaAmount !== undefined ? matchData.soaAmount : parseFloat(soaItemFull.amount || 0),
+    invoice_amount:
+      matchData.invoiceAmount !== undefined
+        ? matchData.invoiceAmount
+        : parseFloat(invoice.total_amount || 0),
     soa_date: matchData.soaDate || soaItemFull.invoice_date || null,
-    invoice_date: matchData.invoiceDate || invoice.invoice_date || new Date().toISOString().split('T')[0],
+    invoice_date:
+      matchData.invoiceDate || invoice.invoice_date || new Date().toISOString().split('T')[0],
     matched_by: matchData.matchedBy || 'system',
     status: 'pending',
     metadata: matchData.metadata || {},
   };
 
-  const { data, error } = await supabase
-    .from('vmp_soa_matches')
-    .insert(match)
-    .select()
-    .single();
+  const { data, error } = await supabase.from('vmp_soa_matches').insert(match).select().single();
 
   if (error) {
     throw new Error(`Failed to create SOA match: ${error.message}`);
@@ -530,52 +540,52 @@ async function signOffSOA(caseId, vendorId, userId, acknowledgementData) {
 
 /**
  * Legacy vmpAdapter export (for backward compatibility)
- * 
+ *
  * Maps legacy vmpAdapter methods to direct vmp_* table queries.
- * 
+ *
  * @deprecated Use nexusAdapter directly
  */
 export const vmpAdapter = {
   // User methods (proxy to nexusAdapter)
-  getUserByEmail: (email) => {
+  getUserByEmail: email => {
     // This would need nexusAdapter implementation
     throw new Error('getUserByEmail: Method needs implementation');
   },
-  
-  createUser: (userData) => {
+
+  createUser: userData => {
     throw new Error('createUser: Method needs implementation');
   },
-  
+
   // Session methods (proxy to nexusAdapter)
   createSession: (userId, sessionData) => {
     throw new Error('createSession: Method needs implementation');
   },
-  
-  deleteSession: (sessionId) => {
+
+  deleteSession: sessionId => {
     throw new Error('deleteSession: Method needs implementation');
   },
-  
-  getSession: (sessionId) => {
+
+  getSession: sessionId => {
     throw new Error('getSession: Method needs implementation');
   },
-  
+
   // Vendor methods (may need custom implementation)
-  getVendorById: async (vendorId) => {
+  getVendorById: async vendorId => {
     throw new Error('getVendorById: Method needs migration to nexusAdapter');
   },
-  
-  getInbox: async (vendorId) => {
+
+  getInbox: async vendorId => {
     throw new Error('getInbox: Method needs migration to nexusAdapter');
   },
-  
+
   getAllVendors: async () => {
     throw new Error('getAllVendors: Method needs migration to nexusAdapter');
   },
-  
+
   getInvoiceDetail: async (invoiceId, vendorId) => {
     throw new Error('getInvoiceDetail: Method needs migration to nexusAdapter');
   },
-  
+
   // SOA methods (implemented above)
   getSOAStatements,
   getSOALines,
@@ -587,18 +597,18 @@ export const vmpAdapter = {
   getSOAIssues,
   resolveSOAIssue,
   signOffSOA,
-  
+
   // Payments
   getPayments: async (vendorId, options) => {
     throw new Error('getPayments: Method needs migration to nexusAdapter');
   },
-  
+
   // Vendor context
-  getVendorContext: async (userId) => {
+  getVendorContext: async userId => {
     throw new Error('getVendorContext: Method needs migration to nexusAdapter');
   },
-  
-  createIndependentUser: async (userData) => {
+
+  createIndependentUser: async userData => {
     throw new Error('createIndependentUser: Method needs migration to nexusAdapter');
   },
 };

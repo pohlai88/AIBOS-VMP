@@ -1,6 +1,6 @@
 /**
  * Standard Vendor Fixtures
- * 
+ *
  * Centralized vendor objects for testing.
  * Use these instead of creating vendor objects inline.
  */
@@ -20,4 +20,3 @@ export const largeVendor = {
   ...standardVendor,
   name: 'Large Test Vendor',
 };
-

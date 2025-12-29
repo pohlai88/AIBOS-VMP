@@ -29,20 +29,20 @@
 
 {% block scripts %}
 <script>
-(async function() {
+(async function () {
   const statusEl = document.getElementById('status-message');
   const loadingEl = document.getElementById('loading-spinner');
   const errorContainer = document.getElementById('error-container');
   const errorMessage = document.getElementById('error-message');
   const retryContainer = document.getElementById('retry-container');
-  
+
   function showError(message) {
     loadingEl.classList.add('hidden');
     errorContainer.classList.remove('hidden');
     errorMessage.textContent = message;
     retryContainer.classList.remove('hidden');
   }
-  
+
   try {
     // Check for error in query params first
     const urlParams = new URLSearchParams(window.location.search);
@@ -51,7 +51,7 @@
       showError(urlParams.get('error_description') || error);
       return;
     }
-    
+
     // Check for code in query params (PKCE flow)
     const code = urlParams.get('code');
     if (code) {
@@ -60,44 +60,44 @@
       window.location.href = '/nexus/oauth/exchange?code=' + encodeURIComponent(code);
       return;
     }
-    
+
     // Check for tokens in URL fragment (implicit flow)
     const hash = window.location.hash.substring(1);
     if (!hash) {
       showError('No authentication data received.');
       return;
     }
-    
+
     // Parse the fragment
     const params = new URLSearchParams(hash);
     const accessToken = params.get('access_token');
     const refreshToken = params.get('refresh_token');
-    
+
     if (!accessToken) {
       showError('No access token received from provider.');
       return;
     }
-    
+
     statusEl.textContent = 'Completing sign-in...';
-    
+
     // Send tokens to server
     const response = await fetch('/nexus/oauth/token', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Accept': 'application/json'
+        Accept: 'application/json',
       },
       body: JSON.stringify({
         access_token: accessToken,
         refresh_token: refreshToken,
         provider_token: params.get('provider_token'),
         expires_in: params.get('expires_in'),
-        token_type: params.get('token_type')
-      })
+        token_type: params.get('token_type'),
+      }),
     });
-    
+
     const data = await response.json();
-    
+
     if (response.ok && data.success) {
       statusEl.textContent = 'Redirecting to portal...';
       window.location.href = data.redirect || '/nexus/portal';

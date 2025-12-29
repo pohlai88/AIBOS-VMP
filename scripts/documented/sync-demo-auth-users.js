@@ -32,14 +32,62 @@ const DEMO_PASSWORD = 'Demo123!';
 
 // Demo users to create
 const DEMO_USERS = [
-  { user_id: 'USR-ALIC0001', email: 'alice@alpha.com', name: 'Alice Anderson', tenant_id: 'TNT-ALPH0001', role: 'owner' },
-  { user_id: 'USR-ALEX0001', email: 'alex@alpha.com', name: 'Alex Adams', tenant_id: 'TNT-ALPH0001', role: 'member' },
-  { user_id: 'USR-BOBB0001', email: 'bob@beta.com', name: 'Bob Baker', tenant_id: 'TNT-BETA0001', role: 'owner' },
-  { user_id: 'USR-BELL0001', email: 'bella@beta.com', name: 'Bella Brown', tenant_id: 'TNT-BETA0001', role: 'admin' },
-  { user_id: 'USR-GRAC0001', email: 'grace@gamma.com', name: 'Grace Garcia', tenant_id: 'TNT-GAMM0001', role: 'owner' },
-  { user_id: 'USR-GARY0001', email: 'gary@gamma.com', name: 'Gary Green', tenant_id: 'TNT-GAMM0001', role: 'member' },
-  { user_id: 'USR-DANN0001', email: 'dan@delta.com', name: 'Dan Davis', tenant_id: 'TNT-DELT0001', role: 'owner' },
-  { user_id: 'USR-DIAN0001', email: 'diana@delta.com', name: 'Diana Drake', tenant_id: 'TNT-DELT0001', role: 'admin' },
+  {
+    user_id: 'USR-ALIC0001',
+    email: 'alice@alpha.com',
+    name: 'Alice Anderson',
+    tenant_id: 'TNT-ALPH0001',
+    role: 'owner',
+  },
+  {
+    user_id: 'USR-ALEX0001',
+    email: 'alex@alpha.com',
+    name: 'Alex Adams',
+    tenant_id: 'TNT-ALPH0001',
+    role: 'member',
+  },
+  {
+    user_id: 'USR-BOBB0001',
+    email: 'bob@beta.com',
+    name: 'Bob Baker',
+    tenant_id: 'TNT-BETA0001',
+    role: 'owner',
+  },
+  {
+    user_id: 'USR-BELL0001',
+    email: 'bella@beta.com',
+    name: 'Bella Brown',
+    tenant_id: 'TNT-BETA0001',
+    role: 'admin',
+  },
+  {
+    user_id: 'USR-GRAC0001',
+    email: 'grace@gamma.com',
+    name: 'Grace Garcia',
+    tenant_id: 'TNT-GAMM0001',
+    role: 'owner',
+  },
+  {
+    user_id: 'USR-GARY0001',
+    email: 'gary@gamma.com',
+    name: 'Gary Green',
+    tenant_id: 'TNT-GAMM0001',
+    role: 'member',
+  },
+  {
+    user_id: 'USR-DANN0001',
+    email: 'dan@delta.com',
+    name: 'Dan Davis',
+    tenant_id: 'TNT-DELT0001',
+    role: 'owner',
+  },
+  {
+    user_id: 'USR-DIAN0001',
+    email: 'diana@delta.com',
+    name: 'Diana Drake',
+    tenant_id: 'TNT-DELT0001',
+    role: 'admin',
+  },
 ];
 
 async function syncDemoAuthUsers() {
@@ -116,7 +164,6 @@ async function syncDemoAuthUsers() {
         console.log(`  🔗 Linked to nexus_user`);
         results.linked.push(user.email);
       }
-
     } catch (err) {
       console.error(`  ❌ Error: ${err.message}`);
       results.errors.push({ email: user.email, error: err.message });
@@ -146,7 +193,9 @@ async function syncDemoAuthUsers() {
   console.log('\n| Email | Nexus User ID | Auth User ID |');
   console.log('|-------|---------------|--------------|');
   verifyData?.forEach(u => {
-    const linked = u.auth_user_id ? '✅ ' + u.auth_user_id.substring(0, 8) + '...' : '❌ Not linked';
+    const linked = u.auth_user_id
+      ? '✅ ' + u.auth_user_id.substring(0, 8) + '...'
+      : '❌ Not linked';
     console.log(`| ${u.email} | ${u.user_id} | ${linked} |`);
   });
 
