@@ -35,7 +35,7 @@
                     "test:e2e:headed":  "playwright test --headed",
                     "test:e2e:soa":  "playwright test tests/e2e/workflows/soa-recon-workflow.spec.js",
                     "test:all":  "npm run test:coverage \u0026\u0026 npm run test:e2e",
-                    "ci:gate":  "npm run lint && npm run test:unit && node scripts/audit/no-drift-audit.mjs",
+                    "ci:gate":  "npm run lint && npm run test:unit && npm run check:drift && npm run audit:no-drift",
                     "vercel-build":  "echo \u0027No build step required for Express\u0027",
                     "set-password":  "node scripts/documented/set-password.js",
                     "setup-jack-password":  "node scripts/documented/setup-jack-password.js",
@@ -44,6 +44,7 @@
                     "vitest:coverage:run":  "node scripts/documented/run-vitest-coverage.js",
                     "audit:no-drift":  "node scripts/audit/no-drift-audit.mjs",
                     "guardrails":  "node scripts/audit/no-drift-audit.mjs",
+                    "check:drift":  "node scripts/check-drift.mjs",
                     "validate:docs":  "node scripts/documented/validate-docs-naming.mjs",
                     "validate:scripts":  "node scripts/documented/validate-scripts.mjs",
                     "validate:all":  "npm run audit:no-drift && npm run validate:docs && npm run validate:scripts"

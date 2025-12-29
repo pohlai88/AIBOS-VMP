@@ -69,11 +69,15 @@ This registry provides:
 - **guides/** - Setup and usage guides
 - **policies/** - Development policies and standards
 - **error-handling/** - Error handling patterns and guides
+- **prds/** - Product Requirements Documents (PRDs) for easy developer follow-up
 
 ### Integrations (`docs/integrations/`)
 - **supabase/** - Supabase integration guides
 - **mcp/** - MCP (Model Context Protocol) setup
 - **services/** - Other service integrations
+
+### SSOT (`docs/ssot/`)
+- **db/** - Database guardrail matrices and registries (operational SSOT)
 
 ---
 
@@ -194,6 +198,13 @@ This registry provides:
 | ERROR_HANDLING.md | `docs/development/error-handling/` | - | Active | - | Error handling patterns |
 | NEXUS_CIRCUIT_BREAKER_GUIDE.md | `docs/development/error-handling/` | - | Active | - | Circuit breaker implementation |
 | NEXUS_ERROR_HANDLING_PLAYBOOK.md | `docs/development/error-handling/` | - | Active | - | Error handling playbook |
+
+#### PRDs (`docs/development/prds/`)
+
+| File | Path | Version | Status | Last Updated | Purpose |
+|------|------|---------|--------|--------------|---------|
+| PRD_DB_SCHEMA.md | `docs/development/prds/` | 1.1.0 | Active | 2025-01-22 | Official PRD for flexible database and super flexible schema architecture |
+| PRD_FIXES_APPLIED.md | `docs/development/prds/` | - | Active | - | PRD fixes and applied changes documentation |
 
 ### Integration Documents
 
@@ -346,6 +357,15 @@ All new documentation files must:
 - Supabase → `docs/integrations/supabase/`
 - MCP → `docs/integrations/mcp/`
 - Other services → `docs/integrations/services/`
+
+### SSOT Documents (`docs/ssot/db/`)
+
+| File | Path | Version | Status | Last Updated | Purpose |
+|------|------|---------|--------|--------------|---------|
+| DB_GUARDRAIL_MATRIX.md | `docs/ssot/db/` | 1.0.0 | Active | 2025-01-22 | Master SSOT guardrail matrix (Table, JSONB Contract, Promotion, RLS, Drift Checks) |
+| JSONB_CONTRACT_REGISTRY.md | `docs/ssot/db/` | 1.0.0 | Active | 2025-01-22 | Detailed JSONB contract definitions with Zod schemas |
+| PROMOTION_LOG.md | `docs/ssot/db/` | 1.0.0 | Active | 2025-01-22 | Historical log of JSONB → Column promotions (Phase A/B/C) |
+| RLS_COVERAGE.md | `docs/ssot/db/` | 1.0.0 | Active | 2025-01-22 | Detailed RLS policy definitions for all tenant-scoped tables |
 
 ---
 

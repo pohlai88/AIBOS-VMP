@@ -1,0 +1,553 @@
+{
+  "timestamp": "2025-12-29T00:44:18.150Z",
+  "tables": [
+    {
+      "table": "nexus_tenants",
+      "tenant_scoped": true,
+      "has_tenant_id": true,
+      "rls_enabled": true,
+      "policies": [
+        {
+          "name": "rls:nexus_tenants_isolation",
+          "operation": "SELECT",
+          "tested": true,
+          "status": "compliant"
+        },
+        {
+          "name": "rls:nexus_tenants_service_bypass",
+          "operation": "ALL",
+          "tested": true,
+          "status": "compliant"
+        }
+      ],
+      "coverage": {
+        "select": true,
+        "insert": true,
+        "update": true,
+        "delete": true
+      },
+      "status": "compliant"
+    },
+    {
+      "table": "nexus_tenant_relationships",
+      "tenant_scoped": true,
+      "has_tenant_id": false,
+      "rls_enabled": true,
+      "policies": [
+        {
+          "name": "rls:nexus_tenant_relationships_isolation",
+          "operation": "SELECT",
+          "tested": true,
+          "status": "compliant"
+        },
+        {
+          "name": "rls:nexus_tenant_relationships_service_bypass",
+          "operation": "ALL",
+          "tested": true,
+          "status": "compliant"
+        }
+      ],
+      "coverage": {
+        "select": true,
+        "insert": true,
+        "update": true,
+        "delete": true
+      },
+      "status": "compliant"
+    },
+    {
+      "table": "nexus_relationship_invites",
+      "tenant_scoped": true,
+      "has_tenant_id": false,
+      "rls_enabled": true,
+      "policies": [
+        {
+          "name": "rls:nexus_relationship_invites_isolation",
+          "operation": "SELECT",
+          "tested": true,
+          "status": "compliant"
+        },
+        {
+          "name": "rls:nexus_relationship_invites_service_bypass",
+          "operation": "ALL",
+          "tested": true,
+          "status": "compliant"
+        }
+      ],
+      "coverage": {
+        "select": true,
+        "insert": true,
+        "update": true,
+        "delete": true
+      },
+      "status": "compliant"
+    },
+    {
+      "table": "nexus_users",
+      "tenant_scoped": true,
+      "has_tenant_id": true,
+      "rls_enabled": true,
+      "policies": [
+        {
+          "name": "rls:nexus_users_isolation",
+          "operation": "SELECT",
+          "tested": true,
+          "status": "compliant"
+        },
+        {
+          "name": "rls:nexus_users_service_bypass",
+          "operation": "ALL",
+          "tested": true,
+          "status": "compliant"
+        }
+      ],
+      "coverage": {
+        "select": true,
+        "insert": true,
+        "update": true,
+        "delete": true
+      },
+      "status": "compliant"
+    },
+    {
+      "table": "nexus_sessions",
+      "tenant_scoped": true,
+      "has_tenant_id": true,
+      "rls_enabled": true,
+      "policies": [
+        {
+          "name": "rls:nexus_sessions_isolation",
+          "operation": "SELECT",
+          "tested": true,
+          "status": "compliant"
+        },
+        {
+          "name": "rls:nexus_sessions_service_bypass",
+          "operation": "ALL",
+          "tested": true,
+          "status": "compliant"
+        }
+      ],
+      "coverage": {
+        "select": true,
+        "insert": true,
+        "update": true,
+        "delete": true
+      },
+      "status": "compliant"
+    },
+    {
+      "table": "nexus_cases",
+      "tenant_scoped": true,
+      "has_tenant_id": false,
+      "rls_enabled": true,
+      "policies": [
+        {
+          "name": "rls:nexus_cases_isolation",
+          "operation": "SELECT",
+          "tested": true,
+          "status": "compliant"
+        },
+        {
+          "name": "rls:nexus_cases_service_bypass",
+          "operation": "ALL",
+          "tested": true,
+          "status": "compliant"
+        }
+      ],
+      "coverage": {
+        "select": true,
+        "insert": true,
+        "update": true,
+        "delete": true
+      },
+      "status": "compliant"
+    },
+    {
+      "table": "nexus_case_messages",
+      "tenant_scoped": true,
+      "has_tenant_id": false,
+      "rls_enabled": true,
+      "policies": [
+        {
+          "name": "rls:nexus_case_messages_isolation",
+          "operation": "SELECT",
+          "tested": true,
+          "status": "compliant"
+        },
+        {
+          "name": "rls:nexus_case_messages_service_bypass",
+          "operation": "ALL",
+          "tested": true,
+          "status": "compliant"
+        }
+      ],
+      "coverage": {
+        "select": true,
+        "insert": true,
+        "update": true,
+        "delete": true
+      },
+      "status": "compliant"
+    },
+    {
+      "table": "nexus_case_evidence",
+      "tenant_scoped": true,
+      "has_tenant_id": false,
+      "rls_enabled": true,
+      "policies": [
+        {
+          "name": "rls:nexus_case_evidence_isolation",
+          "operation": "SELECT",
+          "tested": true,
+          "status": "compliant"
+        },
+        {
+          "name": "rls:nexus_case_evidence_service_bypass",
+          "operation": "ALL",
+          "tested": true,
+          "status": "compliant"
+        }
+      ],
+      "coverage": {
+        "select": true,
+        "insert": true,
+        "update": true,
+        "delete": true
+      },
+      "status": "compliant"
+    },
+    {
+      "table": "nexus_case_checklist",
+      "tenant_scoped": true,
+      "has_tenant_id": false,
+      "rls_enabled": true,
+      "policies": [
+        {
+          "name": "rls:nexus_case_checklist_isolation",
+          "operation": "SELECT",
+          "tested": true,
+          "status": "compliant"
+        },
+        {
+          "name": "rls:nexus_case_checklist_service_bypass",
+          "operation": "ALL",
+          "tested": true,
+          "status": "compliant"
+        }
+      ],
+      "coverage": {
+        "select": true,
+        "insert": true,
+        "update": true,
+        "delete": true
+      },
+      "status": "compliant"
+    },
+    {
+      "table": "nexus_case_activity",
+      "tenant_scoped": true,
+      "has_tenant_id": false,
+      "rls_enabled": true,
+      "policies": [
+        {
+          "name": "rls:nexus_case_activity_isolation",
+          "operation": "SELECT",
+          "tested": true,
+          "status": "compliant"
+        },
+        {
+          "name": "rls:nexus_case_activity_service_bypass",
+          "operation": "ALL",
+          "tested": true,
+          "status": "compliant"
+        }
+      ],
+      "coverage": {
+        "select": true,
+        "insert": true,
+        "update": true,
+        "delete": true
+      },
+      "status": "compliant"
+    },
+    {
+      "table": "nexus_invoices",
+      "tenant_scoped": true,
+      "has_tenant_id": false,
+      "rls_enabled": true,
+      "policies": [
+        {
+          "name": "rls:nexus_invoices_isolation",
+          "operation": "SELECT",
+          "tested": true,
+          "status": "compliant"
+        },
+        {
+          "name": "rls:nexus_invoices_service_bypass",
+          "operation": "ALL",
+          "tested": true,
+          "status": "compliant"
+        }
+      ],
+      "coverage": {
+        "select": true,
+        "insert": true,
+        "update": true,
+        "delete": true
+      },
+      "status": "compliant"
+    },
+    {
+      "table": "nexus_payments",
+      "tenant_scoped": true,
+      "has_tenant_id": false,
+      "rls_enabled": true,
+      "policies": [
+        {
+          "name": "rls:nexus_payments_isolation",
+          "operation": "SELECT",
+          "tested": true,
+          "status": "compliant"
+        },
+        {
+          "name": "rls:nexus_payments_service_bypass",
+          "operation": "ALL",
+          "tested": true,
+          "status": "compliant"
+        }
+      ],
+      "coverage": {
+        "select": true,
+        "insert": true,
+        "update": true,
+        "delete": true
+      },
+      "status": "compliant"
+    },
+    {
+      "table": "nexus_payment_schedule",
+      "tenant_scoped": true,
+      "has_tenant_id": false,
+      "rls_enabled": true,
+      "policies": [
+        {
+          "name": "rls:nexus_payment_schedule_isolation",
+          "operation": "SELECT",
+          "tested": true,
+          "status": "compliant"
+        },
+        {
+          "name": "rls:nexus_payment_schedule_service_bypass",
+          "operation": "ALL",
+          "tested": true,
+          "status": "compliant"
+        }
+      ],
+      "coverage": {
+        "select": true,
+        "insert": true,
+        "update": true,
+        "delete": true
+      },
+      "status": "compliant"
+    },
+    {
+      "table": "nexus_payment_activity",
+      "tenant_scoped": true,
+      "has_tenant_id": false,
+      "rls_enabled": true,
+      "policies": [
+        {
+          "name": "rls:nexus_payment_activity_isolation",
+          "operation": "SELECT",
+          "tested": true,
+          "status": "compliant"
+        },
+        {
+          "name": "rls:nexus_payment_activity_service_bypass",
+          "operation": "ALL",
+          "tested": true,
+          "status": "compliant"
+        }
+      ],
+      "coverage": {
+        "select": true,
+        "insert": true,
+        "update": true,
+        "delete": true
+      },
+      "status": "compliant"
+    },
+    {
+      "table": "nexus_notifications",
+      "tenant_scoped": true,
+      "has_tenant_id": true,
+      "rls_enabled": true,
+      "policies": [
+        {
+          "name": "rls:nexus_notifications_isolation",
+          "operation": "SELECT",
+          "tested": true,
+          "status": "compliant"
+        },
+        {
+          "name": "rls:nexus_notifications_service_bypass",
+          "operation": "ALL",
+          "tested": true,
+          "status": "compliant"
+        }
+      ],
+      "coverage": {
+        "select": true,
+        "insert": true,
+        "update": true,
+        "delete": true
+      },
+      "status": "compliant"
+    },
+    {
+      "table": "nexus_notification_config",
+      "tenant_scoped": true,
+      "has_tenant_id": true,
+      "rls_enabled": true,
+      "policies": [
+        {
+          "name": "rls:nexus_notification_config_isolation",
+          "operation": "SELECT",
+          "tested": true,
+          "status": "compliant"
+        },
+        {
+          "name": "rls:nexus_notification_config_service_bypass",
+          "operation": "ALL",
+          "tested": true,
+          "status": "compliant"
+        }
+      ],
+      "coverage": {
+        "select": true,
+        "insert": true,
+        "update": true,
+        "delete": true
+      },
+      "status": "compliant"
+    },
+    {
+      "table": "nexus_user_notification_prefs",
+      "tenant_scoped": true,
+      "has_tenant_id": true,
+      "rls_enabled": true,
+      "policies": [
+        {
+          "name": "rls:nexus_user_notification_prefs_isolation",
+          "operation": "SELECT",
+          "tested": true,
+          "status": "compliant"
+        },
+        {
+          "name": "rls:nexus_user_notification_prefs_service_bypass",
+          "operation": "ALL",
+          "tested": true,
+          "status": "compliant"
+        }
+      ],
+      "coverage": {
+        "select": true,
+        "insert": true,
+        "update": true,
+        "delete": true
+      },
+      "status": "compliant"
+    },
+    {
+      "table": "nexus_notification_queue",
+      "tenant_scoped": true,
+      "has_tenant_id": true,
+      "rls_enabled": true,
+      "policies": [
+        {
+          "name": "rls:nexus_notification_queue_isolation",
+          "operation": "SELECT",
+          "tested": true,
+          "status": "compliant"
+        },
+        {
+          "name": "rls:nexus_notification_queue_service_bypass",
+          "operation": "ALL",
+          "tested": true,
+          "status": "compliant"
+        }
+      ],
+      "coverage": {
+        "select": true,
+        "insert": true,
+        "update": true,
+        "delete": true
+      },
+      "status": "compliant"
+    },
+    {
+      "table": "nexus_push_subscriptions",
+      "tenant_scoped": true,
+      "has_tenant_id": true,
+      "rls_enabled": true,
+      "policies": [
+        {
+          "name": "rls:nexus_push_subscriptions_isolation",
+          "operation": "SELECT",
+          "tested": true,
+          "status": "compliant"
+        },
+        {
+          "name": "rls:nexus_push_subscriptions_service_bypass",
+          "operation": "ALL",
+          "tested": true,
+          "status": "compliant"
+        }
+      ],
+      "coverage": {
+        "select": true,
+        "insert": true,
+        "update": true,
+        "delete": true
+      },
+      "status": "compliant"
+    },
+    {
+      "table": "nexus_audit_log",
+      "tenant_scoped": true,
+      "has_tenant_id": false,
+      "rls_enabled": true,
+      "policies": [
+        {
+          "name": "rls:nexus_audit_log_isolation",
+          "operation": "SELECT",
+          "tested": true,
+          "status": "compliant"
+        },
+        {
+          "name": "rls:nexus_audit_log_service_bypass",
+          "operation": "ALL",
+          "tested": true,
+          "status": "compliant"
+        }
+      ],
+      "coverage": {
+        "select": true,
+        "insert": true,
+        "update": true,
+        "delete": true
+      },
+      "status": "compliant"
+    }
+  ],
+  "summary": {
+    "total_tables": 20,
+    "tenant_scoped": 20,
+    "rls_enabled": 20,
+    "coverage_percentage": 100,
+    "compliant": 20,
+    "non_compliant": 0
+  }
+}
