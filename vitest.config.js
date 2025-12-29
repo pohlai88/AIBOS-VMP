@@ -1,5 +1,6 @@
 import { defineConfig } from 'vitest/config';
 import { playwright } from '@vitest/browser-playwright';
+import { resolve } from 'path';
 
 /**
  * Vitest Configuration
@@ -11,14 +12,24 @@ import { playwright } from '@vitest/browser-playwright';
  * Compatible with Playwright E2E tests (run separately)
  */
 export default defineConfig({
+  resolve: {
+    alias: {
+      '@': resolve(__dirname, './src'),
+      '@tests': resolve(__dirname, './tests'),
+      '@server': resolve(__dirname, './server.js'),
+    },
+  },
   test: {
     // Enable globals (Jest-compatible)
     globals: true,
 
     // Test file patterns
-    // Node tests: *.test.js (exclude browser tests)
-    // Browser tests: *.browser.test.js (only when --browser flag used)
-    include: process.env.VITEST_BROWSER ? ['tests/**/*.browser.test.js'] : ['tests/**/*.test.js'],
+    // Unit tests: tests/unit/**/*.test.js (fast, isolated)
+    // Integration tests: tests/integration/**/*.test.js (DB, API)
+    // Browser tests: tests/browser/**/*.browser.test.js (Vitest Browser, mocks backend)
+    include: process.env.VITEST_BROWSER 
+      ? ['tests/browser/**/*.browser.test.js']
+      : ['tests/unit/**/*.test.js', 'tests/integration/**/*.test.js'],
     exclude: process.env.VITEST_BROWSER
       ? ['tests/e2e/**', 'node_modules/**']
       : ['tests/**/*.browser.test.js', 'tests/e2e/**', 'node_modules/**'],

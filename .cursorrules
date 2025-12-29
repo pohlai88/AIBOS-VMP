@@ -1,7 +1,8 @@
 # NexusCanon VMP: IDE Rules & Standards
 
-**Version:** 3.1.0 (Production-Grade - Figma Validated)
-**Context:** Node.js, Express, Nunjucks, HTMX, VMP Design System
+**Version:** 3.2.0 (Clean Stack Baseline)
+**Context:** Node.js, Express, Nunjucks, HTMX, Supabase (Clean Stack)
+**Status:** Clean Stack Baseline Established
 
 ## 1. 🚨 Prime Directives (CRITICAL)
 
@@ -12,7 +13,11 @@
 * **Engine:** Use **Nunjucks** syntax (`{% extends %}`, `{{ var }}`). Do not use EJS or Handlebars.
 * **Production-Grade Only:** All implementations must be complete, functional, and production-ready. No stubs, placeholders, or TODO comments.
 * **Clarity Over Assumptions:** If requirements are unclear, ask for clarification. Never assume or guess implementation details.
+* **Consistency Framework:** Follow `docs/development/AI_ASSISTANT_CONSISTENCY_PROTOCOL.md` for all work - no drift, no assumptions, standardized documentation, precise planning. This protocol enforces the Zero Assumption Rule and operational loop (Think-Plan-Act-Verify).
+* **Mandatory Compliance Reporting:** After EVERY action, return diff summary and compliance percentage. Check file locations against `DOCUMENTATION_STANDARDS.md` (ONLY README.md in root). Calculate: `(compliant / total) * 100`. Fix violations immediately.
 * **Zero Tech Debt:** Every implementation must follow established patterns, use proper error handling, and include necessary validations.
+* **Clean Stack Baseline:** This repository is MORE advanced than most open-source VMP repos. Do NOT clone external repos. Fix current codebase. Focus on architecture patterns, not direct code reuse. See `ARCHITECTURE_ASSESSMENT_AND_RECOMMENDATIONS.md` for clean stack definition.
+* **No Legacy Code:** Remove all `vmpAdapter` references. Use `nexusAdapter` only. No broken imports. No legacy routes. See migration path in architecture assessment.
 
 ---
 
@@ -247,10 +252,11 @@ app.get('/invoices', async (req, res) => {
 **Rule:** All database operations must use the adapter layer with proper error handling.
 
 **Required:**
-- Use `vmpAdapter` methods (never direct Supabase calls in routes)
+- Use `nexusAdapter` methods (never direct Supabase calls in routes)
 - Handle database errors gracefully
 - Use transactions for multi-step operations
 - Include timeout protection (adapter handles this)
+- **NO `vmpAdapter` references** - Legacy code removed. Use `nexusAdapter` only.
 
 ### 7.6 Code Clarity
 

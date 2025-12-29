@@ -1,6 +1,12 @@
 /**
  * Notification Service (Sprint 7.4)
  * Handles email, SMS, and in-app notifications for payment events
+ *
+ * TODO: CLEANUP-VMP-LEGACY-01 - Migrate to nexusAdapter
+ * This file uses vmpAdapter for backward compatibility.
+ * Target milestone: After all legacy routes are migrated to Nexus schema.
+ *
+ * @deprecated Uses legacy vmpAdapter - will be migrated to nexusAdapter
  */
 
 import { vmpAdapter } from '../adapters/supabase.js';

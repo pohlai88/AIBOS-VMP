@@ -1,21 +1,38 @@
-<!--
-  NexusCanon VMP Partial/Cell Boilerplate
-  ========================================
-  
-  This is a standalone HTMX-swappable partial component.
-  Use this template when creating new cells/partials for the VMP system.
-  
-  CONTRACT-001 Compliance:
-    - NO inline styles (use CSS classes from globals.css)
-  - Use semantic classes (.vmp-*)
-  - Follow HTMX patterns for dynamic updates
-  - Use Alpine.js for client-side interactivity (if needed)
-  
-  Usage:
-  - Save as: src/views/partials/your_component_name.html
-  - Load via: hx-get="/partials/your-component-name?param=value"
-  - Target: hx-target="#target-element-id"
--->
+{# ============================================================================
+   VIEW CONTRACT
+   ============================================================================
+   Type: View
+   Category: HTMX Partial (Cell)
+   Trust Level: Authenticated (standard user access)
+   Writes Data: Yes (form submission, state changes)
+   Domain: [Specify: finance | vendor | client | compliance | system]
+   Safe for Reuse: Yes (standalone, no side effects)
+   
+   DO NOT MODIFY WITHOUT UPDATING:
+   - docs/architecture/TEMPLATE_PATTERN_GUIDE.md
+   - docs/architecture/TEMPLATE_CONSTITUTION.md
+   
+   Version: 1.0.0
+   Last Updated: 2025-01-22
+   ============================================================================
+   
+   NexusCanon VMP Partial/Cell Boilerplate
+   ========================================
+   
+   This is a standalone HTMX-swappable partial component.
+   Use this template when creating new cells/partials for the VMP system.
+   
+   CONTRACT-001 Compliance:
+     - NO inline styles (use CSS classes from globals.css)
+   - Use semantic classes (.vmp-*)
+   - Follow HTMX patterns for dynamic updates
+   - Use Alpine.js for client-side interactivity (if needed)
+   
+   Usage:
+   - Save as: src/views/partials/your_component_name.html
+   - Load via: hx-get="/partials/your-component-name?param=value"
+   - Target: hx-target="#target-element-id"
+   ============================================================================ #}
 
 <div class="flex flex-col h-full" x-data="{ /* Alpine.js state */ }">
 

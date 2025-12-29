@@ -95,26 +95,42 @@ project-root/
 ## 🏷️ Naming Conventions
 
 ### File Names
-- Use `SCREAMING_SNAKE_CASE` for documentation files
-- Use descriptive, specific names
-- Include version numbers for major versions only (e.g., `DESIGN_SYSTEM_V2.md`)
+- **MUST** use `SCREAMING_SNAKE_CASE` for all documentation files
+- **MUST** use descriptive, specific names (not generic)
+- **MAY** include version numbers for major versions (e.g., `DESIGN_SYSTEM_V2.md`)
+- **MAY** include status suffix (e.g., `_DRAFT`, `_DEPRECATED`) for non-active docs
+- **FORBIDDEN:** lowercase, camelCase, kebab-case, spaces, special characters (except `_`)
+
+**Format:** `CATEGORY_SPECIFIC_NAME[_VERSION][_STATUS].md`
 
 **Examples:**
 - ✅ `COMPONENT_PATTERNS_LIBRARY.md`
 - ✅ `FIGMA_MCP_INTEGRATION_GUIDE.md`
 - ✅ `IDE_CODE_GENERATION_GUIDE.md`
-- ❌ `design-system.md` (too generic)
+- ✅ `DESIGN_SYSTEM_V2_PRODUCTION_READY.md`
+- ❌ `design-system.md` (not SCREAMING_SNAKE_CASE)
 - ❌ `figma.md` (not descriptive)
+- ❌ `DesignSystem.md` (PascalCase not allowed)
+- ❌ `design-system-guide.md` (kebab-case not allowed)
 
 ### Directory Names
-- Use `kebab-case` for directories
-- Keep names short and clear
+- **MUST** use `kebab-case` for all directories
+- **MUST** keep names short and clear
+- **FORBIDDEN:** PascalCase, snake_case, spaces, special characters (except `-`)
 
 **Examples:**
 - ✅ `design-system/`
 - ✅ `integrations/`
+- ✅ `error-handling/`
+- ✅ `workflows/`
 - ❌ `DesignSystem/` (PascalCase not used)
 - ❌ `design_system/` (snake_case not used)
+- ❌ `Design System/` (spaces not allowed)
+
+### Registry Requirement
+- **ALL** documentation files **MUST** be registered in `docs/DOCUMENTATION_REGISTRY.md`
+- **ALL** new files **MUST** be added to registry before committing
+- Registry tracks: file path, version, status, last updated, purpose
 
 ---
 
@@ -248,7 +264,9 @@ Before committing documentation changes:
 
 - [ ] File is in correct `docs/` subdirectory (not root)
 - [ ] File name follows `SCREAMING_SNAKE_CASE` convention
+- [ ] Directory name follows `kebab-case` convention (if creating new directory)
 - [ ] Document has proper header with version, date, status
+- [ ] **File registered in `DOCUMENTATION_REGISTRY.md`**
 - [ ] Table of contents included (if > 100 lines)
 - [ ] No duplicate information with existing docs
 - [ ] All links are valid and working
@@ -256,6 +274,7 @@ Before committing documentation changes:
 - [ ] README.md updated if adding major sections
 - [ ] No temporary or test files left behind
 - [ ] Historical/obsolete docs archived or removed
+- [ ] **Validation script passes:** `node scripts/validate-docs-naming.mjs`
 
 ---
 

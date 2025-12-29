@@ -1,6 +1,12 @@
 /**
  * Push Notification Sender (Sprint 12.3)
  * Sends push notifications using Web Push API
+ *
+ * TODO: CLEANUP-VMP-LEGACY-01 - Migrate to nexusAdapter
+ * This file uses vmpAdapter for backward compatibility.
+ * Target milestone: After all legacy routes are migrated to Nexus schema.
+ *
+ * @deprecated Uses legacy vmpAdapter - will be migrated to nexusAdapter
  */
 
 import webpush from 'web-push';

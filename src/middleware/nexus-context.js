@@ -123,6 +123,23 @@ export function requireNexusRole(...roles) {
 }
 
 /**
+ * Require tenant context (simplified for template routes)
+ * Sets req.tenantId and req.userId from session
+ * Use this in template-generated routes for consistent tenant isolation
+ */
+export function requireTenant(req, res, next) {
+  if (!req.nexus?.tenant) {
+    return res.status(401).json({ error: 'Tenant context required' });
+  }
+  
+  // Set for easy access in route handlers
+  req.tenantId = req.nexus.tenantId;
+  req.userId = req.nexus.userId;
+  
+  next();
+}
+
+/**
  * Require active context to be set
  *
  * Usage patterns:

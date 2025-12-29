@@ -7,7 +7,13 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "moduleResolution": "bundler",
-    "typeRoots": ["./node_modules/@types", "./types"]
+    "typeRoots": ["./node_modules/@types", "./types"],
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"],
+      "@tests/*": ["./tests/*"],
+      "@server": ["./server.js"]
+    }
   },
   "include": ["**/*.js", "types/**/*.d.ts"],
   "exclude": [

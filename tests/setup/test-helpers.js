@@ -520,3 +520,142 @@ export async function createTestSOAIssue(supabase, issueData = {}) {
   if (error) throw error;
   return data;
 }
+
+/**
+ * Setup SOA test data (reduces "Setup Wall" pattern)
+ * 
+ * Creates all common SOA test data in one call:
+ * - Vendor
+ * - User
+ * - SOA Case
+ * - SOA Line
+ * - Invoice
+ * - Match
+ * - Issue
+ * 
+ * @param {object} supabase - Supabase client
+ * @param {object} options - Optional overrides
+ * @returns {Promise<object>} Test data object
+ */
+export async function setupSOATestData(supabase, options = {}) {
+  const vendor = await createTestVendor(supabase, options.vendorData);
+  const user = await createTestUser(supabase, {
+    vendor_id: vendor.id,
+    ...options.userData,
+  });
+  const soaCase = await createTestSOACase(supabase, {
+    vendorId: vendor.id,
+    ...options.caseData,
+  });
+  const soaLine = await createTestSOALine(supabase, {
+    caseId: soaCase.id,
+    vendorId: vendor.id,
+    ...options.lineData,
+  });
+  const invoice = await createTestInvoice(supabase, {
+    vendorId: vendor.id,
+    ...options.invoiceData,
+  });
+  const match = await createTestSOAMatch(supabase, {
+    soaItemId: soaLine.id,
+    invoiceId: invoice.id,
+    ...options.matchData,
+  });
+  const issue = await createTestSOAIssue(supabase, {
+    caseId: soaCase.id,
+    soaItemId: soaLine.id,
+    ...options.issueData,
+  });
+
+  return {
+    vendor,
+    user,
+    soaCase,
+    soaLine,
+    invoice,
+    match,
+    issue,
+  };
+}
+
+/**
+ * Setup basic server test data (reduces "Setup Wall" pattern)
+ * 
+ * Creates common server test data:
+ * - Vendor
+ * - User
+ * - Case
+ * 
+ * @param {object} supabase - Supabase client
+ * @param {object} options - Optional overrides
+ * @returns {Promise<object>} Test data object
+ */
+export async function setupServerTestData(supabase, options = {}) {
+  const vendor = await createTestVendor(supabase, options.vendorData);
+  const user = await createTestUser(supabase, {
+    vendor_id: vendor.id,
+    ...options.userData,
+  });
+  const testCase = await createTestCase(supabase, {
+    vendor_id: vendor.id,
+    ...options.caseData,
+  });
+
+  return {
+    vendor,
+    user,
+    case: testCase,
+  };
+}
+
+/**
+ * Cleanup SOA test data
+ * 
+ * Cleans up all SOA-related test data in correct order
+ * 
+ * @param {object} supabase - Supabase client
+ * @param {object} data - Test data object from setupSOATestData
+ */
+export async function cleanupSOATestData(supabase, data) {
+  if (data.issue) {
+    await cleanupTestData(supabase, 'vmp_soa_discrepancies', { id: data.issue.id });
+  }
+  if (data.match) {
+    await cleanupTestData(supabase, 'vmp_soa_matches', { id: data.match.id });
+  }
+  if (data.soaLine) {
+    await cleanupTestData(supabase, 'vmp_soa_items', { id: data.soaLine.id });
+  }
+  if (data.invoice) {
+    await cleanupTestData(supabase, 'vmp_invoices', { id: data.invoice.id });
+  }
+  if (data.soaCase) {
+    await cleanupTestData(supabase, 'vmp_cases', { id: data.soaCase.id });
+  }
+  if (data.user) {
+    await cleanupTestData(supabase, 'vmp_vendor_users', { id: data.user.id });
+  }
+  if (data.vendor) {
+    await cleanupTestData(supabase, 'vmp_vendors', { id: data.vendor.id });
+  }
+}
+
+/**
+ * Cleanup server test data
+ * 
+ * Cleans up basic server test data
+ * 
+ * @param {object} supabase - Supabase client
+ * @param {object} data - Test data object from setupServerTestData
+ */
+export async function cleanupServerTestData(supabase, data) {
+  if (data.case) {
+    await cleanupTestData(supabase, 'vmp_cases', { id: data.case.id });
+  }
+  if (data.user) {
+    await cleanupTestData(supabase, 'vmp_vendor_users', { id: data.user.id });
+  }
+  if (data.vendor) {
+    await cleanupTestData(supabase, 'vmp_vendors', { id: data.vendor.id });
+  }
+}

@@ -4,7 +4,7 @@
  * Provides utilities to mock authentication in tests
  */
 
-import { vmpAdapter } from '../../src/adapters/supabase.js';
+import { vmpAdapter } from '@/adapters/supabase.js';
 
 /**
  * Create a test user session and return session info

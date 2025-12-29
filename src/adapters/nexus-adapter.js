@@ -5,6 +5,16 @@
  * All methods use explicit prefixed IDs (TNT-, TC-, TV-, USR-, CASE-, PAY-, etc.)
  *
  * Philosophy: Everyone is a Tenant. Role is contextual based on relationship.
+ * 
+ * PRIMARY KEY CONVENTION:
+ * - Nexus tables use prefixed IDs: `{entity}_id` (e.g., `case_id`, `payment_id`, `invoice_id`)
+ * - Legacy VMP tables use `id` as primary key
+ * - Non-domain tables (sessions, queues, audit logs) may use `id` - this is acceptable
+ * 
+ * When querying:
+ * - CRUD-S tables: Use the `idColumn` from SOFT_DELETE_CAPABLE registry
+ * - Non-CRUD-S tables: May use `id` directly (e.g., `nexus_sessions` uses `id`)
+ * - Never hardcode `.eq('id', ...)` for CRUD-S tables - use registry `idColumn` instead
  */
 
 import { createClient } from '@supabase/supabase-js';
@@ -49,6 +59,12 @@ const serviceClient = {
 
 /**
  * Create a client with RLS context for a specific user
+ * 
+ * IMPORTANT: Use this for all user-facing operations to enforce RLS.
+ * Service role client bypasses RLS and should only be used for:
+ * - Admin operations (onboarding, auth admin)
+ * - Internal cron jobs
+ * - Migrations
  */
 function createContextClient(tenantId, userId, tenantClientId, tenantVendorId) {
   const { supabaseUrl, supabaseAnonKey } = getSupabaseConfig();
@@ -2530,10 +2546,14 @@ function mapMimeToEvidenceType(mimeType) {
 /**
  * Get download URL for evidence file
  * @param {string} storagePath - Path in storage bucket
- * @param {number} expiresIn - Seconds until URL expires (default 1 hour)
+ * @param {number} [expiresIn=3600] - Expiration in seconds
  * @returns {Promise<string|null>} Signed URL or null
+ * @deprecated Use createSignedDownloadUrl() instead (standardized helper)
+ * Note: This function is kept for backward compatibility but will be removed in future
  */
 async function getEvidenceDownloadUrl(storagePath, expiresIn = 3600) {
+  // Use service client directly (legacy pattern)
+  // TODO: Migrate callers to use createSignedDownloadUrl() from adapter
   const { data, error } = await serviceClient.storage
     .from(EVIDENCE_CONSTRAINTS.bucket)
     .createSignedUrl(storagePath, expiresIn);
@@ -2827,7 +2847,7 @@ function validateStatusTransition(fromStatus, toStatus) {
  * Transition case status (client context)
  * Creates system timeline event + optional note
  * @param {object} data - { caseId, clientId, userId, tenantId, toStatus, note? }
- * @returns {Promise<{ case: object, systemEvent: object, noteEvent?: object }>}
+ * @returns {Promise<{ case: object, systemEvent: object, noteEvent?: object, fromStatus: string, toStatus: string }>}
  */
 async function transitionCaseStatusByClient(data) {
   const { caseId, clientId, userId, tenantId, toStatus, note } = data;
@@ -3193,6 +3213,221 @@ async function refreshInvoiceMatchSignal({ invoiceId, clientId }) {
 }
 
 // ============================================================================
+// CRUD-S REGISTRY: Safe-by-Construction Soft Delete Enforcement
+// ============================================================================
+// 
+// CRUD-S applies ONLY to core business entities (not logs, queues, junctions, audit).
+// This registry prevents accidental soft-delete on immutable/state tables.
+//
+// Rules:
+// - Core business records = CRUD-S (soft delete + restore)
+// - Logs/queue/state/junction = immutable / hard delete / retention-based
+//
+// @see docs/architecture/SOFT_DELETE_CRUD_S_ARCHITECTURE.md
+
+const SOFT_DELETE_CAPABLE = {
+  // Core Business Entities (Full CRUD-S)
+  nexus_tenants: { idColumn: 'tenant_id', hasDeletedBy: true },
+  nexus_users: { idColumn: 'user_id', hasDeletedBy: true },
+  nexus_cases: { idColumn: 'case_id', hasDeletedBy: true },
+  nexus_invoices: { idColumn: 'invoice_id', hasDeletedBy: true },
+  nexus_payments: { idColumn: 'payment_id', hasDeletedBy: true },
+  nexus_case_messages: { idColumn: 'message_id', hasDeletedBy: true },
+  nexus_case_checklist: { idColumn: 'item_id', hasDeletedBy: true },
+  
+  // Special Case: Evidence (temporary partial CRUD-S until migration)
+  nexus_case_evidence: { idColumn: 'evidence_id', hasDeletedBy: false },
+  
+  // VMP Legacy Tables (if still in use)
+  vmp_vendors: { idColumn: 'id', hasDeletedBy: true },
+  vmp_companies: { idColumn: 'id', hasDeletedBy: true },
+  vmp_cases: { idColumn: 'id', hasDeletedBy: true },
+  vmp_invoices: { idColumn: 'id', hasDeletedBy: true },
+  vmp_payments: { idColumn: 'id', hasDeletedBy: true },
+};
+
+/**
+ * Check if a table supports soft delete (CRUD-S)
+ * 
+ * @param {string} table - Table name
+ * @returns {object|null} Registry entry with idColumn and hasDeletedBy, or null if not CRUD-S capable
+ */
+function getSoftDeleteConfig(table) {
+  return SOFT_DELETE_CAPABLE[table] || null;
+}
+
+/**
+ * Soft delete any entity (generic CRUD-S helper)
+ * Uses context client for RLS enforcement
+ * SAFE BY CONSTRUCTION: Rejects non-CRUD-S tables
+ * 
+ * @param {object} params
+ * @param {string} params.table - Table name (e.g., 'nexus_cases', 'nexus_payments')
+ * @param {string} [params.idColumn] - Primary key column (optional, auto-detected from registry)
+ * @param {string} params.id - Entity ID (prefixed ID or UUID)
+ * @param {string} params.userId - User ID performing the deletion
+ * @param {string} params.tenantId - Tenant ID (for context client)
+ * @param {string} [params.tenantClientId] - Tenant client ID (TC-*)
+ * @param {string} [params.tenantVendorId] - Tenant vendor ID (TV-*)
+ * @returns {Promise<object|null>} Soft-deleted entity or null if not found
+ * @throws {Error} If table is not CRUD-S capable (SOFT_DELETE_NOT_SUPPORTED)
+ */
+async function softDeleteEntity({ table, idColumn, id, userId, tenantId, tenantClientId = null, tenantVendorId = null }) {
+  // SAFETY CHECK: Reject non-CRUD-S tables
+  const config = getSoftDeleteConfig(table);
+  if (!config) {
+    throw new Error(`SOFT_DELETE_NOT_SUPPORTED: Table '${table}' does not support soft delete. Only core business entities support CRUD-S.`);
+  }
+
+  // Use registry idColumn if not provided
+  const effectiveIdColumn = idColumn || config.idColumn;
+  const hasDeletedBy = config.hasDeletedBy;
+
+  // Use context client for RLS enforcement
+  const contextClient = createContextClient(tenantId, userId, tenantClientId, tenantVendorId);
+  
+  // Build update payload: always set deleted_at, conditionally set deleted_by
+  const updatePayload = {
+    deleted_at: new Date().toISOString()
+  };
+  
+  if (hasDeletedBy) {
+    updatePayload.deleted_by = userId;
+  }
+  
+  // Type assertion needed for dynamic table names (TypeScript limitation)
+  // @ts-ignore - Dynamic table name, type inference fails
+  const { data, error } = await contextClient
+    .from(table)
+    .update(updatePayload)
+    .eq(effectiveIdColumn, id)
+    .is('deleted_at', null)  // Only soft-delete if not already deleted
+    .select()
+    .single();
+
+  if (error) {
+    if (error.code === 'PGRST116') {
+      return null; // Not found or already deleted
+    }
+    throw new Error(`softDeleteEntity failed: ${error.message}`);
+  }
+
+  return data;
+}
+
+/**
+ * Restore soft-deleted entity (generic CRUD-S helper)
+ * Uses context client for RLS enforcement
+ * SAFE BY CONSTRUCTION: Rejects non-CRUD-S tables
+ * 
+ * @param {object} params
+ * @param {string} params.table - Table name (e.g., 'nexus_cases', 'nexus_payments')
+ * @param {string} [params.idColumn] - Primary key column (optional, auto-detected from registry)
+ * @param {string} params.id - Entity ID (prefixed ID or UUID)
+ * @param {string} params.tenantId - Tenant ID (for context client)
+ * @param {string} [params.userId] - User ID (for context client)
+ * @param {string} [params.tenantClientId] - Tenant client ID (TC-*)
+ * @param {string} [params.tenantVendorId] - Tenant vendor ID (TV-*)
+ * @returns {Promise<object|null>} Restored entity or null if not found
+ * @throws {Error} If table is not CRUD-S capable (SOFT_DELETE_NOT_SUPPORTED)
+ */
+async function restoreEntity({ table, idColumn, id, tenantId, userId = null, tenantClientId = null, tenantVendorId = null }) {
+  // SAFETY CHECK: Reject non-CRUD-S tables
+  const config = getSoftDeleteConfig(table);
+  if (!config) {
+    throw new Error(`SOFT_DELETE_NOT_SUPPORTED: Table '${table}' does not support soft delete. Only core business entities support CRUD-S.`);
+  }
+
+  // Use registry idColumn if not provided
+  const effectiveIdColumn = idColumn || config.idColumn;
+  const hasDeletedBy = config.hasDeletedBy;
+
+  // Use context client for RLS enforcement
+  const contextClient = createContextClient(tenantId, userId || '', tenantClientId, tenantVendorId);
+  
+  // Build update payload: always clear deleted_at, conditionally clear deleted_by
+  const updatePayload = {
+    deleted_at: null
+  };
+  
+  if (hasDeletedBy) {
+    updatePayload.deleted_by = null;
+  }
+  
+  // Type assertion needed for dynamic table names (TypeScript limitation)
+  // @ts-ignore - Dynamic table name, type inference fails
+  const { data, error } = await contextClient
+    .from(table)
+    .update(updatePayload)
+    .eq(effectiveIdColumn, id)
+    .not('deleted_at', 'is', null)  // Only restore if deleted
+    .select()
+    .single();
+
+  if (error) {
+    if (error.code === 'PGRST116') {
+      return null; // Not found or already active
+    }
+    throw new Error(`restoreEntity failed: ${error.message}`);
+  }
+
+  return data;
+}
+
+// ============================================================================
+// STORAGE/SIGNED URL HELPERS (Standardized File Pointer Contract)
+// ============================================================================
+
+/**
+ * Create signed download URL for any file in Supabase Storage
+ * Standardized helper for all attachment types (evidence, documents, etc.)
+ * 
+ * @param {string} bucket - Storage bucket name
+ * @param {string} path - File path in bucket
+ * @param {number} [ttlSeconds=3600] - URL expiration in seconds (default: 1 hour)
+ * @returns {Promise<string>} Signed URL
+ */
+async function createSignedDownloadUrl(bucket, path, ttlSeconds = 3600) {
+  const { data, error } = await serviceClient.storage
+    .from(bucket)
+    .createSignedUrl(path, ttlSeconds);
+
+  if (error) {
+    throw new Error(`Failed to create signed URL: ${error.message}`);
+  }
+
+  return data.signedUrl;
+}
+
+/**
+ * Create signed upload URL for direct client uploads
+ * 
+ * @param {string} bucket - Storage bucket name
+ * @param {string} path - File path in bucket
+ * @param {number} [ttlSeconds=3600] - URL expiration in seconds
+ * @param {object} [options] - Upload options (fileSize, contentType, etc.)
+ * @returns {Promise<object>} { signedUrl, token, path }
+ */
+async function createSignedUploadUrl(bucket, path, ttlSeconds = 3600, options = {}) {
+  const { data, error } = await serviceClient.storage
+    .from(bucket)
+    .createSignedUploadUrl(path, {
+      upsert: false,
+      ...options
+    });
+
+  if (error) {
+    throw new Error(`Failed to create signed upload URL: ${error.message}`);
+  }
+
+  return {
+    signedUrl: data.signedUrl,
+    token: data.token,
+    path: data.path
+  };
+}
+
+// ============================================================================
 // EXPORTS
 // ============================================================================
 
@@ -3325,6 +3560,15 @@ export const nexusAdapter = {
   getOAuthUrl,
   exchangeOAuthCode,
   signOut,
+
+  // Generic CRUD-S Helpers (Safe-by-construction, registry-enforced)
+  softDeleteEntity,
+  restoreEntity,
+  getSoftDeleteConfig, // Expose for route/service validation
+
+  // Storage/Signed URL Helpers (Standardized file pointer contract)
+  createSignedDownloadUrl,
+  createSignedUploadUrl,
 
   // Clients
   serviceClient,
