@@ -1,19 +1,81 @@
 # NexusCanon VMP: IDE Rules & Standards
 
-**Version:** 3.2.0 (Clean Stack Baseline)
-**Context:** Node.js, Express, Nunjucks, HTMX, Supabase (Clean Stack)
-**Status:** Clean Stack Baseline Established
+**Version:** 4.0.0 (Kernel Doctrine Aligned)  
+**Context:** Node.js, Express, Nunjucks, HTMX, Supabase (Clean Stack)  
+**Status:** Kernel Doctrine Compliance Enforced  
+**Foundation:** [NEXUS_CANON_V5_KERNEL_DOCTRINE.md](docs/ssot/db/NEXUS_CANON_V5_KERNEL_DOCTRINE.md) (Absolute Authority)
+
+---
+
+## 0. 🏛️ Template & Pre-Seeding System (System-Defined Authority)
+
+### 0.1 Core Principle — Template-Based Development
+
+> **We don't trust AI judgment. We don't trust human judgment. We trust properly defined templates and pre-seeded patterns.**
+
+**CRITICAL RULE:** Before implementing ANY feature, the AI MUST:
+
+1. **Check for existing template/pre-seed:**
+   - Look in `src/views/templates/` for matching template
+   - Look in `docs/development/templates/` for pre-seeded patterns
+   - If template exists: Use it. No deviation.
+   - If template doesn't exist: STOP. Request template creation first.
+
+2. **Use pre-seeded layer assignments:**
+   - **L0 (Kernel):** Defined in `src/kernel/templates/` - Concept Registry, Value Sets, Identity Mapping
+   - **L1 (Domain):** Defined in `src/domains/templates/` - Policy engines, Permissions, RBAC
+   - **L2 (Cluster):** Defined in `src/clusters/templates/` - Workflows, Approval chains, State machines
+   - **L3 (Cell):** Defined in `src/views/templates/` - User interfaces, Execution actions, UI components
+
+3. **Follow pre-defined priority templates:**
+   - **P0 (Critical):** Template: `templates/p0-critical-template.js`
+   - **P1 (High):** Template: `templates/p1-high-template.js`
+   - **P2 (Medium):** Template: `templates/p2-medium-template.js`
+   - **P3 (Low):** Template: `templates/p3-low-template.js`
+
+### 0.2 Template Enforcement Rules
+
+**Template-Based Development:**
+- ✅ All features MUST start from a template
+- ✅ Templates define structure, patterns, and constraints
+- ✅ No deviation from template structure without approval
+- ✅ Templates are versioned and immutable
+- ❌ NO ad-hoc layer assignments
+- ❌ NO manual priority decisions
+- ❌ NO custom patterns without template
+
+**Pre-Seeding Requirements:**
+- ✅ Known patterns pre-seeded in templates
+- ✅ Current state documented in templates
+- ✅ Coming soon features templated (inactive)
+- ✅ Potential issues documented in template comments
+- ✅ Experience-based patterns captured in templates
+
+### 0.3 Template Compliance Checklist
+
+Before ANY code generation, verify:
+
+- [ ] **Template Check:** Does a template exist for this feature?
+- [ ] **Pre-Seed Check:** Is this feature pre-seeded in templates?
+- [ ] **Pattern Check:** Does this match an existing template pattern?
+- [ ] **Structure Check:** Will this follow the template structure exactly?
+- [ ] **Approval Check:** If no template exists, has template creation been approved?
+
+**If ANY check fails, STOP and request template creation.**
+
+---
 
 ## 1. 🚨 Prime Directives (CRITICAL)
 
+* **Kernel Doctrine First:** All development MUST align with [NEXUS_CANON_V5_KERNEL_DOCTRINE.md](docs/ssot/db/NEXUS_CANON_V5_KERNEL_DOCTRINE.md). No exceptions.
 * **Route-First Architecture:** Never create an HTML file without a corresponding route in `server.js`.
 * **No Direct Access:** HTML files are **never** served statically. They must be rendered via `res.render()`.
 * **Foundation vs. Design:** Use VMP semantic classes (`.vmp-h*`, `.vmp-body`, `.vmp-label`) for typography **ONLY in data presentation contexts**. Inline styles and `<style>` blocks **ALLOWED** for creative visual design. Marketing and others have free hand, without control. **NO CDS Template Design** - no prescriptive component templates. **NO SaaS Typical Design Model** - no typical SaaS design patterns or templates.
 * **IDE Creativity Markers:** Use `.vmp-creative`, `.vmp-marketing`, or `.vmp-free-form` classes to signal creative content. IDE will understand: Foundation rules do NOT apply, inline styles ENCOURAGED.
 * **Engine:** Use **Nunjucks** syntax (`{% extends %}`, `{{ var }}`). Do not use EJS or Handlebars.
-* **Production-Grade Only:** All implementations must be complete, functional, and production-ready. No stubs, placeholders, or TODO comments.
+* **Production-Grade Only:** All implementations must be complete, functional, and production-ready. **NO stubs, NO placeholders, NO TODO comments, NO empty states, NO "dumb screens"** - Every screen must show real data or proper error messages.
 * **Clarity Over Assumptions:** If requirements are unclear, ask for clarification. Never assume or guess implementation details.
-* **Consistency Framework:** Follow `docs/development/AI_ASSISTANT_CONSISTENCY_PROTOCOL.md` for all work - no drift, no assumptions, standardized documentation, precise planning. This protocol enforces the Zero Assumption Rule and operational loop (Think-Plan-Act-Verify).
+* **Consistency Framework:** Follow `docs/development/AI_ASSISTANT_CONSISTENCY_PROTOCOL.md` for all work - no assumptions, standardized documentation, precise planning. This protocol enforces the Zero Assumption Rule and operational loop (Think-Plan-Act-Verify). Use existing logging, error boundaries, circuit breakers, and observability systems - do not introduce new concepts.
 * **Mandatory Compliance Reporting:** After EVERY action, return diff summary and compliance percentage. Check file locations against `DOCUMENTATION_STANDARDS.md` (ONLY README.md in root). Calculate: `(compliant / total) * 100`. Fix violations immediately.
 * **Zero Tech Debt:** Every implementation must follow established patterns, use proper error handling, and include necessary validations.
 * **Clean Stack Baseline:** This repository is MORE advanced than most open-source VMP repos. Do NOT clone external repos. Fix current codebase. Focus on architecture patterns, not direct code reuse. See `ARCHITECTURE_ASSESSMENT_AND_RECOMMENDATIONS.md` for clean stack definition.
@@ -23,13 +85,16 @@
 
 ## 2. 📂 File System & Naming Conventions
 
-### Directory Structure
+### Directory Structure (Layer-Aligned)
 
-| Type | Path | Description |
-| --- | --- | --- |
-| **Pages** | `src/views/pages/` | Full layouts extending `layout.html`. |
-| **Partials** | `src/views/partials/` | HTMX fragments (cells). Standalone. |
-| **Templates** | `src/views/templates/` | **READ-ONLY** boilerplate references. |
+| Type | Path | Layer | Description |
+| --- | --- | --- | --- |
+| **L0 Kernel** | `src/kernel/` | L0 | Concept Registry, Jurisdictional Value Sets, Canonical Identity Mapping |
+| **L1 Domain** | `src/domains/` | L1 | Domain policy engines, Permission definitions, RBAC policies |
+| **L2 Cluster** | `src/clusters/` | L2 | Operational workflows, Approval chains, State machines |
+| **L3 Cell** | `src/views/pages/` | L3 | Full layouts extending `layout.html` (User-facing interfaces) |
+| **L3 Cell** | `src/views/partials/` | L3 | HTMX fragments (cells). Standalone. |
+| **Templates** | `src/views/templates/` | L3 | **READ-ONLY** boilerplate references. |
 
 ### Casing Standards (Strict Mapping)
 
@@ -41,19 +106,85 @@ The system uses **Kebab-Case** for URLs/Routes and **Snake_Case** for filenames.
 | **File Name** | `snake_case` | `case_detail.html` |
 | **Render Call** | `snake_case` | `res.render('partials/case_detail.html')` |
 
-**❌ Incorrect:** `res.render('partials/case-detail.html')` (Will fail)
+**❌ Incorrect:** `res.render('partials/case-detail.html')` (Will fail)  
 **✅ Correct:** `res.render('partials/case_detail.html')`
 
 ---
 
-## 3. 🛠️ Code Patterns
+## 3. 🛠️ Code Patterns (Layer-Specific)
 
-### A. Route Definition (`server.js`)
+### A. L0 Kernel Implementation
+
+**Constraint:** L0 features require Kernel Registry registration before implementation.
+
+```javascript
+// L0: Concept Registry Schema
+// File: src/kernel/concept_registry.js
+export const ConceptRegistry = {
+  // Concepts must be registered here before use
+  BANK: { id: 'concept_bank', version: 1 },
+  CURRENCY: { id: 'concept_currency', version: 1 },
+  COUNTERPARTY: { id: 'concept_counterparty', version: 1 }
+};
+
+// L0: Jurisdictional Value Set
+// File: src/kernel/jurisdictional_values.js
+export const JurisdictionalValueSets = {
+  MALAYSIA_BANKS: {
+    concept: ConceptRegistry.BANK,
+    jurisdiction: 'MY',
+    values: ['Bank Muamalat', 'Maybank', 'CIMB']
+  }
+};
+```
+
+### B. L1 Domain Policy Implementation
+
+**Constraint:** L1 policies must derive from L0 concepts.
+
+```javascript
+// L1: Finance Domain Policy
+// File: src/domains/finance/policy_engine.js
+import { ConceptRegistry, JurisdictionalValueSets } from '../../kernel/index.js';
+
+export class FinanceDomainPolicy {
+  // Policy derives from L0 concept
+  canUseBank(bankName, userId) {
+    const bankConcept = ConceptRegistry.BANK;
+    const validBanks = JurisdictionalValueSets.MALAYSIA_BANKS.values;
+    // Policy logic here...
+  }
+}
+```
+
+### C. L2 Cluster Workflow Implementation
+
+**Constraint:** L2 workflows must combine L1 domain policies.
+
+```javascript
+// L2: Payment Approval Workflow
+// File: src/clusters/payments/approval_workflow.js
+import { FinanceDomainPolicy } from '../../domains/finance/policy_engine.js';
+
+export class PaymentApprovalWorkflow {
+  constructor() {
+    this.financePolicy = new FinanceDomainPolicy();
+  }
+  
+  // Workflow combines L1 domain policies
+  async approvePayment(paymentId, userId) {
+    // Workflow logic using L1 policies...
+  }
+}
+```
+
+### D. L3 Cell Execution (Route Definition)
 
 **Constraint:** Routes must be defined before the HTML file is created.
 
 ```javascript
-// 1. PAGE Route (User Interface)
+// L3: User-facing route
+// File: server.js
 app.get('/case-dashboard', async (req, res) => {
     // Data fetching logic here...
     res.render('pages/case_dashboard.html', { 
@@ -62,17 +193,16 @@ app.get('/case-dashboard', async (req, res) => {
     });
 });
 
-// 2. PARTIAL Route (HTMX Component)
+// L3: HTMX partial route
 app.get('/partials/case-list.html', async (req, res) => {
     // Data fetching logic here...
     res.render('partials/case_list.html', { 
         items: data 
     });
 });
-
 ```
 
-### B. HTML Templates (Nunjucks)
+### E. HTML Templates (Nunjucks) - L3 Only
 
 **Constraint:** Use the provided boilerplate files as the starting point.
 
@@ -86,7 +216,6 @@ app.get('/partials/case-list.html', async (req, res) => {
      <h1 class="vmp-h1">Page Title</h1>
      </div>
 {% endblock %}
-
 ```
 
 **Partial Structure (HTMX):**
@@ -94,10 +223,9 @@ app.get('/partials/case-list.html', async (req, res) => {
 ```html
 <div class="vmp-panel p-4" id="component-root">
   </div>
-
 ```
 
-### C. HTMX Integration
+### F. HTMX Integration - L3 Only
 
 **Constraint:** Always handle Loading and Empty states.
 
@@ -111,12 +239,11 @@ app.get('/partials/case-list.html', async (req, res) => {
 <div id="loading-id" class="htmx-indicator">
     <div class="vmp-spinner"></div> Loading...
 </div>
-
 ```
 
 ---
 
-## 4. 🎨 Design System (Contract-001)
+## 4. 🎨 Design System (Contract-001) - L3 Only
 
 **Constraint:** You are strictly bound to `public/globals.css` **ONLY for data presentation purposes**.
 
@@ -133,29 +260,67 @@ app.get('/partials/case-list.html', async (req, res) => {
 
 ---
 
-## 5. ✅ AI Workflow Checklist
+## 5. ✅ AI Workflow Checklist (Enhanced with Kernel Doctrine)
 
 Before generating any code, the AI must verify:
 
-1. [ ] **Route Check:** Does `app.get('/target-route')` exist in `server.js`?
-   * *If NO:* Stop. Create the route first.
+1. [ ] **Kernel Doctrine Check:** Does this feature align with Kernel Doctrine L0-L3 model?
+   - *If NO:* Stop. Review Kernel Doctrine and reassign feature to correct layer.
 
-2. [ ] **Naming Check:** Is the file `snake_case` and the route `kebab-case`?
-3. [ ] **Location Check:** Is it a Page (`pages/`) or a Partial (`partials/`)?
-4. [ ] **Boilerplate Check:** Did I copy `src/views/templates/partial-boilerplate.html`?
-5. [ ] **Context Check:** Is this data presentation or creative/marketing content?
+2. [ ] **L0 Concept Check:** Does this feature require L0 concept registration?
+   - *If YES:* Stop. Register concept in L0 Kernel Registry first.
+
+3. [ ] **Layer Assignment Check:** Is this feature assigned to the correct layer (L0-L3)?
+   - *If UNCLEAR:* Stop. Ask for clarification.
+
+4. [ ] **Priority Check:** Is this feature assigned correct priority (P0-P1-P2-P3)?
+   - *If UNCLEAR:* Stop. Ask for clarification.
+
+5. [ ] **Route Check:** Does `app.get('/target-route')` exist in `server.js`? (L3 only)
+   - *If NO:* Stop. Create the route first.
+
+6. [ ] **Naming Check:** Is the file `snake_case` and the route `kebab-case`?
+7. [ ] **Location Check:** Is it in the correct layer directory (L0-L3)?
+8. [ ] **Boilerplate Check:** Did I copy appropriate boilerplate for the layer?
+9. [ ] **Context Check:** Is this data presentation or creative/marketing content? (L3 only)
    * *If Data Presentation:* Use VMP semantic classes (`.vmp-h*`, `.vmp-body`, `.vmp-label`)
    * *If Creative/Marketing:* Use `.vmp-creative`, `.vmp-marketing`, or `.vmp-free-form` marker, inline styles ENCOURAGED
-6. [ ] **Production Check:** Is this implementation complete? No stubs, placeholders, or TODOs?
-7. [ ] **Error Handling:** Are all error paths handled with proper error responses?
-8. [ ] **Validation:** Are all inputs validated (required fields, data types, constraints)?
-9. [ ] **Clarity Check:** Are all requirements clear? If not, ask for clarification before implementing.
-10. [ ] **Pattern Compliance:** Does this follow established codebase patterns?
+10. [ ] **Production Check:** Is this implementation complete? No stubs, placeholders, or TODOs?
+11. [ ] **Error Handling:** Are all error paths handled with proper error responses?
+12. [ ] **Validation:** Are all inputs validated (required fields, data types, constraints)?
+13. [ ] **Clarity Check:** Are all requirements clear? If not, ask for clarification before implementing.
+14. [ ] **Pattern Compliance:** Does this follow established codebase patterns?
+15. [ ] **Authority Check:** Does this feature respect layer authority hierarchy?
 
 ---
 
-## 6. 🚫 Strict Anti-Patterns
+## 6. 🚫 Strict Anti-Patterns (Layer-Enforced)
 
+### L0 Anti-Patterns
+
+* ❌ **NEVER** define business logic in L0 (belongs to L1-L2)
+* ❌ **NEVER** define user interfaces in L0 (belongs to L3)
+* ❌ **NEVER** define workflows in L0 (belongs to L2)
+* ❌ **NEVER** create concepts without Kernel Registry registration
+* ❌ **NEVER** modify canonical identity mappings (immutable)
+
+### L1 Anti-Patterns
+
+* ❌ **NEVER** define concepts in L1 (must exist in L0)
+* ❌ **NEVER** define workflows in L1 (belongs to L2)
+* ❌ **NEVER** define user interfaces in L1 (belongs to L3)
+* ❌ **NEVER** bypass L0 concept registration
+
+### L2 Anti-Patterns
+
+* ❌ **NEVER** define concepts in L2 (must exist in L0)
+* ❌ **NEVER** define domain policies in L2 (must exist in L1)
+* ❌ **NEVER** define user interfaces in L2 (belongs to L3)
+
+### L3 Anti-Patterns
+
+* ❌ **NEVER** define business logic in L3 (derived from L0-L2)
+* ❌ **NEVER** define concepts in L3 (must exist in L0)
 * ❌ **NEVER** use `style="color: red"` in data presentation (Use `.vmp-text-danger`). ✅ **ALLOWED** in creative/marketing content with `.vmp-creative` marker.
 * ❌ **NEVER** create files in `src/views/` root (must be in subfolders).
 * ❌ **NEVER** use CDS / Bootstrap / Tailwind classes without VMP wrappers in data presentation. ✅ **ALLOWED** in creative/marketing content.
@@ -170,7 +335,7 @@ Before generating any code, the AI must verify:
 
 ---
 
-## 7. 🏭 Production-Grade Requirements
+## 7. 🏭 Production-Grade Requirements (All Layers)
 
 ### 7.1 Complete Implementations
 
@@ -204,7 +369,7 @@ app.get('/invoices', async (req, res) => {
       });
     }
     
-    const invoices = await vmpAdapter.getInvoices(vendorId);
+    const invoices = await nexusAdapter.getInvoices(vendorId);
     res.render('pages/invoices.html', { invoices, user: req.user });
   } catch (error) {
     logError(error, { path: req.path, userId: req.user?.id });
@@ -226,16 +391,68 @@ app.get('/invoices', async (req, res) => {
 - Error logging with context
 - User-friendly error pages/messages
 
-### 7.3 Input Validation
+### 7.3 Input Validation (ENFORCED)
 
-**Rule:** All user inputs must be validated before processing.
+**Rule:** All user inputs MUST be validated with ENFORCED rules. Validation is not optional - it is mandatory.
 
-**Required:**
-- Required field checks
-- Data type validation
-- Constraint validation (e.g., email format, UUID format)
-- Sanitization if needed
-- Clear error messages for validation failures
+**ENFORCED Validation Rules (Non-Negotiable):**
+
+**Email Validation:**
+- ✅ **MUST contain "@" character** - Reject if missing
+- ✅ **MUST have text before "@"** - Reject if empty
+- ✅ **MUST have text after "@"** - Reject if empty
+- ✅ **MUST contain "." after "@"** - Reject if missing
+- ✅ **MUST have text after final "."** - Reject if empty
+- ❌ **NO exceptions** - Invalid email = 400 Bad Request
+
+**UUID Validation:**
+- ✅ **MUST match UUID v4 format** - Reject if invalid
+- ✅ **MUST be exactly 36 characters** - Reject if wrong length
+- ❌ **NO exceptions** - Invalid UUID = 400 Bad Request
+
+**Required Fields:**
+- ✅ **MUST be present** - Reject if missing
+- ✅ **MUST not be empty string** - Reject if empty
+- ✅ **MUST not be null** - Reject if null
+- ❌ **NO exceptions** - Missing required field = 400 Bad Request
+
+**Data Type Validation:**
+- ✅ **MUST match expected type** - Reject if type mismatch
+- ✅ **Numbers MUST be numeric** - Reject if NaN
+- ✅ **Strings MUST be strings** - Reject if not string
+- ✅ **Booleans MUST be boolean** - Reject if not boolean
+- ❌ **NO exceptions** - Type mismatch = 400 Bad Request
+
+**Constraint Validation:**
+- ✅ **String length MUST be within limits** - Reject if too short/long
+- ✅ **Number range MUST be valid** - Reject if out of range
+- ✅ **Enum values MUST be from allowed set** - Reject if not in set
+- ❌ **NO exceptions** - Constraint violation = 400 Bad Request
+
+**Implementation Requirement:**
+```javascript
+// ✅ REQUIRED: Enforced validation
+function validateEmail(email) {
+  if (!email || typeof email !== 'string') {
+    throw new ValidationError('Email is required and must be a string');
+  }
+  if (!email.includes('@')) {
+    throw new ValidationError('Email must contain "@" character');
+  }
+  const [local, domain] = email.split('@');
+  if (!local || !domain) {
+    throw new ValidationError('Email must have text before and after "@"');
+  }
+  if (!domain.includes('.')) {
+    throw new ValidationError('Email domain must contain "."');
+  }
+  const parts = domain.split('.');
+  if (!parts[parts.length - 1]) {
+    throw new ValidationError('Email must have text after final "."');
+  }
+  return true;
+}
+```
 
 ### 7.4 Authentication & Authorization
 
@@ -246,17 +463,42 @@ app.get('/invoices', async (req, res) => {
 - Verify user has access to requested resource (authorization)
 - RBAC checks for internal-only routes (`req.user.isInternal`)
 - Vendor access checks (vendor can only access their own data)
+- **L1 Domain Policy checks** (who may use which L0 values)
 
-### 7.5 Database Operations
+### 7.5 Database Operations (Supabase MCP Only)
 
-**Rule:** All database operations must use the adapter layer with proper error handling.
+**Rule:** All database operations MUST be handled by Supabase MCP. Do NOT write database code in `.cursorrules` or routes.
 
-**Required:**
-- Use `nexusAdapter` methods (never direct Supabase calls in routes)
-- Handle database errors gracefully
-- Use transactions for multi-step operations
-- Include timeout protection (adapter handles this)
-- **NO `vmpAdapter` references** - Legacy code removed. Use `nexusAdapter` only.
+**CRITICAL:**
+- ✅ **Use Supabase MCP** - All PostgreSQL operations via MCP
+- ✅ **Reference Supabase MCP documentation** - `docs/integrations/supabase/SUPABASE_MCP_*.md`
+- ✅ **Let Supabase MCP build, leverage, optimize PostgreSQL** - MCP is the agent
+- ❌ **NO direct Supabase client calls in routes** - Use adapter layer that calls MCP
+- ❌ **NO database schema definitions in code** - MCP handles schema
+- ❌ **NO SQL queries in routes** - MCP handles queries
+- ❌ **NO database optimization in code** - MCP handles optimization
+
+**Implementation Pattern:**
+```javascript
+// ✅ CORRECT: Use adapter that calls Supabase MCP
+// File: src/adapters/nexus-adapter.js
+async getData(id) {
+  // Adapter calls Supabase MCP (not direct Supabase client)
+  // MCP handles all PostgreSQL operations
+  return await supabaseMCP.getData(id);
+}
+
+// ❌ WRONG: Direct Supabase calls
+async getData(id) {
+  const { data } = await supabase.from('table').select('*').eq('id', id);
+  return data;
+}
+```
+
+**Documentation Reference:**
+- See `docs/integrations/supabase/SUPABASE_MCP_GUIDE.md`
+- See `docs/integrations/supabase/SUPABASE_MCP_SETUP.md`
+- See `docs/integrations/supabase/SUPABASE_MCP_QUICK_START.md`
 
 ### 7.6 Code Clarity
 
@@ -268,38 +510,67 @@ app.get('/invoices', async (req, res) => {
 - User flow is not specified
 - Integration requirements are vague
 - Edge cases are not defined
+- Template structure is unclear
+- Pre-seeded pattern doesn't exist
 
 **Never:**
 - Assume implementation details
 - Create placeholder code
 - Guess at requirements
 - Leave unclear code with comments
+- Deviate from template structure
+- Create features without templates
 
 ---
 
-## 8. 🔍 Code Review Checklist
+## 8. 🔍 Code Review Checklist (Layer-Aware)
 
 Before submitting any code, verify:
 
+- [ ] **Template Compliance:** Feature uses existing template/pre-seed
+- [ ] **Template Structure:** Feature follows template structure exactly
+- [ ] **Pre-Seed Check:** Feature matches pre-seeded patterns
+- [ ] **No Empty States:** All screens show real data or proper empty state UI
 - [ ] **Complete:** No stubs, placeholders, or TODOs
 - [ ] **Error Handling:** All error paths handled
 - [ ] **Validation:** All inputs validated
 - [ ] **Auth:** Authentication and authorization checks present
 - [ ] **Patterns:** Follows established codebase patterns
 - [ ] **Naming:** Correct casing (snake_case files, kebab-case URLs)
-- [ ] **Design System:** Uses only VMP classes
+- [ ] **Design System:** Uses only VMP classes (L3 only)
 - [ ] **Testing:** Code is testable and maintainable
 - [ ] **Documentation:** Complex logic is commented
 - [ ] **Performance:** No obvious performance issues
 
 ---
 
-## 9. 📋 Implementation Standards
+## 9. 📋 Implementation Standards (Template-Based)
 
-### 9.1 Route Implementation
+### 9.1 Template-Based Development
+
+**Required Process:**
+1. **Find Template:** Look in `src/views/templates/` or `docs/development/templates/`
+2. **Copy Template:** Use template as starting point
+3. **Follow Structure:** Do not deviate from template structure
+4. **Fill in Details:** Replace template placeholders with actual implementation
+
+**Template Locations:**
+- **L0 (Kernel):** `src/kernel/templates/` - Concept Registry, Value Sets
+- **L1 (Domain):** `src/domains/templates/` - Policy engines, Permissions
+- **L2 (Cluster):** `src/clusters/templates/` - Workflows, Approval chains
+- **L3 (Cell):** `src/views/templates/` - User interfaces, Routes
+
+**If Template Doesn't Exist:**
+- STOP implementation
+- Request template creation
+- Wait for template approval
+- Then proceed with template
+
+### 9.2 Route Implementation (L3 - Template-Based)
 
 **Required Structure:**
 ```javascript
+// L3: User-facing route
 app.get('/route-path', async (req, res) => {
   try {
     // 1. Authentication check
@@ -315,17 +586,17 @@ app.get('/route-path', async (req, res) => {
       });
     }
     
-    // 3. Authorization check (if needed)
-    if (req.user.vendorId !== expectedVendorId) {
+    // 3. Authorization check (L1 Domain Policy)
+    if (!financePolicy.canUseBank(bankName, req.user.id)) {
       return res.status(403).render('pages/error.html', {
         error: { status: 403, message: 'Access denied' }
       });
     }
     
-    // 4. Business logic
-    const data = await vmpAdapter.getData(param, req.user.vendorId);
+    // 4. Business logic (L2 Cluster Workflow)
+    const data = await paymentWorkflow.getPayment(param, req.user.vendorId);
     
-    // 5. Render response
+    // 5. Render response (L3 Cell Execution)
     res.render('pages/template.html', { data, user: req.user });
   } catch (error) {
     // 6. Error handling
@@ -337,37 +608,25 @@ app.get('/route-path', async (req, res) => {
 });
 ```
 
-### 9.2 Adapter Methods
+### 9.5 Adapter Methods (Supabase MCP Pattern)
 
 **Required Structure:**
 ```javascript
+// Adapter layer (used by L1-L3)
+// MUST use Supabase MCP, not direct Supabase client
 async getData(id, vendorId) {
-  const queryPromise = supabase
-    .from('table')
-    .select('*')
-    .eq('id', id)
-    .eq('vendor_id', vendorId)
-    .single();
-  
-  const { data, error } = await withTimeout(
-    queryPromise,
-    10000,
-    `getData(${id})`
-  );
-  
-  if (error) {
-    const handledError = handleSupabaseError(error, 'getData');
-    if (handledError === null) {
-      return null; // Not found
-    }
-    throw handledError;
-  }
-  
-  return data;
+  // Adapter calls Supabase MCP
+  // MCP handles all PostgreSQL operations, optimization, and error handling
+  return await supabaseMCP.getData('table', { id, vendor_id: vendorId });
 }
+
+// Error handling is done by MCP
+// Timeout protection is done by MCP
+// Query optimization is done by MCP
+// All database concerns handled by MCP
 ```
 
-### 9.3 HTML Templates
+### 9.6 HTML Templates (L3 Only)
 
 **Required Structure:**
 ```html
@@ -391,27 +650,78 @@ async getData(id, vendorId) {
 
 ---
 
-## 10. 🚫 Forbidden Patterns
+## 10. 🚫 Forbidden Patterns (All Layers)
 
-### 10.1 Stubs and Placeholders
+### 10.1 Template Violations
 
 ```javascript
-// ❌ FORBIDDEN
+// ❌ FORBIDDEN: Creating feature without template
+// File: src/domains/finance/policy_engine.js
+export class FinanceDomainPolicy {
+  // No template used - WRONG
+}
+
+// ✅ REQUIRED: Use template first
+// Step 1: Find template in src/domains/templates/policy_engine_template.js
+// Step 2: Copy template structure
+// Step 3: Fill in implementation details
+// File: src/domains/finance/policy_engine.js
+import { PolicyEngineTemplate } from '../templates/policy_engine_template.js';
+
+export class FinanceDomainPolicy extends PolicyEngineTemplate {
+  // Follows template structure exactly
+}
+```
+
+### 10.2 Stubs, Placeholders, and Empty States (FORBIDDEN)
+
+```javascript
+// ❌ FORBIDDEN: Stub/placeholder
 app.get('/route', (req, res) => {
   // TODO: Implement this
   res.json({ status: 'coming soon' });
 });
 
-// ❌ FORBIDDEN
+// ❌ FORBIDDEN: Placeholder data
 app.get('/route', (req, res) => {
   res.render('pages/template.html', { 
     data: null, // Placeholder
     message: 'Not implemented'
   });
 });
+
+// ❌ FORBIDDEN: Empty state without proper handling
+app.get('/route', (req, res) => {
+  const items = [];
+  res.render('pages/template.html', { items }); // Empty array = "dumb screen"
+});
+
+// ✅ REQUIRED: Proper empty state with context
+app.get('/route', async (req, res) => {
+  const items = await getItems();
+  if (items.length === 0) {
+    res.render('pages/template.html', { 
+      items: [],
+      emptyState: {
+        title: 'No items found',
+        message: 'Items will appear here when available',
+        action: { label: 'Create Item', href: '/items/create' }
+      }
+    });
+  } else {
+    res.render('pages/template.html', { items });
+  }
+});
 ```
 
-### 10.2 Assumptions
+**Empty State Rules:**
+- ❌ **NO empty arrays without context** - Always provide empty state message
+- ❌ **NO "No data" without explanation** - Explain why it's empty
+- ❌ **NO blank screens** - Always show something meaningful
+- ✅ **MUST provide empty state UI** - Title, message, and optional action
+- ✅ **MUST explain why empty** - User should understand the state
+
+### 10.3 Assumptions
 
 ```javascript
 // ❌ FORBIDDEN: Assuming data structure
@@ -432,7 +742,7 @@ res.render('template.html', {
 });
 ```
 
-### 10.3 Incomplete Error Handling
+### 10.4 Incomplete Error Handling
 
 ```javascript
 // ❌ FORBIDDEN
@@ -457,7 +767,26 @@ app.get('/route', async (req, res) => {
 
 ---
 
-**Document Status:** ✅ Production-Grade Standards Enforced  
-**Last Updated:** 2025-12-21  
-**Version:** 3.0.0
+## 11. 📚 Reference Documents
 
+### Kernel Doctrine (Absolute Authority)
+- **[NEXUS_CANON_V5_KERNEL_DOCTRINE.md](docs/ssot/db/NEXUS_CANON_V5_KERNEL_DOCTRINE.md)** - Business Operating Constitution
+
+### SSOT Documents
+- **[DB_GUARDRAIL_MATRIX.md](docs/ssot/db/DB_GUARDRAIL_MATRIX.md)** - Operational SSOT matrix
+- **[JSONB_CONTRACT_REGISTRY.md](docs/ssot/db/JSONB_CONTRACT_REGISTRY.md)** - JSONB contract definitions
+- **[RLS_COVERAGE.md](docs/ssot/db/RLS_COVERAGE.md)** - Row-level security policies
+
+### Development Guides
+- **[AI_ASSISTANT_CONSISTENCY_PROTOCOL.md](docs/development/AI_ASSISTANT_CONSISTENCY_PROTOCOL.md)** - Consistency framework
+- **[PRD_CONSOLIDATION_STRATEGY.md](docs/development/prds/PRD_CONSOLIDATION_STRATEGY.md)** - PRD alignment with Kernel Doctrine
+
+### Architecture
+- **[ARCHITECTURE_ASSESSMENT_AND_RECOMMENDATIONS.md](docs/architecture/ARCHITECTURE_ASSESSMENT_AND_RECOMMENDATIONS.md)** - Clean stack definition
+
+---
+
+**Document Status:** ✅ Kernel Doctrine Aligned  
+**Last Updated:** 2025-01-22  
+**Version:** 4.0.0  
+**Authority:** Derived from [NEXUS_CANON_V5_KERNEL_DOCTRINE.md](docs/ssot/db/NEXUS_CANON_V5_KERNEL_DOCTRINE.md)

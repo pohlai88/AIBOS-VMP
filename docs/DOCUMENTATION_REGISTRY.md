@@ -81,6 +81,9 @@ This registry provides:
 
 ### SSOT (`docs/ssot/`)
 - **db/** - Database guardrail matrices and registries (operational SSOT)
+  - **NEXUS_CANON_V5_KERNEL_DOCTRINE.md** - Foundational kernel doctrine (Business Operating Constitution)
+  - **DB_GUARDRAIL_MATRIX.md** - Operational SSOT matrix (enforces kernel doctrine)
+  - Other registries and compliance documents
 
 ---
 
@@ -371,10 +374,12 @@ All new documentation files must:
 
 | File | Path | Version | Status | Last Updated | Purpose |
 |------|------|---------|--------|--------------|---------|
-| DB_GUARDRAIL_MATRIX.md | `docs/ssot/db/` | 1.0.0 | Active | 2025-01-22 | Master SSOT guardrail matrix (Table, JSONB Contract, Promotion, RLS, Drift Checks) |
+| **NEXUS_CANON_V5_KERNEL_DOCTRINE.md** | `docs/ssot/db/` | 5.0.0 | **APPROVED (Gold Master)** | 2025-01-22 | **Foundational kernel doctrine** - Business Operating Constitution defining L0-L3 layer model, truth singularity, and governance principles. All other SSOT documents derive from this. |
+| DB_GUARDRAIL_MATRIX.md | `docs/ssot/db/` | 1.0.0 | Active | 2025-01-22 | Master SSOT guardrail matrix (Table, JSONB Contract, Promotion, RLS, Drift Checks) - **Derives from Kernel Doctrine** |
 | JSONB_CONTRACT_REGISTRY.md | `docs/ssot/db/` | 1.0.0 | Active | 2025-01-22 | Detailed JSONB contract definitions with Zod schemas |
 | PROMOTION_LOG.md | `docs/ssot/db/` | 1.0.0 | Active | 2025-01-22 | Historical log of JSONB → Column promotions (Phase A/B/C) |
 | RLS_COVERAGE.md | `docs/ssot/db/` | 1.0.0 | Active | 2025-01-22 | Detailed RLS policy definitions for all tenant-scoped tables |
+| COMPLIANCE_SUMMARY.md | `docs/ssot/db/` | 1.1.0 | Active | 2025-01-22 | Compliance status summary against Kernel Doctrine and Guardrail Matrix |
 
 ---
 

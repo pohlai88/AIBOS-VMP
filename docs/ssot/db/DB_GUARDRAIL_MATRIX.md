@@ -1,5 +1,7 @@
 # SSOT Guardrail Matrix (Master)
 
+> **Foundation:** This operational matrix derives from and enforces the principles defined in **[NEXUS_CANON_V5_KERNEL_DOCTRINE.md](./NEXUS_CANON_V5_KERNEL_DOCTRINE.md)** (the Kernel Doctrine). All database schema, JSONB contracts, and RLS policies must comply with both this matrix and the foundational kernel doctrine.
+
 ## Document Status & Authority
 
 **Authority Level:** NORMATIVE  

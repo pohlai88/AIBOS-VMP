@@ -1,5 +1,7 @@
 # SSOT Guardrail Matrix - Compliance Summary
 
+> **Foundation:** This compliance summary measures adherence to the **[NEXUS_CANON_V5_KERNEL_DOCTRINE.md](./NEXUS_CANON_V5_KERNEL_DOCTRINE.md)** (the Kernel Doctrine) as enforced by the **[DB_GUARDRAIL_MATRIX.md](./DB_GUARDRAIL_MATRIX.md)** operational matrix.
+
 **Date:** 2025-01-22  
 **Version:** 1.1.0  
 **Status:** L1 Documented (DRIFT checks pending full implementation)
